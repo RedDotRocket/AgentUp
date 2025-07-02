@@ -97,7 +97,7 @@ jobs:
 
     - name: Test agent validation
       run: |
-        cd ./test-agents/standard && uv run agentup validate
+        uv run agentup agent validate --config ./test-agents/standard/agent_config.yaml
 
     - name: Upload created agents
       uses: actions/upload-artifact@v4
