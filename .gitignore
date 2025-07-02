@@ -54,3 +54,27 @@ Thumbs.db
 # AgentUp
 agent_config.yaml
 dump.rdb
+
+# Testing and CI artifacts
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/
+pytest_cache/
+*.coverage
+.mypy_cache/
+.ruff_cache/
+bandit-report.json
+requirements-ci.txt
+
+# Test agents and renders
+test-agents/
+test-render/
+example-agent/
+examples/chatbot/
+
+# Temporary files
+*.tmp
+*.bak
+*.orig
+*~

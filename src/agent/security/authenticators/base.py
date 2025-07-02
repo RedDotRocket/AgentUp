@@ -1,8 +1,7 @@
-"""Base authenticator class for the security module."""
+from abc import ABC, abstractmethod  # noqa: F401
+from typing import Any, Optional  # noqa: F401
 
-from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, Set
-from fastapi import Request
+from fastapi import Request  # noqa: F401
 
-from ..base import AuthenticationResult, BaseAuthenticator
-from ..exceptions import SecurityConfigurationException
+from ..base import AuthenticationResult, BaseAuthenticator  # noqa: F401
+from ..exceptions import SecurityConfigurationException  # noqa: F401

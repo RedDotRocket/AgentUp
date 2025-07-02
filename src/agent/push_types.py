@@ -1,20 +1,14 @@
-"""
-Additional push notification types for A2A compliance.
-
-These types extend the a2a-sdk to support the full A2A specification
-for push notification management.
-"""
-
-from typing import List, Any
-from pydantic import BaseModel
+from typing import Any
 
 from a2a.types import TaskPushNotificationConfig
+from pydantic import BaseModel
 
 
-class ListTaskPushNotificationConfigParams(BaseModel):
+class listTaskPushNotificationConfigParams(BaseModel):
     """
     Parameters for the 'tasks/pushNotificationConfig/list' method.
     """
+
     id: str
     """
     The ID of the task.
@@ -25,10 +19,11 @@ class ListTaskPushNotificationConfigParams(BaseModel):
     """
 
 
-class ListTaskPushNotificationConfigRequest(BaseModel):
+class listTaskPushNotificationConfigRequest(BaseModel):
     """
     JSON-RPC request model for the 'tasks/pushNotificationConfig/list' method.
     """
+
     jsonrpc: str = "2.0"
     """
     JSON-RPC version.
@@ -41,16 +36,17 @@ class ListTaskPushNotificationConfigRequest(BaseModel):
     """
     RPC method name.
     """
-    params: ListTaskPushNotificationConfigParams
+    params: listTaskPushNotificationConfigParams
     """
     Request parameters.
     """
 
 
-class ListTaskPushNotificationConfigResponse(BaseModel):
+class listTaskPushNotificationConfigResponse(BaseModel):
     """
     JSON-RPC response model for the 'tasks/pushNotificationConfig/list' method.
     """
+
     jsonrpc: str = "2.0"
     """
     JSON-RPC version.
@@ -59,9 +55,9 @@ class ListTaskPushNotificationConfigResponse(BaseModel):
     """
     Request identifier.
     """
-    result: List[TaskPushNotificationConfig]
+    result: list[TaskPushNotificationConfig]
     """
-    List of push notification configurations for the task.
+    list of push notification configurations for the task.
     """
 
 
@@ -69,6 +65,7 @@ class DeleteTaskPushNotificationConfigParams(BaseModel):
     """
     Parameters for the 'tasks/pushNotificationConfig/delete' method.
     """
+
     id: str
     """
     The ID of the task.
@@ -87,6 +84,7 @@ class DeleteTaskPushNotificationConfigRequest(BaseModel):
     """
     JSON-RPC request model for the 'tasks/pushNotificationConfig/delete' method.
     """
+
     jsonrpc: str = "2.0"
     """
     JSON-RPC version.
@@ -109,6 +107,7 @@ class DeleteTaskPushNotificationConfigResponse(BaseModel):
     """
     JSON-RPC response model for the 'tasks/pushNotificationConfig/delete' method.
     """
+
     jsonrpc: str = "2.0"
     """
     JSON-RPC version.
@@ -127,6 +126,7 @@ class JSONRPCError(BaseModel):
     """
     JSON-RPC error object.
     """
+
     code: int
     """
     Error code.
@@ -145,6 +145,7 @@ class JSONRPCErrorResponse(BaseModel):
     """
     JSON-RPC error response.
     """
+
     jsonrpc: str = "2.0"
     """
     JSON-RPC version.

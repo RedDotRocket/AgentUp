@@ -1,5 +1,3 @@
-"""Agent project management commands."""
-
 import click
 
 
@@ -10,23 +8,27 @@ def agent():
 
 
 @agent.command()
-@click.argument('name', required=False)
-@click.option('--template', '-t', default='standard',
-              type=click.Choice(['minimal', 'standard', 'full', 'demo'], case_sensitive=False),
-              help='Project template (default: standard)')
-@click.option('--output-dir', '-o', type=click.Path(), help='Output directory')
-@click.option('--config', '-c', type=click.Path(exists=True), help='Use existing agent_config.yaml as template')
-@click.option('--no-git', is_flag=True, help='Skip git repository initialization')
+@click.argument("name", required=False)
+@click.option(
+    "--template",
+    "-t",
+    default="standard",
+    type=click.Choice(["minimal", "standard", "full", "demo"], case_sensitive=False),
+    help="Project template (default: standard)",
+)
+@click.option("--output-dir", "-o", type=click.Path(), help="Output directory")
+@click.option("--config", "-c", type=click.Path(exists=True), help="Use existing agent_config.yaml as template")
+@click.option("--no-git", is_flag=True, help="Skip git repository initialization")
 def create(name, template, output_dir, config, no_git):
     """Create a new agent project.
-    
+
     \b
     Templates:
       minimal  - Barebone agent (no AI, no external dependencies)
       standard - AI-powered agent with MCP (recommended)
-      full     - Enterprise agent with all features  
+      full     - Enterprise agent with all features
       demo     - Example agent showcasing capabilities
-    
+
     \b
     Examples:
       agentup agent create                      # Interactive mode (standard template)
@@ -41,10 +43,12 @@ def create(name, template, output_dir, config, no_git):
 
 
 @agent.command()
-@click.option('--config', '-c', type=click.Path(exists=True), default='agent_config.yaml', help='Path to agent config file')
-@click.option('--host', default='127.0.0.1', help='Host to bind to')
-@click.option('--port', '-p', type=click.IntRange(1, 65535), default=8000, help='Port to bind to')
-@click.option('--reload/--no-reload', default=True, help='Enable auto-reload')
+@click.option(
+    "--config", "-c", type=click.Path(exists=True), default="agent_config.yaml", help="Path to agent config file"
+)
+@click.option("--host", default="127.0.0.1", help="Host to bind to")
+@click.option("--port", "-p", type=click.IntRange(1, 65535), default=8000, help="Port to bind to")
+@click.option("--reload/--no-reload", default=True, help="Enable auto-reload")
 def serve(config, host, port, reload):
     """Start the development server.
 
@@ -54,17 +58,20 @@ def serve(config, host, port, reload):
         agentup agent serve --host 0.0.0.0     # Bind to all interfaces
     """
     # Import and call the original dev functionality
-    from . import dev
     from pathlib import Path
+
+    from . import dev
 
     return dev.dev.callback(Path(config), host, port, reload)
 
 
 @agent.command()
-@click.option('--config', '-c', type=click.Path(exists=True), default='agent_config.yaml', help='Configuration file to validate')
-@click.option('--check-env', '-e', is_flag=True, help='Check environment variables')
-@click.option('--check-handlers', '-h', is_flag=True, help='Check handler implementations')
-@click.option('--strict', '-s', is_flag=True, help='Strict validation (fail on warnings)')
+@click.option(
+    "--config", "-c", type=click.Path(exists=True), default="agent_config.yaml", help="Configuration file to validate"
+)
+@click.option("--check-env", "-e", is_flag=True, help="Check environment variables")
+@click.option("--check-handlers", "-h", is_flag=True, help="Check handler implementations")
+@click.option("--strict", "-s", is_flag=True, help="Strict validation (fail on warnings)")
 def validate(config, check_env, check_handlers, strict):
     """Validate agent configuration and setup.
 
@@ -80,12 +87,14 @@ def validate(config, check_env, check_handlers, strict):
 
 
 @agent.command()
-@click.option('--type', '-t', type=click.Choice(['docker', 'k8s', 'helm']), required=True, help='Deployment type to generate')
-@click.option('--output', '-o', type=click.Path(), help='Output directory')
-@click.option('--port', '-p', default=8080, help='Application port')
-@click.option('--replicas', '-r', default=1, help='Number of replicas (k8s/helm only)')
-@click.option('--image-name', help='Docker image name')
-@click.option('--image-tag', default='latest', help='Docker image tag')
+@click.option(
+    "--type", "-t", type=click.Choice(["docker", "k8s", "helm"]), required=True, help="Deployment type to generate"
+)
+@click.option("--output", "-o", type=click.Path(), help="Output directory")
+@click.option("--port", "-p", default=8080, help="Application port")
+@click.option("--replicas", "-r", default=1, help="Number of replicas (k8s/helm only)")
+@click.option("--image-name", help="Docker image name")
+@click.option("--image-tag", default="latest", help="Docker image tag")
 def deploy(type, output, port, replicas, image_name, image_tag):
     """Generate deployment files for your agent.
 

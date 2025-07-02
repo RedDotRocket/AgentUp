@@ -168,7 +168,7 @@ curl -X POST http://localhost:8000/ \
 - Second configuration added successfully
 - Each config gets a unique internal ID
 
-### 2.2 List All Push Notification Configs
+### 2.2 list All Push Notification Configs
 
 ```bash
 # Replace TASK_ID with your task ID  
@@ -216,7 +216,7 @@ curl -X POST http://localhost:8000/ \
 ### 3.2 Verify Deletion
 
 ```bash
-# List configs again to verify deletion
+# list configs again to verify deletion
 curl -X POST http://localhost:8000/ \
   -H "Content-Type: application/json" \
   -H "X-API-Key: your-api-key-here" \
@@ -393,7 +393,7 @@ valkey-cli
 ### ✅ **All Tests Should Pass If:**
 1. All JSON-RPC methods return proper responses
 2. Multiple configurations can be stored per task
-3. List method returns all configurations
+3. list method returns all configurations
 4. Delete method removes specific configurations
 5. Webhooks are delivered with correct data and headers
 6. Security validation prevents obvious attack vectors

@@ -1,7 +1,6 @@
-"""Base classes and interfaces for AgentUp security components."""
-
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, Set
+from typing import Any
+
 from fastapi import Request
 
 
@@ -11,10 +10,10 @@ class AuthenticationResult:
     def __init__(
         self,
         success: bool,
-        user_id: Optional[str] = None,
-        credentials: Optional[str] = None,
-        scopes: Optional[Set[str]] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        user_id: str | None = None,
+        credentials: str | None = None,
+        scopes: set[str] | None = None,
+        metadata: dict[str, Any] | None = None,
     ):
         self.success = success
         self.user_id = user_id
@@ -26,9 +25,9 @@ class AuthenticationResult:
 class BaseAuthenticator(ABC):
     """Abstract base class for all authenticators."""
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         self.config = config
-        self.auth_type = self.__class__.__name__.lower().replace('authenticator', '')
+        self.auth_type = self.__class__.__name__.lower().replace("authenticator", "")
         self._validate_config()
 
     @abstractmethod
@@ -66,11 +65,11 @@ class BaseAuthenticator(ABC):
         """Return True if this authenticator supports scope-based authorization."""
         return False
 
-    def get_required_headers(self) -> Set[str]:
+    def get_required_headers(self) -> set[str]:
         """Get the set of required headers for this authenticator."""
         return set()
 
-    def get_optional_headers(self) -> Set[str]:
+    def get_optional_headers(self) -> set[str]:
         """Get the set of optional headers for this authenticator."""
         return set()
 
@@ -81,9 +80,9 @@ class SecurityPolicy:
     def __init__(
         self,
         require_authentication: bool = True,
-        allowed_auth_types: Optional[Set[str]] = None,
-        required_scopes: Optional[Set[str]] = None,
-        allow_anonymous: bool = False
+        allowed_auth_types: set[str] | None = None,
+        required_scopes: set[str] | None = None,
+        allow_anonymous: bool = False,
     ):
         self.require_authentication = require_authentication
         self.allowed_auth_types = allowed_auth_types or set()
@@ -96,7 +95,7 @@ class SecurityPolicy:
             return True  # No restrictions
         return auth_type in self.allowed_auth_types
 
-    def has_required_scopes(self, user_scopes: Set[str]) -> bool:
+    def has_required_scopes(self, user_scopes: set[str]) -> bool:
         """Check if user has all required scopes."""
         if not self.required_scopes:
             return True  # No scope requirements

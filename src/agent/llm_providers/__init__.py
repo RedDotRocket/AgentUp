@@ -1,23 +1,23 @@
 import logging
-from typing import Dict, Any, Type
+from typing import Any
 
-from .base import BaseLLMService, LLMCapability, LLMResponse, ChatMessage, FunctionCall
-from .openai import OpenAIProvider
 from .anthropic import AnthropicProvider
+from .base import BaseLLMService, ChatMessage, FunctionCall, LLMCapability, LLMResponse
 from .ollama import OllamaProvider
+from .openai import OpenAIProvider
 
 logger = logging.getLogger(__name__)
 
 # Provider registry
-PROVIDER_REGISTRY: Dict[str, Type[BaseLLMService]] = {
-    'openai': OpenAIProvider,
-    'anthropic': AnthropicProvider,
-    'claude': AnthropicProvider,  # Alias for anthropic
-    'ollama': OllamaProvider,
+PROVIDER_REGISTRY: dict[str, type[BaseLLMService]] = {
+    "openai": OpenAIProvider,
+    "anthropic": AnthropicProvider,
+    "claude": AnthropicProvider,  # Alias for anthropic
+    "ollama": OllamaProvider,
 }
 
 
-def create_llm_provider(provider_type: str, name: str, config: Dict[str, Any]) -> BaseLLMService:
+def create_llm_provider(provider_type: str, name: str, config: dict[str, Any]) -> BaseLLMService:
     """Create an LLM provider instance.
 
     Args:
@@ -34,19 +34,19 @@ def create_llm_provider(provider_type: str, name: str, config: Dict[str, Any]) -
     provider_type = provider_type.lower()
 
     if provider_type not in PROVIDER_REGISTRY:
-        available = ', '.join(PROVIDER_REGISTRY.keys())
+        available = ", ".join(PROVIDER_REGISTRY.keys())
         raise ValueError(f"Unsupported LLM provider: {provider_type}. Available: {available}")
 
     provider_class = PROVIDER_REGISTRY[provider_type]
     return provider_class(name, config)
 
 
-def get_available_providers() -> Dict[str, Type[BaseLLMService]]:
+def get_available_providers() -> dict[str, type[BaseLLMService]]:
     """Get all available LLM providers."""
     return PROVIDER_REGISTRY.copy()
 
 
-def register_provider(provider_type: str, provider_class: Type[BaseLLMService]):
+def register_provider(provider_type: str, provider_class: type[BaseLLMService]):
     """Register a custom LLM provider.
 
     Args:
@@ -62,16 +62,16 @@ def register_provider(provider_type: str, provider_class: Type[BaseLLMService]):
 
 # Export all public components
 __all__ = [
-    'BaseLLMService',
-    'LLMCapability',
-    'LLMResponse',
-    'ChatMessage',
-    'FunctionCall',
-    'OpenAIProvider',
-    'AnthropicProvider',
-    'OllamaProvider',
-    'create_llm_provider',
-    'get_available_providers',
-    'register_provider',
-    'PROVIDER_REGISTRY'
+    "BaseLLMService",
+    "LLMCapability",
+    "LLMResponse",
+    "ChatMessage",
+    "FunctionCall",
+    "OpenAIProvider",
+    "AnthropicProvider",
+    "OllamaProvider",
+    "create_llm_provider",
+    "get_available_providers",
+    "register_provider",
+    "PROVIDER_REGISTRY",
 ]

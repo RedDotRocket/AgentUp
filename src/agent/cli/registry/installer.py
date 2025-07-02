@@ -1,11 +1,12 @@
+import os
+import shutil
+import subprocess
 import tarfile
 import tempfile
-import subprocess
-import shutil
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Any
+
 import yaml
-import os
 from rich.console import Console
 
 from .client import RegistryClient
@@ -23,7 +24,7 @@ class SkillInstaller:
         self.validator = SkillValidator()
         self.current_project = self._detect_agent_project()
 
-    def _detect_agent_project(self) -> Optional[Path]:
+    def _detect_agent_project(self) -> Path | None:
         """Detect if we're in an AgentUp project directory."""
         # Look for agent_config.yaml in current directory or parents
         current = Path.cwd()
@@ -46,7 +47,7 @@ class SkillInstaller:
         """Check if we're in an agent project."""
         return self.current_project is not None
 
-    def _parse_skill_id(self, skill_id: str) -> Tuple[str, str, str]:
+    def _parse_skill_id(self, skill_id: str) -> tuple[str, str, str]:
         """Parse skill_id into namespace, name, and full_id.
 
         Args:
@@ -57,11 +58,11 @@ class SkillInstaller:
             - For 'weather_forecast': ('', 'weather_forecast', 'weather_forecast')
             - For 'lukehinds/weather_forecast': ('lukehinds', 'weather_forecast', 'lukehinds/weather_forecast')
         """
-        if '/' in skill_id:
-            namespace, skill_name = skill_id.split('/', 1)
+        if "/" in skill_id:
+            namespace, skill_name = skill_id.split("/", 1)
             return namespace, skill_name, skill_id
         else:
-            return '', skill_id, skill_id
+            return "", skill_id, skill_id
 
     def _get_handler_path(self, skill_id: str) -> Path:
         """Get the handler file path for a skill based on namespace."""
@@ -99,11 +100,7 @@ class SkillInstaller:
         return False
 
     async def install_skill(
-        self,
-        skill_id: str,
-        version: str = "latest",
-        preview_only: bool = False,
-        force: bool = False
+        self, skill_id: str, version: str = "latest", preview_only: bool = False, force: bool = False
     ) -> bool:
         """Install a skill from the registry directly into the project."""
 
@@ -140,9 +137,7 @@ class SkillInstaller:
                 temp_path = Path(temp_dir)
 
                 console.print(f"[blue]📦 Installing {skill_id}@{version} into project...[/blue]")
-                package_path = await self.client.download_skill_package(
-                    skill_id, temp_path, version
-                )
+                package_path = await self.client.download_skill_package(skill_id, temp_path, version)
 
                 # 4. Extract and validate
                 console.print("[dim]Validating package...[/dim]")
@@ -183,7 +178,9 @@ class SkillInstaller:
                 config_updated = await self._add_to_project_skills(skill_info, version)
 
                 if handler_copied and config_updated:
-                    self._show_integration_success_message(skill_id, version, skill_info, deps_installed, config_updated)
+                    self._show_integration_success_message(
+                        skill_id, version, skill_info, deps_installed, config_updated
+                    )
                     return True
                 else:
                     console.print(f"[red]❌ Failed to integrate {skill_id}[/red]")
@@ -193,7 +190,7 @@ class SkillInstaller:
             console.print(f"[red]❌ Error installing skill: {e}[/red]")
             return False
 
-    def _find_skill_directory(self, extracted_path: Path) -> Optional[Path]:
+    def _find_skill_directory(self, extracted_path: Path) -> Path | None:
         """Find the actual skill directory in extracted package."""
         # Look for directory containing skill.yaml
         for item in extracted_path.iterdir():
@@ -207,7 +204,7 @@ class SkillInstaller:
 
         return None
 
-    def is_skill_installed(self, skill_id: str, version: Optional[str] = None) -> bool:
+    def is_skill_installed(self, skill_id: str, version: str | None = None) -> bool:
         """Check if a skill is installed in the current project."""
         if not self._is_in_agent_project():
             return False
@@ -220,8 +217,8 @@ class SkillInstaller:
         # Check if it's in the config
         return self._is_skill_in_project_config(skill_id)
 
-    def list_installed_skills(self) -> List[Dict[str, Any]]:
-        """List all installed skills in the current project."""
+    def list_installed_skills(self) -> list[dict[str, Any]]:
+        """list all installed skills in the current project."""
         installed = []
 
         if not self._is_in_agent_project():
@@ -245,14 +242,16 @@ class SkillInstaller:
                 # Check if this is a registry skill by checking if handler exists
                 handler_path = self._get_handler_path(skill_id)
                 if handler_path.exists():
-                    installed.append({
-                        "skill_id": skill_id,
-                        "name": skill.get("name", skill_id),
-                        "version": skill.get("version", "unknown"),
-                        "description": skill.get("description", ""),
-                        "enabled": skill.get("enabled", True),
-                        "source": "registry"
-                    })
+                    installed.append(
+                        {
+                            "skill_id": skill_id,
+                            "name": skill.get("name", skill_id),
+                            "version": skill.get("version", "unknown"),
+                            "description": skill.get("description", ""),
+                            "enabled": skill.get("enabled", True),
+                            "source": "registry",
+                        }
+                    )
 
         except Exception:
             pass
@@ -365,7 +364,7 @@ class SkillInstaller:
         with tarfile.open(package_path, "r:gz") as tar:
             tar.extractall(destination)
 
-    async def _handle_dependencies(self, skill_dir: Path, skill_info: Dict[str, Any]) -> bool:
+    async def _handle_dependencies(self, skill_dir: Path, skill_info: dict[str, Any]) -> bool:
         """Handle skill dependencies with better UX."""
         # First check skill.yaml for dependencies
         dependencies = self._extract_dependencies(skill_dir, skill_info)
@@ -390,7 +389,7 @@ class SkillInstaller:
                 console.print(f"  [cyan]pip install {' '.join(dependencies)}[/cyan]")
             return False
 
-    def _extract_dependencies(self, skill_dir: Path, skill_info: Dict[str, Any]) -> List[str]:
+    def _extract_dependencies(self, skill_dir: Path, skill_info: dict[str, Any]) -> list[str]:
         """Extract dependencies from skill.yaml or requirements.txt."""
         dependencies = []
 
@@ -460,7 +459,7 @@ class SkillInstaller:
                 init_file.touch()
             current = current.parent
 
-    async def _install_dependencies_to_project(self, skill_dir: Path, skill_info: Dict[str, Any]) -> bool:
+    async def _install_dependencies_to_project(self, skill_dir: Path, skill_info: dict[str, Any]) -> bool:
         """Install skill dependencies to the current project."""
         if not self.current_project:
             return False
@@ -492,7 +491,7 @@ class SkillInstaller:
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=300  # 5 minute timeout
+                timeout=300,  # 5 minute timeout
             )
 
             # Change back to original directory
@@ -526,7 +525,7 @@ class SkillInstaller:
         except (subprocess.CalledProcessError, FileNotFoundError):
             return False
 
-    async def _install_with_uv(self, dependencies: List[str]) -> bool:
+    async def _install_with_uv(self, dependencies: list[str]) -> bool:
         """Install dependencies using uv."""
         try:
             cmd = ["uv", "add"] + dependencies
@@ -536,7 +535,7 @@ class SkillInstaller:
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=300  # 5 minute timeout
+                timeout=300,  # 5 minute timeout
             )
 
             if result.returncode == 0:
@@ -554,7 +553,7 @@ class SkillInstaller:
             console.print(f"[red]❌ Error installing dependencies: {e}[/red]")
             return False
 
-    def _show_install_preview(self, skill_info: Dict[str, Any], version: str) -> None:
+    def _show_install_preview(self, skill_info: dict[str, Any], version: str) -> None:
         """Show what would be installed."""
         latest_version = skill_info["latest_version"]
 
@@ -577,7 +576,7 @@ class SkillInstaller:
                 console.print(f"  - {api['name']}: {env_var} ({required})")
 
     # Agent config management methods
-    async def _update_project_config(self, skill_info: Dict[str, Any], version: str) -> bool:
+    async def _update_project_config(self, skill_info: dict[str, Any], version: str) -> bool:
         """Add skill to project's agent_config.yaml."""
         if not self.current_project:
             return False
@@ -598,8 +597,7 @@ class SkillInstaller:
 
         # Remove existing entry for this skill
         config["registry_skills"] = [
-            skill for skill in config["registry_skills"]
-            if skill.get("skill_id") != skill_info["skill_id"]
+            skill for skill in config["registry_skills"] if skill.get("skill_id") != skill_info["skill_id"]
         ]
 
         # Add new skill entry
@@ -610,7 +608,7 @@ class SkillInstaller:
             "description": skill_info["description"],
             "version": version,
             "source": "registry",
-            "enabled": True
+            "enabled": True,
         }
 
         # Add external API config if present
@@ -631,7 +629,7 @@ class SkillInstaller:
             console.print(f"[red]❌ Could not update agent_config.yaml: {e}[/red]")
             return False
 
-    async def _add_to_project_skills(self, skill_info: Dict[str, Any], version: str) -> bool:
+    async def _add_to_project_skills(self, skill_info: dict[str, Any], version: str) -> bool:
         """Add skill to the main 'skills' section of agent_config.yaml."""
         if not self.current_project:
             return False
@@ -652,10 +650,7 @@ class SkillInstaller:
         skill_id = skill_info["skill_id"]
 
         # Remove existing entry for this skill
-        config["skills"] = [
-            skill for skill in config["skills"]
-            if skill.get("skill_id") != skill_id
-        ]
+        config["skills"] = [skill for skill in config["skills"] if skill.get("skill_id") != skill_id]
 
         # Create skill entry following the AgentUp format
         latest_version = skill_info.get("latest_version", {})
@@ -669,7 +664,7 @@ class SkillInstaller:
             "name": skill_info["name"],
             "description": skill_info["description"],
             "input_mode": input_modes[0] if input_modes else "text",  # Take first mode
-            "output_mode": output_modes[0] if output_modes else "text"  # Take first mode
+            "output_mode": output_modes[0] if output_modes else "text",  # Take first mode
         }
 
         config["skills"].append(skill_entry)
@@ -685,8 +680,9 @@ class SkillInstaller:
             console.print(f"[red]❌ Could not update agent_config.yaml: {e}[/red]")
             return False
 
-    def _show_integration_success_message(self, skill_id: str, version: str, skill_info: Dict[str, Any],
-                                         deps_installed: bool, config_updated: bool) -> None:
+    def _show_integration_success_message(
+        self, skill_id: str, version: str, skill_info: dict[str, Any], deps_installed: bool, config_updated: bool
+    ) -> None:
         """Show success message for full project integration."""
         console.print(f"\n[bold green]✨ Successfully integrated {skill_id}@{version} into your project![/bold green]")
 
@@ -694,7 +690,7 @@ class SkillInstaller:
         console.print("\n[bold]Integrated components:[/bold]")
 
         # Show handler path with namespace
-        handler_path = self._get_handler_path(skill_id)
+        _handler_path = self._get_handler_path(skill_id)
         console.print("  ✅ Handler: [cyan]{handler_path.relative_to(self.current_project)}[/cyan]")
         console.print("  ✅ Configuration: Added to [cyan]skills[/cyan] section")
 
@@ -732,8 +728,9 @@ class SkillInstaller:
         step += 1
         console.print(f"{step}. The {skill_id} skill is now part of your agent!")
 
-    def _show_success_message(self, skill_id: str, version: str, skill_info: Dict[str, Any],
-                             deps_installed: bool, config_updated: bool) -> None:
+    def _show_success_message(
+        self, skill_id: str, version: str, skill_info: dict[str, Any], deps_installed: bool, config_updated: bool
+    ) -> None:
         """Show comprehensive success message with next steps."""
         console.print(f"\n[bold green]✨ Successfully installed {skill_id}@{version}![/bold green]")
 
@@ -794,9 +791,7 @@ class SkillInstaller:
                 "skill_id": skill_config.get("skill_id", skill_id),
                 "name": skill_config.get("name", skill_id),
                 "description": skill_config.get("description", ""),
-                "latest_version": {
-                    "external_apis": skill_config.get("external_apis", [])
-                }
+                "latest_version": {"external_apis": skill_config.get("external_apis", [])},
             }
 
             version = skill_config.get("version", "unknown")
@@ -821,10 +816,10 @@ class SkillInstaller:
 
                 config_snippet = f"""
 registry_skills:
-- skill_id: {skill_config.get('skill_id', skill_id)}
-  name: "{skill_config.get('name', skill_id)}"
-  description: "{skill_config.get('description', '')}"
-  version: "{skill_config.get('version', 'unknown')}"
+- skill_id: {skill_config.get("skill_id", skill_id)}
+  name: "{skill_config.get("name", skill_id)}"
+  description: "{skill_config.get("description", "")}"
+  version: "{skill_config.get("version", "unknown")}"
   source: "registry"
   enabled: true"""
 
@@ -842,7 +837,7 @@ registry_skills:
                 config_snippet = f"""
 registry_skills:
 - skill_id: {skill_id}
-  name: "{skill_id.replace('_', ' ').title()}"
+  name: "{skill_id.replace("_", " ").title()}"
   description: "Registry skill"
   enabled: true"""
                 console.print(f"[cyan]{config_snippet}[/cyan]")
@@ -869,16 +864,12 @@ registry_skills:
             # Remove from registry_skills
             if "registry_skills" in config:
                 config["registry_skills"] = [
-                    skill for skill in config["registry_skills"]
-                    if skill.get("skill_id") != skill_id
+                    skill for skill in config["registry_skills"] if skill.get("skill_id") != skill_id
                 ]
 
             # Remove from skills (legacy)
             if "skills" in config:
-                config["skills"] = [
-                    skill for skill in config["skills"]
-                    if skill.get("skill_id") != skill_id
-                ]
+                config["skills"] = [skill for skill in config["skills"] if skill.get("skill_id") != skill_id]
 
             with open(config_path, "w") as f:
                 yaml.dump(config, f, default_flow_style=False, sort_keys=False)
@@ -954,7 +945,7 @@ registry_skills:
 
         return False
 
-    def _get_installed_skill_info(self, skill_id: str) -> Dict[str, Any]:
+    def _get_installed_skill_info(self, skill_id: str) -> dict[str, Any]:
         """Get info about an installed skill from agent config."""
         if not self.current_project:
             return {}

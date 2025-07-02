@@ -1,17 +1,18 @@
 """Basic foundation tests to validate the test setup."""
 
-import pytest
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any
 
-from tests.utils.test_helpers import (
-    create_test_config,
-    assert_config_has_service,
-    AgentConfigBuilder,
-    build_minimal_config,
-    build_standard_config
-)
+import pytest
+
 from tests.utils.mock_services import MockLLMResponse, create_mock_services
+from tests.utils.test_helpers import (
+    AgentConfigBuilder,
+    assert_config_has_service,
+    build_minimal_config,
+    build_standard_config,
+    create_test_config,
+)
 
 
 class TestTestFoundation:
@@ -32,7 +33,7 @@ class TestTestFoundation:
         assert test_file.exists(), "Should be able to create files in temp directory"
         assert test_file.read_text() == "Hello, test!", "File content should be preserved"
 
-    def test_sample_agent_config_fixture(self, sample_agent_config: Dict[str, Any]):
+    def test_sample_agent_config_fixture(self, sample_agent_config: dict[str, Any]):
         """Test the sample agent configuration fixture."""
         assert "agent" in sample_agent_config, "Should have agent section"
         assert "skills" in sample_agent_config, "Should have skills section"
@@ -44,7 +45,7 @@ class TestTestFoundation:
         assert sample_agent_config["ai_provider"]["provider"] == "openai"
         assert sample_agent_config["ai_provider"]["model"] == "gpt-4o-mini"
 
-    def test_minimal_agent_config_fixture(self, minimal_agent_config: Dict[str, Any]):
+    def test_minimal_agent_config_fixture(self, minimal_agent_config: dict[str, Any]):
         """Test the minimal agent configuration fixture."""
         assert "agent" in minimal_agent_config, "Should have agent section"
         assert "skills" in minimal_agent_config, "Should have skills section"
@@ -52,8 +53,9 @@ class TestTestFoundation:
         assert len(minimal_agent_config["skills"]) == 1
         assert minimal_agent_config["skills"][0]["skill_id"] == "echo"
 
-    def test_provider_specific_configs(self, ollama_agent_config: Dict[str, Any],
-                                     anthropic_agent_config: Dict[str, Any]):
+    def test_provider_specific_configs(
+        self, ollama_agent_config: dict[str, Any], anthropic_agent_config: dict[str, Any]
+    ):
         """Test provider-specific configuration fixtures."""
         # Test Ollama config
         assert ollama_agent_config["ai_provider"]["provider"] == "ollama"
@@ -65,7 +67,7 @@ class TestTestFoundation:
         assert anthropic_agent_config["ai_provider"]["model"] == "claude-3-haiku-20240307"
         assert anthropic_agent_config["services"] == {}
 
-    def test_project_config_fixture(self, project_config: Dict[str, Any]):
+    def test_project_config_fixture(self, project_config: dict[str, Any]):
         """Test the project configuration fixture."""
         assert "name" in project_config, "Should have project name"
         assert "template" in project_config, "Should have template"
@@ -90,7 +92,7 @@ class TestTestHelpers:
         assert config["features"] == ["services"]
         assert config["services"] == ["openai"]
 
-    def test_assert_config_has_service(self, sample_agent_config: Dict[str, Any]):
+    def test_assert_config_has_service(self, sample_agent_config: dict[str, Any]):
         """Test the assert_config_has_service helper."""
         # The sample config no longer has openai in services (it's in ai_provider)
         # So we test that the assertion correctly fails
@@ -103,12 +105,14 @@ class TestTestHelpers:
 
     def test_agent_config_builder(self):
         """Test the AgentConfigBuilder class."""
-        config = (AgentConfigBuilder()
-                 .with_agent("builder-test", "Builder test agent")
-                 .with_ai("openai", "gpt-4")
-                 .with_openai_service("openai", "gpt-4")
-                 .with_skill("test_skill", "Test Skill")
-                 .build())
+        config = (
+            AgentConfigBuilder()
+            .with_agent("builder-test", "Builder test agent")
+            .with_ai("openai", "gpt-4")
+            .with_openai_service("openai", "gpt-4")
+            .with_skill("test_skill", "Test Skill")
+            .build()
+        )
 
         assert config["agent"]["name"] == "builder-test"
         assert config["ai"]["llm_service"] == "openai"
@@ -230,7 +234,7 @@ class TestAgentTemplates:
         assert "demo" in agent_templates
 
         # Test template structure
-        for template_name, template_info in agent_templates.items():
+        for _, template_info in agent_templates.items():
             assert "features" in template_info
             assert "description" in template_info
             assert isinstance(template_info["features"], list)

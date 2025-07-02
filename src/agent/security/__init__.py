@@ -1,4 +1,4 @@
-"""AgentUp Security Module - Robust authentication and authorization system.
+"""AgentUp Security Module - authentication and authorization system.
 
 This module provides a comprehensive security framework for AgentUp agents,
 supporting multiple authentication types, secure credential handling, and
@@ -9,7 +9,7 @@ Key Features:
 - Secure credential comparison using constant-time algorithms
 - Comprehensive input validation and sanitization
 - Audit logging for security events
-- Extensible architecture for custom authenticators
+- architecture for custom authenticators
 - Thread-safe operations
 - Configuration-driven security policies
 
@@ -21,37 +21,37 @@ Security Best Practices:
 - Comprehensive error handling without information leakage
 """
 
-from typing import Dict, Any
+from typing import Any
 
-from .manager import SecurityManager
+from .base import AuthenticationResult, SecurityPolicy
 from .decorators import (
-    protected,
-    require_scopes,
-    api_key_required,
-    bearer_token_required,
     always_protected,
+    api_key_required,
     authenticated,  # Legacy alias
+    bearer_token_required,
     get_auth_result,
     get_current_user_id,
-    has_scope
+    has_scope,
+    protected,
+    require_scopes,
 )
-from .base import AuthenticationResult, SecurityPolicy
 from .exceptions import (
-    SecurityException,
     AuthenticationFailedException,
+    AuthenticatorNotFound,
     AuthorizationFailedException,
+    InvalidAuthenticationTypeException,
     InvalidCredentialsException,
     MissingCredentialsException,
-    InvalidAuthenticationTypeException,
     SecurityConfigurationException,
-    AuthenticatorNotFound
+    SecurityException,
 )
+from .manager import SecurityManager
 
 # Global security manager instance (initialized during app startup)
 _security_manager: SecurityManager = None
 
 
-def create_security_manager(config: Dict[str, Any]) -> SecurityManager:
+def create_security_manager(config: dict[str, Any]) -> SecurityManager:
     """Create and configure a SecurityManager instance.
 
     This function should be called during application startup to initialize
@@ -102,8 +102,7 @@ def get_global_security_manager() -> SecurityManager:
     """
     if _security_manager is None:
         raise RuntimeError(
-            "Security manager not initialized. Call create_security_manager() "
-            "during application startup."
+            "Security manager not initialized. Call create_security_manager() during application startup."
         )
     return _security_manager
 
@@ -122,7 +121,7 @@ def is_security_enabled() -> bool:
 
 
 # Convenience functions for common security operations
-def validate_security_config(config: Dict[str, Any]) -> bool:
+def validate_security_config(config: dict[str, Any]) -> bool:
     """Validate security configuration without creating a manager.
 
     Args:
@@ -136,7 +135,7 @@ def validate_security_config(config: Dict[str, Any]) -> bool:
     """
     from .validators import SecurityConfigValidator
 
-    security_config = config.get('security', {})
+    security_config = config.get("security", {})
     SecurityConfigValidator.validate_security_config(security_config)
     return True
 
@@ -144,43 +143,39 @@ def validate_security_config(config: Dict[str, Any]) -> bool:
 # Export all public components
 __all__ = [
     # Core classes
-    'SecurityManager',
-    'AuthenticationResult',
-    'SecurityPolicy',
-
+    "SecurityManager",
+    "AuthenticationResult",
+    "SecurityPolicy",
     # Decorators
-    'protected',
-    'require_scopes',
-    'api_key_required',
-    'bearer_token_required',
-    'always_protected',
-    'authenticated',  # Legacy
-
+    "protected",
+    "require_scopes",
+    "api_key_required",
+    "bearer_token_required",
+    "always_protected",
+    "authenticated",  # Legacy
     # Utility functions
-    'get_auth_result',
-    'get_current_user_id',
-    'has_scope',
-
+    "get_auth_result",
+    "get_current_user_id",
+    "has_scope",
     # Manager functions
-    'create_security_manager',
-    'set_global_security_manager',
-    'get_global_security_manager',
-    'is_security_enabled',
-    'validate_security_config',
-
+    "create_security_manager",
+    "set_global_security_manager",
+    "get_global_security_manager",
+    "is_security_enabled",
+    "validate_security_config",
     # Exceptions
-    'SecurityException',
-    'AuthenticationFailedException',
-    'AuthorizationFailedException',
-    'InvalidCredentialsException',
-    'MissingCredentialsException',
-    'InvalidAuthenticationTypeException',
-    'SecurityConfigurationException',
-    'AuthenticatorNotFound',
+    "SecurityException",
+    "AuthenticationFailedException",
+    "AuthorizationFailedException",
+    "InvalidCredentialsException",
+    "MissingCredentialsException",
+    "InvalidAuthenticationTypeException",
+    "SecurityConfigurationException",
+    "AuthenticatorNotFound",
 ]
 
 
 # Version info
-__version__ = '1.0.0'
-__author__ = 'AgentUp Security Team'
-__description__ = 'Robust security module for AgentUp agents'
+__version__ = "0.1.0"
+__author__ = "AgentUp Security Team"
+__description__ = "security module for AgentUp agents"

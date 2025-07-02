@@ -1,21 +1,19 @@
-"""Main entry point for the agent."""
-
 import logging
-import uvicorn
-from fastapi import FastAPI
 from contextlib import asynccontextmanager
+
 import httpx
+import uvicorn
+from a2a.server.tasks import InMemoryTaskStore
+from fastapi import FastAPI
 
 from .agent_executor import GenericAgentExecutor as AgentExecutorImpl
-from .api import router, jsonrpc_error_handler, create_agent_card, set_request_handler_instance
+from .api import create_agent_card, jsonrpc_error_handler, router, set_request_handler_instance
 from .config import load_config
-from .models import JSONRPCError
-from .security import create_security_manager
-from .constants import DEFAULT_VALKEY_URL, DEFAULT_SERVER_HOST, DEFAULT_SERVER_PORT
-
-from a2a.server.tasks import InMemoryTaskStore
-from .push_notifier import EnhancedPushNotifier, ValkeyPushNotifier
+from .constants import DEFAULT_SERVER_HOST, DEFAULT_SERVER_PORT
 from .custom_request_handler import CustomRequestHandler
+from .models import JSONRPCError
+from .push_notifier import EnhancedPushNotifier, ValkeyPushNotifier
+from .security import create_security_manager
 
 # Optional imports; fall back to None if the module isn't present
 try:
@@ -80,6 +78,7 @@ async def lifespan(app: FastAPI):
     # Load registry skills if available
     try:
         from .registry_skill_loader import load_all_registry_skills
+
         load_all_registry_skills()
         logger.info("Registry skills loaded successfully")
     except ImportError:
@@ -114,7 +113,7 @@ async def lifespan(app: FastAPI):
 
             backend = state_cfg.get("backend", "memory")
             backend_config = {}
-            
+
             if backend == "valkey":
                 # Get Valkey URL from services configuration or state config
                 valkey_service = config.get("services", {}).get("valkey", {}).get("config", {})
@@ -148,8 +147,7 @@ async def lifespan(app: FastAPI):
 
                     # Create MCP HTTP server
                     mcp_http_server = MCPHTTPServer(
-                        agent_name=agent_cfg.get("name", "Agent"),
-                        agent_version=agent_cfg.get("version", "0.1.0")
+                        agent_name=agent_cfg.get("name", "Agent"), agent_version=agent_cfg.get("version", "0.1.0")
                     )
                     await mcp_http_server.initialize()
 
@@ -168,17 +166,18 @@ async def lifespan(app: FastAPI):
             logger.error(f"Failed to initialize MCP integration: {e}")
 
     # Initialize push notifier with Valkey if configured
-    push_config = config.get('push_notifications', {})
-    if push_config.get('backend') == 'valkey' and push_config.get('enabled', True):
+    push_config = config.get("push_notifications", {})
+    if push_config.get("backend") == "valkey" and push_config.get("enabled", True):
         try:
             from .services import get_services
+
             services = get_services()
 
             # Find the cache service name from config
             cache_service_name = None
-            services_config = config.get('services', {})
+            services_config = config.get("services", {})
             for service_name, service_config in services_config.items():
-                if service_config.get('type') == 'cache':
+                if service_config.get("type") == "cache":
                     cache_service_name = service_name
                     break
 
@@ -187,30 +186,32 @@ async def lifespan(app: FastAPI):
             else:
                 valkey_service = None
                 logger.warning("No cache service found in configuration")
-            
+
             # Create Valkey client from service URL
-            if valkey_service and hasattr(valkey_service, 'url'):
+            if valkey_service and hasattr(valkey_service, "url"):
                 import valkey.asyncio as valkey
+
                 valkey_url = valkey_service.url
                 valkey_client = valkey.from_url(valkey_url)
             else:
                 valkey_client = None
                 logger.warning("Cannot create Valkey client - no URL available")
-            
+
             if valkey_client:
                 # Create new Valkey push notifier
                 client = httpx.AsyncClient()
                 valkey_push_notifier = ValkeyPushNotifier(
                     client=client,
                     valkey_client=valkey_client,
-                    key_prefix=push_config.get('key_prefix', 'agentup:push:'),
-                    validate_urls=push_config.get('validate_urls', True)
+                    key_prefix=push_config.get("key_prefix", "agentup:push:"),
+                    validate_urls=push_config.get("validate_urls", True),
                 )
                 # Update the request handler to use Valkey push notifier
                 from .api import get_request_handler
+
                 handler = get_request_handler()
                 handler._push_notifier = valkey_push_notifier
-                
+
                 logger.info("Updated to Valkey-backed push notifier")
             else:
                 logger.warning("Valkey service available but no client found, using memory push notifier")
@@ -224,7 +225,7 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down...")
 
     # State management cleanup
-    if hasattr(app.state, 'context_manager') and app.state.context_manager:
+    if hasattr(app.state, "context_manager") and app.state.context_manager:
         try:
             # Cleanup old contexts (optional)
             cleaned = await app.state.context_manager.cleanup_old_contexts(max_age_hours=24)
@@ -278,11 +279,12 @@ def main():
     """Main function to set up and run the agent."""
     import os
 
-    host = os.getenv('SERVER_HOST', DEFAULT_SERVER_HOST)
-    port = int(os.getenv('SERVER_PORT', DEFAULT_SERVER_PORT))
+    host = os.getenv("SERVER_HOST", DEFAULT_SERVER_HOST)
+    port = int(os.getenv("SERVER_PORT", DEFAULT_SERVER_PORT))
 
     logger.info(f"Starting server on {host}:{port}")
     uvicorn.run(app, host=host, port=port)
+
 
 if __name__ == "__main__":
     main()

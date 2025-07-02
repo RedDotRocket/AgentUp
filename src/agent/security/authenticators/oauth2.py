@@ -1,24 +1,14 @@
-"""OAuth2 authenticator implementation using Authlib."""
-
-import json
 import logging
-from typing import Set, Optional, Dict, Any
-from fastapi import Request
-from authlib.integrations.httpx_client import AsyncOAuth2Client
-from authlib.jose import jwt, JsonWebKey, JWTClaims
-from authlib.jose.errors import JoseError
+from typing import Any
 
-from ..base import BaseAuthenticator, AuthenticationResult
-from ..exceptions import (
-    SecurityConfigurationException,
-    MissingCredentialsException,
-    InvalidCredentialsException
-)
-from ..utils import (
-    extract_bearer_token,
-    log_security_event,
-    get_request_info
-)
+from authlib.integrations.httpx_client import AsyncOAuth2Client
+from authlib.jose import JsonWebKey, jwt
+from authlib.jose.errors import JoseError
+from fastapi import Request
+
+from ..base import AuthenticationResult, BaseAuthenticator
+from ..exceptions import InvalidCredentialsException, MissingCredentialsException, SecurityConfigurationException
+from ..utils import extract_bearer_token, get_request_info, log_security_event
 
 logger = logging.getLogger(__name__)
 
@@ -29,50 +19,44 @@ class OAuth2Authenticator(BaseAuthenticator):
     def _validate_config(self) -> None:
         """Validate OAuth2 authenticator configuration."""
         # Get OAuth2 configuration
-        oauth2_config = self.config.get('oauth2', {})
-        
+        oauth2_config = self.config.get("oauth2", {})
+
         if not oauth2_config:
             raise SecurityConfigurationException("OAuth2 configuration is required for oauth2 authentication")
 
         # Required configuration
-        self.client_id = oauth2_config.get('client_id')
-        self.client_secret = oauth2_config.get('client_secret')
-        self.token_endpoint = oauth2_config.get('token_endpoint')
-        self.introspection_endpoint = oauth2_config.get('introspection_endpoint')
-        
+        self.client_id = oauth2_config.get("client_id")
+        self.client_secret = oauth2_config.get("client_secret")
+        self.token_endpoint = oauth2_config.get("token_endpoint")
+        self.introspection_endpoint = oauth2_config.get("introspection_endpoint")
+
         # JWT validation configuration
-        self.jwt_secret = oauth2_config.get('jwt_secret')
-        self.jwt_algorithm = oauth2_config.get('jwt_algorithm', 'RS256')
-        self.jwt_issuer = oauth2_config.get('jwt_issuer')
-        self.jwt_audience = oauth2_config.get('jwt_audience')
-        self.jwks_url = oauth2_config.get('jwks_url')
-        
+        self.jwt_secret = oauth2_config.get("jwt_secret")
+        self.jwt_algorithm = oauth2_config.get("jwt_algorithm", "RS256")
+        self.jwt_issuer = oauth2_config.get("jwt_issuer")
+        self.jwt_audience = oauth2_config.get("jwt_audience")
+        self.jwks_url = oauth2_config.get("jwks_url")
+
         # Validation strategy: 'jwt', 'introspection', or 'both'
-        self.validation_strategy = oauth2_config.get('validation_strategy', 'jwt')
-        
+        self.validation_strategy = oauth2_config.get("validation_strategy", "jwt")
+
         # Validate required fields based on strategy
-        if self.validation_strategy in ['jwt', 'both']:
+        if self.validation_strategy in ["jwt", "both"]:
             if not (self.jwt_secret or self.jwks_url):
-                raise SecurityConfigurationException(
-                    "JWT validation requires either jwt_secret or jwks_url"
-                )
-        
-        if self.validation_strategy in ['introspection', 'both']:
+                raise SecurityConfigurationException("JWT validation requires either jwt_secret or jwks_url")
+
+        if self.validation_strategy in ["introspection", "both"]:
             if not self.introspection_endpoint:
-                raise SecurityConfigurationException(
-                    "Token introspection requires introspection_endpoint"
-                )
+                raise SecurityConfigurationException("Token introspection requires introspection_endpoint")
             if not (self.client_id and self.client_secret):
-                raise SecurityConfigurationException(
-                    "Token introspection requires client_id and client_secret"
-                )
+                raise SecurityConfigurationException("Token introspection requires client_id and client_secret")
 
         # Optional: Allowed scopes
-        self.required_scopes = set(oauth2_config.get('required_scopes', []))
-        self.allowed_scopes = set(oauth2_config.get('allowed_scopes', []))
+        self.required_scopes = set(oauth2_config.get("required_scopes", []))
+        self.allowed_scopes = set(oauth2_config.get("allowed_scopes", []))
 
         # Cache JWKS keys if URL provided
-        self._jwks_cache: Optional[Dict[str, Any]] = None
+        self._jwks_cache: dict[str, Any] | None = None
 
     async def authenticate(self, request: Request) -> AuthenticationResult:
         """Authenticate request using OAuth2 Bearer token.
@@ -90,34 +74,24 @@ class OAuth2Authenticator(BaseAuthenticator):
         request_info = get_request_info(request)
 
         # Extract Authorization header
-        auth_header = request.headers.get('Authorization')
+        auth_header = request.headers.get("Authorization")
         if not auth_header:
-            log_security_event(
-                'authentication',
-                request_info,
-                False,
-                "Missing Authorization header for OAuth2"
-            )
+            log_security_event("authentication", request_info, False, "Missing Authorization header for OAuth2")
             raise MissingCredentialsException("Unauthorized")
 
         # Extract Bearer token
         token = extract_bearer_token(auth_header)
         if not token:
-            log_security_event(
-                'authentication',
-                request_info,
-                False,
-                "Invalid Authorization header format for OAuth2"
-            )
+            log_security_event("authentication", request_info, False, "Invalid Authorization header format for OAuth2")
             raise InvalidCredentialsException("Unauthorized")
 
         try:
             # Validate token based on configured strategy
-            if self.validation_strategy == 'jwt':
+            if self.validation_strategy == "jwt":
                 result = await self._validate_jwt_token(token, request_info)
-            elif self.validation_strategy == 'introspection':
+            elif self.validation_strategy == "introspection":
                 result = await self._validate_via_introspection(token, request_info)
-            elif self.validation_strategy == 'both':
+            elif self.validation_strategy == "both":
                 # Try JWT first, fallback to introspection
                 try:
                     result = await self._validate_jwt_token(token, request_info)
@@ -129,26 +103,18 @@ class OAuth2Authenticator(BaseAuthenticator):
             # Validate required scopes if configured
             if self.required_scopes and not self.required_scopes.issubset(result.scopes or set()):
                 log_security_event(
-                    'authorization',
-                    request_info,
-                    False,
-                    f"Required scopes not met: {self.required_scopes}"
+                    "authorization", request_info, False, f"Required scopes not met: {self.required_scopes}"
                 )
                 raise InvalidCredentialsException("Unauthorized")
 
-            log_security_event('authentication', request_info, True, "OAuth2 token authenticated")
+            log_security_event("authentication", request_info, True, "OAuth2 token authenticated")
             return result
 
         except (JoseError, ValueError, KeyError) as e:
-            log_security_event(
-                'authentication',
-                request_info,
-                False,
-                f"OAuth2 token validation failed: {str(e)}"
-            )
-            raise InvalidCredentialsException("Unauthorized")
+            log_security_event("authentication", request_info, False, f"OAuth2 token validation failed: {str(e)}")
+            raise InvalidCredentialsException("Unauthorized") from e
 
-    async def _validate_jwt_token(self, token: str, request_info: Dict[str, Any]) -> AuthenticationResult:
+    async def _validate_jwt_token(self, token: str, request_info: dict[str, Any]) -> AuthenticationResult:
         """Validate JWT token using configured secret or JWKS.
 
         Args:
@@ -175,43 +141,39 @@ class OAuth2Authenticator(BaseAuthenticator):
                 token,
                 key,
                 claims_options={
-                    'iss': {'essential': bool(self.jwt_issuer), 'value': self.jwt_issuer},
-                    'aud': {'essential': bool(self.jwt_audience), 'value': self.jwt_audience},
-                }
+                    "iss": {"essential": bool(self.jwt_issuer), "value": self.jwt_issuer},
+                    "aud": {"essential": bool(self.jwt_audience), "value": self.jwt_audience},
+                },
             )
 
             # Extract user information
-            user_id = claims.get('sub') or claims.get('user_id') or 'unknown'
-            email = claims.get('email')
-            name = claims.get('name')
-            
+            user_id = claims.get("sub") or claims.get("user_id") or "unknown"
+            email = claims.get("email")
+            name = claims.get("name")
+
             # Extract scopes from standard claims
             scopes = set()
-            if 'scope' in claims:
-                if isinstance(claims['scope'], str):
-                    scopes = set(claims['scope'].split())
-                elif isinstance(claims['scope'], list):
-                    scopes = set(claims['scope'])
-            elif 'scopes' in claims:
-                scopes = set(claims['scopes']) if isinstance(claims['scopes'], list) else set()
+            if "scope" in claims:
+                if isinstance(claims["scope"], str):
+                    scopes = set(claims["scope"].split())
+                elif isinstance(claims["scope"], list):
+                    scopes = set(claims["scope"])
+            elif "scopes" in claims:
+                scopes = set(claims["scopes"]) if isinstance(claims["scopes"], list) else set()
 
             return AuthenticationResult(
                 success=True,
                 user_id=user_id,
                 credentials=token,
                 scopes=scopes,
-                metadata={
-                    'email': email,
-                    'name': name,
-                    'claims': dict(claims)
-                }
+                metadata={"email": email, "name": name, "claims": dict(claims)},
             )
 
         except JoseError as e:
             logger.debug(f"JWT validation failed: {e}")
-            raise InvalidCredentialsException("Unauthorized")
+            raise InvalidCredentialsException("Unauthorized") from e
 
-    async def _validate_via_introspection(self, token: str, request_info: Dict[str, Any]) -> AuthenticationResult:
+    async def _validate_via_introspection(self, token: str, request_info: dict[str, Any]) -> AuthenticationResult:
         """Validate token via OAuth2 introspection endpoint.
 
         Args:
@@ -225,36 +187,31 @@ class OAuth2Authenticator(BaseAuthenticator):
             InvalidCredentialsException: If token is invalid or introspection fails
         """
         try:
-            async with AsyncOAuth2Client(
-                client_id=self.client_id,
-                client_secret=self.client_secret
-            ) as client:
-                
+            async with AsyncOAuth2Client(client_id=self.client_id, client_secret=self.client_secret) as client:
                 # Call introspection endpoint
                 response = await client.post(
-                    self.introspection_endpoint,
-                    data={'token': token, 'token_type_hint': 'access_token'}
+                    self.introspection_endpoint, data={"token": token, "token_type_hint": "access_token"}
                 )
                 response.raise_for_status()
-                
+
                 introspection_data = response.json()
-                
+
                 # Check if token is active
-                if not introspection_data.get('active', False):
+                if not introspection_data.get("active", False):
                     raise InvalidCredentialsException("Unauthorized")
 
                 # Extract user information
                 user_id = (
-                    introspection_data.get('sub') or 
-                    introspection_data.get('user_id') or 
-                    introspection_data.get('username') or 
-                    'unknown'
+                    introspection_data.get("sub")
+                    or introspection_data.get("user_id")
+                    or introspection_data.get("username")
+                    or "unknown"
                 )
-                
+
                 # Extract scopes
                 scopes = set()
-                if 'scope' in introspection_data:
-                    scope_value = introspection_data['scope']
+                if "scope" in introspection_data:
+                    scope_value = introspection_data["scope"]
                     if isinstance(scope_value, str):
                         scopes = set(scope_value.split())
                     elif isinstance(scope_value, list):
@@ -266,16 +223,16 @@ class OAuth2Authenticator(BaseAuthenticator):
                     credentials=token,
                     scopes=scopes,
                     metadata={
-                        'client_id': introspection_data.get('client_id'),
-                        'exp': introspection_data.get('exp'),
-                        'iat': introspection_data.get('iat'),
-                        'introspection': introspection_data
-                    }
+                        "client_id": introspection_data.get("client_id"),
+                        "exp": introspection_data.get("exp"),
+                        "iat": introspection_data.get("iat"),
+                        "introspection": introspection_data,
+                    },
                 )
 
         except Exception as e:
             logger.debug(f"Token introspection failed: {e}")
-            raise InvalidCredentialsException("Unauthorized")
+            raise InvalidCredentialsException("Unauthorized") from e
 
     async def _get_jwks_key(self, token: str) -> JsonWebKey:
         """Get JWKS key for JWT validation.
@@ -292,8 +249,8 @@ class OAuth2Authenticator(BaseAuthenticator):
         try:
             # Decode token header to get key ID
             header = jwt.get_unverified_header(token)
-            kid = header.get('kid')
-            
+            kid = header.get("kid")
+
             if not kid:
                 raise InvalidCredentialsException("No key ID in JWT header")
 
@@ -305,23 +262,23 @@ class OAuth2Authenticator(BaseAuthenticator):
                     self._jwks_cache = response.json()
 
             # Find matching key
-            for key_data in self._jwks_cache.get('keys', []):
-                if key_data.get('kid') == kid:
+            for key_data in self._jwks_cache.get("keys", []):
+                if key_data.get("kid") == kid:
                     return JsonWebKey.import_key(key_data)
-            
+
             raise InvalidCredentialsException("JWT key not found in JWKS")
 
         except Exception as e:
             logger.debug(f"JWKS key retrieval failed: {e}")
-            raise InvalidCredentialsException("Unauthorized")
+            raise InvalidCredentialsException("Unauthorized") from e
 
     def get_auth_type(self) -> str:
         """Get authentication type identifier."""
-        return 'oauth2'
+        return "oauth2"
 
-    def get_required_headers(self) -> Set[str]:
+    def get_required_headers(self) -> set[str]:
         """Get required headers for OAuth2 authentication."""
-        return {'Authorization'}
+        return {"Authorization"}
 
     def supports_scopes(self) -> bool:
         """OAuth2 supports scopes."""

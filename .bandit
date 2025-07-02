@@ -1,0 +1,30 @@
+# .bandit - Bandit configuration file
+# https://bandit.readthedocs.io/en/latest/config.html
+
+[bandit]
+# Skip test files and virtual environments
+exclude_dirs:
+  - /tests/
+  - /.venv/
+  - /venv/
+  - /build/
+  - /dist/
+  - /.git/
+  - /__pycache__/
+  - /.pytest_cache/
+  - /htmlcov/
+  - /test-agents/
+  - /test-render/
+  - /examples/
+
+# Tests to skip
+skips:
+  - B101  # assert_used - We use asserts in our code for validation
+  - B601  # paramiko_calls - False positives on parameter names
+  - B602  # subprocess_popen_with_shell_equals_true - Used safely in integration tests
+
+# Report only issues with high confidence
+confidence: HIGH
+
+# Report issues of medium severity and above
+severity: MEDIUM

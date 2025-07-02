@@ -1,17 +1,16 @@
-#SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2025 Luke Hinds <luke@rdrocket.com>
 
 import click
 
-from .commands.skill import skill
 from .commands.agent import agent
+from .commands.skill import skill
 
 
 @click.group()
 @click.version_option(version="0.1.0", prog_name="agentup")
 def cli():
-    """AgentUp - Create, build, manage, and deploy AI agents.
-    """
+    """AgentUp - Create, build, manage, and deploy AI agents."""
     pass
 
 

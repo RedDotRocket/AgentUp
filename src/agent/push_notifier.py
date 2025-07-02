@@ -3,7 +3,7 @@ Enhanced push notification system for AgentUp.
 
 Extends the a2a-sdk InMemoryPushNotifier to support:
 - Multiple configurations per task
-- List and delete operations
+- list and delete operations
 - Security validation
 - Persistent storage backends
 """
@@ -11,16 +11,10 @@ Extends the a2a-sdk InMemoryPushNotifier to support:
 import json
 import logging
 import uuid
-from typing import Dict, List, Optional
 from urllib.parse import urlparse
 
 import httpx
-from a2a.types import (
-    Task,
-    PushNotificationConfig,
-    TaskPushNotificationConfig,
-    PushNotificationAuthenticationInfo
-)
+from a2a.types import PushNotificationAuthenticationInfo, PushNotificationConfig, Task, TaskPushNotificationConfig
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +31,7 @@ class EnhancedPushNotifier:
         self.client = client
         self.validate_urls = validate_urls
         # Storage: task_id -> {config_id: TaskPushNotificationConfig}
-        self._configs: Dict[str, Dict[str, TaskPushNotificationConfig]] = {}
+        self._configs: dict[str, dict[str, TaskPushNotificationConfig]] = {}
 
     async def set_info(self, task_id: str, push_config: PushNotificationConfig) -> TaskPushNotificationConfig:
         """
@@ -53,13 +47,10 @@ class EnhancedPushNotifier:
             The stored configuration (may mask sensitive details)
         """
         # Create TaskPushNotificationConfig wrapper
-        config = TaskPushNotificationConfig(
-            taskId=task_id,
-            pushNotificationConfig=push_config
-        )
+        config = TaskPushNotificationConfig(taskId=task_id, pushNotificationConfig=push_config)
 
         # Generate unique config ID if not provided
-        config_id = getattr(push_config, 'id', None)
+        config_id = getattr(push_config, "id", None)
         if not config_id:
             config_id = str(uuid.uuid4())
             # Note: We can't modify the config object directly since it's immutable
@@ -81,7 +72,7 @@ class EnhancedPushNotifier:
         # Return configuration (potentially masking sensitive data)
         return self._mask_sensitive_data(config)
 
-    async def get_info(self, task_id: str, config_id: Optional[str] = None) -> Optional[TaskPushNotificationConfig]:
+    async def get_info(self, task_id: str, config_id: str | None = None) -> TaskPushNotificationConfig | None:
         """
         Get push notification configuration for a task.
 
@@ -108,15 +99,15 @@ class EnhancedPushNotifier:
                 return self._mask_sensitive_data(config)
             return None
 
-    async def list_info(self, task_id: str) -> List[TaskPushNotificationConfig]:
+    async def list_info(self, task_id: str) -> list[TaskPushNotificationConfig]:
         """
-        List all push notification configurations for a task.
+        list all push notification configurations for a task.
 
         Args:
             task_id: Task identifier
 
         Returns:
-            List of push notification configurations
+            list of push notification configurations
         """
         if task_id not in self._configs:
             return []
@@ -183,10 +174,7 @@ class EnhancedPushNotifier:
         push_config = config.pushNotificationConfig
 
         # Prepare headers
-        headers = {
-            "Content-Type": "application/json",
-            "User-Agent": "AgentUp-PushNotifier/1.0"
-        }
+        headers = {"Content-Type": "application/json", "User-Agent": "AgentUp-PushNotifier/1.0"}
 
         # Add client token if provided
         if push_config.token:
@@ -205,7 +193,7 @@ class EnhancedPushNotifier:
                 push_config.url,
                 json=payload,
                 headers=headers,
-                timeout=30.0  # 30 second timeout
+                timeout=30.0,  # 30 second timeout
             )
             response.raise_for_status()
             logger.debug(f"Successfully sent push notification to {push_config.url}")
@@ -230,7 +218,7 @@ class EnhancedPushNotifier:
             parsed = urlparse(url)
 
             # Must be HTTPS in production (allow HTTP for development)
-            if parsed.scheme not in ('http', 'https'):
+            if parsed.scheme not in ("http", "https"):
                 raise ValueError(f"Invalid URL scheme: {parsed.scheme}")
 
             # Must have a valid hostname
@@ -239,22 +227,20 @@ class EnhancedPushNotifier:
 
             # Prevent localhost/private IP access (basic SSRF protection)
             hostname = parsed.hostname.lower()
-            if hostname in ('localhost', '127.0.0.1', '::1'):
+            if hostname in ("localhost", "127.0.0.1", "::1"):
                 logger.warning(f"Webhook URL points to localhost: {url}")
                 # Allow for development but log warning
 
             # Check for private IP ranges (simplified check)
-            if hostname.startswith(('10.', '172.', '192.168.')):
+            if hostname.startswith(("10.", "172.", "192.168.")):
                 logger.warning(f"Webhook URL points to private IP: {url}")
                 # Allow for development but log warning
 
         except Exception as e:
-            raise ValueError(f"Invalid webhook URL: {e}")
+            raise ValueError(f"Invalid webhook URL: {e}") from e
 
     async def _add_authentication_headers(
-        self,
-        headers: Dict[str, str],
-        auth_info: PushNotificationAuthenticationInfo
+        self, headers: dict[str, str], auth_info: PushNotificationAuthenticationInfo
     ) -> None:
         """
         Add authentication headers based on configuration.
@@ -277,7 +263,7 @@ class EnhancedPushNotifier:
             else:
                 logger.warning(f"Unsupported authentication scheme: {scheme}")
 
-    def _mask_sensitive_data(self, config: Optional[TaskPushNotificationConfig]) -> Optional[TaskPushNotificationConfig]:
+    def _mask_sensitive_data(self, config: TaskPushNotificationConfig | None) -> TaskPushNotificationConfig | None:
         """
         Mask sensitive data in configuration for safe return.
 
@@ -303,7 +289,9 @@ class ValkeyPushNotifier(EnhancedPushNotifier):
     across agent restarts.
     """
 
-    def __init__(self, client: httpx.AsyncClient, valkey_client, key_prefix: str = "agentup:push:", validate_urls: bool = True):
+    def __init__(
+        self, client: httpx.AsyncClient, valkey_client, key_prefix: str = "agentup:push:", validate_urls: bool = True
+    ):
         super().__init__(client, validate_urls)
         self.valkey = valkey_client
         self.key_prefix = key_prefix
@@ -311,12 +299,9 @@ class ValkeyPushNotifier(EnhancedPushNotifier):
     async def set_info(self, task_id: str, push_config: PushNotificationConfig) -> TaskPushNotificationConfig:
         """Store configuration in Valkey."""
         # Create TaskPushNotificationConfig wrapper
-        config = TaskPushNotificationConfig(
-            taskId=task_id,
-            pushNotificationConfig=push_config
-        )
+        config = TaskPushNotificationConfig(taskId=task_id, pushNotificationConfig=push_config)
 
-        config_id = getattr(push_config, 'id', str(uuid.uuid4()))
+        config_id = getattr(push_config, "id", str(uuid.uuid4()))
 
         # Validate webhook URL
         if self.validate_urls:
@@ -332,7 +317,7 @@ class ValkeyPushNotifier(EnhancedPushNotifier):
 
         return self._mask_sensitive_data(config)
 
-    async def get_info(self, task_id: str, config_id: Optional[str] = None) -> Optional[TaskPushNotificationConfig]:
+    async def get_info(self, task_id: str, config_id: str | None = None) -> TaskPushNotificationConfig | None:
         """Get configuration from Valkey."""
         if config_id:
             # Get specific configuration
@@ -355,8 +340,8 @@ class ValkeyPushNotifier(EnhancedPushNotifier):
 
         return None
 
-    async def list_info(self, task_id: str) -> List[TaskPushNotificationConfig]:
-        """List all configurations for task from Valkey."""
+    async def list_info(self, task_id: str) -> list[TaskPushNotificationConfig]:
+        """list all configurations for task from Valkey."""
         pattern = f"{self.key_prefix}{task_id}:*"
         keys = await self.valkey.keys(pattern)
 

@@ -1,16 +1,15 @@
-"""Function Dispatcher for PROJECT_NAME."""
-
 import logging
-from typing import Any, AsyncIterator, Callable, Dict, List, Optional, Union
+from collections.abc import AsyncIterator, Callable
+from typing import Any
 
 from a2a.types import Task
 
 from .conversation_manager import ConversationManager
 from .function_executor import FunctionExecutor
 from .llm_manager import LLMManager
+from .messages import MessageProcessor
 from .services import get_services
 from .streaming_handler import StreamingHandler
-from .messages import MessageProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -19,29 +18,29 @@ class FunctionRegistry:
     """Registry for LLM-callable functions (skills)."""
 
     def __init__(self):
-        self._functions: Dict[str, Dict[str, Any]] = {}
-        self._handlers: Dict[str, Callable] = {}
-        self._mcp_tools: Dict[str, Dict[str, Any]] = {}
+        self._functions: dict[str, dict[str, Any]] = {}
+        self._handlers: dict[str, Callable] = {}
+        self._mcp_tools: dict[str, dict[str, Any]] = {}
         self._mcp_client = None
 
-    def register_function(self, name: str, handler: Callable, schema: Dict[str, Any]):
+    def register_function(self, name: str, handler: Callable, schema: dict[str, Any]):
         """Register a skill as an LLM-callable function."""
         self._functions[name] = schema
         self._handlers[name] = handler
         logger.info(f"Registered AI function: {name}")
 
-    def get_function_schemas(self) -> List[Dict[str, Any]]:
+    def get_function_schemas(self) -> list[dict[str, Any]]:
         """Get all function schemas for LLM function calling (local + MCP)."""
         all_schemas = list(self._functions.values())
         all_schemas.extend(self._mcp_tools.values())
         return all_schemas
 
-    def get_handler(self, function_name: str) -> Optional[Callable]:
+    def get_handler(self, function_name: str) -> Callable | None:
         """Get handler for a function."""
         return self._handlers.get(function_name)
 
-    def list_functions(self) -> List[str]:
-        """List all registered function names (local + MCP)."""
+    def list_functions(self) -> list[str]:
+        """list all registered function names (local + MCP)."""
         local_functions = list(self._functions.keys())
         mcp_functions = list(self._mcp_tools.keys())
         return local_functions + mcp_functions
@@ -58,22 +57,24 @@ class FunctionRegistry:
             logger.info(f"Got {len(mcp_tools)} MCP tools from client")
 
             for tool_schema in mcp_tools:
-                original_name = tool_schema.get('name', 'unknown')
+                original_name = tool_schema.get("name", "unknown")
                 # Convert MCP tool names to valid OpenAI function names
                 # Replace colons with underscores: "filesystem:read_file" -> "filesystem_read_file"
-                function_name = original_name.replace(':', '_')
+                function_name = original_name.replace(":", "_")
 
                 # Store with the cleaned name but keep original info
                 cleaned_schema = tool_schema.copy()
-                cleaned_schema['name'] = function_name
-                cleaned_schema['original_name'] = original_name  # Keep for MCP calls
+                cleaned_schema["name"] = function_name
+                cleaned_schema["original_name"] = original_name  # Keep for MCP calls
 
                 self._mcp_tools[function_name] = cleaned_schema
                 logger.info(f"Registered MCP tool in function registry: {original_name} -> {function_name}")
         else:
-            logger.warning(f"Cannot register MCP client - client: {mcp_client is not None}, initialized: {mcp_client.is_initialized if mcp_client else False}")
+            logger.warning(
+                f"Cannot register MCP client - client: {mcp_client is not None}, initialized: {mcp_client.is_initialized if mcp_client else False}"
+            )
 
-    async def call_mcp_tool(self, tool_name: str, arguments: Dict[str, Any]) -> str:
+    async def call_mcp_tool(self, tool_name: str, arguments: dict[str, Any]) -> str:
         """Call an MCP tool through the registered client."""
         if not self._mcp_client:
             raise ValueError("No MCP client registered")
@@ -83,7 +84,7 @@ class FunctionRegistry:
 
         # Get the original MCP tool name (with colon) for the actual call
         tool_schema = self._mcp_tools[tool_name]
-        original_name = tool_schema.get('original_name', tool_name)
+        original_name = tool_schema.get("original_name", tool_name)
 
         return await self._mcp_client.call_tool(original_name, arguments)
 
@@ -132,7 +133,7 @@ class FunctionDispatcher:
                 # Use contextId if available, otherwise use task ID
                 # This allows for better conversation management across tasks
                 logger.debug(f"Using context ID: {getattr(task, 'contextId', task.id)}")
-                context_id = getattr(task, 'contextId', task.id)
+                context_id = getattr(task, "contextId", task.id)
             except AttributeError:
                 logger.warning("Task does not have contextId, using task ID instead")
                 context_id = task.id
@@ -197,21 +198,22 @@ class FunctionDispatcher:
         latest_message = MessageProcessor.get_latest_user_message(messages)
 
         if latest_message:
-            return latest_message.get('content', '') if isinstance(latest_message, dict) else getattr(latest_message, 'content', '')
+            return (
+                latest_message.get("content", "")
+                if isinstance(latest_message, dict)
+                else getattr(latest_message, "content", "")
+            )
 
         # Fallback to task metadata
-        if hasattr(task, 'metadata') and task.metadata:
-            return task.metadata.get('user_input', '')
+        if hasattr(task, "metadata") and task.metadata:
+            return task.metadata.get("user_input", "")
 
         return ""
 
-    async def process_task_streaming(self, task: Task) -> AsyncIterator[Union[str, Dict[str, Any]]]:
+    async def process_task_streaming(self, task: Task) -> AsyncIterator[str | dict[str, Any]]:
         """Process A2A task with streaming support."""
         async for chunk in self.streaming_handler.process_task_streaming(
-            task, 
-            LLMManager, 
-            self._extract_user_message, 
-            self._fallback_response
+            task, LLMManager, self._extract_user_message, self._fallback_response
         ):
             yield chunk
 
@@ -235,13 +237,14 @@ class FunctionDispatcher:
 
 
 # Decorator for registering skills as AI functions
-def ai_function(description: str, parameters: Optional[Dict[str, Any]] = None):
+def ai_function(description: str, parameters: dict[str, Any] | None = None):
     """Decorator to register a skill as an LLM-callable function.
 
     Args:
         description: Description of what the function does
         parameters: Parameter schema for the function
     """
+
     def decorator(func: Callable):
         # Create function schema
         schema = {
@@ -250,11 +253,7 @@ def ai_function(description: str, parameters: Optional[Dict[str, Any]] = None):
         }
 
         if parameters:
-            schema["parameters"] = {
-                "type": "object",
-                "properties": parameters,
-                "required": list(parameters.keys())
-            }
+            schema["parameters"] = {"type": "object", "properties": parameters, "required": list(parameters.keys())}
 
         # Store schema on function for later registration
         func._ai_function_schema = schema
@@ -266,8 +265,8 @@ def ai_function(description: str, parameters: Optional[Dict[str, Any]] = None):
 
 
 # Global instances
-_function_registry: Optional[FunctionRegistry] = None
-_function_dispatcher: Optional[FunctionDispatcher] = None
+_function_registry: FunctionRegistry | None = None
+_function_dispatcher: FunctionDispatcher | None = None
 
 
 def get_function_registry() -> FunctionRegistry:
@@ -297,65 +296,71 @@ def register_ai_functions_from_handlers():
     # CONDITIONAL_HANDLERS_IMPORT
     try:
         from .handlers import handlers
+
         # Also try importing individual handler modules
         handler_modules = []
         try:
             from .handlers import handlers as main_handlers
+
             handler_modules.append(main_handlers)
         except ImportError:
             pass
         try:
             from .handlers import handlers_multimodal
+
             handler_modules.append(handlers_multimodal)
         except ImportError as e:
             logger.debug(f"handlers_multimodal not available: {e}")
         except Exception as e:
             logger.error(f"Failed to import handlers_multimodal: {e}", exc_info=True)
-            
+
         try:
             from .handlers import handlers_with_services
+
             handler_modules.append(handlers_with_services)
         except ImportError as e:
             logger.debug(f"handlers_with_services not available: {e}")
         except Exception as e:
             logger.error(f"Failed to import handlers_with_services: {e}", exc_info=True)
-            
+
         try:
             from .handlers import user_handlers
+
             handler_modules.append(user_handlers)
         except ImportError as e:
             logger.debug(f"user_handlers not available: {e}")
         except Exception as e:
             logger.error(f"Failed to import user_handlers: {e}", exc_info=True)
-            
+
         # Import system_tools_handler if available
         try:
             from .handlers import system_tools_handler
+
             handler_modules.append(system_tools_handler)
         except ImportError as e:
             logger.debug(f"system_tools_handler not available: {e}")
         except Exception as e:
             logger.error(f"Failed to import system_tools_handler: {e}", exc_info=True)
-        
+
         # Dynamic discovery of handler modules
         # This will work with any handler modules that were successfully imported
         try:
             import sys
             from pathlib import Path
-            
+
             # Get the handlers package
-            handlers_pkg = sys.modules.get('src.agent.handlers') or sys.modules.get('.handlers', None)
+            handlers_pkg = sys.modules.get("src.agent.handlers") or sys.modules.get(".handlers", None)
             if handlers_pkg:
                 handlers_dir = Path(handlers_pkg.__file__).parent
-                
+
                 # Find all potential handler modules
                 for py_file in handlers_dir.glob("*.py"):
                     if py_file.name in ["__init__.py", "handlers.py", "handlers_multimodal.py"]:
                         continue
-                    
+
                     module_name = py_file.stem
                     module_attr_name = module_name
-                    
+
                     # Try to get the module from the handlers package
                     if hasattr(handlers_pkg, module_attr_name):
                         handler_module = getattr(handlers_pkg, module_attr_name)
@@ -365,7 +370,7 @@ def register_ai_functions_from_handlers():
                     else:
                         # Try to import it directly
                         try:
-                            handler_module = __import__(f'src.agent.handlers.{module_name}', fromlist=[module_name])
+                            handler_module = __import__(f"src.agent.handlers.{module_name}", fromlist=[module_name])
                             if handler_module not in handler_modules:
                                 handler_modules.append(handler_module)
                                 logger.debug(f"Dynamically imported handler module: {module_name}")
@@ -373,7 +378,7 @@ def register_ai_functions_from_handlers():
                             logger.debug(f"Could not dynamically import {module_name}: {e}")
                         except Exception as e:
                             logger.warning(f"Error dynamically importing {module_name}: {e}")
-            
+
         except Exception as e:
             logger.debug(f"Dynamic handler discovery failed: {e}")
 
@@ -392,9 +397,9 @@ def register_ai_functions_from_handlers():
     for handler_module in handler_modules:
         for name in dir(handler_module):
             obj = getattr(handler_module, name)
-            if callable(obj) and hasattr(obj, '_is_ai_function'):
+            if callable(obj) and hasattr(obj, "_is_ai_function"):
                 schema = obj._ai_function_schema
-                registry.register_function(schema['name'], obj, schema)
+                registry.register_function(schema["name"], obj, schema)
                 logger.info(f"Auto-registered AI function: {schema['name']}")
                 registered_count += 1
 

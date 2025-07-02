@@ -3,7 +3,7 @@ import re
 import secrets
 import string
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import yaml
 from jinja2 import Environment, FileSystemLoader
@@ -16,96 +16,75 @@ logger = logging.getLogger(__name__)
 class ProjectGenerator:
     """Generate Agent projects from templates."""
 
-    def __init__(self, output_dir: Path, config: Dict[str, Any], features: List[str] = None):
+    def __init__(self, output_dir: Path, config: dict[str, Any], features: list[str] = None):
         self.output_dir = Path(output_dir)
         self.config = config
-        self.template_name = config.get('template', 'minimal')
-        self.project_name = config['name']
+        self.template_name = config.get("template", "minimal")
+        self.project_name = config["name"]
         self.features = features if features is not None else self._get_features()
 
         # Setup Jinja2 environment
-        templates_dir = Path(__file__).parent / 'templates'
-        self.jinja_env = Environment(
-            loader=FileSystemLoader(templates_dir),
-            trim_blocks=True,
-            lstrip_blocks=True
-        )
+        templates_dir = Path(__file__).parent / "templates"
+        self.jinja_env = Environment(loader=FileSystemLoader(templates_dir), trim_blocks=True, lstrip_blocks=True)
 
         # Add custom functions to Jinja2 environment
-        self.jinja_env.globals['generate_api_key'] = self._generate_api_key
-        self.jinja_env.globals['generate_jwt_secret'] = self._generate_jwt_secret
-        self.jinja_env.globals['generate_client_secret'] = self._generate_client_secret
+        self.jinja_env.globals["generate_api_key"] = self._generate_api_key
+        self.jinja_env.globals["generate_jwt_secret"] = self._generate_jwt_secret
+        self.jinja_env.globals["generate_client_secret"] = self._generate_client_secret
 
-    def _get_features(self) -> List[str]:
+    def _get_features(self) -> list[str]:
         """Get features based on template or custom selection."""
         # Always use config features if they exist (CLI sets this)
-        if 'features' in self.config:
-            return self.config.get('features', [])
+        if "features" in self.config:
+            return self.config.get("features", [])
         else:
             # Fallback to template defaults
             template_info = get_template_features()
-            return template_info.get(self.template_name, {}).get('features', [])
-    
-    def _get_llm_provider_info(self, selected_services: List[str]) -> tuple:
+            return template_info.get(self.template_name, {}).get("features", [])
+
+    def _get_llm_provider_info(self, selected_services: list[str]) -> tuple:
         """Get LLM provider info based on selected services."""
         # Provider configuration mapping
         providers = {
-            'ollama': {
-                'provider': 'ollama',
-                'service_name': 'ollama',
-                'model': 'qwen3:0.6b'
-            },
-            'anthropic': {
-                'provider': 'anthropic',
-                'service_name': 'anthropic',
-                'model': 'claude-3-haiku-20240307'
-            },
-            'openai': {
-                'provider': 'openai',
-                'service_name': 'openai',
-                'model': 'gpt-4o-mini'
-            }
+            "ollama": {"provider": "ollama", "service_name": "ollama", "model": "qwen3:0.6b"},
+            "anthropic": {"provider": "anthropic", "service_name": "anthropic", "model": "claude-3-haiku-20240307"},
+            "openai": {"provider": "openai", "service_name": "openai", "model": "gpt-4o-mini"},
         }
-        
+
         # Find the first LLM provider in the selected services
-        for service in ['ollama', 'anthropic', 'openai']:
+        for service in ["ollama", "anthropic", "openai"]:
             if service in selected_services:
                 info = providers[service]
-                return info['provider'], info['service_name'], info['model']
-        
+                return info["provider"], info["service_name"], info["model"]
+
         return None, None, None
-    
-    def _build_llm_service_config(self, service_type: str) -> Dict[str, Any]:
+
+    def _build_llm_service_config(self, service_type: str) -> dict[str, Any]:
         """Build LLM service configuration for a given service type."""
         configs = {
-            'openai': {
-                'type': 'llm',
-                'provider': 'openai',
-                'api_key': '${OPENAI_API_KEY}',
-                'model': 'gpt-4o-mini'
+            "openai": {"type": "llm", "provider": "openai", "api_key": "${OPENAI_API_KEY}", "model": "gpt-4o-mini"},
+            "anthropic": {
+                "type": "llm",
+                "provider": "anthropic",
+                "api_key": "${ANTHROPIC_API_KEY}",
+                "model": "claude-3-haiku-20240307",
             },
-            'anthropic': {
-                'type': 'llm',
-                'provider': 'anthropic',
-                'api_key': '${ANTHROPIC_API_KEY}',
-                'model': 'claude-3-haiku-20240307'
+            "ollama": {
+                "type": "llm",
+                "provider": "ollama",
+                "base_url": "${OLLAMA_BASE_URL:http://localhost:11434}",
+                "model": "qwen3:0.6b",
             },
-            'ollama': {
-                'type': 'llm',
-                'provider': 'ollama',
-                'base_url': '${OLLAMA_BASE_URL:http://localhost:11434}',
-                'model': 'qwen3:0.6b'
-            }
         }
         return configs.get(service_type, {})
 
     def _replace_template_vars(self, content: str) -> str:
         """Replace template variables in Python files."""
         replacements = {
-            '{{ project_name }}': self.project_name,
-            '{{project_name}}': self.project_name,  # Handle without spaces
-            '{{ description }}': self.config.get('description', ''),
-            '{{description}}': self.config.get('description', ''),  # Handle without spaces
+            "{{ project_name }}": self.project_name,
+            "{{project_name}}": self.project_name,  # Handle without spaces
+            "{{ description }}": self.config.get("description", ""),
+            "{{description}}": self.config.get("description", ""),  # Handle without spaces
         }
 
         for old, new in replacements.items():
@@ -130,21 +109,21 @@ class ProjectGenerator:
     def _generate_template_files(self):
         """Generate files from Jinja2 templates (only docs/static files)."""
         # pyproject.toml
-        pyproject_content = self._render_template('pyproject.toml')
-        (self.output_dir / 'pyproject.toml').write_text(pyproject_content)
+        pyproject_content = self._render_template("pyproject.toml")
+        (self.output_dir / "pyproject.toml").write_text(pyproject_content)
 
         # README.md
-        readme_content = self._render_template('README.md')
-        (self.output_dir / 'README.md').write_text(readme_content)
+        readme_content = self._render_template("README.md")
+        (self.output_dir / "README.md").write_text(readme_content)
 
         # .gitignore
-        gitignore_content = self._render_template('.gitignore')
-        (self.output_dir / '.gitignore').write_text(gitignore_content)
+        gitignore_content = self._render_template(".gitignore")
+        (self.output_dir / ".gitignore").write_text(gitignore_content)
 
     def _copy_framework_files(self):
         """Copy the AgentUp framework files to the project."""
         # Use static src/agent structure for consistency and CLI compatibility
-        src_dir = self.output_dir / 'src' / 'agent'
+        src_dir = self.output_dir / "src" / "agent"
         src_dir.mkdir(parents=True, exist_ok=True)
 
         # Copy all Python files from src/agentup to the new project
@@ -152,28 +131,28 @@ class ProjectGenerator:
 
         # Core files to copy
         core_files = [
-            '__init__.py',
-            'api.py',
-            'config.py',
-            'context.py',
-            'handlers.py',
-            'main.py',
-            'middleware.py',
-            'models.py',
-            'multimodal.py',
-            'services.py',
-            'utils.py',
-            'messages.py',               # Message processing and conversation context
-            'function_dispatcher.py',    # Main dispatch logic
-            'llm_manager.py',            # LLM provider management
-            'function_executor.py',      # Function execution logic
-            'conversation_manager.py',   # Conversation state
-            'streaming_handler.py',      # Streaming operations
-            'agent_executor.py',         # New AgentUp executor
-            'dependencies.py',           # AgentUp dependencies
-            'push_notifier.py',          # Enhanced push notification system
-            'push_types.py',             # Additional A2A push notification types
-            'custom_request_handler.py',  # Custom request handler for push notifications
+            "__init__.py",
+            "api.py",
+            "config.py",
+            "context.py",
+            "handlers.py",
+            "main.py",
+            "middleware.py",
+            "models.py",
+            "multimodal.py",
+            "services.py",
+            "utils.py",
+            "messages.py",  # Message processing and conversation context
+            "function_dispatcher.py",  # Main dispatch logic
+            "llm_manager.py",  # LLM provider management
+            "function_executor.py",  # Function execution logic
+            "conversation_manager.py",  # Conversation state
+            "streaming_handler.py",  # Streaming operations
+            "agent_executor.py",  # New AgentUp executor
+            "dependencies.py",  # AgentUp dependencies
+            "push_notifier.py",  # Enhanced push notification system
+            "push_types.py",  # Additional A2A push notification types
+            "custom_request_handler.py",  # Custom request handler for push notifications
         ]
 
         # Copy core files with import updates
@@ -188,16 +167,16 @@ class ProjectGenerator:
                 (src_dir / file_name).write_text(content)
 
         # Copy demo_handlers.py only for demo template
-        if self.template_name == 'demo':
-            demo_file = agentup_src / 'demo_handlers.py'
+        if self.template_name == "demo":
+            demo_file = agentup_src / "demo_handlers.py"
             if demo_file.exists():
                 content = demo_file.read_text()
                 # Replace template variables
                 content = self._replace_template_vars(content)
-                (src_dir / 'demo_handlers.py').write_text(content)
+                (src_dir / "demo_handlers.py").write_text(content)
 
         # Copy subdirectories
-        subdirs = ['handlers', 'llm_providers', 'mcp_support', 'security']
+        subdirs = ["handlers", "llm_providers", "mcp_support", "security"]
         for subdir in subdirs:
             src_subdir = agentup_src / subdir
             if src_subdir.exists() and src_subdir.is_dir():
@@ -205,7 +184,7 @@ class ProjectGenerator:
                 dest_subdir.mkdir(exist_ok=True)
 
                 # Copy Python files
-                for py_file in src_subdir.glob('*.py'):
+                for py_file in src_subdir.glob("*.py"):
                     content = py_file.read_text()
                     # Replace template variables
                     content = self._replace_template_vars(content)
@@ -214,8 +193,8 @@ class ProjectGenerator:
                     (dest_subdir / py_file.name).write_text(content)
 
                 # Copy non-Python files (like weak.txt, configs, etc.)
-                for other_file in src_subdir.glob('*'):
-                    if other_file.is_file() and not other_file.name.endswith('.py'):
+                for other_file in src_subdir.glob("*"):
+                    if other_file.is_file() and not other_file.name.endswith(".py"):
                         # Copy static files directly without template processing
                         (dest_subdir / other_file.name).write_bytes(other_file.read_bytes())
 
@@ -226,182 +205,178 @@ class ProjectGenerator:
                         dest_nested.mkdir(exist_ok=True)
 
                         # Copy Python files in nested subdirectories
-                        for py_file in nested_subdir.glob('*.py'):
+                        for py_file in nested_subdir.glob("*.py"):
                             content = py_file.read_text()
                             # Replace template variables
                             content = self._replace_template_vars(content)
                             (dest_nested / py_file.name).write_text(content)
 
                         # Copy non-Python files in nested subdirectories
-                        for other_file in nested_subdir.glob('*'):
-                            if other_file.is_file() and not other_file.name.endswith('.py'):
+                        for other_file in nested_subdir.glob("*"):
+                            if other_file.is_file() and not other_file.name.endswith(".py"):
                                 # Copy static files directly without template processing
                                 (dest_nested / other_file.name).write_bytes(other_file.read_bytes())
 
-
     def _generate_config_files(self):
         """Generate configuration files."""
-        config_path = self.output_dir / 'agent_config.yaml'
+        config_path = self.output_dir / "agent_config.yaml"
 
         # Use Jinja2 templates for config generation
         try:
-            template_name = f'config/agent_config_{self.template_name}.yaml'
+            template_name = f"config/agent_config_{self.template_name}.yaml"
             config_content = self._render_template(template_name)
             config_path.write_text(config_content)
         except Exception as e:
             # Fallback to programmatic generation if template fails
             logger.warning(f"Template generation failed ({e}), falling back to programmatic generation")
             config_data = self._build_agent_config()
-            with open(config_path, 'w') as f:
+            with open(config_path, "w") as f:
                 yaml.dump(config_data, f, default_flow_style=False, sort_keys=False)
-
 
     def _render_template(self, template_path: str) -> str:
         """Render a template file with project context using Jinja2."""
         # Convert path to template filename
         # e.g., 'llm_providers/base.py' -> 'llm_providers/base.py.j2'
-        if template_path.startswith('src/agent/'):
+        if template_path.startswith("src/agent/"):
             # For src/agent paths, strip the path prefix
-            template_filename = Path(template_path).name + '.j2'
+            template_filename = Path(template_path).name + ".j2"
         else:
             # For other paths (like llm_providers), preserve the path structure
-            template_filename = template_path + '.j2'
+            template_filename = template_path + ".j2"
 
         # Create template context
         context = {
-            'project_name': self.project_name,
-            'project_name_snake': self._to_snake_case(self.project_name),
-            'project_name_title': self._to_title_case(self.project_name),
-            'description': self.config.get('description', ''),
-            'features': self.features,
-            'has_middleware': 'middleware' in self.features,
-            'has_services': 'services' in self.features,
-            'has_state': 'state' in self.features,
-            'has_multimodal': 'multimodal' in self.features,
-            'has_auth': 'auth' in self.features,
-            'has_monitoring': 'monitoring' in self.features,
-            'has_testing': 'testing' in self.features,
-            'has_deployment': 'deployment' in self.features,
-            'has_mcp': 'mcp' in self.features,
-            'template_name': self.template_name,
+            "project_name": self.project_name,
+            "project_name_snake": self._to_snake_case(self.project_name),
+            "project_name_title": self._to_title_case(self.project_name),
+            "description": self.config.get("description", ""),
+            "features": self.features,
+            "has_middleware": "middleware" in self.features,
+            "has_services": "services" in self.features,
+            "has_state": "state" in self.features,
+            "has_multimodal": "multimodal" in self.features,
+            "has_auth": "auth" in self.features,
+            "has_monitoring": "monitoring" in self.features,
+            "has_testing": "testing" in self.features,
+            "has_deployment": "deployment" in self.features,
+            "has_mcp": "mcp" in self.features,
+            "template_name": self.template_name,
         }
 
         # Add AI provider context for templates (new structure)
-        ai_provider_config = self.config.get('ai_provider_config')
+        ai_provider_config = self.config.get("ai_provider_config")
         if ai_provider_config:
-            context.update({
-                'ai_provider_config': ai_provider_config,
-                'llm_provider_config': True  # For backward compatibility with existing templates
-            })
+            context.update(
+                {
+                    "ai_provider_config": ai_provider_config,
+                    "llm_provider_config": True,  # For backward compatibility with existing templates
+                }
+            )
         else:
-            context.update({
-                'ai_provider_config': None,
-                'llm_provider_config': False
-            })
+            context.update({"ai_provider_config": None, "llm_provider_config": False})
 
         # Legacy LLM provider context for old templates (if still needed)
-        if 'services' in self.features:
-            selected_services = self.config.get('services', [])
+        if "services" in self.features:
+            selected_services = self.config.get("services", [])
             llm_provider, llm_service_name, llm_model = self._get_llm_provider_info(selected_services)
 
             if llm_provider:
-                context.update({
-                    'llm_provider': llm_provider,
-                    'llm_service_name': llm_service_name,
-                    'llm_model': llm_model,
-                    'llm_provider_config': True  # Set to True when LLM services are available
-                })
+                context.update(
+                    {
+                        "llm_provider": llm_provider,
+                        "llm_service_name": llm_service_name,
+                        "llm_model": llm_model,
+                        "llm_provider_config": True,  # Set to True when LLM services are available
+                    }
+                )
             else:
-                context.update({
-                    'llm_provider': None,
-                    'llm_service_name': None,
-                    'llm_model': None,
-                })
+                context.update(
+                    {
+                        "llm_provider": None,
+                        "llm_service_name": None,
+                        "llm_model": None,
+                    }
+                )
 
         # Add feature config
-        if 'feature_config' in self.config:
-            context['feature_config'] = self.config['feature_config']
+        if "feature_config" in self.config:
+            context["feature_config"] = self.config["feature_config"]
         else:
-            context['feature_config'] = {}
+            context["feature_config"] = {}
 
         # Render template with Jinja2
         template = self.jinja_env.get_template(template_filename)
         return template.render(context)
 
-
-
-    def _build_agent_config(self) -> Dict[str, Any]:
+    def _build_agent_config(self) -> dict[str, Any]:
         """Build agent_config.yaml content."""
         config = {
             # Agent Information
-            'agent': {
-                'name': self.project_name,
-                'description': self.config.get('description', ''),
-                'version': '0.1.0',
+            "agent": {
+                "name": self.project_name,
+                "description": self.config.get("description", ""),
+                "version": "0.1.0",
             },
-
             # Legacy configuration (kept for backward compatibility)
             # 'project_name': self.project_name,
             # 'description': self.config.get('description', ''),
             # 'version': '0.1.0',
-
             # Core configuration
-            'skills': self._build_skills_config(),
-            'routing': self._build_routing_config(),
-
+            "skills": self._build_skills_config(),
+            "routing": self._build_routing_config(),
             # Registry skills section - for skills installed from AgentUp Skills Registry
-            'registry_skills': [],
+            "registry_skills": [],
         }
 
         # Add AgentUp security configuration
-        config['security'] = {
-            'enabled': False,  # Set to True to enable authentication
-            'type': 'api_key',  # Options: 'api_key', 'bearer', 'oauth2'
-            'api_key': {
-                'header_name': 'X-API-Key',
-                'location': 'header',  # Options: 'header', 'query', 'cookie'
-                'keys': [
+        config["security"] = {
+            "enabled": False,  # Set to True to enable authentication
+            "type": "api_key",  # Options: 'api_key', 'bearer', 'oauth2'
+            "api_key": {
+                "header_name": "X-API-Key",
+                "location": "header",  # Options: 'header', 'query', 'cookie'
+                "keys": [
                     # Generated API keys - replace with your own
                     self._generate_api_key(),
-                    self._generate_api_key()
-                ]
+                    self._generate_api_key(),
+                ],
             },
-            'bearer': {
-                'jwt_secret': self._generate_jwt_secret(),
-                'algorithm': 'HS256',
-                'issuer': 'your-agent',
-                'audience': 'a2a-clients'
+            "bearer": {
+                "jwt_secret": self._generate_jwt_secret(),
+                "algorithm": "HS256",
+                "issuer": "your-agent",
+                "audience": "a2a-clients",
             },
-            'oauth2': {
-                'token_url': '${OAUTH_TOKEN_URL:/oauth/token}',
-                'client_id': '${OAUTH_CLIENT_ID:your-client-id}',
-                'client_secret': self._generate_client_secret(),
-                'scopes': {
-                    'read': 'Read access to agent capabilities',
-                    'write': 'Write access to send messages',
-                    'admin': 'Administrative access'
-                }
-            }
+            "oauth2": {
+                "token_url": "${OAUTH_TOKEN_URL:/oauth/token}",
+                "client_id": "${OAUTH_CLIENT_ID:your-client-id}",
+                "client_secret": self._generate_client_secret(),
+                "scopes": {
+                    "read": "Read access to agent capabilities",
+                    "write": "Write access to send messages",
+                    "admin": "Administrative access",
+                },
+            },
         }
 
         # Add routing configuration (for backward compatibility)
-        config['routing'] = self._build_routing_config()
+        config["routing"] = self._build_routing_config()
 
         # Add AI configuration for LLM-powered agents
-        if 'services' in self.features:
-            selected_services = self.config.get('services', [])
+        if "services" in self.features:
+            selected_services = self.config.get("services", [])
             llm_provider, llm_service_name, llm_model = self._get_llm_provider_info(selected_services)
 
             # Use defaults if no LLM provider selected
             if not llm_provider:
-                llm_service_name = 'openai'
-                llm_model = 'gpt-4o-mini'
+                llm_service_name = "openai"
+                llm_model = "gpt-4o-mini"
 
-            config['ai'] = {
-                'enabled': True,
-                'llm_service': llm_service_name,
-                'model': llm_model,
-                'system_prompt': f'''You are {self.project_name}, an AI agent with access to specific functions/skills.
+            config["ai"] = {
+                "enabled": True,
+                "llm_service": llm_service_name,
+                "model": llm_model,
+                "system_prompt": f"""You are {self.project_name}, an AI agent with access to specific functions/skills.
 
 Your role:
 - Understand user requests naturally and conversationally
@@ -415,365 +390,333 @@ When users ask for something:
 3. Synthesize the results into a natural, helpful response
 4. If no function is needed, respond conversationally
 
-Always be helpful, accurate, and maintain a friendly tone. You are designed to assist users effectively while being natural and conversational.''',
-                'max_context_turns': 10,
-                'fallback_to_routing': True  # Fall back to keyword routing if LLM fails
+Always be helpful, accurate, and maintain a friendly tone. You are designed to assist users effectively while being natural and conversational.""",
+                "max_context_turns": 10,
+                "fallback_to_routing": True,  # Fall back to keyword routing if LLM fails
             }
 
         # Add features-specific configuration
-        if 'auth' in self.features:
+        if "auth" in self.features:
             # Enable security if auth feature is selected
-            config['security']['enabled'] = True
-            auth_type = self.config.get('feature_config', {}).get('auth', 'api_key')
-            config['security']['type'] = auth_type
+            config["security"]["enabled"] = True
+            auth_type = self.config.get("feature_config", {}).get("auth", "api_key")
+            config["security"]["type"] = auth_type
 
-        if 'services' in self.features:
-            config['services'] = self._build_services_config()
+        if "services" in self.features:
+            config["services"] = self._build_services_config()
 
-        if 'mcp' in self.features:
-            config['mcp'] = self._build_mcp_config()
+        if "mcp" in self.features:
+            config["mcp"] = self._build_mcp_config()
 
         # Add AgentUp middleware configuration
-        config['middleware'] = self._build_middleware_config()
+        config["middleware"] = self._build_middleware_config()
 
         # Add AgentUp push notifications
-        config['push_notifications'] = {
-            'enabled': True
-        }
+        config["push_notifications"] = {"enabled": True}
 
         # Add AgentUp state management
-        config['state'] = {
-            'backend': 'memory',
-            'ttl': 3600  # 1 hour
+        config["state"] = {
+            "backend": "memory",
+            "ttl": 3600,  # 1 hour
         }
 
         return config
 
-
-    def _build_skills_config(self) -> List[Dict[str, Any]]:
+    def _build_skills_config(self) -> list[dict[str, Any]]:
         """Build skills configuration based on template."""
-        if self.template_name == 'minimal':
-            return [{
-                'skill_id': 'echo',
-                'name': 'Echo',
-                'description': 'Echo back the input text',
-                'input_mode': 'text',
-                'output_mode': 'text',
-                'routing_mode': 'direct',
-                'keywords': ['echo', 'repeat', 'say'],
-                'patterns': ['.*']
-            }]
-        elif self.template_name == 'demo':
+        if self.template_name == "minimal":
             return [
                 {
-                    'skill_id': 'file_assistant',
-                    'name': 'File Assistant',
-                    'description': 'Read and write files using MCP',
-                    'input_mode': 'text',
-                    'output_mode': 'text',
-                },
-                {
-                    'skill_id': 'weather_bot',
-                    'name': 'Weather Bot',
-                    'description': 'Get weather information using function calling',
-                    'input_mode': 'text',
-                    'output_mode': 'text',
-                },
-                {
-                    'skill_id': 'code_analyzer',
-                    'name': 'Code Analyzer',
-                    'description': 'Analyze code repositories',
-                    'input_mode': 'text',
-                    'output_mode': 'text',
-                },
-                {
-                    'skill_id': 'joke_teller',
-                    'name': 'Joke Teller',
-                    'description': 'Tell jokes on demand',
-                    'input_mode': 'text',
-                    'output_mode': 'text',
+                    "skill_id": "echo",
+                    "name": "Echo",
+                    "description": "Echo back the input text",
+                    "input_mode": "text",
+                    "output_mode": "text",
+                    "routing_mode": "direct",
+                    "keywords": ["echo", "repeat", "say"],
+                    "patterns": [".*"],
                 }
             ]
-        elif self.template_name == 'full':
+        elif self.template_name == "demo":
+            return [
+                {
+                    "skill_id": "file_assistant",
+                    "name": "File Assistant",
+                    "description": "Read and write files using MCP",
+                    "input_mode": "text",
+                    "output_mode": "text",
+                },
+                {
+                    "skill_id": "weather_bot",
+                    "name": "Weather Bot",
+                    "description": "Get weather information using function calling",
+                    "input_mode": "text",
+                    "output_mode": "text",
+                },
+                {
+                    "skill_id": "code_analyzer",
+                    "name": "Code Analyzer",
+                    "description": "Analyze code repositories",
+                    "input_mode": "text",
+                    "output_mode": "text",
+                },
+                {
+                    "skill_id": "joke_teller",
+                    "name": "Joke Teller",
+                    "description": "Tell jokes on demand",
+                    "input_mode": "text",
+                    "output_mode": "text",
+                },
+            ]
+        elif self.template_name == "full":
             # Full template gets multiple skills
             return [
                 {
-                    'skill_id': 'ai_assistant',
-                    'name': 'AI Assistant',
-                    'description': 'General purpose AI assistant',
-                    'input_mode': 'text',
-                    'output_mode': 'text',
+                    "skill_id": "ai_assistant",
+                    "name": "AI Assistant",
+                    "description": "General purpose AI assistant",
+                    "input_mode": "text",
+                    "output_mode": "text",
                 },
                 {
-                    'skill_id': 'document_processor',
-                    'name': 'Document Processor',
-                    'description': 'Process and analyze documents',
-                    'input_mode': 'multimodal',
-                    'output_mode': 'text',
+                    "skill_id": "document_processor",
+                    "name": "Document Processor",
+                    "description": "Process and analyze documents",
+                    "input_mode": "multimodal",
+                    "output_mode": "text",
                 },
                 {
-                    'skill_id': 'data_analyzer',
-                    'name': 'Data Analyzer',
-                    'description': 'Analyze and visualize data',
-                    'input_mode': 'text',
-                    'output_mode': 'multimodal',
-                }
+                    "skill_id": "data_analyzer",
+                    "name": "Data Analyzer",
+                    "description": "Analyze and visualize data",
+                    "input_mode": "text",
+                    "output_mode": "multimodal",
+                },
             ]
         else:
             # Standard template
-            return [{
-                'skill_id': 'ai_assistant',
-                'name': 'AI Assistant',
-                'description': 'General purpose AI assistant',
-                'input_mode': 'text',
-                'output_mode': 'text',
-                'routing_mode': 'ai'
-            }]
+            return [
+                {
+                    "skill_id": "ai_assistant",
+                    "name": "AI Assistant",
+                    "description": "General purpose AI assistant",
+                    "input_mode": "text",
+                    "output_mode": "text",
+                    "routing_mode": "ai",
+                }
+            ]
 
-    def _build_services_config(self) -> Dict[str, Any]:
+    def _build_services_config(self) -> dict[str, Any]:
         """Build services configuration based on template and selected services."""
-        if 'services' not in self.features:
+        if "services" not in self.features:
             return {}
 
         services = {}
-        selected_services = self.config.get('services', [])
+        selected_services = self.config.get("services", [])
 
         # If no services selected, use template defaults
         if not selected_services:
             # Standard and demo templates get basic OpenAI
-            if self.template_name in ['standard', 'demo']:
-                services['openai'] = self._build_llm_service_config('openai')
+            if self.template_name in ["standard", "demo"]:
+                services["openai"] = self._build_llm_service_config("openai")
 
             # Full template gets everything
-            elif self.template_name == 'full':
-                services['openai'] = self._build_llm_service_config('openai')
-                services['postgres'] = {
-                    'type': 'database',
-                    'config': {
-                        'url': '${DATABASE_URL:postgresql://user:pass@localhost/db}'
-                    }
+            elif self.template_name == "full":
+                services["openai"] = self._build_llm_service_config("openai")
+                services["postgres"] = {
+                    "type": "database",
+                    "config": {"url": "${DATABASE_URL:postgresql://user:pass@localhost/db}"},
                 }
-                services['valkey'] = {
-                    'type': 'cache',
-                    'config': {
-                        'url': '${VALKEY_URL:valkey://localhost:6379}',
-                        'db': 1,
-                        'max_connections': 10
-                    }
+                services["valkey"] = {
+                    "type": "cache",
+                    "config": {"url": "${VALKEY_URL:valkey://localhost:6379}", "db": 1, "max_connections": 10},
                 }
         else:
             # Build services based on user selection
             for service_type in selected_services:
                 # Handle LLM services
-                if service_type in ['openai', 'anthropic', 'ollama']:
+                if service_type in ["openai", "anthropic", "ollama"]:
                     services[service_type] = self._build_llm_service_config(service_type)
-                elif service_type == 'postgres':
-                    services['postgres'] = {
-                        'type': 'database',
-                        'config': {
-                            'url': '${DATABASE_URL:postgresql://user:pass@localhost/db}'
-                        }
+                elif service_type == "postgres":
+                    services["postgres"] = {
+                        "type": "database",
+                        "config": {"url": "${DATABASE_URL:postgresql://user:pass@localhost/db}"},
                     }
-                elif service_type == 'valkey':
-                    services['valkey'] = {
-                        'type': 'cache',
-                        'config': {
-                            'url': '${VALKEY_URL:valkey://localhost:6379}',
-                            'db': 1,
-                            'max_connections': 10
-                        }
+                elif service_type == "valkey":
+                    services["valkey"] = {
+                        "type": "cache",
+                        "config": {"url": "${VALKEY_URL:valkey://localhost:6379}", "db": 1, "max_connections": 10},
                     }
-                elif service_type == 'custom':
-                    services['custom_api'] = {
-                        'type': 'web_api',
-                        'config': {
-                            'base_url': '${CUSTOM_API_URL:http://localhost:8080}',
-                            'api_key': '${CUSTOM_API_KEY}',
-                            'timeout': 30
-                        }
+                elif service_type == "custom":
+                    services["custom_api"] = {
+                        "type": "web_api",
+                        "config": {
+                            "base_url": "${CUSTOM_API_URL:http://localhost:8080}",
+                            "api_key": "${CUSTOM_API_KEY}",
+                            "timeout": 30,
+                        },
                     }
 
         return services
 
-    def _build_mcp_config(self) -> Dict[str, Any]:
+    def _build_mcp_config(self) -> dict[str, Any]:
         """Build MCP configuration based on template."""
-        if 'mcp' not in self.features:
+        if "mcp" not in self.features:
             return {}
 
         mcp_config = {
-            'enabled': True,
-            'client': {
-                'enabled': True,
-                'servers': []
+            "enabled": True,
+            "client": {"enabled": True, "servers": []},
+            "server": {
+                "enabled": True,
+                "name": f"{self.project_name}-mcp-server",
+                "expose_handlers": True,
+                "expose_resources": ["agent_status", "agent_capabilities"],
+                "port": 8001,
             },
-            'server': {
-                'enabled': True,
-                'name': f'{self.project_name}-mcp-server',
-                'expose_handlers': True,
-                'expose_resources': ['agent_status', 'agent_capabilities'],
-                'port': 8001
-            }
         }
 
         # Add template-specific MCP servers
-        if self.template_name == 'standard':
+        if self.template_name == "standard":
             # Basic filesystem access for standard template
-            mcp_config['client']['servers'] = [
+            mcp_config["client"]["servers"] = [
                 {
-                    'name': 'filesystem',
-                    'command': 'npx',
-                    'args': ['-y', '@modelcontextprotocol/server-filesystem', '/tmp'],
-                    'env': {}
+                    "name": "filesystem",
+                    "command": "npx",
+                    "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+                    "env": {},
                 }
             ]
-        elif self.template_name == 'full':
+        elif self.template_name == "full":
             # Multiple MCP servers for full template
-            mcp_config['client']['servers'] = [
+            mcp_config["client"]["servers"] = [
                 {
-                    'name': 'filesystem',
-                    'command': 'npx',
-                    'args': ['-y', '@modelcontextprotocol/server-filesystem', '/'],
-                    'env': {}
+                    "name": "filesystem",
+                    "command": "npx",
+                    "args": ["-y", "@modelcontextprotocol/server-filesystem", "/"],
+                    "env": {},
                 },
                 {
-                    'name': 'github',
-                    'command': 'npx',
-                    'args': ['-y', '@modelcontextprotocol/server-github'],
-                    'env': {
-                        'GITHUB_PERSONAL_ACCESS_TOKEN': '${GITHUB_TOKEN}'
-                    }
-                }
+                    "name": "github",
+                    "command": "npx",
+                    "args": ["-y", "@modelcontextprotocol/server-github"],
+                    "env": {"GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"},
+                },
             ]
-        elif self.template_name == 'demo':
+        elif self.template_name == "demo":
             # Demo-specific MCP configuration
-            mcp_config['client']['servers'] = [
+            mcp_config["client"]["servers"] = [
                 {
-                    'name': 'demo-filesystem',
-                    'command': 'npx',
-                    'args': ['-y', '@modelcontextprotocol/server-filesystem', './demo-files'],
-                    'env': {}
+                    "name": "demo-filesystem",
+                    "command": "npx",
+                    "args": ["-y", "@modelcontextprotocol/server-filesystem", "./demo-files"],
+                    "env": {},
                 }
             ]
 
         return mcp_config
 
-    def _build_middleware_config(self) -> List[Dict[str, Any]]:
+    def _build_middleware_config(self) -> list[dict[str, Any]]:
         """Build middleware configuration for A2A protocol."""
         middleware = []
 
         # Always include basic middleware for A2A
-        middleware.extend([
-            {
-                'name': 'logged',
-                'params': {
-                    'log_level': 20  # INFO level
-                }
-            },
-            {
-                'name': 'timed',
-                'params': {}
-            }
-        ])
+        middleware.extend(
+            [
+                {
+                    "name": "logged",
+                    "params": {
+                        "log_level": 20  # INFO level
+                    },
+                },
+                {"name": "timed", "params": {}},
+            ]
+        )
 
         # Add feature-specific middleware
-        if 'middleware' in self.features:
-            feature_config = self.config.get('feature_config', {})
-            selected_middleware = feature_config.get('middleware', [])
+        if "middleware" in self.features:
+            feature_config = self.config.get("feature_config", {})
+            selected_middleware = feature_config.get("middleware", [])
 
-            if 'cache' in selected_middleware:
-                middleware.append({
-                    'name': 'cached',
-                    'params': {
-                        'ttl': 300  # 5 minutes
+            if "cache" in selected_middleware:
+                middleware.append(
+                    {
+                        "name": "cached",
+                        "params": {
+                            "ttl": 300  # 5 minutes
+                        },
                     }
-                })
+                )
 
-            if 'rate_limit' in selected_middleware:
-                middleware.append({
-                    'name': 'rate_limited',
-                    'params': {
-                        'requests_per_minute': 60
-                    }
-                })
+            if "rate_limit" in selected_middleware:
+                middleware.append({"name": "rate_limited", "params": {"requests_per_minute": 60}})
 
-            if 'retry' in selected_middleware:
-                middleware.append({
-                    'name': 'retryable',
-                    'params': {
-                        'max_retries': 3,
-                        'backoff_factor': 2
-                    }
-                })
+            if "retry" in selected_middleware:
+                middleware.append({"name": "retryable", "params": {"max_retries": 3, "backoff_factor": 2}})
 
         return middleware
 
-    def _build_routing_config(self) -> Dict[str, Any]:
+    def _build_routing_config(self) -> dict[str, Any]:
         """Build routing configuration based on template."""
         # Determine routing mode and fallback skill based on template
-        if self.template_name == 'minimal':
-            default_mode = 'direct'
-            fallback_skill = 'echo'
+        if self.template_name == "minimal":
+            default_mode = "direct"
+            fallback_skill = "echo"
         else:
-            default_mode = 'ai'
-            fallback_skill = 'ai_assistant'
+            default_mode = "ai"
+            fallback_skill = "ai_assistant"
 
-        return {
-            'default_mode': default_mode,
-            'fallback_skill': fallback_skill,
-            'fallback_enabled': True
-        }
+        return {"default_mode": default_mode, "fallback_skill": fallback_skill, "fallback_enabled": True}
 
-    def _get_auth_config(self, auth_type: str) -> Dict[str, Any]:
+    def _get_auth_config(self, auth_type: str) -> dict[str, Any]:
         """Get authentication configuration."""
-        if auth_type == 'api_key':
+        if auth_type == "api_key":
             return {
-                'header_name': 'X-API-Key',
+                "header_name": "X-API-Key",
             }
-        elif auth_type == 'jwt':
+        elif auth_type == "jwt":
             return {
-                'secret': self._generate_jwt_secret(),
-                'algorithm': 'HS256',
+                "secret": self._generate_jwt_secret(),
+                "algorithm": "HS256",
             }
-        elif auth_type == 'oauth2':
+        elif auth_type == "oauth2":
             return {
-                'provider': 'google',
-                'client_id': '${OAUTH_CLIENT_ID}',
-                'client_secret': '${OAUTH_CLIENT_SECRET}',
+                "provider": "google",
+                "client_id": "${OAUTH_CLIENT_ID}",
+                "client_secret": "${OAUTH_CLIENT_SECRET}",
             }
         return {}
-
 
     def _to_snake_case(self, text: str) -> str:
         """Convert text to snake_case."""
         # Remove special characters and split by spaces/hyphens
-        text = re.sub(r'[^\w\s-]', '', text)
-        text = re.sub(r'[-\s]+', '_', text)
+        text = re.sub(r"[^\w\s-]", "", text)
+        text = re.sub(r"[-\s]+", "_", text)
         # Convert camelCase to snake_case
-        text = re.sub(r'([a-z])([A-Z])', r'\1_\2', text)
+        text = re.sub(r"([a-z])([A-Z])", r"\1_\2", text)
         return text.lower()
 
     def _to_title_case(self, text: str) -> str:
         """Convert text to PascalCase for class names."""
         # Remove special characters and split by spaces/hyphens/underscores
-        text = re.sub(r'[^\w\s-]', '', text)
-        words = re.split(r'[-\s_]+', text)
-        return ''.join(word.capitalize() for word in words if word)
+        text = re.sub(r"[^\w\s-]", "", text)
+        words = re.split(r"[-\s_]+", text)
+        return "".join(word.capitalize() for word in words if word)
 
     def _generate_api_key(self, length: int = 32) -> str:
         """Generate a random API key."""
         # Use URL-safe characters (letters, digits, -, _)
-        alphabet = string.ascii_letters + string.digits + '-_'
-        return ''.join(secrets.choice(alphabet) for _ in range(length))
+        alphabet = string.ascii_letters + string.digits + "-_"
+        return "".join(secrets.choice(alphabet) for _ in range(length))
 
     def _generate_jwt_secret(self, length: int = 64) -> str:
         """Generate a random JWT secret."""
         # Use all printable ASCII characters except quotes for JWT secrets
-        alphabet = string.ascii_letters + string.digits + '!@#$%^&*()_+-=[]{}|;:,.<>?'
-        return ''.join(secrets.choice(alphabet) for _ in range(length))
+        alphabet = string.ascii_letters + string.digits + "!@#$%^&*()_+-=[]{}|;:,.<>?"
+        return "".join(secrets.choice(alphabet) for _ in range(length))
 
     def _generate_client_secret(self, length: int = 48) -> str:
         """Generate a random OAuth client secret."""
         # Use URL-safe characters for OAuth client secrets
-        alphabet = string.ascii_letters + string.digits + '-_'
-        return ''.join(secrets.choice(alphabet) for _ in range(length))
-
+        alphabet = string.ascii_letters + string.digits + "-_"
+        return "".join(secrets.choice(alphabet) for _ in range(length))

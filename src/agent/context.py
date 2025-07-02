@@ -3,7 +3,7 @@ import json
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -11,44 +11,45 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ConversationState:
     """State for a conversation context."""
+
     context_id: str
-    user_id: Optional[str]
+    user_id: str | None
     created_at: datetime
     updated_at: datetime
-    metadata: Dict[str, Any]
-    variables: Dict[str, Any]
-    history: List[Dict[str, Any]]
+    metadata: dict[str, Any]
+    variables: dict[str, Any]
+    history: list[dict[str, Any]]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
-            'context_id': self.context_id,
-            'user_id': self.user_id,
-            'created_at': self.created_at.isoformat(),
-            'updated_at': self.updated_at.isoformat(),
-            'metadata': self.metadata,
-            'variables': self.variables,
-            'history': self.history
+            "context_id": self.context_id,
+            "user_id": self.user_id,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+            "metadata": self.metadata,
+            "variables": self.variables,
+            "history": self.history,
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'ConversationState':
+    def from_dict(cls, data: dict[str, Any]) -> "ConversationState":
         """Create from dictionary."""
         return cls(
-            context_id=data['context_id'],
-            user_id=data.get('user_id'),
-            created_at=datetime.fromisoformat(data['created_at']),
-            updated_at=datetime.fromisoformat(data['updated_at']),
-            metadata=data.get('metadata', {}),
-            variables=data.get('variables', {}),
-            history=data.get('history', [])
+            context_id=data["context_id"],
+            user_id=data.get("user_id"),
+            created_at=datetime.fromisoformat(data["created_at"]),
+            updated_at=datetime.fromisoformat(data["updated_at"]),
+            metadata=data.get("metadata", {}),
+            variables=data.get("variables", {}),
+            history=data.get("history", []),
         )
 
 
 class StateStorage:
     """Interface for state storage backends."""
 
-    async def get(self, context_id: str) -> Optional[ConversationState]:
+    async def get(self, context_id: str) -> ConversationState | None:
         """Get conversation state."""
         raise NotImplementedError
 
@@ -60,8 +61,8 @@ class StateStorage:
         """Delete conversation state."""
         raise NotImplementedError
 
-    async def list_contexts(self, user_id: Optional[str] = None) -> List[str]:
-        """List context IDs, optionally filtered by user."""
+    async def list_contexts(self, user_id: str | None = None) -> list[str]:
+        """list context IDs, optionally filtered by user."""
         raise NotImplementedError
 
 
@@ -69,10 +70,10 @@ class InMemoryStorage(StateStorage):
     """In-memory state storage (not persistent)."""
 
     def __init__(self):
-        self._states: Dict[str, ConversationState] = {}
+        self._states: dict[str, ConversationState] = {}
         self._lock = asyncio.Lock()
 
-    async def get(self, context_id: str) -> Optional[ConversationState]:
+    async def get(self, context_id: str) -> ConversationState | None:
         """Get conversation state."""
         async with self._lock:
             return self._states.get(context_id)
@@ -87,14 +88,11 @@ class InMemoryStorage(StateStorage):
         async with self._lock:
             self._states.pop(context_id, None)
 
-    async def list_contexts(self, user_id: Optional[str] = None) -> List[str]:
-        """List context IDs, optionally filtered by user."""
+    async def list_contexts(self, user_id: str | None = None) -> list[str]:
+        """list context IDs, optionally filtered by user."""
         async with self._lock:
             if user_id:
-                return [
-                    ctx_id for ctx_id, state in self._states.items()
-                    if state.user_id == user_id\
-                ]
+                return [ctx_id for ctx_id, state in self._states.items() if state.user_id == user_id]
             return list(self._states.keys())
 
 
@@ -104,6 +102,7 @@ class FileStorage(StateStorage):
     def __init__(self, storage_dir: str = "./conversation_states"):
         self.storage_dir = storage_dir
         import os
+
         os.makedirs(storage_dir, exist_ok=True)
         self._lock = asyncio.Lock()
 
@@ -111,12 +110,12 @@ class FileStorage(StateStorage):
         """Get file path for context."""
         return f"{self.storage_dir}/{context_id}.json"
 
-    async def get(self, context_id: str) -> Optional[ConversationState]:
+    async def get(self, context_id: str) -> ConversationState | None:
         """Get conversation state."""
         async with self._lock:
             file_path = self._get_file_path(context_id)
             try:
-                with open(file_path, 'r') as f:
+                with open(file_path) as f:
                     data = json.load(f)
                 return ConversationState.from_dict(data)
             except FileNotFoundError:
@@ -130,7 +129,7 @@ class FileStorage(StateStorage):
         async with self._lock:
             file_path = self._get_file_path(state.context_id)
             try:
-                with open(file_path, 'w') as f:
+                with open(file_path, "w") as f:
                     json.dump(state.to_dict(), f)
             except Exception as e:
                 logger.error(f"Error saving state {state.context_id}: {e}")
@@ -141,20 +140,22 @@ class FileStorage(StateStorage):
             file_path = self._get_file_path(context_id)
             try:
                 import os
+
                 os.remove(file_path)
             except FileNotFoundError:
                 pass
             except Exception as e:
                 logger.error(f"Error deleting state {context_id}: {e}")
 
-    async def list_contexts(self, user_id: Optional[str] = None) -> List[str]:
-        """List context IDs, optionally filtered by user."""
+    async def list_contexts(self, user_id: str | None = None) -> list[str]:
+        """list context IDs, optionally filtered by user."""
         async with self._lock:
             import os
+
             contexts = []
             try:
                 for filename in os.listdir(self.storage_dir):
-                    if filename.endswith('.json'):
+                    if filename.endswith(".json"):
                         context_id = filename[:-5]  # Remove .json
                         if user_id:
                             # Load state to check user_id
@@ -184,6 +185,7 @@ class ValkeyStorage(StateStorage):
             try:
                 # Try to import valkey
                 import valkey.asyncio as valkey
+
                 self.client = valkey.from_url(self.url)
                 # Test connection
                 await self.client.ping()
@@ -202,7 +204,7 @@ class ValkeyStorage(StateStorage):
         """Get Valkey key for context."""
         return f"{self.key_prefix}{context_id}"
 
-    async def get(self, context_id: str) -> Optional[ConversationState]:
+    async def get(self, context_id: str) -> ConversationState | None:
         """Get conversation state from Valkey."""
         async with self._lock:
             client = await self._get_client()
@@ -216,6 +218,7 @@ class ValkeyStorage(StateStorage):
                 data = await client.get(key)
                 if data:
                     import json
+
                     data_dict = json.loads(data)
                     return ConversationState.from_dict(data_dict)
                 return None
@@ -235,6 +238,7 @@ class ValkeyStorage(StateStorage):
             try:
                 key = self._get_key(state.context_id)
                 import json
+
                 data = json.dumps(state.to_dict())
                 await client.setex(key, self.ttl, data)
             except Exception as e:
@@ -255,8 +259,8 @@ class ValkeyStorage(StateStorage):
             except Exception as e:
                 logger.error(f"Error deleting state {context_id} from Valkey: {e}")
 
-    async def list_contexts(self, user_id: Optional[str] = None) -> List[str]:
-        """List context IDs from Valkey."""
+    async def list_contexts(self, user_id: str | None = None) -> list[str]:
+        """list context IDs from Valkey."""
         async with self._lock:
             client = await self._get_client()
             if client is None:
@@ -268,12 +272,12 @@ class ValkeyStorage(StateStorage):
                 pattern = f"{self.key_prefix}*"
                 keys = await client.keys(pattern)
                 contexts = []
-                
+
                 for key in keys:
                     if isinstance(key, bytes):
-                        key = key.decode('utf-8')
-                    context_id = key.replace(self.key_prefix, '')
-                    
+                        key = key.decode("utf-8")
+                    context_id = key.replace(self.key_prefix, "")
+
                     if user_id:
                         # Load state to check user_id
                         state = await self.get(context_id)
@@ -281,7 +285,7 @@ class ValkeyStorage(StateStorage):
                             contexts.append(context_id)
                     else:
                         contexts.append(context_id)
-                        
+
                 return contexts
             except Exception as e:
                 logger.error(f"Error listing contexts from Valkey: {e}")
@@ -291,10 +295,10 @@ class ValkeyStorage(StateStorage):
 class ConversationContext:
     """Manage conversation context and state."""
 
-    def __init__(self, storage: Optional[StateStorage] = None):
+    def __init__(self, storage: StateStorage | None = None):
         self.storage = storage or InMemoryStorage()
 
-    async def get_or_create(self, context_id: str, user_id: Optional[str] = None) -> ConversationState:
+    async def get_or_create(self, context_id: str, user_id: str | None = None) -> ConversationState:
         """Get existing context or create new one."""
         state = await self.storage.get(context_id)
 
@@ -306,7 +310,7 @@ class ConversationContext:
                 updated_at=datetime.utcnow(),
                 metadata={},
                 variables={},
-                history=[]
+                history=[],
             )
             await self.storage.set(state)
 
@@ -324,16 +328,17 @@ class ConversationContext:
         state.updated_at = datetime.utcnow()
         await self.storage.set(state)
 
-    async def add_to_history(self, context_id: str, role: str, content: str,
-                           metadata: Optional[Dict[str, Any]] = None) -> None:
+    async def add_to_history(
+        self, context_id: str, role: str, content: str, metadata: dict[str, Any] | None = None
+    ) -> None:
         """Add message to conversation history."""
         state = await self.get_or_create(context_id)
 
         message = {
-            'role': role,
-            'content': content,
-            'timestamp': datetime.utcnow().isoformat(),
-            'metadata': metadata or {}
+            "role": role,
+            "content": content,
+            "timestamp": datetime.utcnow().isoformat(),
+            "metadata": metadata or {},
         }
 
         state.history.append(message)
@@ -345,7 +350,7 @@ class ConversationContext:
         state.updated_at = datetime.utcnow()
         await self.storage.set(state)
 
-    async def get_history(self, context_id: str, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+    async def get_history(self, context_id: str, limit: int | None = None) -> list[dict[str, Any]]:
         """Get conversation history."""
         state = await self.storage.get(context_id)
         if not state:
@@ -404,19 +409,19 @@ class ConversationContext:
 
 
 # Global context manager
-_context_manager: Optional[ConversationContext] = None
+_context_manager: ConversationContext | None = None
 
 
-def get_context_manager(storage_type: str = 'memory', **kwargs) -> ConversationContext:
+def get_context_manager(storage_type: str = "memory", **kwargs) -> ConversationContext:
     """Get or create global context manager."""
     global _context_manager
 
     if _context_manager is None:
-        if storage_type == 'memory':
+        if storage_type == "memory":
             storage = InMemoryStorage()
-        elif storage_type == 'file':
+        elif storage_type == "file":
             storage = FileStorage(**kwargs)
-        elif storage_type == 'valkey':
+        elif storage_type == "valkey":
             storage = ValkeyStorage(**kwargs)
         else:
             raise ValueError(f"Unknown storage type: {storage_type}")
@@ -427,29 +432,37 @@ def get_context_manager(storage_type: str = 'memory', **kwargs) -> ConversationC
 
 
 # Decorator for handlers that need state management
-def stateful(storage: str = 'memory', **storage_kwargs):
+def stateful(storage: str = "memory", **storage_kwargs):
     """Decorator to add state management to handlers."""
+
     def decorator(func):
         async def wrapper(task, *args, **kwargs):
             # Get context manager
             context = get_context_manager(storage, **storage_kwargs)
 
             # Extract context ID from task
-            context_id = getattr(task, 'context_id', None) or task.id
+            context_id = getattr(task, "context_id", None) or task.id
 
             # Add context to kwargs
-            kwargs['context'] = context
-            kwargs['context_id'] = context_id
+            kwargs["context"] = context
+            kwargs["context_id"] = context_id
 
             # Call original function
             return await func(task, *args, **kwargs)
 
         return wrapper
+
     return decorator
 
 
 # Export classes and functions
 __all__ = [
-    'ConversationState', 'StateStorage', 'InMemoryStorage', 'FileStorage', 'ValkeyStorage',
-    'ConversationContext', 'get_context_manager', 'stateful'
+    "ConversationState",
+    "StateStorage",
+    "InMemoryStorage",
+    "FileStorage",
+    "ValkeyStorage",
+    "ConversationContext",
+    "get_context_manager",
+    "stateful",
 ]

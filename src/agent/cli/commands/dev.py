@@ -1,9 +1,10 @@
+import os
 import subprocess
 import sys
-import os
 from pathlib import Path
 
 import click
+
 
 @click.command(context_settings={"help_option_names": ["-h", "--help"]})
 @click.option(
@@ -51,7 +52,7 @@ def dev(config: Path, host: str, port: int, reload: bool):
 
     # Prepare environment with proper PYTHONPATH and config path
     env = os.environ.copy()
-    env['AGENT_CONFIG_PATH'] = str(config)
+    env["AGENT_CONFIG_PATH"] = str(config)
 
     if local_main.exists():
         # We're in a generated project - ensure Python can find the local modules
@@ -59,40 +60,22 @@ def dev(config: Path, host: str, port: int, reload: bool):
         click.echo(f"Running from local project at: {project_root}")
 
         # Add project root to PYTHONPATH
-        if 'PYTHONPATH' in env:
-            env['PYTHONPATH'] = f"{project_root}{os.pathsep}{env['PYTHONPATH']}"
+        if "PYTHONPATH" in env:
+            env["PYTHONPATH"] = f"{project_root}{os.pathsep}{env['PYTHONPATH']}"
         else:
-            env['PYTHONPATH'] = str(project_root)
+            env["PYTHONPATH"] = str(project_root)
 
         click.echo(f"PYTHONPATH set to: {env.get('PYTHONPATH')}")
 
         # Build the Uvicorn command using Python module to ensure correct environment
-        cmd = [
-            sys.executable,
-            "-m",
-            "uvicorn",
-            app_module,
-            "--host",
-            host,
-            "--port",
-            str(port)
-        ]
+        cmd = [sys.executable, "-m", "uvicorn", app_module, "--host", host, "--port", str(port)]
     else:
         # We're running from installed package or source repo
         app_module = "agent.main:app"
         click.echo("Running from installed package")
 
         # Build the Uvicorn command using Python module to ensure correct environment
-        cmd = [
-            sys.executable,
-            "-m",
-            "uvicorn",
-            app_module,
-            "--host",
-            host,
-            "--port",
-            str(port)
-        ]
+        cmd = [sys.executable, "-m", "uvicorn", app_module, "--host", host, "--port", str(port)]
 
     if reload:
         cmd.append("--reload")
@@ -100,10 +83,10 @@ def dev(config: Path, host: str, port: int, reload: bool):
     click.echo(f"Running command: {' '.join(cmd)}")
 
     import signal
-    
+
     # Start the subprocess in a new process group
     proc = subprocess.Popen(cmd, env=env, preexec_fn=os.setsid)
-    
+
     # Set up signal handlers to forward signals to the child process group
     def signal_handler(signum, frame):
         if proc.poll() is None:  # Process is still running
@@ -122,11 +105,11 @@ def dev(config: Path, host: str, port: int, reload: bool):
                 # Process already terminated
                 pass
         sys.exit(0)
-    
+
     # Register signal handlers
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
-    
+
     try:
         # Wait for the process to complete
         returncode = proc.wait()

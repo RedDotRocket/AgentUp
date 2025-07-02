@@ -1,12 +1,11 @@
 import logging
-from typing import Union
 
-from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.server.context import ServerCallContext
+from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.types import (
     Message,
-    Task,
     MessageSendParams,
+    Task,
 )
 
 logger = logging.getLogger(__name__)
@@ -26,7 +25,7 @@ class CustomRequestHandler(DefaultRequestHandler):
         self,
         params: MessageSendParams,
         context: ServerCallContext | None = None,
-    ) -> Union[Message, Task]:
+    ) -> Message | Task:
         """
         Override to ensure push notification configs are saved for new tasks.
         """

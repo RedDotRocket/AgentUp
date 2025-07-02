@@ -1,23 +1,15 @@
 """Tests for the service management system (src/agent/services.py)."""
 
-import pytest
-from unittest.mock import patch
-from pathlib import Path
-
-
 # Import the services to test
 import sys
+from pathlib import Path
+from unittest.mock import patch
+
+import pytest
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
-from agent.services import (
-    Service,
-    ServiceRegistry,
-    DatabaseService,
-    CacheService,
-    WebAPIService,
-    ServiceError
-)
-
+from agent.services import CacheService, DatabaseService, Service, ServiceError, ServiceRegistry, WebAPIService
 
 
 class TestService:
@@ -49,7 +41,7 @@ class TestService:
         service = Service("test", {})
         health = await service.health_check()
 
-        assert health == {'status': 'unknown'}
+        assert health == {"status": "unknown"}
 
 
 class TestDatabaseService:
@@ -57,10 +49,7 @@ class TestDatabaseService:
 
     def test_database_service_initialization(self):
         """Test DatabaseService initialization."""
-        config = {
-            "url": "postgresql://user:pass@localhost/db",
-            "pool_size": 10
-        }
+        config = {"url": "postgresql://user:pass@localhost/db", "pool_size": 10}
 
         db_service = DatabaseService("test_db", config)
 
@@ -129,10 +118,7 @@ class TestCacheService:
 
     def test_cache_service_initialization(self):
         """Test CacheService initialization."""
-        config = {
-            "url": "valkey://localhost:6379/0",
-            "ttl": 1800
-        }
+        config = {"url": "valkey://localhost:6379/0", "ttl": 1800}
 
         cache_service = CacheService("test_cache", config)
 
@@ -224,7 +210,7 @@ class TestWebAPIService:
             "base_url": "https://api.example.com",
             "api_key": "test_key",
             "headers": {"User-Agent": "AgentUp/1.0"},
-            "timeout": 30.0
+            "timeout": 30.0,
         }
 
         web_service = WebAPIService("test_api", config)
@@ -308,11 +294,8 @@ class TestServiceRegistry:
 
     def test_service_registry_initialization_empty(self):
         """Test ServiceRegistry initialization with empty config."""
-        with patch('agent.services.load_config') as mock_load:
-            mock_load.return_value = {
-                "agent": {"name": "test"},
-                "services": {}
-            }
+        with patch("agent.services.load_config") as mock_load:
+            mock_load.return_value = {"agent": {"name": "test"}, "services": {}}
 
             registry = ServiceRegistry()
 
@@ -324,18 +307,15 @@ class TestServiceRegistry:
 
     def test_service_registry_llm_provider_mapping(self):
         """Test LLM provider mapping in ServiceRegistry."""
-        with patch('agent.services.load_config') as mock_load:
-            mock_load.return_value = {
-                "agent": {"name": "test"},
-                "services": {}
-            }
+        with patch("agent.services.load_config") as mock_load:
+            mock_load.return_value = {"agent": {"name": "test"}, "services": {}}
 
             registry = ServiceRegistry()
 
             # Test that LLM providers are properly mapped
-            from agent.llm_providers.openai import OpenAIProvider
             from agent.llm_providers.anthropic import AnthropicProvider
             from agent.llm_providers.ollama import OllamaProvider
+            from agent.llm_providers.openai import OpenAIProvider
 
             assert registry._llm_providers["openai"] == OpenAIProvider
             assert registry._llm_providers["anthropic"] == AnthropicProvider
@@ -343,17 +323,15 @@ class TestServiceRegistry:
 
     def test_register_service_type(self):
         """Test registering a custom service type."""
-        with patch('agent.services.load_config') as mock_load:
-            mock_load.return_value = {
-                "agent": {"name": "test"},
-                "services": {}
-            }
+        with patch("agent.services.load_config") as mock_load:
+            mock_load.return_value = {"agent": {"name": "test"}, "services": {}}
 
             registry = ServiceRegistry()
 
             class CustomService(Service):
                 async def initialize(self):
                     pass
+
                 async def close(self):
                     pass
 
@@ -364,19 +342,12 @@ class TestServiceRegistry:
 
     def test_create_llm_service_openai(self):
         """Test creating an OpenAI LLM service."""
-        with patch('agent.services.load_config') as mock_load:
-            mock_load.return_value = {
-                "agent": {"name": "test"},
-                "services": {}
-            }
+        with patch("agent.services.load_config") as mock_load:
+            mock_load.return_value = {"agent": {"name": "test"}, "services": {}}
 
             registry = ServiceRegistry()
 
-            config = {
-                "provider": "openai",
-                "api_key": "test_key",
-                "model": "gpt-4"
-            }
+            config = {"provider": "openai", "api_key": "test_key", "model": "gpt-4"}
 
             service = registry._create_llm_service("openai", config)
 
@@ -385,11 +356,8 @@ class TestServiceRegistry:
 
     def test_create_llm_service_missing_provider(self):
         """Test creating an LLM service without provider."""
-        with patch('agent.services.load_config') as mock_load:
-            mock_load.return_value = {
-                "agent": {"name": "test"},
-                "services": {}
-            }
+        with patch("agent.services.load_config") as mock_load:
+            mock_load.return_value = {"agent": {"name": "test"}, "services": {}}
 
             registry = ServiceRegistry()
 
@@ -400,11 +368,8 @@ class TestServiceRegistry:
 
     def test_create_llm_service_unknown_provider(self):
         """Test creating an LLM service with unknown provider."""
-        with patch('agent.services.load_config') as mock_load:
-            mock_load.return_value = {
-                "agent": {"name": "test"},
-                "services": {}
-            }
+        with patch("agent.services.load_config") as mock_load:
+            mock_load.return_value = {"agent": {"name": "test"}, "services": {}}
 
             registry = ServiceRegistry()
 
@@ -418,18 +383,12 @@ class TestServiceRegistry:
         config_data = {
             "agent": {"name": "test"},
             "services": {
-                "valkey": {
-                    "type": "cache",
-                    "settings": {"url": "valkey://localhost:6379"}
-                },
-                "postgres": {
-                    "type": "database",
-                    "settings": {"url": "postgresql://user:pass@localhost/db"}
-                }
-            }
+                "valkey": {"type": "cache", "settings": {"url": "valkey://localhost:6379"}},
+                "postgres": {"type": "database", "settings": {"url": "postgresql://user:pass@localhost/db"}},
+            },
         }
 
-        with patch('agent.services.load_config') as mock_load:
+        with patch("agent.services.load_config") as mock_load:
             mock_load.return_value = config_data
 
             registry = ServiceRegistry()
@@ -453,22 +412,13 @@ class TestServiceRegistryIntegration:
         config_data = {
             "agent": {"name": "integration-test"},
             "services": {
-                "valkey": {
-                    "type": "cache",
-                    "settings": {"url": "valkey://localhost:6379"}
-                },
-                "postgres": {
-                    "type": "database",
-                    "settings": {"url": "postgresql://user:pass@localhost/db"}
-                },
-                "custom_api": {
-                    "type": "web_api",
-                    "settings": {"base_url": "https://api.example.com"}
-                }
-            }
+                "valkey": {"type": "cache", "settings": {"url": "valkey://localhost:6379"}},
+                "postgres": {"type": "database", "settings": {"url": "postgresql://user:pass@localhost/db"}},
+                "custom_api": {"type": "web_api", "settings": {"base_url": "https://api.example.com"}},
+            },
         }
 
-        with patch('agent.services.load_config') as mock_load:
+        with patch("agent.services.load_config") as mock_load:
             mock_load.return_value = config_data
 
             registry = ServiceRegistry()
@@ -489,19 +439,12 @@ class TestServiceRegistryIntegration:
 
     def test_llm_service_creation_separately(self):
         """Test LLM service creation using _create_llm_service method."""
-        with patch('agent.services.load_config') as mock_load:
-            mock_load.return_value = {
-                "agent": {"name": "test"},
-                "services": {}
-            }
+        with patch("agent.services.load_config") as mock_load:
+            mock_load.return_value = {"agent": {"name": "test"}, "services": {}}
 
             registry = ServiceRegistry()
 
-            config = {
-                "provider": "openai",
-                "api_key": "test_key",
-                "model": "gpt-4"
-            }
+            config = {"provider": "openai", "api_key": "test_key", "model": "gpt-4"}
 
             # Test creating LLM service directly
             service = registry._create_llm_service("openai", config)

@@ -1,9 +1,11 @@
 import asyncio
 import logging
-from typing import Any, Callable, Dict, List
+from collections.abc import Callable
 from datetime import datetime
+from typing import Any, dict, list
 
 logger = logging.getLogger(__name__)
+
 
 # CONDITIONAL_MCP_IMPORTS
 def _check_fastmcp_availability():
@@ -11,9 +13,11 @@ def _check_fastmcp_availability():
     try:
         import fastmcp
         from fastmcp import FastMCP
+
         return True, fastmcp, FastMCP
     except ImportError:
         return False, None, None
+
 
 MCP_AVAILABLE, _fastmcp_module, _FastMCP = _check_fastmcp_availability()
 
@@ -24,11 +28,11 @@ if not MCP_AVAILABLE:
 class MCPServerComponent:
     """MCP server that exposes AgentUp handlers as MCP tools."""
 
-    def __init__(self, name: str, config: Dict[str, Any]):
+    def __init__(self, name: str, config: dict[str, Any]):
         self.name = name
         self.config = config
-        self._handlers: Dict[str, Callable] = {}
-        self._resources: Dict[str, Any] = {}
+        self._handlers: dict[str, Callable] = {}
+        self._resources: dict[str, Any] = {}
         self._server = None
         self._initialized = False
         self._server_task = None  # Track background server task
@@ -42,7 +46,7 @@ class MCPServerComponent:
 
         # Create FastMCP server
         logger.info("Creating FastMCP server")
-        self._server = _FastMCP(self.config.get('name', '{{ project_name_snake }}-server'))
+        self._server = _FastMCP(self.config.get("name", "{{ project_name_snake }}-server"))
 
         # Register default resources
         logger.info("Registering default MCP resources")
@@ -71,7 +75,7 @@ class MCPServerComponent:
 
         logger.info("Registered default MCP resources")
 
-    def register_handler_as_tool(self, name: str, handler: Callable, schema: Dict[str, Any]) -> None:
+    def register_handler_as_tool(self, name: str, handler: Callable, schema: dict[str, Any]) -> None:
         """Register an AgentUp handler as an MCP tool."""
         # CONDITIONAL_MCP_IMPLEMENTATION
         if not MCP_AVAILABLE or not self._server:
@@ -81,7 +85,7 @@ class MCPServerComponent:
         self._handlers[name] = handler
 
         # Extract parameters from schema
-        parameters = schema.get('parameters', {})
+        parameters = schema.get("parameters", {})
         if not parameters:
             # If no parameters defined, create a simple wrapper with no parameters
             @self._server.tool(name)
@@ -104,7 +108,7 @@ class MCPServerComponent:
                     return f"Error: {str(e)}"
         else:
             # Create wrapper with specific parameters based on schema
-            param_names = list(parameters.get('properties', {}).keys())
+            param_names = list(parameters.get("properties", {}).keys())
 
             if not param_names:
                 # No parameters, create simple wrapper
@@ -113,6 +117,7 @@ class MCPServerComponent:
                     """MCP wrapper for AgentUp handler."""
                     try:
                         from types import SimpleNamespace
+
                         mock_task = SimpleNamespace()
                         mock_task.id = f"mcp-{name}-{datetime.now().isoformat()}"
                         mock_task.metadata = {}
@@ -135,7 +140,7 @@ async def mcp_tool_wrapper({param_str}) -> str:
         from types import SimpleNamespace
         mock_task = SimpleNamespace()
         mock_task.id = f"mcp-{name}-{{datetime.now().isoformat()}}"
-        mock_task.metadata = {{{', '.join([f"'{p}': {p}" for p in param_names])}}}
+        mock_task.metadata = {{{", ".join([f"'{p}': {p}" for p in param_names])}}}
         mock_task.history = []
         result = await handler(mock_task)
         return str(result)
@@ -145,9 +150,9 @@ async def mcp_tool_wrapper({param_str}) -> str:
 """
 
                 # Execute the function definition
-                local_vars = {'handler': handler, 'logger': logger, 'datetime': datetime}
+                local_vars = {"handler": handler, "logger": logger, "datetime": datetime}
                 exec(func_source, globals(), local_vars)
-                mcp_tool_wrapper = local_vars['mcp_tool_wrapper']
+                mcp_tool_wrapper = local_vars["mcp_tool_wrapper"]
 
                 # Register with FastMCP
                 self._server.tool(name)(mcp_tool_wrapper)
@@ -185,12 +190,12 @@ async def mcp_tool_wrapper({param_str}) -> str:
 
         logger.info("MCP server closed")
 
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """Check MCP server health."""
         return {
-            'status': 'healthy' if self._initialized else 'not_initialized',
-            'handlers_registered': len(self._handlers),
-            'resources_available': len(self._resources)
+            "status": "healthy" if self._initialized else "not_initialized",
+            "handlers_registered": len(self._handlers),
+            "resources_available": len(self._resources),
         }
 
     @property
@@ -198,10 +203,10 @@ async def mcp_tool_wrapper({param_str}) -> str:
         """Check if MCP server is initialized."""
         return self._initialized
 
-    def list_handlers(self) -> List[str]:
-        """List registered handler names."""
+    def list_handlers(self) -> list[str]:
+        """list registered handler names."""
         return list(self._handlers.keys())
 
-    def list_resources(self) -> List[str]:
-        """List available resource names."""
+    def list_resources(self) -> list[str]:
+        """list available resource names."""
         return list(self._resources.keys())

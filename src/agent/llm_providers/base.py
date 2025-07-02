@@ -1,15 +1,16 @@
 import json
 import logging
 from abc import ABC, abstractmethod
-from enum import Enum
-from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
+from enum import Enum
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 class LLMCapability(Enum):
     """Supported LLM capabilities."""
+
     TEXT_COMPLETION = "text_completion"
     CHAT_COMPLETION = "chat_completion"
     FUNCTION_CALLING = "function_calling"
@@ -23,38 +24,41 @@ class LLMCapability(Enum):
 @dataclass
 class LLMResponse:
     """Standardized LLM response format."""
+
     content: str
     finish_reason: str = "stop"
-    usage: Optional[Dict[str, int]] = None
-    function_calls: Optional[List[Dict[str, Any]]] = None
-    model: Optional[str] = None
+    usage: dict[str, int] | None = None
+    function_calls: list[dict[str, Any]] | None = None
+    model: str | None = None
 
 
 @dataclass
 class FunctionCall:
     """Function call from LLM."""
+
     name: str
-    arguments: Dict[str, Any]
-    call_id: Optional[str] = None
+    arguments: dict[str, Any]
+    call_id: str | None = None
 
 
 @dataclass
 class ChatMessage:
     """Standardized chat message format."""
+
     role: str  # system, user, assistant, function
     content: str
-    function_call: Optional[FunctionCall] = None
-    function_calls: Optional[List[FunctionCall]] = None  # For parallel function calling
-    name: Optional[str] = None  # For function responses
+    function_call: FunctionCall | None = None
+    function_calls: list[FunctionCall] | None = None  # For parallel function calling
+    name: str | None = None  # For function responses
 
 
 class BaseLLMService(ABC):
     """Abstract base class for all LLM providers."""
 
-    def __init__(self, name: str, config: Dict[str, Any]):
+    def __init__(self, name: str, config: dict[str, Any]):
         self.name = name
         self.config = config
-        self._capabilities: Dict[LLMCapability, bool] = {}
+        self._capabilities: dict[LLMCapability, bool] = {}
         self._initialized = False
 
     @abstractmethod
@@ -68,7 +72,7 @@ class BaseLLMService(ABC):
         pass
 
     @abstractmethod
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """Check service health."""
         pass
 
@@ -78,17 +82,17 @@ class BaseLLMService(ABC):
         pass
 
     @abstractmethod
-    async def chat_complete(self, messages: List[ChatMessage], **kwargs) -> LLMResponse:
+    async def chat_complete(self, messages: list[ChatMessage], **kwargs) -> LLMResponse:
         """Generate chat completion from messages."""
         pass
 
-    async def embed(self, text: str) -> List[float]:
+    async def embed(self, text: str) -> list[float]:
         """Generate embeddings (optional)."""
         if not self.has_capability(LLMCapability.EMBEDDINGS):
             raise NotImplementedError(f"Provider {self.name} does not support embeddings")
         return await self._embed_impl(text)
 
-    async def _embed_impl(self, text: str) -> List[float]:
+    async def _embed_impl(self, text: str) -> list[float]:
         """Implementation of embeddings (override in subclasses that support it)."""
         raise NotImplementedError("Embeddings not implemented for this provider")
 
@@ -97,7 +101,7 @@ class BaseLLMService(ABC):
         """Check if provider has a specific capability."""
         return self._capabilities.get(capability, False)
 
-    def get_capabilities(self) -> List[LLMCapability]:
+    def get_capabilities(self) -> list[LLMCapability]:
         """Get list of supported capabilities."""
         return [cap for cap, supported in self._capabilities.items() if supported]
 
@@ -107,10 +111,7 @@ class BaseLLMService(ABC):
 
     # Function calling support
     async def chat_complete_with_functions(
-        self,
-        messages: List[ChatMessage],
-        functions: List[Dict[str, Any]],
-        **kwargs
+        self, messages: list[ChatMessage], functions: list[dict[str, Any]], **kwargs
     ) -> LLMResponse:
         """Chat completion with function calling support."""
         if self.has_capability(LLMCapability.FUNCTION_CALLING):
@@ -120,29 +121,25 @@ class BaseLLMService(ABC):
             return await self._chat_complete_with_functions_prompt(messages, functions, **kwargs)
 
     async def _chat_complete_with_functions_native(
-        self,
-        messages: List[ChatMessage],
-        functions: List[Dict[str, Any]],
-        **kwargs
+        self, messages: list[ChatMessage], functions: list[dict[str, Any]], **kwargs
     ) -> LLMResponse:
         """Native function calling implementation (override in providers that support it)."""
         raise NotImplementedError("Native function calling not implemented for this provider")
 
     async def _chat_complete_with_functions_prompt(
-        self,
-        messages: List[ChatMessage],
-        functions: List[Dict[str, Any]],
-        **kwargs
+        self, messages: list[ChatMessage], functions: list[dict[str, Any]], **kwargs
     ) -> LLMResponse:
         """Prompt-based function calling fallback."""
         # Build function descriptions
         function_descriptions = []
         for func in functions:
             func_desc = f"- {func['name']}: {func['description']}"
-            if 'parameters' in func:
-                params = func['parameters'].get('properties', {})
-                param_list = ", ".join(f"{name} ({info.get('type', 'any')}): {info.get('description', '')}"
-                                     for name, info in params.items())
+            if "parameters" in func:
+                params = func["parameters"].get("properties", {})
+                param_list = ", ".join(
+                    f"{name} ({info.get('type', 'any')}): {info.get('description', '')}"
+                    for name, info in params.items()
+                )
                 func_desc += f"\n  Parameters: {param_list}"
             function_descriptions.append(func_desc)
 
@@ -172,12 +169,12 @@ After function calls, provide a natural response based on the results."""
 
         return response
 
-    def _parse_function_calls(self, content: str) -> List[FunctionCall]:
+    def _parse_function_calls(self, content: str) -> list[FunctionCall]:
         """Parse function calls from LLM response."""
         import re
 
         function_calls = []
-        lines = content.split('\n')
+        lines = content.split("\n")
 
         for line in lines:
             line = line.strip()
@@ -185,32 +182,29 @@ After function calls, provide a natural response based on the results."""
                 function_call = line.replace("FUNCTION_CALL:", "").strip()
                 try:
                     # Extract function name and parameters
-                    match = re.match(r'(\w+)\((.*)\)', function_call)
+                    match = re.match(r"(\w+)\((.*)\)", function_call)
                     if match:
                         function_name, params_str = match.groups()
 
                         # Parse parameters (simplified)
                         params = {}
                         if params_str:
-                            param_pairs = params_str.split(',')
+                            param_pairs = params_str.split(",")
                             for pair in param_pairs:
-                                if '=' in pair:
-                                    key, value = pair.split('=', 1)
+                                if "=" in pair:
+                                    key, value = pair.split("=", 1)
                                     key = key.strip().strip('"')
                                     value = value.strip().strip('"')
                                     params[key] = value
 
-                        function_calls.append(FunctionCall(
-                            name=function_name,
-                            arguments=params
-                        ))
+                        function_calls.append(FunctionCall(name=function_name, arguments=params))
                 except Exception as e:
                     logger.warning(f"Failed to parse function call: {function_call}, error: {e}")
 
         return function_calls
 
     # Utility methods
-    def _messages_to_prompt(self, messages: List[ChatMessage]) -> str:
+    def _messages_to_prompt(self, messages: list[ChatMessage]) -> str:
         """Convert messages to prompt format (for completion-only models)."""
         prompt_parts = []
         for msg in messages:
@@ -228,26 +222,19 @@ After function calls, provide a natural response based on the results."""
         prompt_parts.append("Assistant:")
         return "\n\n".join(prompt_parts)
 
-    def _chat_message_to_dict(self, message: ChatMessage) -> Dict[str, Any]:
+    def _chat_message_to_dict(self, message: ChatMessage) -> dict[str, Any]:
         """Convert ChatMessage to provider-specific format."""
-        msg_dict = {
-            "role": message.role,
-            "content": message.content
-        }
+        msg_dict = {"role": message.role, "content": message.content}
 
         if message.function_call:
             msg_dict["function_call"] = {
                 "name": message.function_call.name,
-                "arguments": json.dumps(message.function_call.arguments)
+                "arguments": json.dumps(message.function_call.arguments),
             }
 
         if message.function_calls:
             msg_dict["function_calls"] = [
-                {
-                    "name": fc.name,
-                    "arguments": json.dumps(fc.arguments),
-                    "id": fc.call_id
-                }
+                {"name": fc.name, "arguments": json.dumps(fc.arguments), "id": fc.call_id}
                 for fc in message.function_calls
             ]
 
@@ -256,18 +243,15 @@ After function calls, provide a natural response based on the results."""
 
         return msg_dict
 
-    def _dict_to_chat_message(self, msg_dict: Dict[str, Any]) -> ChatMessage:
+    def _dict_to_chat_message(self, msg_dict: dict[str, Any]) -> ChatMessage:
         """Convert provider response to ChatMessage."""
-        message = ChatMessage(
-            role=msg_dict.get("role", "assistant"),
-            content=msg_dict.get("content", "")
-        )
+        message = ChatMessage(role=msg_dict.get("role", "assistant"), content=msg_dict.get("content", ""))
 
         if "function_call" in msg_dict:
             fc = msg_dict["function_call"]
             message.function_call = FunctionCall(
                 name=fc["name"],
-                arguments=json.loads(fc["arguments"]) if isinstance(fc["arguments"], str) else fc["arguments"]
+                arguments=json.loads(fc["arguments"]) if isinstance(fc["arguments"], str) else fc["arguments"],
             )
 
         if "function_calls" in msg_dict:
@@ -275,7 +259,7 @@ After function calls, provide a natural response based on the results."""
                 FunctionCall(
                     name=fc["name"],
                     arguments=json.loads(fc["arguments"]) if isinstance(fc["arguments"], str) else fc["arguments"],
-                    call_id=fc.get("id")
+                    call_id=fc.get("id"),
                 )
                 for fc in msg_dict["function_calls"]
             ]
@@ -290,27 +274,30 @@ After function calls, provide a natural response based on the results."""
         """Check if service is initialized."""
         return self._initialized
 
-    def get_model_info(self) -> Dict[str, Any]:
+    def get_model_info(self) -> dict[str, Any]:
         """Get information about the model."""
         return {
             "name": self.name,
             "provider": self.__class__.__name__,
             "model": self.config.get("model", "unknown"),
             "capabilities": [cap.value for cap in self.get_capabilities()],
-            "initialized": self.is_initialized
+            "initialized": self.is_initialized,
         }
 
 
 class LLMProviderError(Exception):
     """Base exception for LLM provider errors."""
+
     pass
 
 
 class LLMProviderConfigError(LLMProviderError):
     """Configuration error for LLM provider."""
+
     pass
 
 
 class LLMProviderAPIError(LLMProviderError):
     """API error from LLM provider."""
+
     pass

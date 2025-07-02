@@ -1,10 +1,11 @@
 import logging
-from typing import List, Any
+from typing import Any
 
 from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
 from a2a.server.tasks import TaskUpdater
 from a2a.types import (
+    AgentCard,
     DataPart,
     InvalidParamsError,
     Part,
@@ -17,15 +18,14 @@ from a2a.types import (
 )
 from a2a.utils import (
     new_agent_text_message,
-    new_task,
     new_artifact,
     new_data_artifact,
+    new_task,
 )
 from a2a.utils.errors import ServerError
-from .models import BaseAgent
-from a2a.types import AgentCard
-from .function_dispatcher import get_function_dispatcher
 
+from .function_dispatcher import get_function_dispatcher
+from .models import BaseAgent
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -36,7 +36,7 @@ class GenericAgentExecutor(AgentExecutor):
 
     def __init__(self, agent: BaseAgent | AgentCard):
         self.agent = agent
-        self.supports_streaming = getattr(agent, 'supports_streaming', False)
+        self.supports_streaming = getattr(agent, "supports_streaming", False)
 
         # Handle both BaseAgent and AgentCard
         if isinstance(agent, AgentCard):
@@ -46,32 +46,32 @@ class GenericAgentExecutor(AgentExecutor):
 
         # Load config for new routing system
         from .config import load_config
+
         config = load_config()
 
         # Parse routing configuration (implicit routing based on keywords/patterns)
-        self.fallback_skill = 'echo'  # Default fallback skill
+        self.fallback_skill = "echo"  # Default fallback skill
         self.fallback_enabled = True
 
         # Parse skills with implicit routing configuration
         self.skills = {}
-        for skill_data in config.get('skills', []):
-            if skill_data.get('enabled', True):
-                skill_id = skill_data['skill_id']
-                keywords = skill_data.get('keywords', [])
-                patterns = skill_data.get('patterns', [])
-                
+        for skill_data in config.get("skills", []):
+            if skill_data.get("enabled", True):
+                skill_id = skill_data["skill_id"]
+                keywords = skill_data.get("keywords", [])
+                patterns = skill_data.get("patterns", [])
+
                 # Implicit routing: if keywords or patterns exist, direct routing is available
                 has_direct_routing = bool(keywords or patterns)
-                
-                self.skills[skill_id] = {
-                    'has_direct_routing': has_direct_routing,
-                    'keywords': keywords,
-                    'patterns': patterns,
-                    'name': skill_data.get('name', skill_id),
-                    'description': skill_data.get('description', ''),
-                    'priority': skill_data.get('priority', 100)
-                }
 
+                self.skills[skill_id] = {
+                    "has_direct_routing": has_direct_routing,
+                    "keywords": keywords,
+                    "patterns": patterns,
+                    "name": skill_data.get("name", skill_id),
+                    "description": skill_data.get("description", ""),
+                    "priority": skill_data.get("priority", 100),
+                }
 
         # Initialize Function Dispatcher for AI routing (all skills are available for AI routing)
         # AI routing is available when there are skills without direct routing or as fallback
@@ -82,7 +82,7 @@ class GenericAgentExecutor(AgentExecutor):
         context: RequestContext,
         event_queue: EventQueue,
     ) -> None:
-        logger.info(f'Executing agent {self.agent_name}')
+        logger.info(f"Executing agent {self.agent_name}")
         error = self._validate_request(context)
         if error:
             raise ServerError(error=InvalidParamsError(data={"reason": error}))
@@ -127,7 +127,7 @@ class GenericAgentExecutor(AgentExecutor):
             logger.info(f"Processing task {task.id} with skill '{target_skill}' using {routing_mode} routing")
 
             # Process based on determined routing mode
-            if routing_mode == 'ai':
+            if routing_mode == "ai":
                 # Use AI routing - LLM selects the appropriate skill
                 if self.supports_streaming:
                     # Stream responses incrementally
@@ -151,9 +151,9 @@ class GenericAgentExecutor(AgentExecutor):
                         f"This operation is not supported: {str(e)}",
                         task.contextId,
                         task.id,
-                ),
-                final=True,
-            )
+                    ),
+                    final=True,
+                )
         except Exception as e:
             logger.error(f"Error processing task: {e}")
             await updater.update_status(
@@ -168,7 +168,7 @@ class GenericAgentExecutor(AgentExecutor):
 
     def _determine_skill_and_routing(self, user_input: str) -> tuple[str, str]:
         """Determine which skill and routing mode to use for the user input.
-        
+
         New implicit routing logic:
         1. Check for direct routing matches (keywords/patterns) with priority
         2. If no direct match found, use AI routing
@@ -177,23 +177,23 @@ class GenericAgentExecutor(AgentExecutor):
         import re
 
         if not user_input:
-            return self.fallback_skill, 'direct'
+            return self.fallback_skill, "direct"
 
         direct_matches = []
 
         # Check each skill for direct routing matches
         for skill_id, skill_config in self.skills.items():
-            if not skill_config['has_direct_routing']:
+            if not skill_config["has_direct_routing"]:
                 continue
 
-            keywords = skill_config.get('keywords', [])
-            patterns = skill_config.get('patterns', [])
+            keywords = skill_config.get("keywords", [])
+            patterns = skill_config.get("patterns", [])
 
             # Check keywords
             for keyword in keywords:
                 if keyword.lower() in user_input.lower():
                     logger.debug(f"Matched keyword '{keyword}' for skill '{skill_id}'")
-                    direct_matches.append((skill_id, skill_config['priority']))
+                    direct_matches.append((skill_id, skill_config["priority"]))
                     break  # Found a match for this skill, no need to check more keywords
 
             # Check patterns if no keyword match found for this skill
@@ -202,7 +202,7 @@ class GenericAgentExecutor(AgentExecutor):
                     try:
                         if re.search(pattern, user_input, re.IGNORECASE):
                             logger.debug(f"Matched pattern '{pattern}' for skill '{skill_id}'")
-                            direct_matches.append((skill_id, skill_config['priority']))
+                            direct_matches.append((skill_id, skill_config["priority"]))
                             break  # Found a match for this skill
                     except re.error as e:
                         logger.warning(f"Invalid regex pattern '{pattern}' in skill '{skill_id}': {e}")
@@ -213,12 +213,11 @@ class GenericAgentExecutor(AgentExecutor):
             direct_matches.sort(key=lambda x: x[1])
             selected_skill = direct_matches[0][0]
             logger.info(f"Direct routing to skill '{selected_skill}' (priority: {direct_matches[0][1]})")
-            return selected_skill, 'direct'
+            return selected_skill, "direct"
 
         # No direct routing match found, use AI routing
         logger.info("No direct routing match found, using AI routing")
-        return None, 'ai'
-
+        return None, "ai"
 
     async def _process_direct_routing(self, task: Task, target_skill: str = None) -> str:
         """Process task using direct handler routing (no AI)."""
@@ -230,6 +229,7 @@ class GenericAgentExecutor(AgentExecutor):
 
         # Get handler for the skill
         from .handlers import get_handler
+
         handler = get_handler(skill_id)
 
         if not handler:
@@ -246,16 +246,16 @@ class GenericAgentExecutor(AgentExecutor):
     def _extract_user_message(self, task: Task) -> str:
         """Extract user message from A2A task using A2A SDK structure."""
         try:
-            if not (hasattr(task, 'history') and task.history):
+            if not (hasattr(task, "history") and task.history):
                 return ""
 
             # Get the latest user message from history
             for message in reversed(task.history):
-                if message.role == 'user' and message.parts:
+                if message.role == "user" and message.parts:
                     for part in message.parts:
                         # A2A SDK uses Part(root=TextPart(...)) structure
-                        if hasattr(part, 'root') and hasattr(part.root, 'kind'):
-                            if part.root.kind == 'text' and hasattr(part.root, 'text'):
+                        if hasattr(part, "root") and hasattr(part.root, "kind"):
+                            if part.root.kind == "text" and hasattr(part.root, "text"):
                                 return part.root.text
             return ""
         except Exception as e:
@@ -273,7 +273,7 @@ class GenericAgentExecutor(AgentExecutor):
             # Start streaming
             stream = await self.dispatcher.process_task_streaming(task)
 
-            artifact_parts: List[Part] = []
+            artifact_parts: list[Part] = []
             chunk_count = 0
 
             async for chunk in stream:
@@ -286,9 +286,7 @@ class GenericAgentExecutor(AgentExecutor):
 
                     # Send incremental update
                     artifact = new_artifact(
-                        [part],
-                        name=f"{self.agent_name}-stream-{chunk_count}",
-                        description="Streaming response"
+                        [part], name=f"{self.agent_name}-stream-{chunk_count}", description="Streaming response"
                     )
 
                     update_event = TaskArtifactUpdateEvent(
@@ -324,9 +322,7 @@ class GenericAgentExecutor(AgentExecutor):
             # Final update
             if artifact_parts:
                 final_artifact = new_artifact(
-                    artifact_parts,
-                    name=f"{self.agent_name}-complete",
-                    description="Complete response"
+                    artifact_parts, name=f"{self.agent_name}-complete", description="Complete response"
                 )
                 await updater.add_artifact(artifact_parts, name=final_artifact.name)
 
@@ -355,7 +351,7 @@ class GenericAgentExecutor(AgentExecutor):
             )
             return
 
-        parts: List[Part] = []
+        parts: list[Part] = []
 
         # Handle different result types
         if isinstance(result, str):
@@ -368,18 +364,14 @@ class GenericAgentExecutor(AgentExecutor):
                 parts.append(Part(root=TextPart(text=result["summary"])))
             parts.append(Part(root=DataPart(data=result)))
         elif isinstance(result, list):
-            # List of items - convert to structured data
+            # list of items - convert to structured data
             parts.append(Part(root=DataPart(data={"items": result})))
         else:
             # Fallback to string representation
             parts.append(Part(root=TextPart(text=str(result))))
 
         # Create multi-modal artifact
-        artifact = new_artifact(
-            parts,
-            name=f"{self.agent_name}-result",
-            description=f"Response from {self.agent_name}"
-        )
+        artifact = new_artifact(parts, name=f"{self.agent_name}-result", description=f"Response from {self.agent_name}")
 
         await updater.add_artifact(parts, name=artifact.name)
         await updater.complete()
@@ -393,9 +385,7 @@ class GenericAgentExecutor(AgentExecutor):
     def _validate_request(self, context: RequestContext) -> bool:
         return False
 
-    async def cancel(
-        self, request: RequestContext, event_queue: EventQueue
-    ) -> Task | None:
+    async def cancel(self, request: RequestContext, event_queue: EventQueue) -> Task | None:
         """Cancel a running task if supported."""
         task = request.current_task
 
@@ -411,7 +401,7 @@ class GenericAgentExecutor(AgentExecutor):
             )
 
         # If dispatcher supports cancellation
-        if hasattr(self.dispatcher, 'cancel_task'):
+        if hasattr(self.dispatcher, "cancel_task"):
             try:
                 await self.dispatcher.cancel_task(task.id)
 
@@ -434,14 +424,10 @@ class GenericAgentExecutor(AgentExecutor):
             except Exception as e:
                 logger.error(f"Error canceling task {task.id}: {e}")
                 raise ServerError(
-                    error=UnsupportedOperationError(
-                        data={"reason": f"Failed to cancel task: {str(e)}"}
-                    )
-                )
+                    error=UnsupportedOperationError(data={"reason": f"Failed to cancel task: {str(e)}"})
+                ) from e
         else:
             # Cancellation not supported by dispatcher
             raise ServerError(
-                error=UnsupportedOperationError(
-                    data={"reason": "Task cancellation is not supported by this agent"}
-                )
+                error=UnsupportedOperationError(data={"reason": "Task cancellation is not supported by this agent"})
             )

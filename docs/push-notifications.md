@@ -27,7 +27,7 @@ AgentUp fully implements the A2A specification for push notifications, supportin
 
 - `tasks/pushNotificationConfig/set` - Configure webhook for a task
 - `tasks/pushNotificationConfig/get` - Retrieve webhook configuration
-- `tasks/pushNotificationConfig/list` - List all webhooks for a task
+- `tasks/pushNotificationConfig/list` - list all webhooks for a task
 - `tasks/pushNotificationConfig/delete` - Remove webhook configuration
 
 ## Configuration
@@ -199,9 +199,9 @@ curl -X POST http://localhost:8000/ \
   }'
 ```
 
-### List All Configurations
+### list All Configurations
 
-List all push notification configurations for a task (supports multiple webhooks):
+list all push notification configurations for a task (supports multiple webhooks):
 
 ```bash
 curl -X POST http://localhost:8000/ \

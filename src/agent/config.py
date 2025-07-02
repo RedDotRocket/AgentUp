@@ -1,11 +1,11 @@
 import os
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import yaml
 
 
-def load_config(config_path: str = "agent_config.yaml") -> Dict[str, Any]:
+def load_config(config_path: str = "agent_config.yaml") -> dict[str, Any]:
     """Load agent configuration from YAML file."""
     # Check for config path from environment variable first
     env_config_path = os.getenv("AGENT_CONFIG_PATH")
@@ -18,7 +18,7 @@ def load_config(config_path: str = "agent_config.yaml") -> Dict[str, Any]:
         # Return error
         raise FileNotFoundError(f"Configuration file not found: {path}")
 
-    with open(path, 'r') as f:
+    with open(path) as f:
         config = yaml.safe_load(f)
 
     # Process environment variables
@@ -50,7 +50,8 @@ def _process_env_vars(config: Any) -> Any:
     else:
         return config
 
-def merge_configs(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+
+def merge_configs(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
     """Merge two configurations, with override taking precedence."""
     result = base.copy()
 

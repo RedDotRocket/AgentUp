@@ -1,11 +1,12 @@
 import importlib
+from collections.abc import Callable
 from datetime import datetime
-from typing import Any, Callable, List, Optional
+from typing import Any
 
 from a2a.types import Task
 
 
-def load_callable(path: Optional[str]) -> Optional[Callable[..., Any]]:
+def load_callable(path: str | None) -> Callable[..., Any] | None:
     """
     Given "some.module:func", import and return the func,
     or return None if path is falsy or import fails.
@@ -20,12 +21,11 @@ def load_callable(path: Optional[str]) -> Optional[Callable[..., Any]]:
         return None
 
 
-
 class TaskValidator:
     """Validate A2A task compliance and structure."""
 
     @staticmethod
-    def validate_task(task: Task) -> List[str]:
+    def validate_task(task: Task) -> list[str]:
         """Validate task structure and return list of errors."""
         errors = []
 
@@ -41,9 +41,9 @@ class TaskValidator:
             errors.append("Task metadata must be a dictionary")
 
         # Validate history if present
-        if hasattr(task, 'history') and task.history:
+        if hasattr(task, "history") and task.history:
             for i, entry in enumerate(task.history):
-                if not hasattr(entry, 'parts') or not entry.parts:
+                if not hasattr(entry, "parts") or not entry.parts:
                     errors.append(f"History entry {i} missing parts")
 
         return errors
@@ -54,25 +54,26 @@ class TaskValidator:
         return len(TaskValidator.validate_task(task)) == 0
 
 
-def extract_parameter(text: str, param_name: str) -> Optional[str]:
+def extract_parameter(text: str, param_name: str) -> str | None:
     """Extract parameter value from text using simple pattern matching."""
     import re
 
     # Pattern for "param_name: value" or "param_name = value"
-    pattern = rf'{re.escape(param_name)}\s*[:=]\s*([^,\n]+)'
+    pattern = rf"{re.escape(param_name)}\s*[:=]\s*([^,\n]+)"
     match = re.search(pattern, text, re.IGNORECASE)
     if match:
-        return match.group(1).strip().strip('"\'')
+        return match.group(1).strip().strip("\"'")
     return None
 
 
-def format_response(content: str, format_type: str = 'plain') -> str:
+def format_response(content: str, format_type: str = "plain") -> str:
     """Format response content based on type."""
-    if format_type == 'markdown':
+    if format_type == "markdown":
         # Simple markdown formatting
-        content = content.replace('\n\n', '\n\n---\n\n')
-    elif format_type == 'json':
+        content = content.replace("\n\n", "\n\n---\n\n")
+    elif format_type == "json":
         import json
+
         try:
             # Try to parse and pretty-format JSON
             data = json.loads(content)
@@ -80,12 +81,12 @@ def format_response(content: str, format_type: str = 'plain') -> str:
         except json.JSONDecodeError:
             # If not JSON, wrap in JSON structure
             content = json.dumps({"response": content}, indent=2)
-    elif format_type == 'html':
+    elif format_type == "html":
         # Basic HTML escaping
-        content = content.replace('&', '&amp;')
-        content = content.replace('<', '&lt;')
-        content = content.replace('>', '&gt;')
-        content = content.replace('\n', '<br>')
+        content = content.replace("&", "&amp;")
+        content = content.replace("<", "&lt;")
+        content = content.replace(">", "&gt;")
+        content = content.replace("\n", "<br>")
 
     return content
 
@@ -93,10 +94,10 @@ def format_response(content: str, format_type: str = 'plain') -> str:
 def sanitize_input(text: str) -> str:
     """Sanitize user input for security."""
     # Remove potentially dangerous characters
-    text = text.replace('<script', '&lt;script')
-    text = text.replace('</script>', '&lt;/script&gt;')
-    text = text.replace('javascript:', '')
-    text = text.replace('data:', '')
+    text = text.replace("<script", "&lt;script")
+    text = text.replace("</script>", "&lt;/script&gt;")
+    text = text.replace("javascript:", "")
+    text = text.replace("data:", "")
 
     # Limit length
     if len(text) > 10000:
@@ -108,6 +109,7 @@ def sanitize_input(text: str) -> str:
 def generate_task_id() -> str:
     """Generate a unique task ID."""
     import uuid
+
     return str(uuid.uuid4())
 
 
@@ -118,7 +120,10 @@ def get_timestamp() -> str:
 
 # Export utility functions
 __all__ = [
-    'TaskValidator',
-    'extract_parameter', 'format_response', 'sanitize_input',
-    'generate_task_id', 'get_timestamp'
+    "TaskValidator",
+    "extract_parameter",
+    "format_response",
+    "sanitize_input",
+    "generate_task_id",
+    "get_timestamp",
 ]

@@ -2,9 +2,10 @@
 
 import os
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
-from typing import Dict, Any, Generator
-from unittest.mock import Mock, AsyncMock
+from typing import Any
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 import yaml
@@ -21,14 +22,10 @@ def temp_dir() -> Generator[Path, None, None]:
 
 
 @pytest.fixture
-def sample_agent_config() -> Dict[str, Any]:
+def sample_agent_config() -> dict[str, Any]:
     """Sample agent configuration for testing."""
     return {
-        "agent": {
-            "name": "test-agent",
-            "description": "Test Agent for Unit Testing",
-            "version": "0.1.0"
-        },
+        "agent": {"name": "test-agent", "description": "Test Agent for Unit Testing", "version": "0.1.0"},
         "skills": [
             {
                 "skill_id": "ai_assistant",
@@ -38,7 +35,7 @@ def sample_agent_config() -> Dict[str, Any]:
                 # No keywords or patterns defined, only available via AI routing
                 "input_mode": "text",
                 "output_mode": "text",
-                "priority": 100
+                "priority": 100,
             }
         ],
         "ai_provider": {
@@ -47,53 +44,22 @@ def sample_agent_config() -> Dict[str, Any]:
             "model": "gpt-4o-mini",
             "temperature": 0.7,
             "max_tokens": 1000,
-            "top_p": 1.0
+            "top_p": 1.0,
         },
         "services": {},
-        "security": {
-            "enabled": False,
-            "type": "api_key"
-        },
-        "middleware": [
-            {
-                "name": "logged",
-                "params": {
-                    "log_level": 20
-                }
-            },
-            {
-                "name": "timed",
-                "params": {}
-            }
-        ],
-        "push_notifications": {
-            "enabled": True,
-            "backend": "memory",
-            "validate_urls": True
-        },
-        "cache": {
-            "backend": "memory",
-            "default_ttl": 1800,
-            "max_size": 1000,
-            "enabled": True
-        },
-        "state": {
-            "backend": "file",
-            "storage_dir": "./conversation_states",
-            "ttl": 3600
-        }
+        "security": {"enabled": False, "type": "api_key"},
+        "middleware": [{"name": "logged", "params": {"log_level": 20}}, {"name": "timed", "params": {}}],
+        "push_notifications": {"enabled": True, "backend": "memory", "validate_urls": True},
+        "cache": {"backend": "memory", "default_ttl": 1800, "max_size": 1000, "enabled": True},
+        "state": {"backend": "file", "storage_dir": "./conversation_states", "ttl": 3600},
     }
 
 
 @pytest.fixture
-def minimal_agent_config() -> Dict[str, Any]:
+def minimal_agent_config() -> dict[str, Any]:
     """Minimal agent configuration for testing."""
     return {
-        "agent": {
-            "name": "minimal-test",
-            "description": "Minimal Test Agent",
-            "version": "0.1.0"
-        },
+        "agent": {"name": "minimal-test", "description": "Minimal Test Agent", "version": "0.1.0"},
         "skills": [
             {
                 "skill_id": "echo",
@@ -104,56 +70,48 @@ def minimal_agent_config() -> Dict[str, Any]:
                 "output_mode": "text",
                 "keywords": ["echo", "repeat", "say"],
                 "patterns": [".*"],
-                "priority": 50
+                "priority": 50,
             }
-        ]
+        ],
     }
 
 
 @pytest.fixture
-def ollama_agent_config() -> Dict[str, Any]:    
+def ollama_agent_config() -> dict[str, Any]:
     """Ollama-specific agent configuration for testing."""
     return {
-        "agent": {
-            "name": "ollama-test",
-            "description": "Ollama Test Agent",
-            "version": "0.1.0"
-        },
+        "agent": {"name": "ollama-test", "description": "Ollama Test Agent", "version": "0.1.0"},
         "ai_provider": {
             "provider": "ollama",
             "model": "qwen3:0.6b",
             "base_url": "${OLLAMA_BASE_URL:http://localhost:11434/v1}",
             "temperature": 0.7,
             "max_tokens": 1000,
-            "top_p": 1.0
+            "top_p": 1.0,
         },
-        "services": {}
+        "services": {},
     }
 
 
-@pytest.fixture  
-def anthropic_agent_config() -> Dict[str, Any]:
+@pytest.fixture
+def anthropic_agent_config() -> dict[str, Any]:
     """Anthropic-specific agent configuration for testing."""
     return {
-        "agent": {
-            "name": "anthropic-test", 
-            "description": "Anthropic Test Agent",
-            "version": "0.1.0"
-        },
+        "agent": {"name": "anthropic-test", "description": "Anthropic Test Agent", "version": "0.1.0"},
         "ai_provider": {
             "provider": "anthropic",
             "api_key": "${ANTHROPIC_API_KEY}",
             "model": "claude-3-haiku-20240307",
             "temperature": 0.7,
             "max_tokens": 1000,
-            "top_p": 1.0
+            "top_p": 1.0,
         },
-        "services": {}
+        "services": {},
     }
 
 
 @pytest.fixture
-def project_config() -> Dict[str, Any]:
+def project_config() -> dict[str, Any]:
     """Sample project configuration for generator testing."""
     return {
         "name": "test-project",
@@ -161,15 +119,10 @@ def project_config() -> Dict[str, Any]:
         "template": "standard",
         "features": ["services", "middleware", "auth", "ai_provider", "mcp"],
         "services": ["valkey"],
-        "ai_provider_config": {
-            "provider": "openai"
-        },
-        "feature_config": {
-            "auth": "api_key",
-            "middleware": ["rate_limit", "cache", "logging"]
-        }
+        "ai_provider_config": {"provider": "openai"},
+        "feature_config": {"auth": "api_key", "middleware": ["rate_limit", "cache", "logging"]},
     }
-  
+
 
 @pytest.fixture
 def mock_llm_service():
@@ -209,21 +162,16 @@ def mock_anthropic_client():
 def mock_ollama_client():
     """Mock Ollama client for testing."""
     mock_client = AsyncMock()
-    mock_response = {
-        "message": {
-            "content": "Mock Ollama response"
-        },
-        "done": True
-    }
+    mock_response = {"message": {"content": "Mock Ollama response"}, "done": True}
     mock_client.chat.return_value = mock_response
     return mock_client
 
 
 @pytest.fixture
-def config_file(temp_dir: Path, sample_agent_config: Dict[str, Any]) -> Path:
+def config_file(temp_dir: Path, sample_agent_config: dict[str, Any]) -> Path:
     """Create a temporary config file."""
     config_file = temp_dir / "agent_config.yaml"
-    with open(config_file, 'w') as f:
+    with open(config_file, "w") as f:
         yaml.dump(sample_agent_config, f, default_flow_style=False)
     return config_file
 
@@ -232,21 +180,21 @@ def config_file(temp_dir: Path, sample_agent_config: Dict[str, Any]) -> Path:
 def env_vars():
     """Set up test environment variables."""
     test_env = {
-        'OPENAI_API_KEY': 'test_openai_key',
-        'ANTHROPIC_API_KEY': 'test_anthropic_key', 
-        'OLLAMA_BASE_URL': 'http://localhost:11434',
-        'VALKEY_URL': 'valkey://localhost:6379',
-        'DATABASE_URL': 'postgresql://test:test@localhost/test'
+        "OPENAI_API_KEY": "test_openai_key",
+        "ANTHROPIC_API_KEY": "test_anthropic_key",
+        "OLLAMA_BASE_URL": "http://localhost:11434",
+        "VALKEY_URL": "valkey://localhost:6379",
+        "DATABASE_URL": "postgresql://test:test@localhost/test",
     }
-    
+
     # Store original values
     original_env = {}
     for key, value in test_env.items():
         original_env[key] = os.environ.get(key)
         os.environ[key] = value
-    
+
     yield test_env
-    
+
     # Restore original values
     for key, original_value in original_env.items():
         if original_value is None:
@@ -261,38 +209,31 @@ def mock_file_system(temp_dir: Path):
     # Create mock directory structure
     src_dir = temp_dir / "src" / "agent"
     src_dir.mkdir(parents=True)
-    
+
     # Create mock Python files
     for filename in ["__init__.py", "main.py", "config.py", "api.py"]:
         (src_dir / filename).write_text(f"# Mock {filename}\npass\n")
-    
-    return {
-        "temp_dir": temp_dir,
-        "src_dir": src_dir,
-        "files": ["__init__.py", "main.py", "config.py", "api.py"]
-    }
+
+    return {"temp_dir": temp_dir, "src_dir": src_dir, "files": ["__init__.py", "main.py", "config.py", "api.py"]}
 
 
 @pytest.fixture(scope="session")
 def agent_templates():
     """Load agent template information for testing."""
     return {
-        "minimal": {
-            "features": [],
-            "description": "Basic agent without AI or advanced features"
-        },
+        "minimal": {"features": [], "description": "Basic agent without AI or advanced features"},
         "standard": {
             "features": ["services", "middleware", "mcp"],
-            "description": "AI-powered agent with MCP integration"
+            "description": "AI-powered agent with MCP integration",
         },
         "full": {
             "features": ["services", "middleware", "auth", "state", "multimodal", "mcp", "monitoring"],
-            "description": "All features enabled including database, cache, monitoring"
+            "description": "All features enabled including database, cache, monitoring",
         },
         "demo": {
             "features": ["services", "middleware", "mcp"],
-            "description": "Pre-configured demo skills for testing"
-        }
+            "description": "Pre-configured demo skills for testing",
+        },
     }
 
 
@@ -300,6 +241,7 @@ def agent_templates():
 def cli_runner():
     """Click CLI test runner."""
     from click.testing import CliRunner
+
     return CliRunner()
 
 
@@ -308,6 +250,7 @@ def cli_runner():
 def event_loop():
     """Create an instance of the default event loop for the test session."""
     import asyncio
+
     loop = asyncio.get_event_loop_policy().new_event_loop()
     yield loop
     loop.close()

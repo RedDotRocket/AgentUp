@@ -1,16 +1,14 @@
-import pytest
-from pathlib import Path
-from unittest.mock import patch, Mock
-
 # Import the generator to test
 import sys
+from pathlib import Path
+from unittest.mock import Mock, patch
+
+import pytest
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 from agent.generator import ProjectGenerator
-
-from tests.utils.test_helpers import (
-    create_test_config
-)
+from tests.utils.test_helpers import create_test_config
 
 
 class TestProjectGenerator:
@@ -31,10 +29,7 @@ class TestProjectGenerator:
     def test_generator_features_from_config(self, temp_dir: Path):
         """Test that generator uses features from config."""
         config = create_test_config(
-            "feature-test",
-            "standard",
-            ["services", "middleware", "auth"],
-            ["openai", "valkey"]
+            "feature-test", "standard", ["services", "middleware", "auth"], ["openai", "valkey"]
         )
 
         generator = ProjectGenerator(temp_dir, config)
@@ -49,10 +44,8 @@ class TestProjectGenerator:
         config = {"name": "fallback-test", "template": "standard"}
 
         # Mock the get_template_features function
-        with patch('agent.generator.get_template_features') as mock_get_features:
-            mock_get_features.return_value = {
-                "standard": {"features": ["services", "middleware"]}
-            }
+        with patch("agent.generator.get_template_features") as mock_get_features:
+            mock_get_features.return_value = {"standard": {"features": ["services", "middleware"]}}
 
             generator = ProjectGenerator(temp_dir, config)
 
@@ -138,12 +131,12 @@ class TestProjectGenerationFlow:
     @pytest.fixture
     def mock_template_system(self):
         """Mock the template system to avoid file dependencies."""
-        with patch('agent.generator.get_template_features') as mock_features:
+        with patch("agent.generator.get_template_features") as mock_features:
             mock_features.return_value = {
                 "minimal": {"features": []},
                 "standard": {"features": ["services", "middleware", "mcp"]},
                 "full": {"features": ["services", "middleware", "auth", "state", "multimodal", "mcp", "monitoring"]},
-                "demo": {"features": ["services", "middleware", "mcp"]}
+                "demo": {"features": ["services", "middleware", "mcp"]},
             }
             yield mock_features
 
@@ -152,10 +145,11 @@ class TestProjectGenerationFlow:
         config = create_test_config("minimal-test", "minimal", [], [])
 
         # Mock file operations
-        with patch.object(ProjectGenerator, '_copy_framework_files') as mock_copy, \
-             patch.object(ProjectGenerator, '_generate_template_files') as mock_template, \
-             patch.object(ProjectGenerator, '_generate_config_files') as mock_config:
-
+        with (
+            patch.object(ProjectGenerator, "_copy_framework_files") as mock_copy,
+            patch.object(ProjectGenerator, "_generate_template_files") as mock_template,
+            patch.object(ProjectGenerator, "_generate_config_files") as mock_config,
+        ):
             generator = ProjectGenerator(temp_dir, config)
             generator.generate()
 
@@ -166,17 +160,13 @@ class TestProjectGenerationFlow:
 
     def test_generate_standard_project_with_openai(self, temp_dir: Path, mock_template_system):
         """Test generating a standard project with OpenAI."""
-        config = create_test_config(
-            "standard-openai-test",
-            "standard",
-            ["services", "middleware"],
-            ["openai"]
-        )
+        config = create_test_config("standard-openai-test", "standard", ["services", "middleware"], ["openai"])
 
-        with patch.object(ProjectGenerator, '_copy_framework_files') as mock_copy, \
-             patch.object(ProjectGenerator, '_generate_template_files') as mock_template, \
-             patch.object(ProjectGenerator, '_generate_config_files') as mock_config:
-
+        with (
+            patch.object(ProjectGenerator, "_copy_framework_files") as mock_copy,
+            patch.object(ProjectGenerator, "_generate_template_files") as mock_template,
+            patch.object(ProjectGenerator, "_generate_config_files") as mock_config,
+        ):
             generator = ProjectGenerator(temp_dir, config)
             generator.generate()
 
@@ -187,12 +177,7 @@ class TestProjectGenerationFlow:
 
     def test_generate_ollama_project(self, temp_dir: Path, mock_template_system):
         """Test generating a project with Ollama (critical test for recent fix)."""
-        config = create_test_config(
-            "ollama-test",
-            "standard",
-            ["services", "middleware"],
-            ["ollama"]
-        )
+        config = create_test_config("ollama-test", "standard", ["services", "middleware"], ["ollama"])
 
         generator = ProjectGenerator(temp_dir, config)
 
@@ -209,12 +194,7 @@ class TestProjectGenerationFlow:
 
     def test_generate_anthropic_project(self, temp_dir: Path, mock_template_system):
         """Test generating a project with Anthropic."""
-        config = create_test_config(
-            "anthropic-test",
-            "standard",
-            ["services", "middleware"],
-            ["anthropic"]
-        )
+        config = create_test_config("anthropic-test", "standard", ["services", "middleware"], ["anthropic"])
 
         generator = ProjectGenerator(temp_dir, config)
 
@@ -236,10 +216,7 @@ class TestTemplateRendering:
     def test_render_template_context(self, temp_dir: Path):
         """Test that template context is properly created."""
         config = create_test_config(
-            "context-test",
-            "standard",
-            ["services", "middleware", "auth"],
-            ["openai", "valkey"]
+            "context-test", "standard", ["services", "middleware", "auth"], ["openai", "valkey"]
         )
 
         generator = ProjectGenerator(temp_dir, config)
@@ -277,7 +254,7 @@ class TestTemplateRendering:
             "no-llm-test",
             "standard",
             ["middleware"],  # No services
-            []
+            [],
         )
 
         generator = ProjectGenerator(temp_dir, config)
@@ -368,12 +345,7 @@ class TestConfigurationGeneration:
 
     def test_build_services_config_multiple_services(self, temp_dir: Path):
         """Test services configuration with multiple services."""
-        config = create_test_config(
-            "multi-service-test",
-            "full",
-            ["services"],
-            ["openai", "valkey", "postgres"]
-        )
+        config = create_test_config("multi-service-test", "full", ["services"], ["openai", "valkey", "postgres"])
         generator = ProjectGenerator(temp_dir, config)
 
         services_config = generator._build_services_config()
@@ -415,9 +387,7 @@ class TestConfigurationGeneration:
     def test_build_middleware_config(self, temp_dir: Path):
         """Test middleware configuration building."""
         config = create_test_config("middleware-test", "standard", ["middleware"])
-        config["feature_config"] = {
-            "middleware": ["rate_limit", "cache", "logging", "retry"]
-        }
+        config["feature_config"] = {"middleware": ["rate_limit", "cache", "logging", "retry"]}
         generator = ProjectGenerator(temp_dir, config)
 
         middleware_config = generator._build_middleware_config()

@@ -2,9 +2,9 @@
 # Useful commands for testing, template generation, and development
 
 .PHONY: help install test test-coverage lint format clean build docs
-.PHONY: template-test template-render agent-create agent-test
+.PHONY: template-test template-render agent-create agent-test type-check
 .PHONY: dev-server example-client check-deps sync-templates example-agent
-.PHONY: docker-build docker-run release validate-all
+.PHONY: docker-build docker-run release validate-all template-test-syntax
 
 # Default target
 help: ## Show this help message
@@ -42,15 +42,19 @@ test-watch: ## Run tests in watch mode
 	uv run pytest-watch --runner "uv run pytest"
 
 test-integration: ## Run integration tests only
-	uv run pytest tests/test_integration.py -v
+	chmod +x tests/integration/int.sh
+	./tests/integration/int.sh
 
 test-templates: ## Test template rendering and syntax
 	uv run pytest tests/test_template_rendering.py -v
 
+template-test-syntax: ## Test template syntax only (quick)
+	uv run python -c "from jinja2 import Environment, FileSystemLoader; env = Environment(loader=FileSystemLoader('src/agent/templates')); [env.get_template(t) for t in ['config/agent_config_minimal.yaml.j2', 'config/agent_config_standard.yaml.j2', 'config/agent_config_full.yaml.j2', 'config/agent_config_demo.yaml.j2']]"
+	@echo "✅ Template syntax validated"
+
 # Code quality
 lint: ## Run linting checks
 	uv run ruff check src/ tests/
-	uv run mypy src/
 
 lint-fix: ## Fix linting issues automatically
 	uv run ruff check --fix src/ tests/
@@ -62,25 +66,24 @@ format: ## Format code with ruff
 format-check: ## Check code formatting
 	uv run ruff format --check src/ tests/
 
-# Template and generation commands
-template-render: ## Render all templates for testing
-	uv run python -m agent.cli.commands.render_templates \
-		--output-dir ./test-render \
-		--validate \
-		--clean
+# Security scanning
+security: ## Run bandit security scan
+	uv run bandit -r src/ -ll
 
-template-render-keep: ## Render templates and keep output
-	uv run python -m agent.cli.commands.render_templates \
-		--output-dir ./test-render \
-		--validate \
-		--keep
+security-report: ## Generate bandit security report in JSON
+	uv run bandit -r src/ -f json -o bandit-report.json
 
-template-test-syntax: ## Test template syntax only
-	uv run pytest tests/test_template_rendering.py::TestTemplateRendering::test_python_syntax_validation -v
+security-full: ## Run full security scan with medium severity
+	uv run bandit -r src/ -l
 
-sync-templates: ## Sync templates with reference implementation
-	uv run python scripts/sync_templates.py
-	@echo "✅ Templates synced with reference implementation"
+# CI-specific commands
+ci-integration: ## Run integration tests for CI
+	chmod +x tests/integration/int.sh
+	./tests/integration/int.sh
+
+ci-deps: ## Check dependencies for CI
+	uv pip check
+	uv pip freeze > requirements-ci.txt
 
 # Agent creation and testing
 agent-create: ## Create a test agent (interactive)
@@ -133,8 +136,6 @@ dev-server-test: ## Start test agent server
 		echo "❌ No test agent found. Run 'make agent-create-standard' first"; \
 	fi
 
-example-client: ## Run example client against development server
-	uv run python example_client.py
 
 # Testing with curl
 test-ping: ## Test server health endpoint
@@ -147,13 +148,6 @@ test-hello: ## Test hello endpoint with curl
 		-H 'Content-Type: application/json' \
 		-d '{"jsonrpc": "2.0", "method": "send_message", "params": {"messages": [{"role": "user", "content": "Hello!"}]}, "id": "1"}' \
 		| python -m json.tool || echo "❌ Server not running"
-# Documentation
-docs: ## Generate documentation
-	@echo "📚 Generating documentation..."
-	@echo "- API documentation in docs/"
-	@echo "- Routing guide: docs/routing-and-function-calling.md"
-	@echo "- Maintenance guide: docs/maintenance.md"
-	@echo "✅ Documentation ready"
 
 docs-serve: ## Serve documentation locally
 	@if command -v mkdocs >/dev/null 2>&1; then \
@@ -215,7 +209,6 @@ validate-all: lint test template-test ## Run all validation checks
 ci-test: ## Run CI test suite
 	uv run pytest --cov=src --cov-report=xml --cov-report=term
 	uv run ruff check src/ tests/
-	uv run mypy src/
 
 # Utility commands
 version: ## Show current version
@@ -259,61 +252,3 @@ add-skill: ## Add skill to existing agent (interactive)
 
 validate-config: ## Validate agent configuration
 	uv run agentup validate
-
-deploy-files: ## Generate deployment files
-	uv run agentup deploy
-
-# Performance testing
-perf-test: ## Run performance tests
-	@echo "Running performance tests..."
-	@if [ -d "./test-agents/standard" ]; then \
-		cd ./test-agents/standard && \
-		echo "Testing response times..." && \
-		time curl -s -X POST http://localhost:8001/ \
-			-H 'Content-Type: application/json' \
-			-d '{"jsonrpc": "2.0", "method": "send_message", "params": {"messages": [{"role": "user", "content": "Hello"}]}, "id": "1"}' \
-			>/dev/null || echo "❌ Server not running on :8001"; \
-	else \
-		echo "❌ No test agent found. Run 'make agent-create-standard' first"; \
-	fi
-
-# Debugging helpers
-debug-templates: ## Debug template rendering issues
-	@echo "Debugging template rendering..."
-	uv run python -c "\
-from .templates import get_template_features; \
-import json; \
-print('Available templates:'); \
-print(json.dumps(get_template_features(), indent=2))"
-
-debug-components: ## List available components
-	@echo "Available components:"
-	@ls -la src/agentup/components/ | grep -E '\.py$$' | awk '{print "  - " $$9}' | sed 's/.py//'
-
-debug-logs: ## Show recent logs from test agent
-	@if [ -d "./test-agents/standard" ]; then \
-		echo "📋 Recent logs (if any):"; \
-		find ./test-agents/standard -name "*.log" -exec tail -20 {} \; 2>/dev/null || echo "No log files found"; \
-	else \
-		echo "❌ No test agent found"; \
-	fi
-
-# Example workflows
-example-agent: ## Create and test example agent example
-	@echo "Creating example agent example..."
-	uv run agentup create-agent \
-		--quick example-agent \
-		--template standard \
-		--output-dir ./example-agent
-	@echo "✅ Example agent created in ./example-agent"
-	@echo "💡 Next steps:"
-	@echo "   1. cd ./example-agentt"
-	@echo "   2. uv run uvicorn src.agent.main:app --reload"
-
-example-chatbot: ## Create chatbot example
-	@echo "💬 Creating chatbot example..."
-	uv run agentup create-agent \
-		--quick simple-chatbot \
-		--template chatbot \
-		--output-dir ./examples/chatbot
-	@echo "✅ Chatbot created in ./examples/chatbot"

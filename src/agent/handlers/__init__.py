@@ -1,27 +1,28 @@
-import logging
 import importlib
+import logging
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 from .handlers import (  # noqa: E402
-    get_handler,
-    register_handler,
     get_all_handlers,
-    list_skills,
-    handle_status,
+    get_handler,
     handle_capabilities,
-    handle_echo
+    handle_echo,
+    handle_status,
+    list_skills,
+    register_handler,
 )
 
 # Import multimodal handlers if available
 try:
     from .handlers_multimodal import (  # noqa: E402
-        handle_analyze_image,
-        handle_process_document,
-        handle_transform_image,
-        handle_multimodal_chat
+        handle_analyze_image,  # noqa: F401
+        handle_multimodal_chat,  # noqa: F401
+        handle_process_document,  # noqa: F401
+        handle_transform_image,  # noqa: F401
     )
+
     multimodal_available = True
 except ImportError as e:
     logger.debug(f"Multimodal handlers not available: {e}")
@@ -29,6 +30,7 @@ except ImportError as e:
 except Exception as e:
     logger.error(f"Failed to import multimodal handlers: {e}", exc_info=True)
     multimodal_available = False
+
 
 # Dynamic handler discovery and import
 def discover_and_import_handlers():
@@ -51,7 +53,7 @@ def discover_and_import_handlers():
 
         try:
             # Try to import the module
-            importlib.import_module(f'.{module_name}', package=__name__)
+            importlib.import_module(f".{module_name}", package=__name__)
             discovered_modules.append(module_name)
             logger.debug(f"Successfully imported handler module: {module_name}")
 
@@ -75,31 +77,33 @@ def discover_and_import_handlers():
 
     return discovered_modules, failed_imports
 
+
 # Run dynamic discovery
 discovered_modules, failed_imports = discover_and_import_handlers()
 
 # Export all public functions and handlers (core only)
 __all__ = [
     # Core handler functions
-    'get_handler',
-    'register_handler',
-    'get_all_handlers',
-    'list_skills',
-
+    "get_handler",
+    "register_handler",
+    "get_all_handlers",
+    "list_skills",
     # Core handlers
-    'handle_status',
-    'handle_capabilities',
-    'handle_echo',
+    "handle_status",
+    "handle_capabilities",
+    "handle_echo",
 ]
 
 # Add multimodal handlers to exports if available
 if multimodal_available:
-    __all__.extend([
-        'handle_analyze_image',
-        'handle_process_document',
-        'handle_transform_image',
-        'handle_multimodal_chat',
-    ])
+    __all__.extend(
+        [
+            "handle_analyze_image",
+            "handle_process_document",
+            "handle_transform_image",
+            "handle_multimodal_chat",
+        ]
+    )
 
 
 # Auto-discovery of individual handler files

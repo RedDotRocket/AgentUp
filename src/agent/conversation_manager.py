@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -9,19 +9,24 @@ class ConversationManager:
     """Manages Agent conversation history and context."""
 
     def __init__(self):
-        self.conversation_history: Dict[str, List[Dict[str, Any]]] = {}
+        self.conversation_history: dict[str, list[dict[str, Any]]] = {}
 
-    async def prepare_llm_conversation(self, user_input: str, conversation: List[Dict[str, Any]]) -> List[Dict[str, str]]:
+    async def prepare_llm_conversation(
+        self, user_input: str, conversation: list[dict[str, Any]]
+    ) -> list[dict[str, str]]:
         """Prepare conversation for LLM with system prompt and history."""
 
         # Get system prompt from config
         from .config import load_config
+
         config = load_config()
-        ai_config = config.get('ai', {})
-        
+        ai_config = config.get("ai", {})
+
         # Use configured system prompt or fallback to default
         # TODO: Need to move all these prompts to config
-        system_prompt = ai_config.get('system_prompt', """You are an AI agent with access to specific functions/skills.
+        system_prompt = ai_config.get(
+            "system_prompt",
+            """You are an AI agent with access to specific functions/skills.
 
 Your role:
 - Understand user requests naturally
@@ -35,7 +40,8 @@ When users ask for something:
 3. Synthesize the results into a natural, helpful response
 4. If no function is needed, respond conversationally
 
-Always be helpful, accurate, and maintain a friendly tone.""")
+Always be helpful, accurate, and maintain a friendly tone.""",
+        )
 
         messages = [{"role": "system", "content": system_prompt}]
 
@@ -49,7 +55,7 @@ Always be helpful, accurate, and maintain a friendly tone.""")
 
         return messages
 
-    def get_conversation_history(self, context_id: str) -> List[Dict[str, Any]]:
+    def get_conversation_history(self, context_id: str) -> list[dict[str, Any]]:
         """Get conversation history for context."""
         return self.conversation_history.get(context_id, [])
 
@@ -58,11 +64,9 @@ Always be helpful, accurate, and maintain a friendly tone.""")
         if context_id not in self.conversation_history:
             self.conversation_history[context_id] = []
 
-        self.conversation_history[context_id].append({
-            "user": user_input,
-            "assistant": response,
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        })
+        self.conversation_history[context_id].append(
+            {"user": user_input, "assistant": response, "timestamp": datetime.now(timezone.utc).isoformat()}
+        )
 
         # Keep last 20 turns to manage memory
         if len(self.conversation_history[context_id]) > 20:

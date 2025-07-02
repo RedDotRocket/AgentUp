@@ -1,48 +1,47 @@
-import pytest
-from unittest.mock import Mock, patch
-from pathlib import Path
 import json
-
-# Import FastAPI testing utilities
-from fastapi.testclient import TestClient
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
 
 # Import the API components to test
 import sys
+from pathlib import Path
+from unittest.mock import Mock, patch
+
+import pytest
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+
+# Import FastAPI testing utilities
+from fastapi.testclient import TestClient
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
+from a2a.server.request_handlers import DefaultRequestHandler
+
 from agent.api import (
-    router,
     create_agent_card,
     get_request_handler,
-    set_request_handler_instance,
     jsonrpc_error_handler,
+    router,
+    set_request_handler_instance,
     sse_generator,
 )
 from agent.models import (
-    AgentCard,
     AgentCapabilities,
+    AgentCard,
     JSONRPCError,
 )
-from a2a.server.request_handlers import DefaultRequestHandler
 
 
 class TestAgentCard:
     """Test agent card creation."""
 
-    @patch('agent.api.load_config')
+    @patch("agent.api.load_config")
     def test_create_agent_card_minimal(self, mock_load_config):
         """Test creating agent card with minimal configuration."""
         mock_load_config.return_value = {
             "project_name": "TestAgent",
             "description": "Test Agent Description",
-            "agent": {
-                "name": "TestAgent",
-                "description": "Test Agent",
-                "version": "1.0.0"
-            },
-            "skills": []
+            "agent": {"name": "TestAgent", "description": "Test Agent", "version": "1.0.0"},
+            "skills": [],
         }
 
         card = create_agent_card()
@@ -59,15 +58,11 @@ class TestAgentCard:
         assert card.capabilities.pushNotifications is True
         assert card.capabilities.stateTransitionHistory is True
 
-    @patch('agent.api.load_config')
+    @patch("agent.api.load_config")
     def test_create_agent_card_with_skills(self, mock_load_config):
         """Test creating agent card with skills."""
         mock_load_config.return_value = {
-            "agent": {
-                "name": "SkillfulAgent",
-                "description": "Agent with skills",
-                "version": "2.0.0"
-            },
+            "agent": {"name": "SkillfulAgent", "description": "Agent with skills", "version": "2.0.0"},
             "skills": [
                 {
                     "skill_id": "chat",
@@ -75,9 +70,9 @@ class TestAgentCard:
                     "description": "General chat capabilities",
                     "input_mode": "text",
                     "output_mode": "text",
-                    "tags": ["chat", "general"]
+                    "tags": ["chat", "general"],
                 }
-            ]
+            ],
         }
 
         card = create_agent_card()
@@ -86,16 +81,13 @@ class TestAgentCard:
         assert card.skills[0].id == "chat"
         assert card.skills[0].name == "Chat"
 
-    @patch('agent.api.load_config')
+    @patch("agent.api.load_config")
     def test_create_agent_card_with_security_enabled(self, mock_load_config):
         """Test creating agent card with security enabled."""
         mock_load_config.return_value = {
             "agent": {"name": "SecureAgent"},
             "skills": [],
-            "security": {
-                "enabled": True,
-                "type": "api_key"
-            }
+            "security": {"enabled": True, "type": "api_key"},
         }
 
         card = create_agent_card()
@@ -122,6 +114,7 @@ class TestRequestHandlerManagement:
         """Test getting request handler when not initialized."""
         # Clear the global handler
         import agent.api
+
         agent.api._request_handler = None
 
         with pytest.raises(RuntimeError, match="Request handler not initialized"):
@@ -143,12 +136,10 @@ class TestHealthEndpoints:
         """Create test client."""
         return TestClient(app)
 
-    @patch('agent.api.load_config')
+    @patch("agent.api.load_config")
     def test_health_check(self, mock_load_config, client):
         """Test basic health check endpoint."""
-        mock_load_config.return_value = {
-            "project_name": "TestAgent"
-        }
+        mock_load_config.return_value = {"project_name": "TestAgent"}
 
         response = client.get("/health")
 
@@ -169,7 +160,7 @@ class TestAgentDiscovery:
         app.include_router(router)
         return TestClient(app)
 
-    @patch('agent.api.create_agent_card')
+    @patch("agent.api.create_agent_card")
     def test_agent_discovery_endpoint(self, mock_create_card, client):
         """Test /.well-known/agent.json endpoint."""
         mock_card = AgentCard(
@@ -177,14 +168,10 @@ class TestAgentDiscovery:
             description="Test Description",
             version="1.0.0",
             url="http://localhost:8000",
-            capabilities=AgentCapabilities(
-                streaming=True,
-                pushNotifications=True,
-                stateTransitionHistory=True
-            ),
+            capabilities=AgentCapabilities(streaming=True, pushNotifications=True, stateTransitionHistory=True),
             skills=[],
             defaultInputModes=["text"],
-            defaultOutputModes=["text"]
+            defaultOutputModes=["text"],
         )
         mock_create_card.return_value = mock_card
 
@@ -213,7 +200,7 @@ class TestJSONRPCEndpoint:
         set_request_handler_instance(handler)
         return handler
 
-    @patch('agent.api.protected')
+    @patch("agent.api.protected")
     def test_jsonrpc_not_dict(self, mock_protected, client, mock_handler):
         """Test JSON-RPC endpoint with non-dict body."""
         mock_protected.return_value = lambda func: func
@@ -225,32 +212,24 @@ class TestJSONRPCEndpoint:
         assert data["error"]["code"] == -32600
         assert data["error"]["message"] == "Invalid Request"
 
-    @patch('agent.api.protected')
+    @patch("agent.api.protected")
     def test_jsonrpc_wrong_version(self, mock_protected, client, mock_handler):
         """Test JSON-RPC endpoint with wrong version."""
         mock_protected.return_value = lambda func: func
 
-        response = client.post("/", json={
-            "jsonrpc": "1.0",
-            "method": "test",
-            "id": 1
-        })
+        response = client.post("/", json={"jsonrpc": "1.0", "method": "test", "id": 1})
 
         assert response.status_code == 200
         data = response.json()
         assert data["error"]["code"] == -32600
         assert data["error"]["message"] == "Invalid Request"
 
-    @patch('agent.api.protected')
+    @patch("agent.api.protected")
     def test_jsonrpc_method_not_found(self, mock_protected, client, mock_handler):
         """Test JSON-RPC endpoint with unknown method."""
         mock_protected.return_value = lambda func: func
 
-        response = client.post("/", json={
-            "jsonrpc": "2.0",
-            "method": "unknown/method",
-            "id": 1
-        })
+        response = client.post("/", json={"jsonrpc": "2.0", "method": "unknown/method", "id": 1})
 
         assert response.status_code == 200
         data = response.json()
@@ -264,6 +243,7 @@ class TestSSEGenerator:
     @pytest.mark.asyncio
     async def test_sse_generator_success(self):
         """Test SSE generator with successful responses."""
+
         async def mock_iterator():
             for i in range(3):
                 mock_response = Mock()
@@ -282,6 +262,7 @@ class TestSSEGenerator:
     @pytest.mark.asyncio
     async def test_sse_generator_error(self):
         """Test SSE generator with error."""
+
         async def mock_iterator():
             yield Mock(model_dump_json=Mock(return_value='{"data": "ok"}'))
             raise Exception("Stream error")
@@ -302,11 +283,7 @@ class TestJSONRPCErrorHandler:
     async def test_jsonrpc_error_handler(self):
         """Test JSON-RPC error handler."""
         request = Mock(spec=Request)
-        error = JSONRPCError(
-            code=-32600,
-            message="Invalid Request",
-            data={"detail": "Missing required field"}
-        )
+        error = JSONRPCError(code=-32600, message="Invalid Request", data={"detail": "Missing required field"})
 
         response = await jsonrpc_error_handler(request, error)
 

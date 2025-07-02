@@ -1,1 +1,0 @@
-"""Core framework component tests."""

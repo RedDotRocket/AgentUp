@@ -1,23 +1,23 @@
 import logging
+from collections.abc import AsyncGenerator
 from datetime import datetime
-from typing import Any, Dict, AsyncGenerator, Union
-
-from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import JSONResponse, StreamingResponse
+from typing import Any
 
 from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.server.request_handlers.jsonrpc_handler import JSONRPCHandler
 from a2a.types import (
+    CancelTaskRequest,
+    GetTaskPushNotificationConfigRequest,
+    GetTaskRequest,
+    InternalError,
+    JSONRPCErrorResponse,
     SendMessageRequest,
     SendStreamingMessageRequest,
-    GetTaskRequest,
-    CancelTaskRequest,
-    TaskResubscriptionRequest,
     SetTaskPushNotificationConfigRequest,
-    GetTaskPushNotificationConfigRequest,
-    JSONRPCErrorResponse,
-    InternalError,
+    TaskResubscriptionRequest,
 )
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from .config import load_config
 from .models import (
@@ -30,10 +30,10 @@ from .models import (
     JSONRPCError,
 )
 from .push_types import (
-    ListTaskPushNotificationConfigRequest,
-    ListTaskPushNotificationConfigResponse,
     DeleteTaskPushNotificationConfigRequest,
     DeleteTaskPushNotificationConfigResponse,
+    listTaskPushNotificationConfigRequest,
+    listTaskPushNotificationConfigResponse,
 )
 from .security import protected
 
@@ -47,7 +47,7 @@ router = APIRouter()
 config = load_config()
 
 # Task storage
-task_storage: Dict[str, Dict[str, Any]] = {}
+task_storage: dict[str, dict[str, Any]] = {}
 
 # Request handler instance management
 _request_handler: DefaultRequestHandler | None = None
@@ -65,6 +65,7 @@ def get_request_handler() -> DefaultRequestHandler:
         raise RuntimeError("Request handler not initialized")
     return _request_handler
 
+
 def create_agent_card() -> AgentCard:
     """Create agent card with current configuration."""
 
@@ -81,7 +82,7 @@ def create_agent_card() -> AgentCard:
             description=skill.get("description"),
             inputModes=[skill.get("input_mode", "text")],
             outputModes=[skill.get("output_mode", "text")],
-            tags=skill.get("tags", ["general"])
+            tags=skill.get("tags", ["general"]),
         )
         agent_skills.append(agent_skill)
 
@@ -99,7 +100,7 @@ def create_agent_card() -> AgentCard:
                 "transport": "http",
                 "authentication": "api_key",
             },
-            required=False
+            required=False,
         )
         extensions.append(mcp_extension)
 
@@ -107,7 +108,7 @@ def create_agent_card() -> AgentCard:
         streaming=True,
         pushNotifications=True,  # Enabled since we have InMemoryPushNotifier configured
         stateTransitionHistory=True,
-        extensions=extensions if extensions else None
+        extensions=extensions if extensions else None,
     )
 
     # Create security schemes based on configuration
@@ -120,21 +121,21 @@ def create_agent_card() -> AgentCard:
 
         if auth_type == "api_key":
             # API Key authentication
-            api_key_scheme = APIKeySecurityScheme.model_validate({
-            "name": "X-API-Key",
-            "description": "API key for authentication",
-            "in": "header",  # <- use the JSON alias
-            "type": "apiKey"
-        })
+            api_key_scheme = APIKeySecurityScheme.model_validate(
+                {
+                    "name": "X-API-Key",
+                    "description": "API key for authentication",
+                    "in": "header",  # <- use the JSON alias
+                    "type": "apiKey",
+                }
+            )
             security_schemes["X-API-Key"] = api_key_scheme.model_dump(by_alias=True)
             security_requirements.append({"X-API-Key": []})
 
         elif auth_type == "bearer":
             # Bearer Token authentication
             bearer_scheme = HTTPAuthSecurityScheme(
-                scheme="bearer",
-                description="Bearer token for authentication",
-                type="http"
+                scheme="bearer", description="Bearer token for authentication", type="http"
             )
             security_schemes["BearerAuth"] = bearer_scheme.model_dump(by_alias=True)
             security_requirements.append({"BearerAuth": []})
@@ -148,7 +149,7 @@ def create_agent_card() -> AgentCard:
                 scheme="bearer",
                 description="OAuth2 Bearer token for authentication",
                 type="http",
-                bearerFormat="JWT"  # Indicate JWT format for OAuth2
+                bearerFormat="JWT",  # Indicate JWT format for OAuth2
             )
             security_schemes["OAuth2"] = oauth2_scheme.model_dump(by_alias=True)
             security_requirements.append({"OAuth2": required_scopes})
@@ -164,7 +165,7 @@ def create_agent_card() -> AgentCard:
         defaultInputModes=["text"],
         defaultOutputModes=["text"],
         securitySchemes=security_schemes if security_schemes else None,
-        security=security_requirements if security_requirements else None
+        security=security_requirements if security_requirements else None,
     )
 
     return agent_card
@@ -182,18 +183,19 @@ async def get_task_status(task_id: str, request: Request) -> JSONResponse:
 
     response = {
         "id": task_id,
-        "status": task_data['status'].value,
-        "created_at": task_data['created_at'].isoformat(),
-        "updated_at": task_data['updated_at'].isoformat()
+        "status": task_data["status"].value,
+        "created_at": task_data["created_at"].isoformat(),
+        "updated_at": task_data["updated_at"].isoformat(),
     }
 
-    if 'result' in task_data:
-        response['result'] = task_data['result']
+    if "result" in task_data:
+        response["result"] = task_data["result"]
 
-    if 'error' in task_data:
-        response['error'] = task_data['error']
+    if "error" in task_data:
+        response["error"] = task_data["error"]
 
     return JSONResponse(status_code=200, content=response)
+
 
 @router.get("/health")
 async def health_check() -> JSONResponse:
@@ -203,40 +205,41 @@ async def health_check() -> JSONResponse:
         status_code=200,
         content={
             "status": "healthy",
-            "agent": config.get('project_name', 'Agent'),
-            "timestamp": datetime.now().isoformat()
-        }
+            "agent": config.get("project_name", "Agent"),
+            "timestamp": datetime.now().isoformat(),
+        },
     )
+
 
 @router.get("/services/health")
 async def services_health() -> JSONResponse:
     """Check health of all services."""
     try:
         from .services import get_services
+
         services = get_services()
         health_results = await services.health_check_all()
     except ImportError:
         health_results = {"error": "Services module not available"}
 
-    all_healthy = all(
-        result.get('status') == 'healthy'
-        for result in health_results.values()
-    )
+    all_healthy = all(result.get("status") == "healthy" for result in health_results.values())
 
     return JSONResponse(
         status_code=200 if all_healthy else 503,
         content={
             "status": "healthy" if all_healthy else "degraded",
             "services": health_results,
-            "timestamp": datetime.now().isoformat()
-        }
+            "timestamp": datetime.now().isoformat(),
+        },
     )
+
 
 # A2A AgentCard
 @router.get("/.well-known/agent.json", response_model=AgentCard)
 async def get_agent_discovery() -> AgentCard:
     """A2A agent discovery endpoint."""
     return create_agent_card()
+
 
 async def sse_generator(async_iterator: AsyncGenerator) -> AsyncGenerator[str, None]:
     """Convert async iterator to SSE format."""
@@ -247,18 +250,16 @@ async def sse_generator(async_iterator: AsyncGenerator) -> AsyncGenerator[str, N
             yield f"data: {data}\n\n"
     except Exception as e:
         # Send error event
-        error_response = JSONRPCErrorResponse(
-            id=None,
-            error=InternalError(message=str(e))
-        )
+        error_response = JSONRPCErrorResponse(id=None, error=InternalError(message=str(e)))
         yield f"data: {error_response.model_dump_json(by_alias=True)}\n\n"
+
 
 @router.post("/", response_model=None)
 @protected()
 async def jsonrpc_endpoint(
     request: Request,
     handler: DefaultRequestHandler = Depends(get_request_handler),
-) -> Union[JSONResponse, StreamingResponse]:
+) -> JSONResponse | StreamingResponse:
     """This is the main JSON-RPC 2.0 endpoint with SSE Streaming support."""
     try:
         # Parse JSON-RPC request
@@ -270,12 +271,9 @@ async def jsonrpc_endpoint(
                 status_code=200,
                 content={
                     "jsonrpc": "2.0",
-                    "error": {
-                        "code": -32600,
-                        "message": "Invalid Request"
-                    },
-                    "id": body.get("id") if isinstance(body, dict) else None
-                }
+                    "error": {"code": -32600, "message": "Invalid Request"},
+                    "id": body.get("id") if isinstance(body, dict) else None,
+                },
             )
 
         if body.get("jsonrpc") != "2.0":
@@ -283,12 +281,9 @@ async def jsonrpc_endpoint(
                 status_code=200,
                 content={
                     "jsonrpc": "2.0",
-                    "error": {
-                        "code": -32600,
-                        "message": "Invalid Request"
-                    },
-                    "id": body.get("id")
-                }
+                    "error": {"code": -32600, "message": "Invalid Request"},
+                    "id": body.get("id"),
+                },
             )
 
         method = body.get("method")
@@ -298,14 +293,7 @@ async def jsonrpc_endpoint(
         if not method:
             return JSONResponse(
                 status_code=200,
-                content={
-                    "jsonrpc": "2.0",
-                    "error": {
-                        "code": -32600,
-                        "message": "Invalid Request"
-                    },
-                    "id": request_id
-                }
+                content={"jsonrpc": "2.0", "error": {"code": -32600, "message": "Invalid Request"}, "id": request_id},
             )
 
         # Create JSONRPCHandler with the agent card, which is needed for capabilities,
@@ -316,26 +304,13 @@ async def jsonrpc_endpoint(
         # Route to appropriate handler based on method
         if method == "message/send":
             # Non-streaming method
-            rpc_request = SendMessageRequest(
-                jsonrpc="2.0",
-                id=request_id,
-                method=method,
-                params=params
-            )
+            rpc_request = SendMessageRequest(jsonrpc="2.0", id=request_id, method=method, params=params)
             response = await jsonrpc_handler.on_message_send(rpc_request)
-            return JSONResponse(
-                status_code=200,
-                content=response.model_dump(by_alias=True)
-            )
+            return JSONResponse(status_code=200, content=response.model_dump(by_alias=True))
 
         elif method == "message/stream":
             # Streaming method - return SSE
-            rpc_request = SendStreamingMessageRequest(
-                jsonrpc="2.0",
-                id=request_id,
-                method=method,
-                params=params
-            )
+            rpc_request = SendStreamingMessageRequest(jsonrpc="2.0", id=request_id, method=method, params=params)
             response_stream = jsonrpc_handler.on_message_send_stream(rpc_request)
             return StreamingResponse(
                 sse_generator(response_stream),
@@ -344,45 +319,24 @@ async def jsonrpc_endpoint(
                     "Cache-Control": "no-cache",
                     "Connection": "keep-alive",
                     "X-Accel-Buffering": "no",
-                }
+                },
             )
 
         elif method == "tasks/get":
             # Non-streaming method
-            rpc_request = GetTaskRequest(
-                jsonrpc="2.0",
-                id=request_id,
-                method=method,
-                params=params
-            )
+            rpc_request = GetTaskRequest(jsonrpc="2.0", id=request_id, method=method, params=params)
             response = await jsonrpc_handler.on_get_task(rpc_request)
-            return JSONResponse(
-                status_code=200,
-                content=response.model_dump(by_alias=True)
-            )
+            return JSONResponse(status_code=200, content=response.model_dump(by_alias=True))
 
         elif method == "tasks/cancel":
             # Non-streaming method
-            rpc_request = CancelTaskRequest(
-                jsonrpc="2.0",
-                id=request_id,
-                method=method,
-                params=params
-            )
+            rpc_request = CancelTaskRequest(jsonrpc="2.0", id=request_id, method=method, params=params)
             response = await jsonrpc_handler.on_cancel_task(rpc_request)
-            return JSONResponse(
-                status_code=200,
-                content=response.model_dump(by_alias=True)
-            )
+            return JSONResponse(status_code=200, content=response.model_dump(by_alias=True))
 
         elif method == "tasks/resubscribe":
             # Streaming method - return SSE
-            rpc_request = TaskResubscriptionRequest(
-                jsonrpc="2.0",
-                id=request_id,
-                method=method,
-                params=params
-            )
+            rpc_request = TaskResubscriptionRequest(jsonrpc="2.0", id=request_id, method=method, params=params)
             response_stream = jsonrpc_handler.on_resubscribe_to_task(rpc_request)
             return StreamingResponse(
                 sse_generator(response_stream),
@@ -391,104 +345,66 @@ async def jsonrpc_endpoint(
                     "Cache-Control": "no-cache",
                     "Connection": "keep-alive",
                     "X-Accel-Buffering": "no",
-                }
+                },
             )
 
         elif method == "tasks/pushNotificationConfig/set":
             # Non-streaming method
             rpc_request = SetTaskPushNotificationConfigRequest(
-                jsonrpc="2.0",
-                id=request_id,
-                method=method,
-                params=params
+                jsonrpc="2.0", id=request_id, method=method, params=params
             )
             response = await jsonrpc_handler.set_push_notification(rpc_request)
-            return JSONResponse(
-                status_code=200,
-                content=response.model_dump(by_alias=True)
-            )
+            return JSONResponse(status_code=200, content=response.model_dump(by_alias=True))
 
         elif method == "tasks/pushNotificationConfig/get":
             # Get push notification configuration for a task
             try:
                 rpc_request = GetTaskPushNotificationConfigRequest(
-                    jsonrpc="2.0",
-                    id=request_id,
-                    method=method,
-                    params=params
+                    jsonrpc="2.0", id=request_id, method=method, params=params
                 )
                 response = await handle_get_push_notification_config(rpc_request)
-                return JSONResponse(
-                    status_code=200,
-                    content=response.model_dump(by_alias=True)
-                )
+                return JSONResponse(status_code=200, content=response.model_dump(by_alias=True))
             except Exception as e:
                 logger.error(f"Error in get push notification config: {e}")
-                error_response = JSONRPCErrorResponse(
-                    id=request_id,
-                    error=InternalError(message=str(e))
-                )
-                return JSONResponse(
-                    status_code=200,
-                    content=error_response.model_dump(by_alias=True)
-                )
+                error_response = JSONRPCErrorResponse(id=request_id, error=InternalError(message=str(e)))
+                return JSONResponse(status_code=200, content=error_response.model_dump(by_alias=True))
 
         elif method == "tasks/pushNotificationConfig/list":
-            # List push notification configurations for a task
+            # list push notification configurations for a task
             try:
-                rpc_request = ListTaskPushNotificationConfigRequest(
-                    jsonrpc="2.0",
-                    id=request_id,
-                    method=method,
-                    params=params
+                rpc_request = listTaskPushNotificationConfigRequest(
+                    jsonrpc="2.0", id=request_id, method=method, params=params
                 )
                 response = await handle_list_push_notification_configs(rpc_request)
-                return JSONResponse(
-                    status_code=200,
-                    content=response.model_dump(by_alias=True)
-                )
+                return JSONResponse(status_code=200, content=response.model_dump(by_alias=True))
             except Exception as e:
                 logger.error(f"Error handling list push notification configs: {e}")
                 return JSONResponse(
                     status_code=200,
                     content={
                         "jsonrpc": "2.0",
-                        "error": {
-                            "code": -32603,
-                            "message": "Internal error",
-                            "data": str(e)
-                        },
-                        "id": request_id
-                    }
+                        "error": {"code": -32603, "message": "Internal error", "data": str(e)},
+                        "id": request_id,
+                    },
                 )
 
         elif method == "tasks/pushNotificationConfig/delete":
             # Delete push notification configuration for a task
             try:
                 rpc_request = DeleteTaskPushNotificationConfigRequest(
-                    jsonrpc="2.0",
-                    id=request_id,
-                    method=method,
-                    params=params
+                    jsonrpc="2.0", id=request_id, method=method, params=params
                 )
                 response = await handle_delete_push_notification_config(rpc_request)
-                return JSONResponse(
-                    status_code=200,
-                    content=response.model_dump(by_alias=True)
-                )
+                return JSONResponse(status_code=200, content=response.model_dump(by_alias=True))
             except Exception as e:
                 logger.error(f"Error handling delete push notification config: {e}")
                 return JSONResponse(
                     status_code=200,
                     content={
                         "jsonrpc": "2.0",
-                        "error": {
-                            "code": -32603,
-                            "message": "Internal error",
-                            "data": str(e)
-                        },
-                        "id": request_id
-                    }
+                        "error": {"code": -32603, "message": "Internal error", "data": str(e)},
+                        "id": request_id,
+                    },
                 )
 
         else:
@@ -497,13 +413,9 @@ async def jsonrpc_endpoint(
                 status_code=200,
                 content={
                     "jsonrpc": "2.0",
-                    "error": {
-                        "code": -32601,
-                        "message": "Method not found",
-                        "data": f"Unknown method: {method}"
-                    },
-                    "id": request_id
-                }
+                    "error": {"code": -32601, "message": "Method not found", "data": f"Unknown method: {method}"},
+                    "id": request_id,
+                },
             )
 
     except Exception as e:
@@ -512,141 +424,118 @@ async def jsonrpc_endpoint(
             status_code=200,
             content={
                 "jsonrpc": "2.0",
-                "error": {
-                    "code": -32603,
-                    "message": "Internal error",
-                    "data": str(e)
-                },
-                "id": body.get("id") if 'body' in locals() else None
-            }
+                "error": {"code": -32603, "message": "Internal error", "data": str(e)},
+                "id": body.get("id") if "body" in locals() else None,
+            },
         )
+
 
 # Error handlers (to be registered with FastAPI app)
 async def jsonrpc_error_handler(request: Request, exc: JSONRPCError):
     """Handle JSON-RPC errors."""
     return JSONResponse(
-        status_code=400,
-        content={
-            "error": {
-                "code": exc.code,
-                "message": exc.message,
-                "data": exc.data
-            }
-        }
+        status_code=400, content={"error": {"code": exc.code, "message": exc.message, "data": exc.data}}
     )
+
 
 # Handler functions for new push notification methods
 async def handle_get_push_notification_config(request: GetTaskPushNotificationConfigRequest):
     """
     Handle getting push notification configuration for a task.
-    
+
     Args:
         request: Get push notification config request
-        
+
     Returns:
         Push notification configuration or None
     """
     try:
         # Get the request handler instance
         handler = get_request_handler()
-        if not handler or not hasattr(handler, '_push_notifier'):
+        if not handler or not hasattr(handler, "_push_notifier"):
             raise ValueError("Push notifier not available")
-        
+
         # Get configuration using the enhanced push notifier
         config = await handler._push_notifier.get_info(request.params.id)
-        
+
         # Create response - handle None result properly
         from a2a.types import GetTaskPushNotificationConfigResponse
-        
+
         if config is None:
-            return GetTaskPushNotificationConfigResponse(
-                jsonrpc="2.0",
-                id=request.id,
-                result=None
-            )
+            return GetTaskPushNotificationConfigResponse(jsonrpc="2.0", id=request.id, result=None)
         else:
-            return GetTaskPushNotificationConfigResponse(
-                jsonrpc="2.0",
-                id=request.id,
-                result=config
-            )
-        
+            return GetTaskPushNotificationConfigResponse(jsonrpc="2.0", id=request.id, result=config)
+
     except Exception as e:
         logger.error(f"Error getting push notification config: {e}")
         raise
 
 
-async def handle_list_push_notification_configs(request: ListTaskPushNotificationConfigRequest) -> ListTaskPushNotificationConfigResponse:
+async def handle_list_push_notification_configs(
+    request: listTaskPushNotificationConfigRequest,
+) -> listTaskPushNotificationConfigResponse:
     """
     Handle listing push notification configurations for a task.
-    
+
     Args:
-        request: List push notification config request
-        
+        request: list push notification config request
+
     Returns:
-        List of push notification configurations
+        list of push notification configurations
     """
     try:
         # Get the request handler instance
         handler = get_request_handler()
-        if not handler or not hasattr(handler, '_push_notifier'):
+        if not handler or not hasattr(handler, "_push_notifier"):
             raise ValueError("Push notifier not available")
-        
-        # List configurations using the enhanced push notifier
+
+        # list configurations using the enhanced push notifier
         configs = await handler._push_notifier.list_info(request.params.id)
-        
-        return ListTaskPushNotificationConfigResponse(
-            jsonrpc="2.0",
-            id=request.id,
-            result=configs
-        )
-        
+
+        return listTaskPushNotificationConfigResponse(jsonrpc="2.0", id=request.id, result=configs)
+
     except Exception as e:
         logger.error(f"Error listing push notification configs: {e}")
         raise
 
 
-async def handle_delete_push_notification_config(request: DeleteTaskPushNotificationConfigRequest) -> DeleteTaskPushNotificationConfigResponse:
+async def handle_delete_push_notification_config(
+    request: DeleteTaskPushNotificationConfigRequest,
+) -> DeleteTaskPushNotificationConfigResponse:
     """
     Handle deleting a push notification configuration.
-    
+
     Args:
         request: Delete push notification config request
-        
+
     Returns:
         Success response
     """
     try:
-        # Get the request handler instance  
+        # Get the request handler instance
         handler = get_request_handler()
-        if not handler or not hasattr(handler, '_push_notifier'):
+        if not handler or not hasattr(handler, "_push_notifier"):
             raise ValueError("Push notifier not available")
-        
+
         # Delete configuration using the enhanced push notifier
-        success = await handler._push_notifier.delete_info(
-            request.params.id, 
-            request.params.pushNotificationConfigId
-        )
-        
+        success = await handler._push_notifier.delete_info(request.params.id, request.params.pushNotificationConfigId)
+
         if not success:
             # Return JSON-RPC error for not found
             from .push_types import JSONRPCErrorResponse
+
             return JSONRPCErrorResponse(
                 jsonrpc="2.0",
                 id=request.id,
                 error=JSONRPCError(
                     code=-32001,  # TaskNotFoundError
                     message="Push notification configuration not found",
-                    data=f"No configuration found with ID {request.params.pushNotificationConfigId} for task {request.params.id}"
-                )
+                    data=f"No configuration found with ID {request.params.pushNotificationConfigId} for task {request.params.id}",
+                ),
             )
-        
-        return DeleteTaskPushNotificationConfigResponse(
-            jsonrpc="2.0",
-            id=request.id,
-            result=None
-        )
-        
+
+        return DeleteTaskPushNotificationConfigResponse(jsonrpc="2.0", id=request.id, result=None)
+
     except Exception as e:
         logger.error(f"Error deleting push notification config: {e}")
         raise
@@ -654,10 +543,10 @@ async def handle_delete_push_notification_config(request: DeleteTaskPushNotifica
 
 # Export router and handlers
 __all__ = [
-    'router', 
-    'jsonrpc_error_handler', 
-    'set_request_handler_instance', 
-    'get_request_handler',
-    'handle_list_push_notification_configs',
-    'handle_delete_push_notification_config'
+    "router",
+    "jsonrpc_error_handler",
+    "set_request_handler_instance",
+    "get_request_handler",
+    "handle_list_push_notification_configs",
+    "handle_delete_push_notification_config",
 ]

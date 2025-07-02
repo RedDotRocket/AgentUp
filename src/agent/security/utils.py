@@ -1,15 +1,15 @@
 """Security utilities for AgentUp authentication."""
 
-import secrets
-import re
 import logging
-from typing import Optional, Dict, Any
+import re
+import secrets
 from datetime import datetime
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
-def secure_compare(a: Optional[str], b: Optional[str]) -> bool:
+def secure_compare(a: str | None, b: str | None) -> bool:
     """Perform constant-time string comparison to prevent timing attacks.
 
     Args:
@@ -24,8 +24,8 @@ def secure_compare(a: Optional[str], b: Optional[str]) -> bool:
 
     # Convert to bytes for secure comparison
     try:
-        a_bytes = a.encode('utf-8')
-        b_bytes = b.encode('utf-8')
+        a_bytes = a.encode("utf-8")
+        b_bytes = b.encode("utf-8")
         return secrets.compare_digest(a_bytes, b_bytes)
     except (UnicodeError, AttributeError):
         return False
@@ -44,7 +44,7 @@ def sanitize_header_value(value: str) -> str:
         return ""
 
     # Remove non-printable characters and limit length
-    sanitized = re.sub(r'[^\x20-\x7E]', '', value)
+    sanitized = re.sub(r"[^\x20-\x7E]", "", value)
     return sanitized[:100]  # Limit to 100 chars for logging
 
 
@@ -109,13 +109,13 @@ def validate_bearer_token_format(token: str) -> bool:
         return False
 
     # Must contain only URL-safe characters for JWT
-    if not re.match(r'^[A-Za-z0-9_\-\.]+$', token):
+    if not re.match(r"^[A-Za-z0-9_\-\.]+$", token):
         return False
 
     return True
 
 
-def extract_bearer_token(auth_header: str) -> Optional[str]:
+def extract_bearer_token(auth_header: str) -> str | None:
     """Extract Bearer token from Authorization header.
 
     Args:
@@ -128,7 +128,7 @@ def extract_bearer_token(auth_header: str) -> Optional[str]:
         return None
 
     # Check for Bearer prefix (case-insensitive)
-    if not auth_header.lower().startswith('bearer '):
+    if not auth_header.lower().startswith("bearer "):
         return None
 
     # Extract token part
@@ -141,10 +141,7 @@ def extract_bearer_token(auth_header: str) -> Optional[str]:
 
 
 def log_security_event(
-    event_type: str,
-    request_info: Dict[str, Any],
-    success: bool,
-    details: Optional[str] = None
+    event_type: str, request_info: dict[str, Any], success: bool, details: str | None = None
 ) -> None:
     """Log security events for audit purposes.
 
@@ -155,17 +152,17 @@ def log_security_event(
         details: Additional details for debugging (never include secrets)
     """
     log_entry = {
-        'timestamp': datetime.utcnow().isoformat(),
-        'event_type': event_type,
-        'success': success,
-        'client_ip': request_info.get('client_ip', 'unknown'),
-        'user_agent': sanitize_header_value(request_info.get('user_agent', '')),
-        'endpoint': request_info.get('endpoint', ''),
-        'method': request_info.get('method', ''),
+        "timestamp": datetime.utcnow().isoformat(),
+        "event_type": event_type,
+        "success": success,
+        "client_ip": request_info.get("client_ip", "unknown"),
+        "user_agent": sanitize_header_value(request_info.get("user_agent", "")),
+        "endpoint": request_info.get("endpoint", ""),
+        "method": request_info.get("method", ""),
     }
 
     if details:
-        log_entry['details'] = details
+        log_entry["details"] = details
 
     if success:
         logger.info(f"Security event: {event_type}", extra=log_entry)
@@ -173,27 +170,27 @@ def log_security_event(
         logger.warning(f"Security event failed: {event_type}", extra=log_entry)
 
 
-def get_request_info(request) -> Dict[str, Any]:
+def get_request_info(request) -> dict[str, Any]:
     """Extract safe request information for logging.
 
     Args:
         request: FastAPI Request object
 
     Returns:
-        Dict[str, Any]: Safe request information (no credentials)
+        dict[str, Any]: Safe request information (no credentials)
     """
     try:
         return {
-            'client_ip': getattr(request.client, 'host', 'unknown') if request.client else 'unknown',
-            'user_agent': request.headers.get('user-agent', ''),
-            'endpoint': str(request.url.path) if request.url else '',
-            'method': request.method if hasattr(request, 'method') else '',
+            "client_ip": getattr(request.client, "host", "unknown") if request.client else "unknown",
+            "user_agent": request.headers.get("user-agent", ""),
+            "endpoint": str(request.url.path) if request.url else "",
+            "method": request.method if hasattr(request, "method") else "",
         }
     except Exception:
         # Fallback if request object is malformed
         return {
-            'client_ip': 'unknown',
-            'user_agent': 'unknown',
-            'endpoint': 'unknown',
-            'method': 'unknown',
+            "client_ip": "unknown",
+            "user_agent": "unknown",
+            "endpoint": "unknown",
+            "method": "unknown",
         }

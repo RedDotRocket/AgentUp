@@ -1,31 +1,32 @@
 import os
-import pytest
-import yaml
-from pathlib import Path
-from typing import Dict, Any
-from unittest.mock import patch
 
 # Import the configuration functions to test
 import sys
+from pathlib import Path
+from typing import Any
+from unittest.mock import patch
+
+import pytest
+import yaml
+
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
-from agent.config import load_config, _process_env_vars, merge_configs
-
+from agent.config import _process_env_vars, load_config, merge_configs
 from tests.utils.test_helpers import (
-    create_test_agent_config,
     assert_config_has_service,
+    build_ollama_config,
     build_standard_config,
-    build_ollama_config
+    create_test_agent_config,
 )
 
 
 class TestLoadConfig:
     """Test the load_config function."""
 
-    def test_load_config_basic(self, temp_dir: Path, sample_agent_config: Dict[str, Any], env_vars):
+    def test_load_config_basic(self, temp_dir: Path, sample_agent_config: dict[str, Any], env_vars):
         """Test basic configuration loading."""
         config_file = temp_dir / "test_config.yaml"
-        with open(config_file, 'w') as f:
+        with open(config_file, "w") as f:
             yaml.dump(sample_agent_config, f)
 
         loaded_config = load_config(str(config_file))
@@ -42,10 +43,10 @@ class TestLoadConfig:
         assert "Configuration file not found" in str(excinfo.value)
         assert "nonexistent_config.yaml" in str(excinfo.value)
 
-    def test_load_config_from_env_var(self, temp_dir: Path, sample_agent_config: Dict[str, Any], env_vars):
+    def test_load_config_from_env_var(self, temp_dir: Path, sample_agent_config: dict[str, Any], env_vars):
         """Test loading configuration from AGENT_CONFIG_PATH environment variable."""
         config_file = temp_dir / "env_config.yaml"
-        with open(config_file, 'w') as f:
+        with open(config_file, "w") as f:
             yaml.dump(sample_agent_config, f)
 
         with patch.dict(os.environ, {"AGENT_CONFIG_PATH": str(config_file)}):
@@ -74,15 +75,12 @@ class TestLoadConfig:
         config_data = {
             "agent": {"name": "test-agent"},
             "services": {
-                "openai": {
-                    "api_key": "${OPENAI_API_KEY}",
-                    "base_url": "${OPENAI_BASE_URL:https://api.openai.com}"
-                }
-            }
+                "openai": {"api_key": "${OPENAI_API_KEY}", "base_url": "${OPENAI_BASE_URL:https://api.openai.com}"}
+            },
         }
 
         config_file = temp_dir / "env_test.yaml"
-        with open(config_file, 'w') as f:
+        with open(config_file, "w") as f:
             yaml.dump(config_data, f)
 
         loaded_config = load_config(str(config_file))
@@ -115,13 +113,8 @@ class TestProcessEnvVars:
         """Test processing environment variables in nested dictionaries."""
         config = {
             "services": {
-                "openai": {
-                    "api_key": "${OPENAI_API_KEY}",
-                    "model": "gpt-4"
-                },
-                "valkey": {
-                    "url": "${VALKEY_URL}"
-                }
+                "openai": {"api_key": "${OPENAI_API_KEY}", "model": "gpt-4"},
+                "valkey": {"url": "${VALKEY_URL}"},
             }
         }
 
@@ -133,13 +126,7 @@ class TestProcessEnvVars:
 
     def test_process_env_vars_list(self, env_vars):
         """Test processing environment variables in lists."""
-        config = {
-            "servers": [
-                "${OPENAI_API_KEY}",
-                "static_value",
-                "${VALKEY_URL}"
-            ]
-        }
+        config = {"servers": ["${OPENAI_API_KEY}", "static_value", "${VALKEY_URL}"]}
 
         result = _process_env_vars(config)
 
@@ -171,30 +158,12 @@ class TestProcessEnvVars:
     def test_process_env_vars_complex_nested(self, env_vars):
         """Test processing environment variables in complex nested structures."""
         config = {
-            "agent": {
-                "name": "test-agent"
-            },
+            "agent": {"name": "test-agent"},
             "services": [
-                {
-                    "name": "openai",
-                    "config": {
-                        "api_key": "${OPENAI_API_KEY}",
-                        "timeout": 30
-                    }
-                },
-                {
-                    "name": "valkey",
-                    "config": {
-                        "url": "${VALKEY_URL}",
-                        "db": "${VALKEY_DB:0}"
-                    }
-                }
+                {"name": "openai", "config": {"api_key": "${OPENAI_API_KEY}", "timeout": 30}},
+                {"name": "valkey", "config": {"url": "${VALKEY_URL}", "db": "${VALKEY_DB:0}"}},
             ],
-            "middleware": {
-                "auth": {
-                    "secret": "${JWT_SECRET:default-secret}"
-                }
-            }
+            "middleware": {"auth": {"secret": "${JWT_SECRET:default-secret}"}},
         }
 
         result = _process_env_vars(config)
@@ -222,20 +191,14 @@ class TestMergeConfigs:
 
     def test_merge_configs_nested_dicts(self):
         """Test merging nested dictionary configurations."""
-        base = {
-            "agent": {"name": "base-agent", "version": "1.0"},
-            "services": {"openai": {"model": "gpt-3.5-turbo"}}
-        }
-        override = {
-            "agent": {"name": "override-agent"},
-            "services": {"openai": {"api_key": "new-key"}}
-        }
+        base = {"agent": {"name": "base-agent", "version": "1.0"}, "services": {"openai": {"model": "gpt-3.5-turbo"}}}
+        override = {"agent": {"name": "override-agent"}, "services": {"openai": {"api_key": "new-key"}}}
 
         result = merge_configs(base, override)
 
         expected = {
             "agent": {"name": "override-agent", "version": "1.0"},
-            "services": {"openai": {"model": "gpt-3.5-turbo", "api_key": "new-key"}}
+            "services": {"openai": {"model": "gpt-3.5-turbo", "api_key": "new-key"}},
         }
         assert result == expected
 
@@ -250,40 +213,12 @@ class TestMergeConfigs:
 
     def test_merge_configs_deep_nesting(self):
         """Test merging deeply nested configurations."""
-        base = {
-            "level1": {
-                "level2": {
-                    "level3": {
-                        "value1": "base",
-                        "value2": "unchanged"
-                    }
-                }
-            }
-        }
-        override = {
-            "level1": {
-                "level2": {
-                    "level3": {
-                        "value1": "overridden",
-                        "value3": "new"
-                    }
-                }
-            }
-        }
+        base = {"level1": {"level2": {"level3": {"value1": "base", "value2": "unchanged"}}}}
+        override = {"level1": {"level2": {"level3": {"value1": "overridden", "value3": "new"}}}}
 
         result = merge_configs(base, override)
 
-        expected = {
-            "level1": {
-                "level2": {
-                    "level3": {
-                        "value1": "overridden",
-                        "value2": "unchanged",
-                        "value3": "new"
-                    }
-                }
-            }
-        }
+        expected = {"level1": {"level2": {"level3": {"value1": "overridden", "value2": "unchanged", "value3": "new"}}}}
         assert result == expected
 
     def test_merge_configs_empty_configs(self):
@@ -311,7 +246,7 @@ class TestConfigValidation:
         ollama_config = build_ollama_config()
 
         config_file = temp_dir / "ollama_test.yaml"
-        with open(config_file, 'w') as f:
+        with open(config_file, "w") as f:
             yaml.dump(ollama_config, f)
 
         loaded_config = load_config(str(config_file))
@@ -325,22 +260,18 @@ class TestConfigValidation:
 
     def test_anthropic_config_structure(self, temp_dir: Path, env_vars):
         """Test that Anthropic configuration is properly structured."""
-        anthropic_config = create_test_agent_config(
-            "anthropic-test",
-            "anthropic",
-            "claude-3-haiku-20240307"
-        )
+        anthropic_config = create_test_agent_config("anthropic-test", "anthropic", "claude-3-haiku-20240307")
         anthropic_config["services"] = {
             "anthropic": {
                 "type": "llm",
                 "provider": "anthropic",
                 "api_key": "${ANTHROPIC_API_KEY}",
-                "model": "claude-3-haiku-20240307"
+                "model": "claude-3-haiku-20240307",
             }
         }
 
         config_file = temp_dir / "anthropic_test.yaml"
-        with open(config_file, 'w') as f:
+        with open(config_file, "w") as f:
             yaml.dump(anthropic_config, f)
 
         loaded_config = load_config(str(config_file))
@@ -357,7 +288,7 @@ class TestConfigValidation:
         openai_config = build_standard_config()
 
         config_file = temp_dir / "openai_test.yaml"
-        with open(config_file, 'w') as f:
+        with open(config_file, "w") as f:
             yaml.dump(openai_config, f)
 
         loaded_config = load_config(str(config_file))
@@ -375,15 +306,15 @@ class TestConfigValidation:
             "ai": {
                 "enabled": True,
                 "llm_service": "nonexistent_service",  # Service not defined
-                "model": "some-model"
+                "model": "some-model",
             },
             "services": {
                 "valkey": {"type": "cache"}  # Missing the required LLM service
-            }
+            },
         }
 
         config_file = temp_dir / "invalid_test.yaml"
-        with open(config_file, 'w') as f:
+        with open(config_file, "w") as f:
             yaml.dump(invalid_config, f)
 
         loaded_config = load_config(str(config_file))
@@ -396,21 +327,12 @@ class TestConfigValidation:
         """Test minimal configuration without services section."""
         minimal_config = {
             "agent": {"name": "minimal-test", "version": "0.1.0"},
-            "skills": [
-                {
-                    "skill_id": "echo",
-                    "name": "Echo",
-                    "description": "Echo back input"
-                }
-            ],
-            "routing": {
-                "default_mode": "direct",
-                "fallback_skill": "echo"
-            }
+            "skills": [{"skill_id": "echo", "name": "Echo", "description": "Echo back input"}],
+            "routing": {"default_mode": "direct", "fallback_skill": "echo"},
         }
 
         config_file = temp_dir / "minimal_test.yaml"
-        with open(config_file, 'w') as f:
+        with open(config_file, "w") as f:
             yaml.dump(minimal_config, f)
 
         loaded_config = load_config(str(config_file))
@@ -423,29 +345,18 @@ class TestConfigValidation:
     def test_config_with_all_env_var_patterns(self, temp_dir: Path):
         """Test configuration with various environment variable patterns."""
         # Set up some test environment variables
-        test_env = {
-            "TEST_VAR_1": "value1",
-            "TEST_VAR_2": "value2",
-            "TEST_VAR_3": "value3"
-        }
+        test_env = {"TEST_VAR_1": "value1", "TEST_VAR_2": "value2", "TEST_VAR_3": "value3"}
 
         config_data = {
             "simple_var": "${TEST_VAR_1}",
             "var_with_default": "${TEST_VAR_MISSING:default_val}",
-            "nested": {
-                "var": "${TEST_VAR_2}",
-                "list": [
-                    "${TEST_VAR_3}",
-                    "static",
-                    "${TEST_VAR_MISSING:list_default}"
-                ]
-            },
+            "nested": {"var": "${TEST_VAR_2}", "list": ["${TEST_VAR_3}", "static", "${TEST_VAR_MISSING:list_default}"]},
             "no_substitution": "regular string",
-            "partial_match": "prefix_${not_a_var"
+            "partial_match": "prefix_${not_a_var",
         }
 
         config_file = temp_dir / "env_patterns.yaml"
-        with open(config_file, 'w') as f:
+        with open(config_file, "w") as f:
             yaml.dump(config_data, f)
 
         with patch.dict(os.environ, test_env):
@@ -467,16 +378,8 @@ class TestConfigIntegration:
     def test_full_config_loading_and_processing(self, temp_dir: Path, env_vars):
         """Test loading and processing a full configuration."""
         full_config = {
-            "agent": {
-                "name": "integration-test",
-                "description": "Integration test agent",
-                "version": "0.1.0"
-            },
-            "routing": {
-                "default_mode": "ai",
-                "fallback_skill": "ai_assistant",
-                "fallback_enabled": True
-            },
+            "agent": {"name": "integration-test", "description": "Integration test agent", "version": "0.1.0"},
+            "routing": {"default_mode": "ai", "fallback_skill": "ai_assistant", "fallback_enabled": True},
             "skills": [
                 {
                     "skill_id": "ai_assistant",
@@ -484,7 +387,7 @@ class TestConfigIntegration:
                     "description": "General purpose AI assistant",
                     "input_mode": "text",
                     "output_mode": "text",
-                    "routing_mode": "ai"
+                    "routing_mode": "ai",
                 }
             ],
             "ai": {
@@ -493,38 +396,18 @@ class TestConfigIntegration:
                 "model": "gpt-4o-mini",
                 "system_prompt": "You are an AI assistant.",
                 "max_context_turns": 10,
-                "fallback_to_routing": True
+                "fallback_to_routing": True,
             },
             "services": {
-                "openai": {
-                    "type": "llm",
-                    "provider": "openai",
-                    "api_key": "${OPENAI_API_KEY}",
-                    "model": "gpt-4o-mini"
-                },
-                "valkey": {
-                    "type": "cache",
-                    "config": {
-                        "url": "${VALKEY_URL}",
-                        "db": 1,
-                        "max_connections": 10
-                    }
-                }
+                "openai": {"type": "llm", "provider": "openai", "api_key": "${OPENAI_API_KEY}", "model": "gpt-4o-mini"},
+                "valkey": {"type": "cache", "config": {"url": "${VALKEY_URL}", "db": 1, "max_connections": 10}},
             },
-            "security": {
-                "enabled": False,
-                "type": "api_key"
-            },
-            "middleware": [
-                {
-                    "name": "logged",
-                    "params": {"log_level": 20}
-                }
-            ]
+            "security": {"enabled": False, "type": "api_key"},
+            "middleware": [{"name": "logged", "params": {"log_level": 20}}],
         }
 
         config_file = temp_dir / "full_integration.yaml"
-        with open(config_file, 'w') as f:
+        with open(config_file, "w") as f:
             yaml.dump(full_config, f)
 
         loaded_config = load_config(str(config_file))
@@ -548,19 +431,14 @@ class TestConfigIntegration:
         """Test configuration merging in a realistic scenario."""
         base_config = {
             "agent": {"name": "base-agent", "version": "1.0"},
-            "services": {
-                "openai": {"model": "gpt-3.5-turbo", "timeout": 30}
-            },
-            "middleware": [{"name": "logged"}]
+            "services": {"openai": {"model": "gpt-3.5-turbo", "timeout": 30}},
+            "middleware": [{"name": "logged"}],
         }
 
         override_config = {
             "agent": {"name": "production-agent"},
-            "services": {
-                "openai": {"model": "gpt-4", "api_key": "prod-key"},
-                "valkey": {"url": "valkey://prod:6379"}
-            },
-            "security": {"enabled": True}
+            "services": {"openai": {"model": "gpt-4", "api_key": "prod-key"}, "valkey": {"url": "valkey://prod:6379"}},
+            "security": {"enabled": True},
         }
 
         merged = merge_configs(base_config, override_config)

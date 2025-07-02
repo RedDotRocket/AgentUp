@@ -1,18 +1,17 @@
-"""Security decorators for protecting FastAPI endpoints."""
-
+from collections.abc import Callable
 from functools import wraps
-from typing import Optional, Set, Callable
-from fastapi import Request, HTTPException
+
+from fastapi import HTTPException, Request
 
 from .base import SecurityPolicy
 
 
 def protected(
-    auth_type: Optional[str] = None,
+    auth_type: str | None = None,
     required: bool = True,
-    scopes: Optional[Set[str]] = None,
+    scopes: set[str] | None = None,
     allow_anonymous: bool = False,
-    force_auth: bool = False
+    force_auth: bool = False,
 ):
     """
     Decorator to protect AgentUp endpoints with authentication and authorization.
@@ -71,6 +70,7 @@ def protected(
     Note: This decorator requires a SecurityManager instance when authentication
     is actually needed (global security enabled or force_auth=True).
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -83,42 +83,39 @@ def protected(
 
             if not request:
                 # Check kwargs for request
-                request = kwargs.get('request')
+                request = kwargs.get("request")
 
             if not request:
                 raise HTTPException(
-                    status_code=500,
-                    detail="@protected decorator requires Request parameter in endpoint function"
+                    status_code=500, detail="@protected decorator requires Request parameter in endpoint function"
                 )
 
             # Get security manager from application state
-            security_manager = getattr(request.app.state, 'security_manager', None)
-            
+            security_manager = getattr(request.app.state, "security_manager", None)
+
             # Determine if authentication should be enforced
             should_authenticate = required and (force_auth or (security_manager and security_manager.is_auth_enabled()))
-            
+
             # Handle case where authentication is required but security manager not available
             if should_authenticate and not security_manager:
-                raise HTTPException(
-                    status_code=500,
-                    detail="Security manager not initialized"
-                )
-            
+                raise HTTPException(status_code=500, detail="Security manager not initialized")
+
             # If authentication not required or global security disabled, allow access with logging
             if not should_authenticate:
                 # Log security bypass for audit purposes
                 if required and not force_auth:
                     import logging
+
                     logger = logging.getLogger(__name__)
-                    endpoint = str(request.url.path) if request.url else 'unknown'
+                    endpoint = str(request.url.path) if request.url else "unknown"
                     logger.warning(
                         f"Security bypass: {endpoint} - Global security disabled, "
                         f"@protected() allowing access. Use force_auth=True to override."
                     )
-                
+
                 # Store None auth result and proceed
-                if not hasattr(request, 'state'):
-                    request.state = type('State', (), {})()
+                if not hasattr(request, "state"):
+                    request.state = type("State", (), {})()
                 request.state.auth_result = None
                 return await func(*args, **kwargs)
 
@@ -127,17 +124,13 @@ def protected(
                 require_authentication=required,
                 allowed_auth_types={auth_type} if auth_type else None,
                 required_scopes=scopes,
-                allow_anonymous=allow_anonymous
+                allow_anonymous=allow_anonymous,
             )
 
             # Perform authentication
             auth_result = None
             try:
-                auth_result = await security_manager.authenticate_request(
-                    request,
-                    auth_type=auth_type,
-                    policy=policy
-                )
+                auth_result = await security_manager.authenticate_request(request, auth_type=auth_type, policy=policy)
             except HTTPException:
                 if not required or allow_anonymous:
                     # Authentication failed but it's optional or anonymous is allowed
@@ -147,14 +140,15 @@ def protected(
                     raise
 
             # Store authentication result in request state for endpoint use
-            if not hasattr(request, 'state'):
-                request.state = type('State', (), {})()
+            if not hasattr(request, "state"):
+                request.state = type("State", (), {})()
             request.state.auth_result = auth_result
 
             # Call the original function
             return await func(*args, **kwargs)
 
         return wrapper
+
     return decorator
 
 
@@ -210,22 +204,22 @@ def bearer_token_required(required: bool = True):
 
 
 # Legacy alias for backward compatibility
-def always_protected(auth_type: Optional[str] = None, scopes: Optional[Set[str]] = None):
+def always_protected(auth_type: str | None = None, scopes: set[str] | None = None):
     """
     Decorator to always require authentication regardless of global security setting.
-    
+
     This is equivalent to @protected(force_auth=True) and ensures the endpoint
     is always protected even when global security is disabled.
-    
+
     Args:
         auth_type: Specific authentication type to use
         scopes: Required scopes/permissions for access
-        
+
     Usage:
         @always_protected()
         async def admin_endpoint(request: Request):
             return {"message": "Always requires auth"}
-            
+
         @always_protected(auth_type="api_key", scopes={"admin"})
         async def super_secure_endpoint(request: Request):
             return {"message": "Always requires API key + admin scope"}
@@ -233,7 +227,7 @@ def always_protected(auth_type: Optional[str] = None, scopes: Optional[Set[str]]
     return protected(force_auth=True, auth_type=auth_type, scopes=scopes)
 
 
-def authenticated(auth_type: Optional[str] = None, required: bool = True):
+def authenticated(auth_type: str | None = None, required: bool = True):
     """Legacy alias for @protected decorator.
 
     Args:
@@ -264,12 +258,12 @@ def get_auth_result(request: Request):
                 scopes = auth_result.scopes
             return {"user": user_id}
     """
-    if hasattr(request, 'state') and hasattr(request.state, 'auth_result'):
+    if hasattr(request, "state") and hasattr(request.state, "auth_result"):
         return request.state.auth_result
     return None
 
 
-def get_current_user_id(request: Request) -> Optional[str]:
+def get_current_user_id(request: Request) -> str | None:
     """Get current user ID from authentication result.
 
     Args:

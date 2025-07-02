@@ -248,7 +248,7 @@ security:
 """System status handler for direct routing."""
 
 
-from typing import Any, Dict, List
+from typing import Any, dict, list
 from a2a.types import Message, Artifact, Part, TextPart
 import platform
 import psutil
@@ -259,7 +259,7 @@ from .handlers import register_handler
 
 
 @register_handler("system_status")
-async def handle_system_status(task: Any) -> List[Artifact]:
+async def handle_system_status(task: Any) -> list[Artifact]:
     """Handle system status requests."""
     try:
         # Collect system information

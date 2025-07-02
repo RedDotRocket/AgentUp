@@ -1,27 +1,25 @@
-"""Configuration constants for AgentUp."""
-
 import os
 
 # Default model configurations
 DEFAULT_MODELS = {
-    'openai': 'gpt-4o-mini',
-    'anthropic': 'claude-3-haiku-20240307',
-    'ollama': 'llama3',
+    "openai": "gpt-4o-mini",
+    "anthropic": "claude-3-haiku-20240307",
+    "ollama": "llama3",
 }
 
 # API Endpoints
 DEFAULT_API_ENDPOINTS = {
-    'openai': 'https://api.openai.com/v1',
-    'anthropic': 'https://api.anthropic.com',
-    'ollama': 'http://localhost:11434',
+    "openai": "https://api.openai.com/v1",
+    "anthropic": "https://api.anthropic.com",
+    "ollama": "http://localhost:11434",
 }
 
 # Database configurations
-DEFAULT_DATABASE_URL = 'sqlite:///./agent.db'
-DEFAULT_VALKEY_URL = 'valkey://localhost:6379'
+DEFAULT_DATABASE_URL = "sqlite:///./agent.db"
+DEFAULT_VALKEY_URL = "valkey://localhost:6379"
 
 # Server configuration
-DEFAULT_SERVER_HOST = '0.0.0.0'
+DEFAULT_SERVER_HOST = "0.0.0.0"
 DEFAULT_SERVER_PORT = 8000
 
 # Timeouts and limits
@@ -30,24 +28,24 @@ DEFAULT_MAX_RETRIES = 3
 DEFAULT_CACHE_TTL = 300
 
 # User agent
-DEFAULT_USER_AGENT = 'AgentUp-Agent/1.0'
+DEFAULT_USER_AGENT = "AgentUp-Agent/1.0"
 
 # Environment variable names
 ENV_VARS = {
-    'OPENAI_API_KEY': 'OPENAI_API_KEY',
-    'ANTHROPIC_API_KEY': 'ANTHROPIC_API_KEY',
-    'OLLAMA_BASE_URL': 'OLLAMA_BASE_URL',
-    'VALKEY_URL': 'VALKEY_URL',
-    'DATABASE_URL': 'DATABASE_URL',
-    'AGENT_CONFIG_PATH': 'AGENT_CONFIG_PATH',
-    'SERVER_HOST': 'SERVER_HOST',
-    'SERVER_PORT': 'SERVER_PORT',
+    "OPENAI_API_KEY": "OPENAI_API_KEY",
+    "ANTHROPIC_API_KEY": "ANTHROPIC_API_KEY",
+    "OLLAMA_BASE_URL": "OLLAMA_BASE_URL",
+    "VALKEY_URL": "VALKEY_URL",
+    "DATABASE_URL": "DATABASE_URL",
+    "AGENT_CONFIG_PATH": "AGENT_CONFIG_PATH",
+    "SERVER_HOST": "SERVER_HOST",
+    "SERVER_PORT": "SERVER_PORT",
 }
 
 # Model capabilities configuration file path
-MODEL_CAPABILITIES_FILE = os.path.join(os.path.dirname(__file__), 'model_capabilities.yaml')
+MODEL_CAPABILITIES_FILE = os.path.join(os.path.dirname(__file__), "model_capabilities.yaml")
 
 # Security defaults
-DEFAULT_JWT_ALGORITHM = 'HS256'
+DEFAULT_JWT_ALGORITHM = "HS256"
 DEFAULT_API_KEY_LENGTH = 32
 DEFAULT_JWT_SECRET_LENGTH = 64

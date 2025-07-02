@@ -1,7 +1,5 @@
-"""AgentUp Skills Registry integration module."""
-
-from .client import RegistryClient
 from .cache import RegistryCache
+from .client import RegistryClient
 from .installer import SkillInstaller
 from .validator import SkillValidator
 

@@ -817,7 +817,7 @@ services:
 # Check Valkey cache data
 valkey-cli -h localhost -p 6379
 > SELECT 1                    # Switch to cache database
-> KEYS agentup:cache:*        # List cache keys
+> KEYS agentup:cache:*        # list cache keys
 > GET agentup:cache:some_key  # Examine cache value
 > TTL agentup:cache:some_key  # Check remaining TTL
 
