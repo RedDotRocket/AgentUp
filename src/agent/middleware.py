@@ -204,7 +204,7 @@ def cached(ttl: int = 300):
         async def wrapper(*args, **kwargs):
             # Generate cache key
             key_data = f"{func.__name__}:{str(args)}:{str(kwargs)}"
-            cache_key = hashlib.md5(key_data.encode()).hexdigest()
+            cache_key = hashlib.sha256(key_data.encode()).hexdigest()
 
             # Try to get from cache
             result = _cache.get(cache_key)

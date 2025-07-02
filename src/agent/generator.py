@@ -25,7 +25,7 @@ class ProjectGenerator:
 
         # Setup Jinja2 environment
         templates_dir = Path(__file__).parent / "templates"
-        self.jinja_env = Environment(loader=FileSystemLoader(templates_dir), trim_blocks=True, lstrip_blocks=True)
+        self.jinja_env = Environment(loader=FileSystemLoader(templates_dir), autoescape=True, trim_blocks=True, lstrip_blocks=True)
 
         # Add custom functions to Jinja2 environment
         self.jinja_env.globals["generate_api_key"] = self._generate_api_key

@@ -485,7 +485,7 @@ def ensure_middleware_available() -> bool:
 
         # Load and render middleware template
         try:
-            env = Environment(loader=FileSystemLoader(template_dir))
+            env = Environment(loader=FileSystemLoader(template_dir), autoescape=True)
             template = env.get_template("middleware.py.j2")
 
             # Render with basic context (no specific project variables needed)
@@ -743,7 +743,7 @@ def generate_handler_file_code(skill_data: dict[str, Any]) -> str:
 
     # Setup Jinja2 environment
     templates_dir = Path(__file__).parent.parent.parent / "templates"
-    jinja_env = Environment(loader=FileSystemLoader(templates_dir), trim_blocks=True, lstrip_blocks=True)
+    jinja_env = Environment(loader=FileSystemLoader(templates_dir), autoescape=True, trim_blocks=True, lstrip_blocks=True)
 
     # Load the template
     template = jinja_env.get_template("skill_handler.py.j2")

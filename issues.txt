@@ -1,0 +1,431 @@
+Working... ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100% 0:00:00
+Run started:2025-07-02 15:06:02.287765
+
+Test results:
+>> Issue: [B404:blacklist] Consider possible security implications associated with the subprocess module.
+   Severity: Low   Confidence: High
+   CWE: CWE-78 (https://cwe.mitre.org/data/definitions/78.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/blacklists/blacklist_imports.html#b404-import-subprocess
+   Location: src/agent/cli/commands/create_agent.py:1:0
+1	import subprocess
+2	from pathlib import Path
+3	from typing import Any
+
+--------------------------------------------------
+>> Issue: [B607:start_process_with_partial_path] Starting a process with a partial executable path
+   Severity: Low   Confidence: High
+   CWE: CWE-78 (https://cwe.mitre.org/data/definitions/78.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/plugins/b607_start_process_with_partial_path.html
+   Location: src/agent/cli/commands/create_agent.py:25:8
+24	        # Check if git is available
+25	        subprocess.run(["git", "--version"], check=True, capture_output=True)
+26	
+
+--------------------------------------------------
+>> Issue: [B603:subprocess_without_shell_equals_true] subprocess call - check for execution of untrusted input.
+   Severity: Low   Confidence: High
+   CWE: CWE-78 (https://cwe.mitre.org/data/definitions/78.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/plugins/b603_subprocess_without_shell_equals_true.html
+   Location: src/agent/cli/commands/create_agent.py:25:8
+24	        # Check if git is available
+25	        subprocess.run(["git", "--version"], check=True, capture_output=True)
+26	
+
+--------------------------------------------------
+>> Issue: [B607:start_process_with_partial_path] Starting a process with a partial executable path
+   Severity: Low   Confidence: High
+   CWE: CWE-78 (https://cwe.mitre.org/data/definitions/78.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/plugins/b607_start_process_with_partial_path.html
+   Location: src/agent/cli/commands/create_agent.py:28:8
+27	        # Initialize git repository
+28	        subprocess.run(["git", "init"], cwd=project_path, check=True, capture_output=True)
+29	
+
+--------------------------------------------------
+>> Issue: [B603:subprocess_without_shell_equals_true] subprocess call - check for execution of untrusted input.
+   Severity: Low   Confidence: High
+   CWE: CWE-78 (https://cwe.mitre.org/data/definitions/78.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/plugins/b603_subprocess_without_shell_equals_true.html
+   Location: src/agent/cli/commands/create_agent.py:28:8
+27	        # Initialize git repository
+28	        subprocess.run(["git", "init"], cwd=project_path, check=True, capture_output=True)
+29	
+
+--------------------------------------------------
+>> Issue: [B607:start_process_with_partial_path] Starting a process with a partial executable path
+   Severity: Low   Confidence: High
+   CWE: CWE-78 (https://cwe.mitre.org/data/definitions/78.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/plugins/b607_start_process_with_partial_path.html
+   Location: src/agent/cli/commands/create_agent.py:31:8
+30	        # Add all files to git
+31	        subprocess.run(["git", "add", "."], cwd=project_path, check=True, capture_output=True)
+32	
+
+--------------------------------------------------
+>> Issue: [B603:subprocess_without_shell_equals_true] subprocess call - check for execution of untrusted input.
+   Severity: Low   Confidence: High
+   CWE: CWE-78 (https://cwe.mitre.org/data/definitions/78.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/plugins/b603_subprocess_without_shell_equals_true.html
+   Location: src/agent/cli/commands/create_agent.py:31:8
+30	        # Add all files to git
+31	        subprocess.run(["git", "add", "."], cwd=project_path, check=True, capture_output=True)
+32	
+
+--------------------------------------------------
+>> Issue: [B607:start_process_with_partial_path] Starting a process with a partial executable path
+   Severity: Low   Confidence: High
+   CWE: CWE-78 (https://cwe.mitre.org/data/definitions/78.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/plugins/b607_start_process_with_partial_path.html
+   Location: src/agent/cli/commands/create_agent.py:34:8
+33	        # Create initial commit
+34	        subprocess.run(["git", "commit", "-m", "Initial commit"], cwd=project_path, check=True, capture_output=True)
+35	
+
+--------------------------------------------------
+>> Issue: [B603:subprocess_without_shell_equals_true] subprocess call - check for execution of untrusted input.
+   Severity: Low   Confidence: High
+   CWE: CWE-78 (https://cwe.mitre.org/data/definitions/78.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/plugins/b603_subprocess_without_shell_equals_true.html
+   Location: src/agent/cli/commands/create_agent.py:34:8
+33	        # Create initial commit
+34	        subprocess.run(["git", "commit", "-m", "Initial commit"], cwd=project_path, check=True, capture_output=True)
+35	
+
+--------------------------------------------------
+>> Issue: [B404:blacklist] Consider possible security implications associated with the subprocess module.
+   Severity: Low   Confidence: High
+   CWE: CWE-78 (https://cwe.mitre.org/data/definitions/78.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/blacklists/blacklist_imports.html#b404-import-subprocess
+   Location: src/agent/cli/commands/dev.py:2:0
+1	import os
+2	import subprocess
+3	import sys
+
+--------------------------------------------------
+>> Issue: [B603:subprocess_without_shell_equals_true] subprocess call - check for execution of untrusted input.
+   Severity: Low   Confidence: High
+   CWE: CWE-78 (https://cwe.mitre.org/data/definitions/78.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/plugins/b603_subprocess_without_shell_equals_true.html
+   Location: src/agent/cli/commands/dev.py:88:11
+87	    # Start the subprocess in a new process group
+88	    proc = subprocess.Popen(cmd, env=env, preexec_fn=os.setsid)
+89	
+
+--------------------------------------------------
+>> Issue: [B110:try_except_pass] Try, Except, Pass detected.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/plugins/b110_try_except_pass.html
+   Location: src/agent/cli/registry/cache.py:27:12
+26	                    return json.load(f)
+27	            except Exception:
+28	                pass
+29	        return {"version": 1, "entries": {}}
+
+--------------------------------------------------
+>> Issue: [B110:try_except_pass] Try, Except, Pass detected.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/plugins/b110_try_except_pass.html
+   Location: src/agent/cli/registry/cache.py:36:8
+35	                json.dump(self.metadata, f, indent=2)
+36	        except Exception:
+37	            pass
+38	
+
+--------------------------------------------------
+>> Issue: [B110:try_except_pass] Try, Except, Pass detected.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/plugins/b110_try_except_pass.html
+   Location: src/agent/cli/registry/cache.py:72:8
+71	            self._save_metadata()
+72	        except Exception:
+73	            pass
+74	
+
+--------------------------------------------------
+>> Issue: [B110:try_except_pass] Try, Except, Pass detected.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/plugins/b110_try_except_pass.html
+   Location: src/agent/cli/registry/cache.py:87:8
+86	                self._save_metadata()
+87	        except Exception:
+88	            pass
+89	
+
+--------------------------------------------------
+>> Issue: [B110:try_except_pass] Try, Except, Pass detected.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/plugins/b110_try_except_pass.html
+   Location: src/agent/cli/registry/cache.py:96:16
+95	                    cache_file.unlink()
+96	                except Exception:
+97	                    pass
+98	
+
+--------------------------------------------------
+>> Issue: [B110:try_except_pass] Try, Except, Pass detected.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/plugins/b110_try_except_pass.html
+   Location: src/agent/cli/registry/cache.py:108:12
+107	                total_size += cache_file.stat().st_size
+108	            except Exception:
+109	                pass
+110	        return total_size
+
+--------------------------------------------------
+>> Issue: [B110:try_except_pass] Try, Except, Pass detected.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/plugins/b110_try_except_pass.html
+   Location: src/agent/cli/registry/client.py:45:8
+44	                    return registry_config["url"]
+45	        except Exception:
+46	            # If config loading fails, use default
+47	            pass
+48	
+
+--------------------------------------------------
+>> Issue: [B112:try_except_continue] Try, Except, Continue detected.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/plugins/b112_try_except_continue.html
+   Location: src/agent/cli/registry/client.py:183:12
+182	                    )
+183	            except Exception:
+184	                # Skip skills that can't be checked
+185	                continue
+186	
+
+--------------------------------------------------
+>> Issue: [B110:try_except_pass] Try, Except, Pass detected.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/plugins/b110_try_except_pass.html
+   Location: src/agent/cli/registry/client.py:224:8
+223	                json.dump(data, f, indent=2)
+224	        except Exception:
+225	            # If caching fails, continue without caching
+226	            pass
+227	
+
+--------------------------------------------------
+>> Issue: [B110:try_except_pass] Try, Except, Pass detected.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/plugins/b110_try_except_pass.html
+   Location: src/agent/cli/registry/client.py:233:12
+232	                cache_file.unlink()
+233	            except Exception:
+234	                pass
+
+--------------------------------------------------
+>> Issue: [B404:blacklist] Consider possible security implications associated with the subprocess module.
+   Severity: Low   Confidence: High
+   CWE: CWE-78 (https://cwe.mitre.org/data/definitions/78.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/blacklists/blacklist_imports.html#b404-import-subprocess
+   Location: src/agent/cli/registry/installer.py:3:0
+2	import shutil
+3	import subprocess
+4	import tarfile
+
+--------------------------------------------------
+>> Issue: [B110:try_except_pass] Try, Except, Pass detected.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/plugins/b110_try_except_pass.html
+   Location: src/agent/cli/registry/installer.py:97:8
+96	
+97	        except Exception:
+98	            pass
+99	
+
+--------------------------------------------------
+>> Issue: [B110:try_except_pass] Try, Except, Pass detected.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/plugins/b110_try_except_pass.html
+   Location: src/agent/cli/registry/installer.py:256:8
+255	
+256	        except Exception:
+257	            pass
+258	
+
+--------------------------------------------------
+>> Issue: [B202:tarfile_unsafe_members] tarfile.extractall used without any validation. Please check and discard dangerous members.
+   Severity: High   Confidence: High
+   CWE: CWE-22 (https://cwe.mitre.org/data/definitions/22.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/plugins/b202_tarfile_unsafe_members.html
+   Location: src/agent/cli/registry/installer.py:365:12
+364	        with tarfile.open(package_path, "r:gz") as tar:
+365	            tar.extractall(destination)
+366	
+
+--------------------------------------------------
+>> Issue: [B110:try_except_pass] Try, Except, Pass detected.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/plugins/b110_try_except_pass.html
+   Location: src/agent/cli/registry/installer.py:407:12
+406	                    dependencies.extend(packages)
+407	            except Exception:
+408	                pass
+409	
+
+--------------------------------------------------
+>> Issue: [B110:try_except_pass] Try, Except, Pass detected.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/plugins/b110_try_except_pass.html
+   Location: src/agent/cli/registry/installer.py:417:16
+416	                        dependencies = [line.strip() for line in f if line.strip() and not line.startswith("#")]
+417	                except Exception:
+418	                    pass
+419	
+
+--------------------------------------------------
+>> Issue: [B603:subprocess_without_shell_equals_true] subprocess call - check for execution of untrusted input.
+   Severity: Low   Confidence: High
+   CWE: CWE-78 (https://cwe.mitre.org/data/definitions/78.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/plugins/b603_subprocess_without_shell_equals_true.html
+   Location: src/agent/cli/registry/installer.py:490:21
+489	
+490	            result = subprocess.run(
+491	                cmd,
+492	                capture_output=True,
+493	                text=True,
+494	                timeout=300,  # 5 minute timeout
+495	            )
+496	
+
+--------------------------------------------------
+>> Issue: [B110:try_except_pass] Try, Except, Pass detected.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/plugins/b110_try_except_pass.html
+   Location: src/agent/cli/registry/installer.py:517:12
+516	                os.chdir(original_cwd)
+517	            except Exception:
+518	                pass
+519	
+
+--------------------------------------------------
+>> Issue: [B607:start_process_with_partial_path] Starting a process with a partial executable path
+   Severity: Low   Confidence: High
+   CWE: CWE-78 (https://cwe.mitre.org/data/definitions/78.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/plugins/b607_start_process_with_partial_path.html
+   Location: src/agent/cli/registry/installer.py:523:12
+522	        try:
+523	            subprocess.run(["uv", "--version"], capture_output=True, check=True)
+524	            return True
+
+--------------------------------------------------
+>> Issue: [B603:subprocess_without_shell_equals_true] subprocess call - check for execution of untrusted input.
+   Severity: Low   Confidence: High
+   CWE: CWE-78 (https://cwe.mitre.org/data/definitions/78.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/plugins/b603_subprocess_without_shell_equals_true.html
+   Location: src/agent/cli/registry/installer.py:523:12
+522	        try:
+523	            subprocess.run(["uv", "--version"], capture_output=True, check=True)
+524	            return True
+
+--------------------------------------------------
+>> Issue: [B603:subprocess_without_shell_equals_true] subprocess call - check for execution of untrusted input.
+   Severity: Low   Confidence: High
+   CWE: CWE-78 (https://cwe.mitre.org/data/definitions/78.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/plugins/b603_subprocess_without_shell_equals_true.html
+   Location: src/agent/cli/registry/installer.py:534:21
+533	
+534	            result = subprocess.run(
+535	                cmd,
+536	                capture_output=True,
+537	                text=True,
+538	                timeout=300,  # 5 minute timeout
+539	            )
+540	
+
+--------------------------------------------------
+>> Issue: [B110:try_except_pass] Try, Except, Pass detected.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/plugins/b110_try_except_pass.html
+   Location: src/agent/cli/registry/installer.py:943:8
+942	
+943	        except Exception:
+944	            pass
+945	
+
+--------------------------------------------------
+>> Issue: [B110:try_except_pass] Try, Except, Pass detected.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/plugins/b110_try_except_pass.html
+   Location: src/agent/cli/registry/installer.py:966:8
+965	
+966	        except Exception:
+967	            pass
+968	
+
+--------------------------------------------------
+>> Issue: [B202:tarfile_unsafe_members] tarfile.extractall used without any validation. Please check and discard dangerous members.
+   Severity: High   Confidence: High
+   CWE: CWE-22 (https://cwe.mitre.org/data/definitions/22.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/plugins/b202_tarfile_unsafe_members.html
+   Location: src/agent/cli/registry/validator.py:66:24
+65	                    with tarfile.open(package_path, "r:gz") as tar:
+66	                        tar.extractall(temp_path)
+67	                except Exception as e:
+
+--------------------------------------------------
+>> Issue: [B104:hardcoded_bind_all_interfaces] Possible binding to all interfaces.
+   Severity: Medium   Confidence: Medium
+   CWE: CWE-605 (https://cwe.mitre.org/data/definitions/605.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/plugins/b104_hardcoded_bind_all_interfaces.html
+   Location: src/agent/constants.py:22:22
+21	# Server configuration
+22	DEFAULT_SERVER_HOST = "0.0.0.0"
+23	DEFAULT_SERVER_PORT = 8000
+
+--------------------------------------------------
+>> Issue: [B108:hardcoded_tmp_directory] Probable insecure usage of temp file/directory.
+   Severity: Medium   Confidence: Medium
+   CWE: CWE-377 (https://cwe.mitre.org/data/definitions/377.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/plugins/b108_hardcoded_tmp_directory.html
+   Location: src/agent/generator.py:586:78
+585	                    "command": "npx",
+586	                    "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+587	                    "env": {},
+
+--------------------------------------------------
+>> Issue: [B102:exec_used] Use of exec detected.
+   Severity: Medium   Confidence: High
+   CWE: CWE-78 (https://cwe.mitre.org/data/definitions/78.html)
+   More Info: https://bandit.readthedocs.io/en/1.8.6.dev3/plugins/b102_exec_used.html
+   Location: src/agent/mcp_support/mcp_server.py:154:16
+153	                local_vars = {"handler": handler, "logger": logger, "datetime": datetime}
+154	                exec(func_source, globals(), local_vars)
+155	                mcp_tool_wrapper = local_vars["mcp_tool_wrapper"]
+
+--------------------------------------------------
+
+Code scanned:
+	Total lines of code: 12124
+	Total lines skipped (#nosec): 0
+	Total potential issues skipped due to specifically being disabled (e.g., #nosec BXXX): 0
+
+Run metrics:
+	Total issues (by severity):
+		Undefined: 0
+		Low: 33
+		Medium: 3
+		High: 2
+	Total issues (by confidence):
+		Undefined: 0
+		Low: 0
+		Medium: 2
+		High: 36
+Files skipped (0):

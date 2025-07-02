@@ -113,7 +113,7 @@ class MultiModalProcessor:
                 metadata["channel_means"] = [float(np.mean(image_array[:, :, i])) for i in range(image_array.shape[2])]
 
             # Generate hash for deduplication
-            metadata["hash"] = hashlib.md5(image_bytes).hexdigest()
+            metadata["hash"] = hashlib.sha256(image_bytes).hexdigest()
 
             return {
                 "success": True,
@@ -186,7 +186,7 @@ class MultiModalProcessor:
                 "mime_type": mime_type,
                 "size_bytes": len(doc_bytes),
                 "size_mb": len(doc_bytes) / (1024 * 1024),
-                "hash": hashlib.md5(doc_bytes).hexdigest(),
+                "hash": hashlib.sha256(doc_bytes).hexdigest(),
             }
 
             # Process based on document type
