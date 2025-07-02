@@ -87,11 +87,11 @@ ci-deps: ## Check dependencies for CI
 
 # Agent creation and testing
 agent-create: ## Create a test agent (interactive)
-	uv run agentup create-agent
+	uv run agentup agent create
 
 agent-create-minimal: ## Create minimal test agent
 	@echo "Creating minimal test agent..."
-	uv run agentup create-agent \
+	uv run agentup agent create \
 		--quick test-minimal \
 		--template minimal \
 		--output-dir ./test-agents/minimal
@@ -99,7 +99,7 @@ agent-create-minimal: ## Create minimal test agent
 
 agent-create-standard: ## Create standard test agent
 	@echo "Creating standard test agent..."
-	uv run agentup create-agent \
+	uv run agentup agent create \
 		--quick test-standard \
 		--template standard \
 		--output-dir ./test-agents/standard
@@ -107,7 +107,7 @@ agent-create-standard: ## Create standard test agent
 
 agent-create-advanced: ## Create advanced test agent
 	@echo "Creating advanced test agent..."
-	uv run agentup create-agent \
+	uv run agentup agent create \
 		--quick test-advanced \
 		--template advanced \
 		--output-dir ./test-agents/advanced

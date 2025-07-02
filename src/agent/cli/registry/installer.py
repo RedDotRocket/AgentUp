@@ -1,3 +1,4 @@
+import logging
 import os
 import shutil
 import subprocess  # nosec
@@ -14,6 +15,7 @@ from .client import RegistryClient
 from .validator import SkillValidator
 
 console = Console()
+logger = logging.getLogger(__name__)
 
 
 class SkillInstaller:
@@ -95,8 +97,14 @@ class SkillInstaller:
                 if skill.get("skill_id") == skill_id:
                     return True
 
-        except Exception:
-            pass
+        except FileNotFoundError:
+            logger.debug(f"Config file not found: {config_path}")
+        except yaml.YAMLError as e:
+            logger.warning(f"Invalid YAML in config file {config_path}: {e}")
+        except PermissionError:
+            logger.error(f"Permission denied reading config file: {config_path}")
+        except Exception as e:
+            logger.error(f"Unexpected error reading config file {config_path}: {e}")
 
         return False
 
@@ -254,8 +262,12 @@ class SkillInstaller:
                         }
                     )
 
-        except Exception:
-            pass
+        except yaml.YAMLError as e:
+            logger.warning(f"Invalid YAML in config file {config_path}: {e}")
+        except PermissionError:
+            logger.error(f"Permission denied reading config file: {config_path}")
+        except Exception as e:
+            logger.error(f"Unexpected error reading config file {config_path}: {e}")
 
         return installed
 
@@ -421,8 +433,10 @@ class SkillInstaller:
                 packages = deps.get("packages", [])
                 if packages:
                     dependencies.extend(packages)
-            except Exception:
-                pass
+            except yaml.YAMLError as e:
+                logger.warning(f"Invalid YAML in skill.yaml {skill_yaml}: {e}")
+            except Exception as e:
+                logger.debug(f"Could not read skill dependencies from {skill_yaml}: {e}")
 
         # Fallback to requirements.txt
         if not dependencies:
@@ -431,8 +445,10 @@ class SkillInstaller:
                 try:
                     with open(requirements_file) as f:
                         dependencies = [line.strip() for line in f if line.strip() and not line.startswith("#")]
-                except Exception:
-                    pass
+                except PermissionError:
+                    logger.warning(f"Permission denied reading requirements.txt: {requirements_file}")
+                except Exception as e:
+                    logger.debug(f"Could not read requirements.txt {requirements_file}: {e}")
 
         return dependencies
 
@@ -532,8 +548,8 @@ class SkillInstaller:
             # Ensure we're back in original directory
             try:
                 os.chdir(original_cwd)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Could not change back to original directory {original_cwd}: {e}")
 
     def _has_uv(self) -> bool:
         """Check if uv is available."""
@@ -606,8 +622,17 @@ class SkillInstaller:
         try:
             with open(config_path) as f:
                 config = yaml.safe_load(f) or {}
-        except Exception:
-            console.print("[red]❌ Could not read agent_config.yaml[/red]")
+        except FileNotFoundError:
+            console.print("[red]❌ Config file not found: agent_config.yaml[/red]")
+            return False
+        except yaml.YAMLError as e:
+            console.print(f"[red]❌ Invalid YAML in agent_config.yaml: {e}[/red]")
+            return False
+        except PermissionError:
+            console.print("[red]❌ Permission denied reading agent_config.yaml[/red]")
+            return False
+        except Exception as e:
+            console.print(f"[red]❌ Unexpected error reading agent_config.yaml: {e}[/red]")
             return False
 
         # Ensure registry_skills section exists
@@ -659,8 +684,17 @@ class SkillInstaller:
         try:
             with open(config_path) as f:
                 config = yaml.safe_load(f) or {}
-        except Exception:
-            console.print("[red]❌ Could not read agent_config.yaml[/red]")
+        except FileNotFoundError:
+            console.print("[red]❌ Config file not found: agent_config.yaml[/red]")
+            return False
+        except yaml.YAMLError as e:
+            console.print(f"[red]❌ Invalid YAML in agent_config.yaml: {e}[/red]")
+            return False
+        except PermissionError:
+            console.print("[red]❌ Permission denied reading agent_config.yaml[/red]")
+            return False
+        except Exception as e:
+            console.print(f"[red]❌ Unexpected error reading agent_config.yaml: {e}[/red]")
             return False
 
         # Ensure skills section exists
@@ -862,8 +896,9 @@ registry_skills:
   enabled: true"""
                 console.print(f"[cyan]{config_snippet}[/cyan]")
 
-        except Exception:
-            # Basic fallback
+        except Exception as e:
+            # Basic fallback when skill config can't be read
+            logger.debug(f"Could not read skill config for preview, using basic fallback: {e}")
             config_snippet = f"""
 registry_skills:
 - skill_id: {skill_id}
@@ -960,8 +995,12 @@ registry_skills:
                 if skill.get("skill_id") == skill_id:
                     return skill.get("enabled", True)  # Default to enabled for skills
 
-        except Exception:
-            pass
+        except yaml.YAMLError as e:
+            logger.warning(f"Invalid YAML in config file {config_path}: {e}")
+        except PermissionError:
+            logger.warning(f"Permission denied reading config file: {config_path}")
+        except Exception as e:
+            logger.debug(f"Could not read config file {config_path}: {e}")
 
         return False
 
@@ -983,7 +1022,11 @@ registry_skills:
                 if skill.get("skill_id") == skill_id:
                     return skill
 
-        except Exception:
-            pass
+        except yaml.YAMLError as e:
+            logger.warning(f"Invalid YAML in config file {config_path}: {e}")
+        except PermissionError:
+            logger.warning(f"Permission denied reading config file: {config_path}")
+        except Exception as e:
+            logger.debug(f"Could not read config file {config_path}: {e}")
 
         return {}

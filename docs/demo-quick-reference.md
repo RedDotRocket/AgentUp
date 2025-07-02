@@ -8,10 +8,10 @@ export OPENAI_API_KEY="your-key-here"
 mkdir -p ~/agentup-demo && cd ~/agentup-demo
 
 # Create Research Coordinator (Advanced)
-agentup create-agent research-coordinator --template advanced --output-dir ./research-coordinator
+agentup agent create research-coordinator --template advanced --output-dir ./research-coordinator
 
 # Create Data Analyst (Standard)  
-agentup create-agent data-analyst --template standard --output-dir ./data-analyst
+agentup agent create data-analyst --template standard --output-dir ./data-analyst
 
 # Start agents (in separate terminals)
 cd research-coordinator && agentup dev --port 8001
@@ -157,7 +157,7 @@ agentup deploy --type docker
 
 ## Features Demonstrated
 
-✅ CLI Usage (create-agent, add-skill, validate)  
+✅ CLI Usage (agent create, add-skill, validate)  
 ✅ Templates (Advanced, Standard)  
 ✅ MCP (Client & Server)  
 ✅ Authentication (API Key)  

@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 from collections.abc import Callable
 from datetime import datetime, timedelta
@@ -7,6 +8,8 @@ from typing import Any
 
 import httpx
 import yaml
+
+logger = logging.getLogger(__name__)
 
 
 class RegistryClient:
@@ -42,9 +45,9 @@ class RegistryClient:
                 registry_config = config.get("registry", {})
                 if registry_config.get("url"):
                     return registry_config["url"]
-        except Exception:
+        except Exception as e:
             # If config loading fails, use default
-            pass
+            logger.debug(f"Could not load registry config, using default URL: {e}")
 
         # 3. Production default
         return "https://api.agentai.dev/api/v1"
@@ -180,8 +183,14 @@ class RegistryClient:
                             "has_update": True,
                         }
                     )
-            except Exception:
-                # Skip skills that can't be checked
+            except httpx.RequestError as e:
+                logger.debug(f"Network error checking updates for skill {skill['skill_id']}: {e}")
+                continue
+            except KeyError as e:
+                logger.debug(f"Missing data in skill response for {skill['skill_id']}: {e}")
+                continue
+            except Exception as e:
+                logger.debug(f"Unexpected error checking updates for skill {skill['skill_id']}: {e}")
                 continue
 
         return updates
@@ -210,8 +219,17 @@ class RegistryClient:
             # Load and return cached data
             with open(cache_file) as f:
                 return json.load(f)
-        except Exception:
-            # If cache read fails, return None
+        except json.JSONDecodeError:
+            logger.debug(f"Corrupted cache file {cache_file}, ignoring")
+            return None
+        except PermissionError:
+            logger.warning(f"Permission denied reading cache file: {cache_file}")
+            return None
+        except OSError as e:
+            logger.debug(f"Error accessing cache file {cache_file}: {e}")
+            return None
+        except Exception as e:
+            logger.debug(f"Unexpected error reading cache file {cache_file}: {e}")
             return None
 
     def _cache_data(self, cache_key: str, data: dict[str, Any]) -> None:
@@ -221,14 +239,19 @@ class RegistryClient:
         try:
             with open(cache_file, "w") as f:
                 json.dump(data, f, indent=2)
-        except Exception:
-            # If caching fails, continue without caching
-            pass
+        except PermissionError:
+            logger.warning(f"Permission denied writing to cache file: {cache_file}")
+        except OSError as e:
+            logger.debug(f"Failed to write cache file {cache_file}: {e}")
+        except Exception as e:
+            logger.debug(f"Unexpected error writing to cache {cache_file}: {e}")
 
     def clear_cache(self) -> None:
         """Clear all cached data."""
         for cache_file in self.cache_dir.glob("*.json"):
             try:
                 cache_file.unlink()
-            except Exception:
-                pass
+            except PermissionError:
+                logger.warning(f"Permission denied deleting cache file: {cache_file}")
+            except Exception as e:
+                logger.debug(f"Error deleting cache file {cache_file}: {e}")

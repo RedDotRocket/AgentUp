@@ -83,12 +83,12 @@ def create_agent(
     with an initial commit. Use --no-git to skip git initialization.
 
     Examples:
-        agentup create-agent                    # Interactive mode with git init
-        agentup create-agent my-agent           # Interactive with name
-        agentup create-agent --quick my-agent   # Quick setup with standard features
-        agentup create-agent --minimal my-agent # Minimal setup (basic handlers only)
-        agentup create-agent --no-git my-agent  # Skip git initialization
-        agentup create-agent --template chatbot my-chatbot
+        agentup agent create                    # Interactive mode with git init
+        agentup agent create my-agent           # Interactive with name
+        agentup agent create --quick my-agent   # Quick setup with standard features
+        agentup agent create --minimal my-agent # Minimal setup (basic handlers only)
+        agentup agent create --no-git my-agent  # Skip git initialization
+        agentup agent create --template chatbot my-chatbot
     """
     click.echo(click.style("-" * 40, fg="white", dim=True))
     click.echo(click.style("Create your AI agent:", fg="white", dim=True))

@@ -57,7 +57,15 @@ class RegistryCache:
         try:
             with open(cache_file) as f:
                 return json.load(f)
-        except Exception:
+        except json.JSONDecodeError:
+            logger.debug(f"Corrupted cache file {cache_file}, deleting")
+            self.delete(key)
+            return None
+        except PermissionError:
+            logger.warning(f"Permission denied reading cache file: {cache_file}")
+            return None
+        except Exception as e:
+            logger.debug(f"Error reading cache file {cache_file}: {e}")
             self.delete(key)
             return None
 
@@ -72,8 +80,12 @@ class RegistryCache:
             # Update metadata
             self.metadata["entries"][key] = {"timestamp": time.time(), "size": cache_file.stat().st_size}
             self._save_metadata()
-        except Exception:
-            pass
+        except PermissionError:
+            logger.warning(f"Permission denied writing to cache file: {cache_file}")
+        except OSError as e:
+            logger.warning(f"Failed to write cache file {cache_file}: {e}")
+        except Exception as e:
+            logger.debug(f"Unexpected error writing to cache {cache_file}: {e}")
 
     def delete(self, key: str) -> None:
         """Delete item from cache."""
@@ -87,8 +99,12 @@ class RegistryCache:
             if key in self.metadata["entries"]:
                 del self.metadata["entries"][key]
                 self._save_metadata()
-        except Exception:
-            pass
+        except PermissionError:
+            logger.warning(f"Permission denied deleting cache file: {cache_file}")
+        except OSError as e:
+            logger.debug(f"Error deleting cache file {cache_file}: {e}")
+        except Exception as e:
+            logger.debug(f"Unexpected error during cache deletion {cache_file}: {e}")
 
     def clear(self) -> None:
         """Clear all cache entries."""
@@ -96,8 +112,10 @@ class RegistryCache:
             if cache_file != self.metadata_file:
                 try:
                     cache_file.unlink()
-                except Exception:
-                    pass
+                except PermissionError:
+                    logger.warning(f"Permission denied deleting cache file during clear: {cache_file}")
+                except Exception as e:
+                    logger.debug(f"Error deleting cache file during clear {cache_file}: {e}")
 
         self.metadata = {"version": 1, "entries": {}}
         self._save_metadata()
@@ -108,8 +126,10 @@ class RegistryCache:
         for cache_file in self.cache_dir.glob("*.json"):
             try:
                 total_size += cache_file.stat().st_size
-            except Exception:
-                pass
+            except OSError as e:
+                logger.debug(f"Could not get size of cache file {cache_file}: {e}")
+            except Exception as e:
+                logger.debug(f"Unexpected error getting cache file size {cache_file}: {e}")
         return total_size
 
     def cleanup_expired(self, max_age_seconds: int = 86400) -> int:
