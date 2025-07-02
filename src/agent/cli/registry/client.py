@@ -1,8 +1,9 @@
 import json
 import os
+from collections.abc import Callable
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 import yaml
@@ -108,7 +109,7 @@ class RegistryClient:
         skill_id: str,
         destination: Path,
         version: str = "latest",
-        progress_callback: Optional[callable] = None,  # noqa: UP007
+        progress_callback: Callable[..., Any] | None = None,
     ) -> Path:
         """Download a skill package with progress tracking."""
         download_url = f"{self.base_url}/packages/{skill_id}"
