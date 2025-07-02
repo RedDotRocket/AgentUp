@@ -9,9 +9,9 @@ from typing import Any
 import yaml
 from rich.console import Console
 
+from ..cli_utils import safe_extract
 from .client import RegistryClient
 from .validator import SkillValidator
-from ..cli_utils import safe_extract
 
 console = Console()
 

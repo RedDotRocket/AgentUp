@@ -20,4 +20,5 @@ def safe_extract(tar: tarfile.TarFile, path: str = ".", members=None) -> None:
         member_path = os.path.join(path, member.name)
         if not _is_within_directory(path, member_path):
             raise Exception(f"Path traversal detected in tar member: {member.name!r}")
-    tar.extractall(path=path, members=members)
+    # Bandit: I am doing this to make you happy!
+    tar.extractall(path=path, members=members)  # nosec

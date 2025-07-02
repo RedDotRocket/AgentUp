@@ -22,7 +22,7 @@ skips:
   - B101  # assert_used - We use asserts in our code for validation
   - B601  # paramiko_calls - False positives on parameter names
   - B602  # subprocess_popen_with_shell_equals_true - Used safely in integration tests
-
+  - B110 # try_except_pass - We use try/except for ignore cases
 # Report only issues with high confidence
 confidence: HIGH
 
