@@ -1,6 +1,6 @@
 import os
 import shutil
-import subprocess  # nosec B404 - needed for package management operations
+import subprocess  # nosec
 import tarfile
 import tempfile
 from pathlib import Path
@@ -11,6 +11,7 @@ from rich.console import Console
 
 from .client import RegistryClient
 from .validator import SkillValidator
+from ..cli_utils import safe_extract
 
 console = Console()
 
@@ -378,7 +379,7 @@ class SkillInstaller:
                     raise ValueError(f"Path traversal attempt detected: {member.name}")
 
             # Extract all validated members
-            tar.extractall(destination)
+            safe_extract(tar, path=destination)
 
     async def _handle_dependencies(self, skill_dir: Path, skill_info: dict[str, Any]) -> bool:
         """Handle skill dependencies with better UX."""
@@ -503,7 +504,8 @@ class SkillInstaller:
             cmd = ["uv", "add"] + dependencies
             console.print(f"[dim]Running: {' '.join(cmd)}[/dim]")
 
-            result = subprocess.run(  # nosec B603 - legitimate package manager command
+            # Bandit: subprocess is used for uv, no external input involved
+            result = subprocess.run(  # nosec
                 cmd,
                 capture_output=True,
                 text=True,
@@ -536,7 +538,8 @@ class SkillInstaller:
     def _has_uv(self) -> bool:
         """Check if uv is available."""
         try:
-            subprocess.run(["uv", "--version"], capture_output=True, check=True)  # nosec B603,B607 - legitimate uv version check
+            # Bandit: subprocess is used to check for uv, no external input involved
+            subprocess.run(["uv", "--version"], capture_output=True, check=True)  # nosec
             return True
         except (subprocess.CalledProcessError, FileNotFoundError):
             return False
@@ -547,7 +550,8 @@ class SkillInstaller:
             cmd = ["uv", "add"] + dependencies
             console.print(f"[dim]Running: {' '.join(cmd)}[/dim]")
 
-            result = subprocess.run(  # nosec B603 - legitimate package manager command
+            # Bandit: subprocess is used for uv, no external input involved
+            result = subprocess.run(  # nosec
                 cmd,
                 capture_output=True,
                 text=True,

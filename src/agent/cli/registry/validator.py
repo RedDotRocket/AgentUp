@@ -6,6 +6,8 @@ from typing import Any
 
 import yaml
 
+from ..cli_utils import safe_extract
+
 
 class ValidationResult:
     """Result of skill package validation."""
@@ -80,8 +82,8 @@ class SkillValidator:
                                 result.add_error(f"Path traversal attempt detected: {member.name}")
                                 return result
 
-                        # Extract all validated members
-                        tar.extractall(temp_path)
+                        # Extract all validated member
+                        safe_extract(tar, path=temp_path)
                 except Exception as e:
                     result.add_error(f"Failed to extract package: {e}")
                     return result

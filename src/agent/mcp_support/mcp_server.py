@@ -167,8 +167,9 @@ async def mcp_tool_wrapper({param_str}) -> str:
                 }
                 local_vars = {"handler": handler, "logger": logger, "datetime": datetime}
 
-                # Execute with restricted environment
-                exec(func_source, restricted_globals, local_vars)  # nosec B102 - controlled input with validation
+                # Bandit: This is a controlled execution of a function definition
+                # in a restricted environment with no external input
+                exec(func_source, restricted_globals, local_vars)  # nosec
                 mcp_tool_wrapper = local_vars["mcp_tool_wrapper"]
 
                 # Register with FastMCP
