@@ -1,7 +1,10 @@
 import json
+import logging
 import time
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 class RegistryCache:
@@ -24,8 +27,8 @@ class RegistryCache:
             try:
                 with open(self.metadata_file) as f:
                     return json.load(f)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Failed to load cache metadata: {e}")  # Expected for first run
         return {"version": 1, "entries": {}}
 
     def _save_metadata(self) -> None:
@@ -33,8 +36,8 @@ class RegistryCache:
         try:
             with open(self.metadata_file, "w") as f:
                 json.dump(self.metadata, f, indent=2)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to save cache metadata: {e}")
 
     def get(self, key: str, max_age_seconds: int = 3600) -> Any | None:
         """Get item from cache if not expired."""

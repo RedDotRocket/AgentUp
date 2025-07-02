@@ -2,6 +2,7 @@ import logging
 import re
 import secrets
 import string
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -583,7 +584,7 @@ Always be helpful, accurate, and maintain a friendly tone. You are designed to a
                 {
                     "name": "filesystem",
                     "command": "npx",
-                    "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+                    "args": ["-y", "@modelcontextprotocol/server-filesystem", tempfile.gettempdir()],
                     "env": {},
                 }
             ]

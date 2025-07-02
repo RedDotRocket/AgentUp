@@ -1,6 +1,6 @@
 import os
 import shutil
-import subprocess
+import subprocess  # nosec B404 - needed for package management operations
 import tarfile
 import tempfile
 from pathlib import Path
@@ -358,10 +358,26 @@ class SkillInstaller:
         return await self._update_skill_status(skill_id, enabled=False)
 
     def _extract_package(self, package_path: Path, destination: Path) -> None:
-        """Extract a skill package."""
+        """Extract a skill package safely, preventing path traversal attacks."""
         destination.mkdir(parents=True, exist_ok=True)
 
         with tarfile.open(package_path, "r:gz") as tar:
+            # Validate each member before extraction to prevent path traversal
+            for member in tar.getmembers():
+                # Check for path traversal attempts
+                if member.name.startswith('/') or '..' in member.name:
+                    raise ValueError(f"Unsafe path in archive: {member.name}")
+                
+                # Check for absolute paths and normalize
+                if member.name.startswith('/'):
+                    member.name = member.name.lstrip('/')
+                
+                # Ensure we don't extract outside destination directory
+                member_path = destination / member.name
+                if not str(member_path.resolve()).startswith(str(destination.resolve())):
+                    raise ValueError(f"Path traversal attempt detected: {member.name}")
+            
+            # Extract all validated members
             tar.extractall(destination)
 
     async def _handle_dependencies(self, skill_dir: Path, skill_info: dict[str, Any]) -> bool:
@@ -487,7 +503,7 @@ class SkillInstaller:
             cmd = ["uv", "add"] + dependencies
             console.print(f"[dim]Running: {' '.join(cmd)}[/dim]")
 
-            result = subprocess.run(
+            result = subprocess.run(  # nosec B603 - legitimate package manager command
                 cmd,
                 capture_output=True,
                 text=True,
@@ -520,7 +536,7 @@ class SkillInstaller:
     def _has_uv(self) -> bool:
         """Check if uv is available."""
         try:
-            subprocess.run(["uv", "--version"], capture_output=True, check=True)
+            subprocess.run(["uv", "--version"], capture_output=True, check=True)  # nosec B603,B607 - legitimate uv version check
             return True
         except (subprocess.CalledProcessError, FileNotFoundError):
             return False
@@ -531,7 +547,7 @@ class SkillInstaller:
             cmd = ["uv", "add"] + dependencies
             console.print(f"[dim]Running: {' '.join(cmd)}[/dim]")
 
-            result = subprocess.run(
+            result = subprocess.run(  # nosec B603 - legitimate package manager command
                 cmd,
                 capture_output=True,
                 text=True,

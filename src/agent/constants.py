@@ -19,7 +19,12 @@ DEFAULT_DATABASE_URL = "sqlite:///./agent.db"
 DEFAULT_VALKEY_URL = "valkey://localhost:6379"
 
 # Server configuration
-DEFAULT_SERVER_HOST = "0.0.0.0"
+# WARNING: "0.0.0.0" binds to all network interfaces, making the agent accessible 
+# from any network interface. For production, consider:
+# - Use "127.0.0.1" for localhost-only access
+# - Use specific IP addresses for controlled access
+# - Ensure proper firewall rules and authentication are in place
+DEFAULT_SERVER_HOST = "0.0.0.0"  # nosec B104 - intentional for development
 DEFAULT_SERVER_PORT = 8000
 
 # Timeouts and limits

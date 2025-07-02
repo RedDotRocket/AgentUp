@@ -1,5 +1,5 @@
 import os
-import subprocess
+import subprocess  # nosec B404 - needed for development server operations
 import sys
 from pathlib import Path
 
@@ -85,7 +85,7 @@ def dev(config: Path, host: str, port: int, reload: bool):
     import signal
 
     # Start the subprocess in a new process group
-    proc = subprocess.Popen(cmd, env=env, preexec_fn=os.setsid)
+    proc = subprocess.Popen(cmd, env=env, preexec_fn=os.setsid)  # nosec B603 - legitimate development server command
 
     # Set up signal handlers to forward signals to the child process group
     def signal_handler(signum, frame):

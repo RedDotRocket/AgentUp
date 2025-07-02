@@ -1,4 +1,4 @@
-import subprocess
+import subprocess  # nosec B404 - needed for legitimate git operations
 from pathlib import Path
 from typing import Any
 
@@ -22,16 +22,16 @@ def initialize_git_repo(project_path: Path) -> bool:
     """
     try:
         # Check if git is available
-        subprocess.run(["git", "--version"], check=True, capture_output=True)
+        subprocess.run(["git", "--version"], check=True, capture_output=True)  # nosec B603,B607 - legitimate git command
 
         # Initialize git repository
-        subprocess.run(["git", "init"], cwd=project_path, check=True, capture_output=True)
+        subprocess.run(["git", "init"], cwd=project_path, check=True, capture_output=True)  # nosec B603,B607 - legitimate git command
 
         # Add all files to git
-        subprocess.run(["git", "add", "."], cwd=project_path, check=True, capture_output=True)
+        subprocess.run(["git", "add", "."], cwd=project_path, check=True, capture_output=True)  # nosec B603,B607 - legitimate git command
 
         # Create initial commit
-        subprocess.run(["git", "commit", "-m", "Initial commit"], cwd=project_path, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "Initial commit"], cwd=project_path, check=True, capture_output=True)  # nosec B603,B607 - legitimate git command
 
         return True
 
