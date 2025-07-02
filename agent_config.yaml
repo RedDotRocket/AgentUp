@@ -1,0 +1,57 @@
+# Dummy Version of AgentUp Configuration File
+# This is a minimal template for an AgentUp testing environment.
+
+#  Agent Information
+agent:
+  name: My Agent
+  description: AI Agent My Agent Project.
+  version: 0.1.0
+
+# Routing configuration
+routing:
+  default_mode: direct
+  fallback_skill: echo
+  fallback_enabled: true
+
+# Core skills configuration
+skills:
+  - skill_id: echo
+    name: Echo
+    description: Echo back the input text
+    input_mode: text
+    output_mode: text
+    routing_mode: direct
+    keywords: [echo, repeat, say]
+    patterns: ['.*']  # Catch-all for minimal template
+
+# Registry skills section - for skills installed from AgentUp Skills Registry
+registry_skills: []
+
+# Security configuration
+security:
+  enabled: false
+  type: "api_key"
+  api_key:
+    header_name: "X-API-Key"
+    location: "header"
+    keys:
+      - "some_rnadomly_generated_key_sdr3w33s"
+
+# Middleware configuration
+middleware:
+  - name: logged
+    params:
+      log_level: 20
+  - name: timed
+    params: {}
+
+# Push notifications configuration
+push_notifications:
+  enabled: true
+  backend: memory
+  validate_urls: false
+
+# State management
+state:
+  backend: memory           # Simple memory state for minimal template
+  ttl: 3600  # 1 hour
