@@ -57,7 +57,7 @@ This agent is **fully A2A-specification compliant** and includes:
 - ✅ **Task Monitoring** - Real-time task status and history tracking
 - ✅ **Health Endpoints** - Agent health and capability reporting
 
-### 🚀 **Template-Specific Features**
+### **Template-Specific Features**
 This agent was created with the **{{ template_name }}** template and includes:
 
 {{ if }} has_middleware

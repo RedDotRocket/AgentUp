@@ -195,7 +195,7 @@ class TestCreateAgentCommand:
         assert call_args[0] == custom_dir
 
     def test_create_agent_directory_exists_cancel(self, runner, mock_questionary, temp_dir, mock_template_features):
-        """Test canceling when directory already exists."""
+        """Test canceling when directory already exists (interactive mode)."""
         # Create existing directory
         existing_dir = temp_dir / "existing-agent"
         existing_dir.mkdir()
@@ -203,10 +203,30 @@ class TestCreateAgentCommand:
         mock_questionary.confirm.return_value.ask.return_value = False  # Don't continue
 
         with patch("pathlib.Path.cwd", return_value=temp_dir):
-            result = runner.invoke(create_agent, ["existing-agent", "--quick", "--no-git"])
+            # Remove --quick flag to test interactive mode cancellation
+            result = runner.invoke(create_agent, ["existing-agent", "--no-git"])
 
         assert result.exit_code == 0
         assert "Cancelled." in result.output
+
+    def test_create_agent_directory_exists_quick_mode(self, runner, mock_generator, temp_dir, mock_template_features):
+        """Test quick mode automatically continues when directory exists."""
+        # Create existing directory
+        existing_dir = temp_dir / "existing-agent"
+        existing_dir.mkdir()
+
+        with (
+            patch("pathlib.Path.cwd", return_value=temp_dir),
+            patch("agent.cli.commands.create_agent.questionary") as mock_q,
+        ):
+            # Mock service selection
+            mock_q.checkbox.return_value.ask.return_value = ["openai"]
+
+            result = runner.invoke(create_agent, ["existing-agent", "--quick", "--no-git"])
+
+        assert result.exit_code == 0
+        assert "Directory" in result.output and "already exists. Continuing in quick mode" in result.output
+        assert "✅ Project created successfully!" in result.output
 
     def test_create_agent_git_initialization(self, runner, mock_generator, temp_dir, mock_template_features):
         """Test agent creation with git initialization."""

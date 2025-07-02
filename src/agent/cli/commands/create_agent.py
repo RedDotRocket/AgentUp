@@ -116,11 +116,15 @@ def create_agent(
 
     # Check if directory exists
     if output_dir.exists():
-        if not questionary.confirm(
-            f"Directory {output_dir} already exists. Continue?", default=False, style=custom_style
-        ).ask():
-            click.echo("Cancelled.")
-            return
+        if quick:
+            # In quick mode, automatically overwrite if directory exists
+            click.echo(f"Directory {output_dir} already exists. Continuing in quick mode...")
+        else:
+            if not questionary.confirm(
+                f"Directory {output_dir} already exists. Continue?", default=False, style=custom_style
+            ).ask():
+                click.echo("Cancelled.")
+                return
 
     # Quick mode - use specified template or default to standard
     if quick:
@@ -180,30 +184,40 @@ def create_agent(
     # Configure AI provider if 'ai_provider' is in features
     final_features = project_config.get("features", [])
     if "ai_provider" in final_features:
-        ai_provider_choice = questionary.select(
-            "Please select an AI Provider:",
-            choices=[
-                questionary.Choice("OpenAI", value="openai"),
-                questionary.Choice("Anthropic", value="anthropic"),
-                questionary.Choice("Ollama", value="ollama"),
-            ],
-            style=custom_style,
-        ).ask()
+        if quick:
+            # Default to OpenAI in quick mode
+            project_config["ai_provider_config"] = {"provider": "openai"}
+        else:
+            ai_provider_choice = questionary.select(
+                "Please select an AI Provider:",
+                choices=[
+                    questionary.Choice("OpenAI", value="openai"),
+                    questionary.Choice("Anthropic", value="anthropic"),
+                    questionary.Choice("Ollama", value="ollama"),
+                ],
+                style=custom_style,
+            ).ask()
 
-        if ai_provider_choice:
-            project_config["ai_provider_config"] = {"provider": ai_provider_choice}
+            if ai_provider_choice:
+                project_config["ai_provider_config"] = {"provider": ai_provider_choice}
 
     # Configure external services if 'services' is in features (Database, Cache only)
     if "services" in final_features:
-        service_choices = [
-            questionary.Choice("PostgreSQL", value="postgres"),
-            questionary.Choice("Valkey", value="valkey"),
-            questionary.Choice("Custom API", value="custom"),
-        ]
+        if quick:
+            # Default to no external services in quick mode
+            project_config["services"] = []
+        else:
+            service_choices = [
+                questionary.Choice("PostgreSQL", value="postgres"),
+                questionary.Choice("Valkey", value="valkey"),
+                questionary.Choice("Custom API", value="custom"),
+            ]
 
-        selected = questionary.checkbox("Select external services:", choices=service_choices, style=custom_style).ask()
+            selected = questionary.checkbox(
+                "Select external services:", choices=service_choices, style=custom_style
+            ).ask()
 
-        project_config["services"] = selected if selected else []
+            project_config["services"] = selected if selected else []
 
     # Use existing config if provided
     if config:

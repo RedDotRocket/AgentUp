@@ -145,10 +145,10 @@ The security system now respects global configuration while providing override o
 | `enabled: true` | `@protected(required=False)` | ✅ **Allow** (silent) | Public endpoints |
 
 ### Benefits:
-- 🚀 **Development Friendly**: Easy to disable security for testing
-- 🔒 **Production Ready**: Full security when enabled
-- 🎯 **Granular Control**: Per-endpoint override options
-- 👁️ **Audit Trail**: Clear logging of security decisions
+- **Development Friendly**: Easy to disable security for testing
+- **Production Ready**: Full security when enabled
+- **Granular Control**: Per-endpoint override options
+- **Audit Trail**: Clear logging of security decisions
 
 ## Testing Authentication
 
