@@ -16,10 +16,11 @@ def agent():
     type=click.Choice(["minimal", "standard", "full", "demo"], case_sensitive=False),
     help="Project template (default: standard)",
 )
+@click.option("--quick", "-q", is_flag=True, help="Quick setup with standard features (non-interactive)")
 @click.option("--output-dir", "-o", type=click.Path(), help="Output directory")
 @click.option("--config", "-c", type=click.Path(exists=True), help="Use existing agent_config.yaml as template")
 @click.option("--no-git", is_flag=True, help="Skip git repository initialization")
-def create(name, template, output_dir, config, no_git):
+def create(name, template, quick, output_dir, config, no_git):
     """Create a new agent project.
 
     \b
@@ -39,7 +40,7 @@ def create(name, template, output_dir, config, no_git):
     # Import and call the original create_agent functionality
     from . import create_agent
 
-    return create_agent.create_agent.callback(name, template, False, False, output_dir, config, no_git)
+    return create_agent.create_agent.callback(name, template, quick, False, output_dir, config, no_git)
 
 
 @agent.command()
