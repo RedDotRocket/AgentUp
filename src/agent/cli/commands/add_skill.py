@@ -743,7 +743,9 @@ def generate_handler_file_code(skill_data: dict[str, Any]) -> str:
 
     # Setup Jinja2 environment
     templates_dir = Path(__file__).parent.parent.parent / "templates"
-    jinja_env = Environment(loader=FileSystemLoader(templates_dir), autoescape=True, trim_blocks=True, lstrip_blocks=True)
+    jinja_env = Environment(
+        loader=FileSystemLoader(templates_dir), autoescape=True, trim_blocks=True, lstrip_blocks=True
+    )
 
     # Load the template
     template = jinja_env.get_template("skill_handler.py.j2")

@@ -152,9 +152,9 @@ async def mcp_tool_wrapper({param_str}) -> str:
                 # Execute the function definition with restricted globals for security
                 # Validate parameter names to prevent code injection
                 for param in param_names:
-                    if not param.isidentifier() or param.startswith('_'):
+                    if not param.isidentifier() or param.startswith("_"):
                         raise ValueError(f"Invalid parameter name: {param}")
-                
+
                 # Restricted globals to minimize attack surface
                 restricted_globals = {
                     "__builtins__": {
@@ -166,7 +166,7 @@ async def mcp_tool_wrapper({param_str}) -> str:
                     "datetime": datetime,
                 }
                 local_vars = {"handler": handler, "logger": logger, "datetime": datetime}
-                
+
                 # Execute with restricted environment
                 exec(func_source, restricted_globals, local_vars)  # nosec B102 - controlled input with validation
                 mcp_tool_wrapper = local_vars["mcp_tool_wrapper"]

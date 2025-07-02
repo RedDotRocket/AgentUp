@@ -66,20 +66,20 @@ class SkillValidator:
                         # Validate each member before extraction to prevent path traversal
                         for member in tar.getmembers():
                             # Check for path traversal attempts
-                            if member.name.startswith('/') or '..' in member.name:
+                            if member.name.startswith("/") or ".." in member.name:
                                 result.add_error(f"Unsafe path in archive: {member.name}")
                                 return result
-                            
+
                             # Check for absolute paths and normalize
-                            if member.name.startswith('/'):
-                                member.name = member.name.lstrip('/')
-                            
+                            if member.name.startswith("/"):
+                                member.name = member.name.lstrip("/")
+
                             # Ensure we don't extract outside destination directory
                             member_path = temp_path / member.name
                             if not str(member_path.resolve()).startswith(str(temp_path.resolve())):
                                 result.add_error(f"Path traversal attempt detected: {member.name}")
                                 return result
-                        
+
                         # Extract all validated members
                         tar.extractall(temp_path)
                 except Exception as e:
