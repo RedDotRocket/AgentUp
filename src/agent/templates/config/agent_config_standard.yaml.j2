@@ -24,34 +24,53 @@ registry_skills: []
 # security configuration
 security:
   enabled: true   # Authentication enabled for standard template
-  type: bearer
-  bearer:
-    jwt_secret: '{{ generate_jwt_secret() }}'
+  type: jwt
+  config:
+    secret: '{{ generate_jwt_secret() }}'
     algorithm: HS256
     issuer: your-agent
     audience: agentup-client
 
 # AI configuration
+ai:
+  enabled: true
 {% if ai_provider_config %}
-ai_provider:
-    provider: {{ ai_provider_config.provider }}
-{% if ai_provider_config.provider == 'openai' %}
-    api_key: ${OPENAI_API_KEY}
-    model: {{ ai_provider_config.model | default('gpt-4o-mini') }}
-{% elif ai_provider_config.provider == 'anthropic' %}
-    api_key: ${ANTHROPIC_API_KEY}
-    model: {{ ai_provider_config.model | default('claude-3-5-sonnet-20241022') }}
-{% elif ai_provider_config.provider == 'ollama' %}
-    model: {{ ai_provider_config.model | default('llama3') }}
-    base_url: ${OLLAMA_BASE_URL:http://localhost:11434/v1}
-{% endif %}
-    temperature: 0.7
-    max_tokens: 1000
-    top_p: 1.0
+  llm_service: {{ ai_provider_config.provider }}_llm
+{% else %}
+  llm_service: openai_llm
 {% endif %}
 
-# External services configuration (LLM configuration moved to ai_provider section)
+# External services configuration
 services:
+{% if ai_provider_config %}
+  {{ ai_provider_config.provider }}_llm:
+    type: llm
+    config:
+      provider: {{ ai_provider_config.provider }}
+{% if ai_provider_config.provider == 'openai' %}
+      api_key: ${OPENAI_API_KEY}
+      model: {{ ai_provider_config.model | default('gpt-4o-mini') }}
+{% elif ai_provider_config.provider == 'anthropic' %}
+      api_key: ${ANTHROPIC_API_KEY}
+      model: {{ ai_provider_config.model | default('claude-3-5-sonnet-20241022') }}
+{% elif ai_provider_config.provider == 'ollama' %}
+      model: {{ ai_provider_config.model | default('llama3') }}
+      base_url: ${OLLAMA_BASE_URL:http://localhost:11434/v1}
+{% endif %}
+      temperature: 0.7
+      max_tokens: 1000
+      top_p: 1.0
+{% else %}
+  openai_llm:
+    type: llm
+    config:
+      provider: openai
+      api_key: ${OPENAI_API_KEY}
+      model: gpt-4o-mini
+      temperature: 0.7
+      max_tokens: 1000
+      top_p: 1.0
+{% endif %}
   valkey:
     type: cache
     config:
@@ -105,12 +124,6 @@ push_notifications:
   backend: memory             # Simple memory backend for standard template
   validate_urls: true         # Enable webhook URL validation
 
-# Cache management
-cache:
-  backend: memory          # Simple memory cache for standard template
-  default_ttl: 1800        # 30 minutes
-  max_size: 1000
-  enabled: true
 
 # State management
 state:

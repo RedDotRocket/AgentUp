@@ -17,7 +17,12 @@ skills:
     output_mode: text
     keywords: [echo, repeat, say]
     patterns: ['.echo']  # Catch-all for minimal template
+    routing_mode: direct  # Use direct routing for keyword-based matching
     priority: 50
+
+# Routing configuration
+routing:
+  default_mode: direct  # Use direct routing by default for minimal template
 
 # Registry skills section - for skills installed from AgentUp Skills Registry
 registry_skills: []
