@@ -7,6 +7,34 @@ GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
+# Cleanup function
+cleanup() {
+    if [ ! -z "$SERVER_PID" ] && ps -p $SERVER_PID > /dev/null 2>&1; then
+        echo "Cleaning up server process..."
+        
+        # Try graceful shutdown first with SIGTERM
+        kill -TERM $SERVER_PID 2>/dev/null
+        
+        # Wait for graceful shutdown
+        SHUTDOWN_COUNT=0
+        MAX_SHUTDOWN_WAIT=10
+        while ps -p $SERVER_PID > /dev/null 2>&1 && [ $SHUTDOWN_COUNT -lt $MAX_SHUTDOWN_WAIT ]; do
+            sleep 1
+            SHUTDOWN_COUNT=$((SHUTDOWN_COUNT + 1))
+        done
+        
+        # Force kill if still running
+        if ps -p $SERVER_PID > /dev/null 2>&1; then
+            echo "Server still running after graceful shutdown, force killing..."
+            kill -9 $SERVER_PID 2>/dev/null
+            sleep 1
+        fi
+    fi
+}
+
+# Set trap to cleanup on exit
+trap cleanup EXIT INT TERM
+
 # Start the server
 echo "Starting AgentUp server..."
 uv run agentup agent serve -c tests/integration/agent_config_echo.yaml &
@@ -14,11 +42,28 @@ SERVER_PID=$!
 
 # Wait for server to start
 echo "Waiting for server to be ready..."
-sleep 3
+READY_COUNT=0
+MAX_READY_WAIT=30
 
-# Check if server is running
-if ! ps -p $SERVER_PID > /dev/null; then
-    echo -e "${RED}Server failed to start${NC}"
+while [ $READY_COUNT -lt $MAX_READY_WAIT ]; do
+    # Check if server process is still running
+    if ! ps -p $SERVER_PID > /dev/null 2>&1; then
+        echo -e "${RED}Server process died${NC}"
+        exit 1
+    fi
+    
+    # Check if server is responding
+    if curl -s -f http://localhost:8000/health > /dev/null 2>&1; then
+        echo "Server is ready!"
+        break
+    fi
+    
+    sleep 1
+    READY_COUNT=$((READY_COUNT + 1))
+done
+
+if [ $READY_COUNT -eq $MAX_READY_WAIT ]; then
+    echo -e "${RED}Server failed to become ready within ${MAX_READY_WAIT} seconds${NC}"
     exit 1
 fi
 
@@ -52,7 +97,6 @@ TASK_ID=$(echo "$RESPONSE" | jq -r '.result.id')
 if [ -z "$TASK_ID" ] || [ "$TASK_ID" = "null" ]; then
     echo -e "${RED}Failed to get task ID from response${NC}"
     echo "Response: $RESPONSE"
-    kill $SERVER_PID
     exit 1
 fi
 
@@ -74,10 +118,7 @@ STATUS_RESPONSE=$(curl -s -X POST http://localhost:8000/ \
 ECHO_TEXT=$(echo "$STATUS_RESPONSE" | jq -r '.result.artifacts[0].parts[0].text')
 STATUS_STATE=$(echo "$STATUS_RESPONSE" | jq -r '.result.status.state')
 
-# Stop the server
-echo "Stopping server..."
-kill $SERVER_PID
-wait $SERVER_PID 2>/dev/null
+# Server will be stopped by cleanup trap
 
 # Check results
 echo
