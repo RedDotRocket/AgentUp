@@ -71,7 +71,7 @@ def dev(config: Path, host: str, port: int, reload: bool):
         cmd = [sys.executable, "-m", "uvicorn", app_module, "--host", host, "--port", str(port)]
     else:
         # We're running from installed package or source repo
-        app_module = "agent.main:app"
+        app_module = "agent.api.app:app"
         click.echo("Running from installed package")
 
         # Build the Uvicorn command using Python module to ensure correct environment

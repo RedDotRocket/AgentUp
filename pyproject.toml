@@ -29,6 +29,7 @@ dependencies = [
     "psutil>=7.0.0",
     "valkey>=6.0.0",
     "pyjwt>=2.10.1",
+    "pluggy>=1.5.0",
 ]
 
 [project.scripts]

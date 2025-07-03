@@ -75,6 +75,19 @@ async def lifespan(app: FastAPI):
     else:
         logger.warning("Services initialization skipped")
 
+    # Initialize plugin system if available
+    plugin_cfg = config.get("plugins", {})
+    if plugin_cfg.get("enabled", True):  # Enabled by default
+        try:
+            from ..plugins.integration import enable_plugin_system
+
+            enable_plugin_system()
+            logger.info("Plugin system initialized successfully")
+        except ImportError:
+            logger.debug("Plugin system not available")
+        except Exception as e:
+            logger.error(f"Failed to initialize plugin system: {e}")
+
     # Load registry skills if available
     try:
         from ..utils.loaders import load_all_registry_skills

@@ -23,6 +23,10 @@ skills:
     routing_mode: direct
     keywords: [echo, repeat, say]
     patterns: ['.*']  # Catch-all for minimal template
+  - skill_id: ai_time_plugin
+    name: AI Time Plugin
+    description: AI-powered time and date functionality
+    routing_mode: direct
 
 # Registry skills section - for skills installed from AgentUp Skills Registry
 registry_skills: []

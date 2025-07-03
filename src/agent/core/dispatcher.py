@@ -4,7 +4,7 @@ from typing import Any
 
 from a2a.types import Task
 
-from ..api.streaming import StreamingHandler
+# StreamingHandler imported lazily to avoid circular imports
 from ..services import get_services
 from ..services.llm.manager import LLMManager
 from ..state.conversation import ConversationManager
@@ -99,6 +99,9 @@ class FunctionDispatcher:
     def __init__(self, function_registry: FunctionRegistry):
         self.function_registry = function_registry
         self.conversation_manager = ConversationManager()
+        # Import StreamingHandler lazily to avoid circular imports
+        from ..api.streaming import StreamingHandler
+
         self.streaming_handler = StreamingHandler(function_registry, self.conversation_manager)
 
     async def process_task(self, task: Task) -> str:
@@ -404,3 +407,67 @@ def register_ai_functions_from_handlers():
                 registered_count += 1
 
     logger.info(f"Registered {registered_count} AI functions from handlers")
+
+    # Also register AI functions from plugins
+    try:
+        from ..plugins.integration import get_plugin_adapter
+
+        plugin_adapter = get_plugin_adapter()
+        if plugin_adapter:
+            plugin_functions_count = 0
+
+            # Get all available plugin skills
+            available_skills = plugin_adapter.list_available_skills()
+
+            # Get configured skills from agent config
+            try:
+                from ..config import load_config
+
+                config = load_config()
+                configured_skills = {skill.get("skill_id") for skill in config.get("skills", [])}
+            except Exception as e:
+                logger.warning(f"Could not load agent config for plugin AI functions: {e}")
+                configured_skills = set(available_skills)
+
+            # Register AI functions only for configured plugin skills
+            for skill_id in available_skills:
+                if skill_id not in configured_skills:
+                    logger.debug(f"Skipping AI functions for unconfigured plugin skill: {skill_id}")
+                    continue
+
+                ai_functions = plugin_adapter.get_ai_functions(skill_id)
+                for ai_function in ai_functions:
+                    # Convert plugin AIFunction to registry format
+                    schema = {
+                        "name": ai_function.name,
+                        "description": ai_function.description,
+                        "parameters": ai_function.parameters,
+                    }
+
+                    # Create a wrapper handler that uses the plugin's handler
+                    # Use factory function to capture ai_function correctly
+                    def create_wrapper(func_handler):
+                        async def plugin_function_wrapper(task, **kwargs):
+                            # Create plugin context from task
+                            from ..plugins.models import SkillContext
+
+                            context = SkillContext(task=task, metadata={"parameters": kwargs})
+                            result = await func_handler(task, context)
+                            return result.content if hasattr(result, "content") else str(result)
+
+                        return plugin_function_wrapper
+
+                    wrapped_handler = create_wrapper(ai_function.handler)
+                    registry.register_function(ai_function.name, wrapped_handler, schema)
+                    logger.info(f"Registered plugin AI function: {ai_function.name} from {skill_id}")
+                    plugin_functions_count += 1
+
+            if plugin_functions_count > 0:
+                logger.info(f"Registered {plugin_functions_count} AI functions from plugins")
+        else:
+            logger.debug("No plugin adapter available for AI function registration")
+
+    except ImportError:
+        logger.debug("Plugin system not available for AI function registration")
+    except Exception as e:
+        logger.error(f"Failed to register plugin AI functions: {e}", exc_info=True)

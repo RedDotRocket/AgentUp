@@ -25,7 +25,6 @@ from a2a.utils import (
 from a2a.utils.errors import ServerError
 
 from ..config.models import BaseAgent
-from .dispatcher import get_function_dispatcher
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -75,6 +74,8 @@ class GenericAgentExecutor(AgentExecutor):
 
         # Initialize Function Dispatcher for AI routing (all skills are available for AI routing)
         # AI routing is available when there are skills without direct routing or as fallback
+        from .dispatcher import get_function_dispatcher
+
         self.dispatcher = get_function_dispatcher()
 
     async def execute(
@@ -124,7 +125,12 @@ class GenericAgentExecutor(AgentExecutor):
             user_input = self._extract_user_message(task)
             target_skill, routing_mode = self._determine_skill_and_routing(user_input)
 
-            logger.info(f"Processing task {task.id} with skill '{target_skill}' using {routing_mode} routing")
+            if routing_mode == "ai":
+                logger.info(
+                    f"Processing task {task.id} using {routing_mode} routing (LLM will select appropriate functions)"
+                )
+            else:
+                logger.info(f"Processing task {task.id} with skill '{target_skill}' using {routing_mode} routing")
 
             # Process based on determined routing mode
             if routing_mode == "ai":

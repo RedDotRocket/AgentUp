@@ -15,7 +15,7 @@ _project_name = _config.get("agent", {}).get("name", "Agent")
 # Import shared utilities (with fallbacks for testing)
 try:
     from ..utils.helpers import extract_parameter
-    from ..utils.messages import MessageProcessor
+    from ..utils.messages import MessageProcessor, ConversationContext
 except ImportError:
 
     class ConversationContext:
