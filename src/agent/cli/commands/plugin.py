@@ -368,11 +368,11 @@ venv/
         # Bandit: Add nosec to ignore command injection risk
         # This is safe as we control the output_dir input and it comes from trusted source (the code itself)
         if not no_git:
-            subprocess.run(["git", "init"], cwd=output_dir, capture_output=True) # nosec
-            subprocess.run(["git", "add", "."], cwd=output_dir, capture_output=True) # nosec
+            subprocess.run(["git", "init"], cwd=output_dir, capture_output=True)  # nosec
+            subprocess.run(["git", "add", "."], cwd=output_dir, capture_output=True)  # nosec
             subprocess.run(
                 ["git", "commit", "-m", f"Initial commit for {plugin_name} plugin"], cwd=output_dir, capture_output=True
-            ) # nosec
+            )  # nosec
 
         # Success message
         console.print("\n[green]✅ Plugin created successfully![/green]")
@@ -860,7 +860,7 @@ def install(plugin_name: str, source: str, url: str | None, force: bool):
         # Bandit: Add nosec to ignore command injection risk
         # This is safe as we control the plugin_name and url inputs and they come from trusted
         # sources (the code itself)
-        result = subprocess.run(cmd, capture_output=True, text=True) # nosec
+        result = subprocess.run(cmd, capture_output=True, text=True)  # nosec
 
         if result.returncode == 0:
             console.print(f"[green]✅ Successfully installed {plugin_name}[/green]")
@@ -889,7 +889,7 @@ def uninstall(plugin_name: str):
         cmd = [sys.executable, "-m", "pip", "uninstall", "-y", plugin_name]
         # Bandit: Add nosec to ignore command injection risk
         # This is safe as we control the plugin_name input and it comes from trusted sources
-        result = subprocess.run(cmd, capture_output=True, text=True) # nosec
+        result = subprocess.run(cmd, capture_output=True, text=True)  # nosec
 
         if result.returncode == 0:
             console.print(f"[green]✅ Successfully uninstalled {plugin_name}[/green]")
