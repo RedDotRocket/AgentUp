@@ -35,10 +35,12 @@ except ImportError:
         def get_latest_user_message(messages):
             return None
 
+
 # Separate import for extract_parameter with fallback
 try:
     from ..utils.helpers import extract_parameter
 except ImportError:
+
     def extract_parameter(text, param):
         return None
 
