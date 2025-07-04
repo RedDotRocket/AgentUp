@@ -16,16 +16,16 @@ help: ## Show this help message
 # Environment setup
 install: ## Install dependencies with uv
 	uv sync --all-extras
-	@echo "✅ Dependencies installed"
+	@echo "Dependencies installed"
 
 install-dev: ## Install development dependencies
 	uv sync --all-extras --dev
 	uv pip install -e .
-	@echo "✅ Development environment ready"
+	@echo "Development environment ready"
 
 check-deps: ## Check for missing dependencies
 	uv pip check
-	@echo "✅ All dependencies satisfied"
+	@echo "All dependencies satisfied"
 
 # Testing commands
 test: ## Run all tests (unit + integration + e2e)
@@ -33,17 +33,17 @@ test: ## Run all tests (unit + integration + e2e)
 	uv run pytest tests/ -v
 
 test-unit: ## Run unit tests only (fast)
-	uv run pytest tests/test_*.py tests/test_core/ tests/test_cli/ tests/test_templates/ -v -m "not integration and not e2e and not performance"
+	uv run pytest tests/test_*.py tests/test_core/ tests/test_cli/  -v -m "not integration and not e2e and not performance"
 
 test-unit-coverage: ## Run unit tests with coverage report
-	uv run pytest tests/test_*.py tests/test_core/ tests/test_cli/ tests/test_templates/ --cov=src --cov-report=html --cov-report=term-missing -m "not integration and not e2e and not performance"
+	uv run pytest tests/test_*.py tests/test_core/ tests/test_cli/  --cov=src --cov-report=html --cov-report=term-missing -m "not integration and not e2e and not performance"
 	@echo "Coverage report generated in htmlcov/"
 
 test-unit-fast: ## Run unit tests with minimal output
-	uv run pytest tests/test_*.py tests/test_core/ tests/test_cli/ tests/test_templates/ -q --tb=short -m "not integration and not e2e and not performance"
+	uv run pytest tests/test_*.py tests/test_core/ tests/test_cli/  -q --tb=short -m "not integration and not e2e and not performance"
 
 test-unit-watch: ## Run unit tests in watch mode
-	uv run pytest-watch --runner "uv run pytest tests/test_*.py tests/test_core/ tests/test_cli/ tests/test_templates/ -m 'not integration and not e2e and not performance'"
+	uv run pytest-watch --runner "uv run pytest tests/test_*.py tests/test_core/ tests/test_cli/  -m 'not integration and not e2e and not performance'"
 
 test-integration: ## Run bash integration tests only
 	chmod +x tests/integration/int.sh
@@ -51,7 +51,7 @@ test-integration: ## Run bash integration tests only
 
 template-test-syntax: ## Test template syntax only (quick)
 	uv run python -c "from jinja2 import Environment, FileSystemLoader; env = Environment(loader=FileSystemLoader('src/agent/templates')); [env.get_template(t) for t in ['config/agent_config_minimal.yaml.j2', 'config/agent_config_standard.yaml.j2', 'config/agent_config_full.yaml.j2', 'config/agent_config_demo.yaml.j2']]"
-	@echo "✅ Template syntax validated"
+	@echo "Template syntax validated"
 
 # Code quality
 lint: ## Run linting checks
@@ -96,7 +96,7 @@ agent-create-minimal: ## Create minimal test agent
 		--quick test-minimal \
 		--template minimal \
 		--output-dir ./test-agents/minimal
-	@echo "✅ Minimal agent created in ./test-agents/minimal"
+	@echo "Minimal agent created in ./test-agents/minimal"
 
 agent-create-standard: ## Create standard test agent
 	@echo "Creating standard test agent..."
@@ -104,7 +104,7 @@ agent-create-standard: ## Create standard test agent
 		--quick test-standard \
 		--template standard \
 		--output-dir ./test-agents/standard
-	@echo "✅ Standard agent created in ./test-agents/standard"
+	@echo "Standard agent created in ./test-agents/standard"
 
 agent-create-advanced: ## Create advanced test agent
 	@echo "Creating advanced test agent..."
@@ -112,14 +112,14 @@ agent-create-advanced: ## Create advanced test agent
 		--quick test-advanced \
 		--template advanced \
 		--output-dir ./test-agents/advanced
-	@echo "✅ Advanced agent created in ./test-agents/advanced"
+	@echo "Advanced agent created in ./test-agents/advanced"
 
 agent-test: ## Test a generated agent
 	@if [ -d "./test-agents/standard" ]; then \
 		echo "Testing standard agent..."; \
 		cd ./test-agents/standard && \
 		uv run python -m pytest tests/ -v 2>/dev/null || echo "⚠️ Tests not available"; \
-		echo "✅ Agent test completed"; \
+		echo "Agent test completed"; \
 	else \
 		echo "❌ No test agent found. Run 'make agent-create-standard' first"; \
 	fi
@@ -161,7 +161,7 @@ docs-serve: ## Serve documentation locally
 # Build and release
 build: ## Build package
 	uv build
-	@echo "📦 Package built in dist/"
+	@echo "Package built in dist/"
 
 build-check: ## Check package build
 	uv run twine check dist/*
