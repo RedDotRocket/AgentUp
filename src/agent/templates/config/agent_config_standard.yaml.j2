@@ -21,15 +21,17 @@ skills:
 # Registry skills section - for skills installed from AgentUp Skills Registry
 registry_skills: []
 
-# security configuration
+# Security configuration
 security:
-  enabled: true   # Authentication enabled for standard template
-  type: jwt
-  config:
-    secret: '{{ generate_jwt_secret() }}'
-    algorithm: HS256
-    issuer: your-agent
-    audience: agentup-client
+  enabled: false
+  type: "api_key"
+  api_key:
+    header_name: "X-API-Key"
+    location: "header"  # Options: header, query, cookie
+    # The below is randomly generated, and not hardcoded, please change if relevant
+    keys:
+      - "{{ generate_api_key() }}"
+
 
 # AI configuration
 {% if ai_provider_config %}
@@ -50,37 +52,8 @@ ai_provider:
     top_p: 1.0
 {% endif %}
 
-# External services configuration
+# External services configuration (non-LLM services)
 services:
-{% if ai_provider_config %}
-  {{ ai_provider_config.provider }}_llm:
-    type: llm
-    config:
-      provider: {{ ai_provider_config.provider }}
-{% if ai_provider_config.provider == 'openai' %}
-      api_key: ${OPENAI_API_KEY}
-      model: {{ ai_provider_config.model | default('gpt-4o-mini') }}
-{% elif ai_provider_config.provider == 'anthropic' %}
-      api_key: ${ANTHROPIC_API_KEY}
-      model: {{ ai_provider_config.model | default('claude-3-5-sonnet-20241022') }}
-{% elif ai_provider_config.provider == 'ollama' %}
-      model: {{ ai_provider_config.model | default('llama3') }}
-      base_url: ${OLLAMA_BASE_URL:http://localhost:11434/v1}
-{% endif %}
-      temperature: 0.7
-      max_tokens: 1000
-      top_p: 1.0
-{% else %}
-  openai_llm:
-    type: llm
-    config:
-      provider: openai
-      api_key: ${OPENAI_API_KEY}
-      model: gpt-4o-mini
-      temperature: 0.7
-      max_tokens: 1000
-      top_p: 1.0
-{% endif %}
   valkey:
     type: cache
     config:

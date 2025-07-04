@@ -46,36 +46,16 @@ def dev(config: Path, host: str, port: int, reload: bool):
         click.secho(f"❌ Config file not found: {config}", fg="red", err=True)
         sys.exit(1)
 
-    # Detect execution context and determine the correct module path
-    project_root = Path.cwd()
-    local_main = project_root / "src" / "agent" / "main.py"
+    # Always use framework mode - agents run from installed AgentUp package
+    app_module = "agent.api.app:app"
+    click.echo("Running from installed package")
 
-    # Prepare environment with proper PYTHONPATH and config path
+    # Prepare environment with config path
     env = os.environ.copy()
     env["AGENT_CONFIG_PATH"] = str(config)
 
-    if local_main.exists():
-        # We're in a generated project - ensure Python can find the local modules
-        app_module = "src.agent.main:app"
-        click.echo(f"Running from local project at: {project_root}")
-
-        # Add project root to PYTHONPATH
-        if "PYTHONPATH" in env:
-            env["PYTHONPATH"] = f"{project_root}{os.pathsep}{env['PYTHONPATH']}"
-        else:
-            env["PYTHONPATH"] = str(project_root)
-
-        click.echo(f"PYTHONPATH set to: {env.get('PYTHONPATH')}")
-
-        # Build the Uvicorn command using Python module to ensure correct environment
-        cmd = [sys.executable, "-m", "uvicorn", app_module, "--host", host, "--port", str(port)]
-    else:
-        # We're running from installed package or source repo
-        app_module = "agent.api.app:app"
-        click.echo("Running from installed package")
-
-        # Build the Uvicorn command using Python module to ensure correct environment
-        cmd = [sys.executable, "-m", "uvicorn", app_module, "--host", host, "--port", str(port)]
+    # Build the Uvicorn command using Python module
+    cmd = [sys.executable, "-m", "uvicorn", app_module, "--host", host, "--port", str(port)]
 
     if reload:
         cmd.append("--reload")

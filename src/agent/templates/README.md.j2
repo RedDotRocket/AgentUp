@@ -10,11 +10,17 @@
    ```
 
 2. Configure your agent:
-   - Edit `agent_config.yaml` to customize skills
+   - Edit `agent_config.yaml` to customize skills, providers, and features
+   - Set environment variables in `.env` file
 
 3. Start the development server:
    ```bash
-   uv run uvicorn src.agent.main:app --reload --port 8000
+   agentup agent serve
+   ```
+
+   Or manually:
+   ```bash
+   uv run uvicorn agent.api.app:app --reload --port 8000
    ```
 
 ## A2A Compliance Features
@@ -78,203 +84,143 @@ This agent was created with the **{{ template_name }}** template and includes:
 
 ## Development
 
-### AgentUp Development Workflow
+### Pure Config-Driven Architecture
 
-#### 1. Adding New Skills
+This agent runs entirely from the AgentUp framework package. No framework code is copied to your project - everything is controlled through configuration.
 
-**Using AgentUp CLI (Recommended):**
+#### 1. Adding New Skills via Plugins
+
+**Create a Local Plugin:**
 ```bash
-# Interactive skill generator with A2A compliance checks
-agentup skill create
+# Create plugin in the plugins directory
+agentup plugin create my-skill --output-dir plugins/
 
-# Generate with specific template
-agentup add-skill --skill-id my_skill --template conversational
+# Install in development mode
+pip install -e plugins/my-skill
+
+# Add to agent_config.yaml
 ```
 
-**Manual AgentUp Skill Development:**
+**Use Existing Plugins:**
+```bash
+# Install from PyPI
+pip install agentup-plugin-name
 
-1. **Define Skill in Configuration** (`agent_config.yaml`):
+# Or from Git
+pip install git+https://github.com/user/agentup-plugin-name
+```
+
+#### 2. Configuration-Based Customization
+
+**Modify Agent Behavior** (`agent_config.yaml`):
 ```yaml
 skills:
-  - skill_id: my_new_skill
-    name: My New Skill
-    description: AgentUp skill that processes user requests
-    input_mode: text
-    output_mode: text
-    config:
-      max_context_length: 4096
-      response_format: conversational
+  - skill_id: my_plugin_skill  # From installed plugin
+    name: My Skill
+    description: Custom skill via plugin
+    tags: [custom, business]
+    routing_mode: ai  # or 'direct'
+    priority: 100
 ```
 
-2. **Implement A2A Handler** (`src/agent/handlers.py`):
-```python
-@register_handler("my_new_skill")
-async def handle_my_new_skill(task: Task) -> str:
-    \"\"\"A2A-compliant skill handler with full message processing.\"\"\"
-    
-    # Extract A2A messages using MessageProcessor
-    messages = MessageProcessor.extract_messages(task)
-    latest_message = MessageProcessor.get_latest_user_message(messages)
-    
-    if not latest_message:
-        return "No message content provided."
-    
-    # Get message content
-    content = latest_message.get('content', '') if isinstance(latest_message, dict) else getattr(latest_message, 'content', '')
-    
-    # Update conversation context
-    ConversationContext.increment_message_count(task.id)
-    
-    # Process with your skill logic
-    processed_content = your_processing_logic(content)
-    
-    return f"Processed: {processed_content}"
-```
-
-
-#### 2. AgentUp Message Processing Patterns
-
-**Basic Message Extraction:**
-```python
-# Get all messages in conversation
-messages = MessageProcessor.extract_messages(task)
-
-# Get latest user input
-latest_message = MessageProcessor.get_latest_user_message(messages)
-
-# Get conversation history with context
-history = MessageProcessor.get_conversation_history(messages, limit=5)
-```
-
-**Advanced Context Management:**
-```python
-# Access conversation context
-context = ConversationContext.get_context(task.id)
-
-# Store user preferences
-ConversationContext.update_context(task.id, {
-    'user_name': extracted_name,
-    'preferences': user_preferences,
-    'session_data': custom_data
-})
-
-# Track conversation flow
-ConversationContext.increment_message_count(task.id)
-```
-
-**Parameter Extraction with A2A:**
-```python
-# Extract structured parameters from natural language
-name = extract_parameter(content, "name", "Guest")
-action = extract_parameter(content, "action", "default")
-
-# Handle multi-modal content (if enabled)
-{% if has_multimodal %}
-images = MultiModalProcessor.extract_image_parts(task.messages[0].parts)
-if images:
-    image_info = MultiModalProcessor.process_image(images[0].data, images[0].mimeType)
-{% endif %}
-```
-
-**Manual AgentUp Testing:**
+**Environment Configuration** (`.env`):
 ```bash
-# Test JSON-RPC protocol
-curl -X POST http://localhost:8000/ \\
-  -H "Content-Type: application/json" \\
+# Set API keys and service URLs
+OPENAI_API_KEY=your_key_here
+GITHUB_TOKEN=your_token_here
+```
+
+#### 3. Framework Updates
+
+Your agent automatically gets framework updates when you upgrade AgentUp:
+
+```bash
+# Upgrade to latest AgentUp version
+pip install --upgrade agentup
+
+# Restart your agent - new features available immediately
+agentup agent serve
+```
+
+## Plugin Development
+
+See the `plugins/` directory for local plugin development. Each plugin should:
+
+1. Implement the AgentUp plugin API
+2. Provide one or more skills
+3. Include proper configuration validation
+4. Follow A2A specification compliance
+
+For detailed plugin development guidelines, see the AgentUp documentation.
+
+## Testing
+
+Test your agent using A2A-compliant JSON-RPC calls:
+
+```bash
+# Test basic message handling
+curl -X POST http://localhost:8000/ \
+  -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
-    "method": "send_message",
+    "method": "message/send",
     "params": {
-      "messages": [{"role": "user", "content": "Test message"}]
+      "message": {
+        "role": "user",
+        "parts": [{"kind": "text", "text": "Hello"}],
+        "messageId": "msg-001",
+        "contextId": "ctx-001",
+        "kind": "message"
+      }
     },
-    "id": "test-123"
+    "id": "req-001"
   }'
 
 # Test agent discovery
 curl http://localhost:8000/.well-known/agent.json
-
-# Test streaming capabilities
-curl -N -H "Accept: text/event-stream" http://localhost:8000/stream
 ```
 
-** AgentUp Error Testing:**
-```python
-# Test JSON-RPC error scenarios
-test_cases = [
-    {"invalid": "jsonrpc version"},  # Should return -32600
-    {"method": "nonexistent"},       # Should return -32601
-    {"params": "invalid"},           # Should return -32602
-]
+## Project Structure
 
-for case in test_cases:
-    result = await client.make_jsonrpc_request(**case)
-    assert "error" in result
+```
+{{ project_name_snake }}/
+├── agent_config.yaml     # Main configuration
+├── .env                  # Environment variables  
+├── plugins/              # Local plugin development
+├── README.md            # This file
+└── pyproject.toml       # Dependencies (just agentup)
 ```
 
-#### 4. AgentUp Performance & Monitoring
+## Deployment
 
-**Task Lifecycle Monitoring:**
-```python
-# Monitor task states in production
-task_manager = TaskManager()
+The agent can be deployed anywhere Python runs:
 
-# Track task performance
-history = task_manager.get_task_history(task_id)
-processing_time = calculate_processing_time(history)
-
-# Monitor conversation context usage
-context_size = len(ConversationContext.get_context(task_id))
-```
-
-**AgentUp Metrics Collection:**
 ```bash
-# Enable detailed A2A metrics
-export AGENTUP_METRICS=true
-export AGENTUP_TRACE_LEVEL=debug
+# Production server
+gunicorn agent.api.app:app --workers 4 --bind 0.0.0.0:8000
 
-# Monitor JSON-RPC performance
-uv run python -m src.agent.main --enable-metrics
+# Or with uvicorn
+uvicorn agent.api.app:app --host 0.0.0.0 --port 8000
 ```
 
-### Deployment
+{% if has_deployment %}
+For advanced deployment options (Docker, Kubernetes), see the deployment documentation.
+{% endif %}
 
-**Development Deployment:**
-```bash
-# Start development server with AgentUp debugging
-uv run uvicorn src.agent.main:app --reload --port 8000 --log-level debug
+## Production Checklist
 
-# Enable AgentUp protocol tracing
-A2A_DEBUG=true uv run uvicorn src.agent.main:app --reload --port 8000
-```
-
-**Production Deployment:**
-```bash
-# Generate Docker files with AgentUp optimization
-uv run python deploy.py --type docker --a2a-optimized
-
-# Build and run
-docker build -t {{ project_name_snake }} .
-docker run -p 8000:8000 -e AGENTUP_METRICS=true {{ project_name_snake }}
-
-# Kubernetes deployment with AgentUp monitoring
-uv run python deploy.py --type k8s --enable-monitoring
-kubectl apply -f k8s-manifests/
-```
-
-**AgentUp Production Checklist:**
-- [ ] Agent card (`/.well-known/agent.json`) returns valid JSON
-- [ ] All skills properly registered and tested
-- [ ] JSON-RPC error handling covers all edge cases
-- [ ] Task state transitions follow A2A specification
-- [ ] Streaming endpoints handle disconnections gracefully
-- [ ] Authentication schemes properly configured
-- [ ] Performance metrics and monitoring enabled
+- [ ] Environment variables configured in `.env` or deployment environment
+- [ ] API keys and secrets properly secured
+- [ ] Agent configuration tested with expected workloads
+- [ ] Plugin dependencies installed and validated
+- [ ] A2A compliance verified with test clients
 
 ## Documentation
 
-- [Configuration Guide](docs/configuration.md)
-- [Skills Development](docs/skills.md)
-- [API Reference](docs/api-reference.md)
+For more information:
+- [AgentUp Documentation](https://docs.agentup.dev)
+- [A2A Specification](https://a2a.dev)
+- [Plugin Development Guide](https://docs.agentup.dev/plugins)
 
 ## License
 

@@ -2,7 +2,7 @@
 # Useful commands for testing, template generation, and development
 
 .PHONY: help install test test-coverage lint format clean build docs
-.PHONY: template-test template-render agent-create agent-test type-check
+.PHONY: template-test agent-create agent-test type-check
 .PHONY: dev-server example-client check-deps sync-templates example-agent
 .PHONY: docker-build docker-run release validate-all template-test-syntax
 
@@ -28,25 +28,26 @@ check-deps: ## Check for missing dependencies
 	@echo "✅ All dependencies satisfied"
 
 # Testing commands
-test: ## Run all tests
-	uv run pytest -v
+test: ## Run all tests (unit + integration + e2e)
+	@echo "Running comprehensive test suite..."
+	uv run pytest tests/ -v
 
-test-coverage: ## Run tests with coverage report
-	uv run pytest --cov=src --cov-report=html --cov-report=term-missing
+test-unit: ## Run unit tests only (fast)
+	uv run pytest tests/test_*.py tests/test_core/ tests/test_cli/ tests/test_templates/ -v -m "not integration and not e2e and not performance"
+
+test-unit-coverage: ## Run unit tests with coverage report
+	uv run pytest tests/test_*.py tests/test_core/ tests/test_cli/ tests/test_templates/ --cov=src --cov-report=html --cov-report=term-missing -m "not integration and not e2e and not performance"
 	@echo "Coverage report generated in htmlcov/"
 
-test-fast: ## Run tests with minimal output
-	uv run pytest -q --tb=short
+test-unit-fast: ## Run unit tests with minimal output
+	uv run pytest tests/test_*.py tests/test_core/ tests/test_cli/ tests/test_templates/ -q --tb=short -m "not integration and not e2e and not performance"
 
-test-watch: ## Run tests in watch mode
-	uv run pytest-watch --runner "uv run pytest"
+test-unit-watch: ## Run unit tests in watch mode
+	uv run pytest-watch --runner "uv run pytest tests/test_*.py tests/test_core/ tests/test_cli/ tests/test_templates/ -m 'not integration and not e2e and not performance'"
 
-test-integration: ## Run integration tests only
+test-integration: ## Run bash integration tests only
 	chmod +x tests/integration/int.sh
 	./tests/integration/int.sh
-
-test-templates: ## Test template rendering and syntax
-	uv run pytest tests/test_template_rendering.py -v
 
 template-test-syntax: ## Test template syntax only (quick)
 	uv run python -c "from jinja2 import Environment, FileSystemLoader; env = Environment(loader=FileSystemLoader('src/agent/templates')); [env.get_template(t) for t in ['config/agent_config_minimal.yaml.j2', 'config/agent_config_standard.yaml.j2', 'config/agent_config_full.yaml.j2', 'config/agent_config_demo.yaml.j2']]"

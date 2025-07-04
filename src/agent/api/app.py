@@ -26,16 +26,25 @@ try:
 except ImportError:
     register_ai_functions_from_handlers = None
 
-try:
-    from ..mcp_support.mcp_integration import initialize_mcp_integration, shutdown_mcp_integration
-except ImportError:
-    initialize_mcp_integration = None
-    shutdown_mcp_integration = None
-
-
-# Configure logging
+# Configure logging first
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+try:
+    print("Attempting MCP import...")
+    from ..mcp_support.mcp_integration import initialize_mcp_integration, shutdown_mcp_integration
+
+    print("MCP import successful!")
+    initialize_mcp_integration = initialize_mcp_integration
+    shutdown_mcp_integration = shutdown_mcp_integration
+except ImportError as e:
+    print(f"MCP import failed: {e}")
+    initialize_mcp_integration = None
+    shutdown_mcp_integration = None
+except Exception as e:
+    print(f"MCP import failed with unexpected error: {e}")
+    initialize_mcp_integration = None
+    shutdown_mcp_integration = None
 
 
 @asynccontextmanager
@@ -148,6 +157,7 @@ async def lifespan(app: FastAPI):
 
     # Initialize MCP integration if available & enabled
     mcp_cfg = config.get("mcp", {})
+    logger.info(f"MCP debug: initialize_mcp_integration is None!: {initialize_mcp_integration is None}")
     if initialize_mcp_integration and mcp_cfg.get("enabled", False):
         try:
             await initialize_mcp_integration(config)

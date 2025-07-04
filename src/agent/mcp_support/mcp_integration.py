@@ -1,5 +1,5 @@
 import logging
-from typing import Any, dict
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +132,11 @@ async def _initialize_mcp_server(services, server_config: dict[str, Any]) -> Non
         logger.warning("MCP SDK not available. Cannot initialize MCP server.")
         return
 
-    from .mcp_server import MCPServerComponent
+    try:
+        from .mcp_server import MCPServerComponent
+    except ImportError as e:
+        logger.error(f"Failed to import MCPServerComponent: {e}")
+        return
 
     try:
         # Create and register MCP server
@@ -146,7 +150,7 @@ async def _initialize_mcp_server(services, server_config: dict[str, Any]) -> Non
         if server_config.get("expose_handlers", False):
             await _expose_handlers_as_mcp_tools(mcp_server)
 
-        logger.info("MCP server initialized and ready to expose {{ project_name }} tools")
+        logger.info("MCP server initialized and ready to expose agent tools")
 
         # Start MCP server in background if port is specified
         port = server_config.get("port")

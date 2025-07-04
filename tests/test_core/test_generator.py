@@ -146,7 +146,7 @@ class TestProjectGenerationFlow:
 
         # Mock file operations
         with (
-            patch.object(ProjectGenerator, "_copy_framework_files") as mock_copy,
+            patch.object(ProjectGenerator, "_create_local_directories") as mock_dirs,
             patch.object(ProjectGenerator, "_generate_template_files") as mock_template,
             patch.object(ProjectGenerator, "_generate_config_files") as mock_config,
         ):
@@ -154,7 +154,7 @@ class TestProjectGenerationFlow:
             generator.generate()
 
             # Verify methods were called
-            mock_copy.assert_called_once()
+            mock_dirs.assert_called_once()
             mock_template.assert_called_once()
             mock_config.assert_called_once()
 
@@ -163,7 +163,7 @@ class TestProjectGenerationFlow:
         config = create_test_config("standard-openai-test", "standard", ["services", "middleware"], ["openai"])
 
         with (
-            patch.object(ProjectGenerator, "_copy_framework_files") as mock_copy,
+            patch.object(ProjectGenerator, "_create_local_directories") as mock_dirs,
             patch.object(ProjectGenerator, "_generate_template_files") as mock_template,
             patch.object(ProjectGenerator, "_generate_config_files") as mock_config,
         ):
@@ -171,7 +171,7 @@ class TestProjectGenerationFlow:
             generator.generate()
 
             # Verify all generation steps were called
-            mock_copy.assert_called_once()
+            mock_dirs.assert_called_once()
             mock_template.assert_called_once()
             mock_config.assert_called_once()
 

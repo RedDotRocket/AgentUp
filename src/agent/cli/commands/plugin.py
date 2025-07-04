@@ -16,7 +16,7 @@ console = Console()
 
 @click.group()
 def plugin():
-    """Manage AgentUp plugins - next-generation extensible skills."""
+    """Manage AgentUp plugins - create, install, list, and validate plugins."""
     pass
 
 
@@ -363,6 +363,343 @@ env/
 venv/
 """
         (output_dir / ".gitignore").write_text(gitignore_content)
+
+        # Create CLAUDE.md for plugin development guidance
+        claude_md_content = f"""# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with this AgentUp plugin.
+
+## Plugin Overview
+
+This is an AgentUp plugin that provides {display_name} functionality. It follows the A2A-specification compliant plugin architecture using the pluggy hook system.
+
+## Plugin Structure
+
+```
+{plugin_name}/
+├── src/
+│   └── {plugin_name.replace("-", "_")}/
+│       ├── __init__.py
+│       └── plugin.py           # Main plugin implementation
+├── tests/
+│   └── test_{plugin_name.replace("-", "_")}.py
+├── pyproject.toml              # Package configuration with AgentUp entry point
+├── README.md                   # Plugin documentation
+└── CLAUDE.md                   # This file
+```
+
+## A2A Specification Compliance
+
+This plugin is designed to be fully A2A-specification compliant. Always consult the A2A specification when making architectural decisions or implementing features.
+
+## Core Plugin Architecture
+
+### Hook System
+The plugin uses pluggy hooks to integrate with AgentUp:
+
+- `@hookimpl def register_skill()` - **Required** - Registers the plugin's skill(s)
+- `@hookimpl def can_handle_task()` - **Required** - Determines if plugin can handle a task
+- `@hookimpl def execute_skill()` - **Required** - Main skill execution logic
+- `@hookimpl def validate_config()` - Optional - Validates plugin configuration
+- `@hookimpl def get_ai_functions()` - Optional - Provides AI-callable functions
+- `@hookimpl def configure_services()` - Optional - Configures external services
+- `@hookimpl def get_middleware_config()` - Optional - Requests middleware
+
+### Entry Point
+The plugin is registered via entry point in `pyproject.toml`:
+```toml
+[project.entry-points."agentup.skills"]
+{plugin_name.replace("-", "_")} = "{plugin_name.replace("-", "_")}.plugin:Plugin"
+```
+
+## Development Guidelines
+
+### Code Style
+- Follow PEP 8 and Python best practices
+- Use type hints throughout the codebase
+- Use async/await for I/O operations
+- Handle errors gracefully with proper A2A error responses
+
+### Plugin Implementation Patterns
+
+#### 1. Skill Registration
+```python
+@hookimpl
+def register_skill(self) -> SkillInfo:
+    return SkillInfo(
+        id="{skill_id}",
+        name="{display_name}",
+        version="0.1.0",
+        description="{description}",
+        capabilities=[SkillCapability.TEXT],  # Add capabilities as needed
+        tags=["{plugin_name}", "custom"],
+        config_schema={{
+            # JSON schema for configuration validation
+        }}
+    )
+```
+
+#### 2. Task Routing
+```python
+@hookimpl
+def can_handle_task(self, context: SkillContext) -> float:
+    user_input = self._extract_user_input(context).lower()
+
+    # Return confidence score (0.0 to 1.0)
+    # Higher scores = more likely to handle the task
+    keywords = {{'keyword1': 1.0, 'keyword2': 0.8}}
+
+    confidence = 0.0
+    for keyword, score in keywords.items():
+        if keyword in user_input:
+            confidence = max(confidence, score)
+
+    return confidence
+```
+
+#### 3. Skill Execution
+```python
+@hookimpl
+def execute_skill(self, context: SkillContext) -> SkillResult:
+    try:
+        user_input = self._extract_user_input(context)
+
+        # Your skill logic here
+        response = self._process_request(user_input)
+
+        return SkillResult(
+            content=response,
+            success=True,
+            metadata={{"skill": "{skill_id}"}}
+        )
+    except Exception as e:
+        return SkillResult(
+            content=f"Error: {{str(e)}}",
+            success=False,
+            error=str(e)
+        )
+```
+
+#### 4. AI Function Support
+```python
+@hookimpl
+def get_ai_functions(self) -> list[AIFunction]:
+    return [
+        AIFunction(
+            name="function_name",
+            description="Function description for LLM",
+            parameters={{
+                "type": "object",
+                "properties": {{
+                    "param1": {{
+                        "type": "string",
+                        "description": "Parameter description"
+                    }}
+                }},
+                "required": ["param1"]
+            }},
+            handler=self._handle_function
+        )
+    ]
+```
+
+### Error Handling
+- Always return SkillResult objects from execute_skill
+- Use success=False for errors
+- Include descriptive error messages
+- Log errors appropriately for debugging
+
+### Testing
+- Write comprehensive tests for all plugin functionality
+- Test both success and error cases
+- Mock external dependencies
+- Use pytest and async test patterns
+
+### Configuration
+- Define configuration schema in register_skill()
+- Validate configuration in validate_config() hook
+- Use environment variables for sensitive data
+- Provide sensible defaults
+
+## Development Workflow
+
+### Local Development
+1. Install in development mode: `pip install -e .`
+2. Create test agent: `agentup agent create test-agent --template minimal`
+3. Configure plugin in agent's `agent_config.yaml`
+4. Test with: `agentup agent serve`
+
+### Testing
+```bash
+# Run tests
+pytest tests/ -v
+
+# Check plugin loading
+agentup plugin list
+
+# Validate plugin
+agentup plugin validate {plugin_name.replace("-", "_")}
+```
+
+### External Dependencies
+- Use AgentUp's service registry for HTTP clients, databases, etc.
+- Declare all dependencies in pyproject.toml
+- Use async libraries for better performance
+
+## Plugin Capabilities
+
+### Available Capabilities
+- `SkillCapability.TEXT` - Text processing
+- `SkillCapability.MULTIMODAL` - Images, documents, etc.
+- `SkillCapability.AI_FUNCTION` - LLM-callable functions
+- `SkillCapability.STREAMING` - Streaming responses
+- `SkillCapability.STATEFUL` - State management
+
+### Middleware Support
+Request middleware for common functionality:
+- Rate limiting
+- Caching
+- Retry logic
+- Logging
+- Validation
+
+### Service Integration
+Access external services via AgentUp's service registry:
+- HTTP clients
+- Database connections
+- Cache backends
+- Message queues
+
+## Best Practices
+
+### Performance
+- Use async/await for I/O operations
+- Implement caching for expensive operations
+- Use connection pooling for external APIs
+- Minimize blocking operations
+
+### Security
+- Validate all inputs
+- Sanitize outputs
+- Use secure authentication methods
+- Never log sensitive data
+
+### Maintainability
+- Follow single responsibility principle
+- Keep functions small and focused
+- Use descriptive variable names
+- Add docstrings to all public methods
+
+## Common Patterns
+
+### External API Integration
+```python
+async def _call_external_api(self, data):
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://api.example.com/endpoint",
+            json=data,
+            headers={{"Authorization": f"Bearer {{self.api_key}}"}}
+        )
+        response.raise_for_status()
+        return response.json()
+```
+
+### State Management
+```python
+@hookimpl
+def get_state_schema(self) -> dict:
+    return {{
+        "type": "object",
+        "properties": {{
+            "user_preferences": {{"type": "object"}},
+            "session_data": {{"type": "object"}}
+        }}
+    }}
+```
+
+### Configuration Validation
+```python
+@hookimpl
+def validate_config(self, config: dict) -> ValidationResult:
+    errors = []
+    warnings = []
+
+    if not config.get("api_key"):
+        errors.append("api_key is required")
+
+    return ValidationResult(
+        valid=len(errors) == 0,
+        errors=errors,
+        warnings=warnings
+    )
+```
+
+## Debugging Tips
+
+### Common Issues
+- Plugin not loading: Check entry point in pyproject.toml
+- Functions not available: Verify get_ai_functions() returns valid schemas
+- Routing not working: Debug can_handle_task() logic
+- Configuration errors: Implement validate_config() hook
+
+### Logging
+```python
+import logging
+logger = logging.getLogger(__name__)
+
+def execute_skill(self, context: SkillContext) -> SkillResult:
+    logger.info("Processing request", extra={{"skill": "{skill_id}"}})
+    # ... implementation
+```
+
+## Distribution
+
+### Package Structure
+- Follow Python package conventions
+- Include comprehensive README.md
+- Add LICENSE file
+- Include CHANGELOG.md for version history
+
+### Publishing
+1. Test thoroughly with various agents
+2. Update version in pyproject.toml
+3. Build package: `python -m build`
+4. Upload to PyPI: `python -m twine upload dist/*`
+
+## Important Notes
+
+### A2A Compliance
+- All responses must be A2A-compliant
+- Use proper task lifecycle management
+- Follow A2A error response formats
+- Implement proper message handling
+
+### Framework Integration
+- Leverage AgentUp's built-in features
+- Use provided utilities and helpers
+- Follow established patterns from other plugins
+- Maintain compatibility with different agent templates
+
+### Community Guidelines
+- Write clear documentation
+- Provide usage examples
+- Follow semantic versioning
+- Respond to issues and pull requests
+
+## Resources
+
+- [AgentUp Documentation](https://docs.agentup.dev)
+- [A2A Specification](https://a2a.dev)
+- [Plugin Development Guide](https://docs.agentup.dev/plugins/development)
+- [Testing Guide](https://docs.agentup.dev/plugins/testing)
+- [AI Functions Guide](https://docs.agentup.dev/plugins/ai-functions)
+
+---
+
+Remember: This plugin is part of the AgentUp ecosystem. Always consider how it integrates with other plugins and follows A2A standards for maximum compatibility and usefulness.
+"""
+        (output_dir / "CLAUDE.md").write_text(claude_md_content)
 
         # Initialize git repo
         # Bandit: Add nosec to ignore command injection risk

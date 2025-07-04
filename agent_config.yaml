@@ -1,5 +1,5 @@
 # Dummy Version of AgentUp Configuration File
-# This is a minimal template for an AgentUp testing environment.
+# This is a minimal template for an AgentUp integration testing.
 
 #  Agent Information
 agent:
@@ -10,7 +10,7 @@ agent:
 # Routing configuration
 routing:
   default_mode: direct
-  fallback_skill: echo
+  fallback_skill: echoz
   fallback_enabled: true
 
 # Core skills configuration
@@ -22,11 +22,7 @@ skills:
     output_mode: text
     routing_mode: direct
     keywords: [echo, repeat, say]
-    patterns: ['.*']  # Catch-all for minimal template
-  - skill_id: ai_time_plugin
-    name: AI Time Plugin
-    description: AI-powered time and date functionality
-    routing_mode: direct
+    patterns: ['.echo']  # Catch-all for minimal template
 
 # Registry skills section - for skills installed from AgentUp Skills Registry
 registry_skills: []

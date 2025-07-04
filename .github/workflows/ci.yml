@@ -43,9 +43,9 @@ jobs:
       run: |
         make lint
 
-    - name: Run tests with coverage
+    - name: Run unit tests with coverage
       run: |
-        make test-coverage
+        make test-unit-coverage
 
     - name: Upload coverage reports
       uses: actions/upload-artifact@v4

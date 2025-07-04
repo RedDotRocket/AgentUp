@@ -2,7 +2,7 @@ import asyncio
 import logging
 from collections.abc import Callable
 from datetime import datetime
-from typing import Any, dict, list
+from typing import Any
 
 logger = logging.getLogger(__name__)
 

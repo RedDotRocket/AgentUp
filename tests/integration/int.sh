@@ -11,10 +11,10 @@ NC='\033[0m' # No Color
 cleanup() {
     if [ ! -z "$SERVER_PID" ] && ps -p $SERVER_PID > /dev/null 2>&1; then
         echo "Cleaning up server process..."
-        
+
         # Try graceful shutdown first with SIGTERM
         kill -TERM $SERVER_PID 2>/dev/null
-        
+
         # Wait for graceful shutdown
         SHUTDOWN_COUNT=0
         MAX_SHUTDOWN_WAIT=10
@@ -22,7 +22,7 @@ cleanup() {
             sleep 1
             SHUTDOWN_COUNT=$((SHUTDOWN_COUNT + 1))
         done
-        
+
         # Force kill if still running
         if ps -p $SERVER_PID > /dev/null 2>&1; then
             echo "Server still running after graceful shutdown, force killing..."
@@ -51,13 +51,13 @@ while [ $READY_COUNT -lt $MAX_READY_WAIT ]; do
         echo -e "${RED}Server process died${NC}"
         exit 1
     fi
-    
+
     # Check if server is responding
     if curl -s -f http://localhost:8000/health > /dev/null 2>&1; then
         echo "Server is ready!"
         break
     fi
-    
+
     sleep 1
     READY_COUNT=$((READY_COUNT + 1))
 done

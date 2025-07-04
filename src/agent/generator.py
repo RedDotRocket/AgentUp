@@ -103,8 +103,8 @@ class ProjectGenerator:
         # Generate template files (only documentation/static files)
         self._generate_template_files()
 
-        # Copy framework files
-        self._copy_framework_files()
+        # Create directories for local development
+        self._create_local_directories()
 
         # Generate configuration
         self._generate_config_files()
@@ -123,102 +123,60 @@ class ProjectGenerator:
         gitignore_content = self._render_template(".gitignore")
         (self.output_dir / ".gitignore").write_text(gitignore_content)
 
-    def _copy_framework_files(self):
-        """Copy the AgentUp framework files to the project."""
-        # Use static src/agent structure for consistency and CLI compatibility
-        src_dir = self.output_dir / "src" / "agent"
-        src_dir.mkdir(parents=True, exist_ok=True)
+    def _create_local_directories(self):
+        """Create directories for local development (plugins, etc.)."""
+        # Create plugins directory for local plugin development
+        plugins_dir = self.output_dir / "plugins"
+        plugins_dir.mkdir(exist_ok=True)
 
-        # Copy all Python files from src/agentup to the new project
-        agentup_src = Path(__file__).parent
+        # Create a README in plugins directory
+        plugins_readme = """# Local Plugins
 
-        # Core files to copy
-        core_files = [
-            "__init__.py",
-            "api.py",
-            "config.py",
-            "context.py",
-            "handlers.py",
-            "main.py",
-            "middleware.py",
-            "models.py",
-            "multimodal.py",
-            "services.py",
-            "utils.py",
-            "messages.py",  # Message processing and conversation context
-            "function_dispatcher.py",  # Main dispatch logic
-            "llm_manager.py",  # LLM provider management
-            "function_executor.py",  # Function execution logic
-            "conversation_manager.py",  # Conversation state
-            "streaming_handler.py",  # Streaming operations
-            "agent_executor.py",  # New AgentUp executor
-            "dependencies.py",  # AgentUp dependencies
-            "push_notifier.py",  # Enhanced push notification system
-            "push_types.py",  # Additional A2A push notification types
-            "custom_request_handler.py",  # Custom request handler for push notifications
-        ]
+This directory is for developing local plugins for your agent.
 
-        # Copy core files with import updates
-        for file_name in core_files:
-            src_file = agentup_src / file_name
-            if src_file.exists():
-                content = src_file.read_text()
-                # Replace template variables
-                content = self._replace_template_vars(content)
-                # Update imports to use src.agent instead of relative imports
-                # content = self._update_imports(content)
-                (src_dir / file_name).write_text(content)
+## Usage
 
-        # Copy demo_handlers.py only for demo template
-        if self.template_name == "demo":
-            demo_file = agentup_src / "demo_handlers.py"
-            if demo_file.exists():
-                content = demo_file.read_text()
-                # Replace template variables
-                content = self._replace_template_vars(content)
-                (src_dir / "demo_handlers.py").write_text(content)
+1. Create a new plugin directory: `mkdir plugins/my-plugin`
+2. Develop your plugin with the AgentUp plugin API
+3. Install in development mode: `pip install -e plugins/my-plugin`
+4. Add the plugin to your agent_config.yaml skills section
 
-        # Copy subdirectories
-        subdirs = ["handlers", "llm_providers", "mcp_support", "security"]
-        for subdir in subdirs:
-            src_subdir = agentup_src / subdir
-            if src_subdir.exists() and src_subdir.is_dir():
-                dest_subdir = src_dir / subdir
-                dest_subdir.mkdir(exist_ok=True)
+## Plugin Development
 
-                # Copy Python files
-                for py_file in src_subdir.glob("*.py"):
-                    content = py_file.read_text()
-                    # Replace template variables
-                    content = self._replace_template_vars(content)
-                    # Update imports to use src.agent instead of relative imports
-                    # content = self._update_imports(content, is_subdir=True, subdir_name=subdir)
-                    (dest_subdir / py_file.name).write_text(content)
+See the AgentUp documentation for plugin development guidelines:
+- Plugin API reference
+- Example plugins
+- Testing your plugins
 
-                # Copy non-Python files (like weak.txt, configs, etc.)
-                for other_file in src_subdir.glob("*"):
-                    if other_file.is_file() and not other_file.name.endswith(".py"):
-                        # Copy static files directly without template processing
-                        (dest_subdir / other_file.name).write_bytes(other_file.read_bytes())
+Plugins in this directory will be automatically discovered when installed.
+"""
+        (plugins_dir / "README.md").write_text(plugins_readme)
 
-                # Copy nested subdirectories (like security/authenticators)
-                for nested_subdir in src_subdir.iterdir():
-                    if nested_subdir.is_dir():
-                        dest_nested = dest_subdir / nested_subdir.name
-                        dest_nested.mkdir(exist_ok=True)
+        # Create .env file for environment variables
+        env_file = self.output_dir / ".env"
+        if not env_file.exists():
+            env_content = """# Environment Variables for AgentUp Agent
+# Copy this to .env and set your actual values
 
-                        # Copy Python files in nested subdirectories
-                        for py_file in nested_subdir.glob("*.py"):
-                            content = py_file.read_text()
-                            # Replace template variables
-                            content = self._replace_template_vars(content)
-                            (dest_nested / py_file.name).write_text(content)
+# OpenAI API Key (if using OpenAI provider)
+# OPENAI_API_KEY=your_openai_api_key_here
 
-                        # Copy non-Python files in nested subdirectories
-                        for other_file in nested_subdir.glob("*"):
-                            if other_file.is_file() and not other_file.name.endswith(".py"):
-                                # Copy static files directly without template processing
-                                (dest_nested / other_file.name).write_bytes(other_file.read_bytes())
+# Anthropic API Key (if using Anthropic provider)
+# ANTHROPIC_API_KEY=your_anthropic_api_key_here
+
+# Ollama Base URL (if using Ollama provider)
+# OLLAMA_BASE_URL=http://localhost:11434
+
+# GitHub Token (if using GitHub MCP server)
+# GITHUB_TOKEN=your_github_token_here
+
+# Valkey/Redis URL (if using Valkey services)
+# VALKEY_URL=valkey://localhost:6379
+
+# PostgreSQL URL (if using PostgreSQL services)
+# POSTGRES_URL=postgresql://user:password@localhost:5432/dbname
+"""
+            env_file.write_text(env_content)
 
     def _generate_config_files(self):
         """Generate configuration files."""
