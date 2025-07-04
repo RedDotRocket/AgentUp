@@ -23,40 +23,6 @@
    uv run uvicorn agent.api.app:app --reload --port 8000
    ```
 
-## A2A Compliance Features
-
-This agent is **fully A2A-specification compliant** and includes:
-
-### **Core A2A Protocol**
-- ✅ **JSON-RPC 2.0 API** - Standard A2A communication protocol
-- ✅ **Official A2A Types** - Uses `a2a.types` models (`Task`, `Message`, `AgentCard`) 
-- ✅ **Agent Discovery Card** - Proper `/.well-known/agent.json` endpoint
-- ✅ **TaskState Lifecycle** - Complete SUBMITTED → WORKING → COMPLETED flow
-
-### **Advanced Communication**
-- ✅ **Server-Sent Events** - Real-time streaming communication
-- ✅ **Message-Based Conversations** - Multi-turn conversation support
-- ✅ **Context Awareness** - Remembers users and conversation history
-- ✅ **Task Management** - Full lifecycle tracking with state validation
-
-### **Enterprise Security**
-- ✅ **Multi-Scheme Authentication** - API Key, Bearer Token, OAuth2
-- ✅ **Request Validation** - Comprehensive parameter and format checking
-- ✅ **Error Handling** - A2A-compliant JSON-RPC error responses
-- ✅ **Permission Management** - Task-level access control
-
-### **Advanced Architecture**
-- ✅ **TaskManager** - Enterprise-grade task lifecycle management
-- ✅ **MessageProcessor** - Advanced message chain processing
-- ✅ **ConversationContext** - Persistent conversation state
-- ✅ **State History** - Complete audit trail of all operations
-
-### **Testing & Monitoring**
-- ✅ **AgentUp Test Client** - Full protocol testing with streaming support
-- ✅ **Error Testing** - Comprehensive JSON-RPC error scenario validation
-- ✅ **Task Monitoring** - Real-time task status and history tracking
-- ✅ **Health Endpoints** - Agent health and capability reporting
-
 ### **Template-Specific Features**
 This agent was created with the **{{ template_name }}** template and includes:
 
@@ -86,7 +52,7 @@ This agent was created with the **{{ template_name }}** template and includes:
 
 ### Pure Config-Driven Architecture
 
-This agent runs entirely from the AgentUp framework package. No framework code is copied to your project - everything is controlled through configuration.
+This agent runs entirely from the AgentUp framework package.
 
 #### 1. Adding New Skills via Plugins
 

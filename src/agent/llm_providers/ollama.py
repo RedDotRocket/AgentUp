@@ -1,5 +1,3 @@
-"""Ollama LLM provider implementation for {{ project_name }}."""
-
 import json
 import logging
 from typing import Any
@@ -19,8 +17,6 @@ logger = logging.getLogger(__name__)
 
 
 class OllamaProvider(BaseLLMService):
-    """Ollama LLM provider for local model inference."""
-
     def __init__(self, name: str, config: dict[str, Any]):
         super().__init__(name, config)
         self.client: httpx.AsyncClient | None = None
@@ -29,6 +25,7 @@ class OllamaProvider(BaseLLMService):
         self.timeout = config.get("timeout", 120.0)  # Longer timeout for local models
 
         # Ollama model capabilities (most models support basic chat)
+
         self._model_capabilities = {
             "llama2": [
                 LLMCapability.TEXT_COMPLETION,
@@ -69,7 +66,6 @@ class OllamaProvider(BaseLLMService):
         }
 
     async def initialize(self) -> None:
-        """Initialize the Ollama service."""
         logger.info(f"Initializing Ollama service '{self.name}' with model '{self.model}'")
 
         headers = {"Content-Type": "application/json", "User-Agent": "AgentUp-Agent/1.0"}

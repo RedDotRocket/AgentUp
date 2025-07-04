@@ -123,14 +123,8 @@ def get_handler(skill_id: str) -> Callable[[Task], str] | None:
     if handler:
         return handler
 
-    # Finally check registry skills
-    try:
-        from ..utils.loaders import get_registry_skill_handler
-
-        return get_registry_skill_handler(skill_id)
-    except ImportError:
-        # registry_skill_loader not available
-        return None
+    # No handler found
+    return None
 
 
 @register_handler("status")
@@ -155,6 +149,12 @@ def get_all_handlers() -> dict[str, Callable[[Task], str]]:
 def list_skills() -> list[str]:
     """list all available skill IDs."""
     return list(_handlers.keys())
+
+
+"""
+The echo handler is an out of the box, simple handler that echoes back user messages.
+It's used for testing and demonstration purposes.
+"""
 
 
 @register_handler("echo")

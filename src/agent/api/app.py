@@ -97,17 +97,6 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error(f"Failed to initialize plugin system: {e}")
 
-    # Load registry skills if available
-    try:
-        from ..utils.loaders import load_all_registry_skills
-
-        load_all_registry_skills()
-        logger.info("Registry skills loaded successfully")
-    except ImportError:
-        logger.debug("Registry skill loader not available")
-    except Exception as e:
-        logger.error(f"Failed to load registry skills: {e}")
-
     # Register AI functions if available & requested
     routing_cfg = config.get("routing", {})
     default_mode = routing_cfg.get("default_mode", "ai")

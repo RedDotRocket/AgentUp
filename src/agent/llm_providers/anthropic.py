@@ -1,5 +1,3 @@
-"""Anthropic LLM provider implementation for {{ project_name }}."""
-
 import json
 import logging
 from typing import Any
@@ -20,8 +18,6 @@ logger = logging.getLogger(__name__)
 
 
 class AnthropicProvider(BaseLLMService):
-    """Anthropic Claude LLM provider."""
-
     def __init__(self, name: str, config: dict[str, Any]):
         super().__init__(name, config)
         self.client: httpx.AsyncClient | None = None

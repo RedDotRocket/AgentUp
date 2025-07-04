@@ -156,7 +156,6 @@ Plugins in this directory will be automatically discovered when installed.
         env_file = self.output_dir / ".env"
         if not env_file.exists():
             env_content = """# Environment Variables for AgentUp Agent
-# Copy this to .env and set your actual values
 
 # OpenAI API Key (if using OpenAI provider)
 # OPENAI_API_KEY=your_openai_api_key_here
@@ -166,9 +165,6 @@ Plugins in this directory will be automatically discovered when installed.
 
 # Ollama Base URL (if using Ollama provider)
 # OLLAMA_BASE_URL=http://localhost:11434
-
-# GitHub Token (if using GitHub MCP server)
-# GITHUB_TOKEN=your_github_token_here
 
 # Valkey/Redis URL (if using Valkey services)
 # VALKEY_URL=valkey://localhost:6379

@@ -5,7 +5,6 @@ import click
 
 from .commands.agent import agent
 from .commands.plugin import plugin
-from .commands.skill import skill
 
 
 @click.group()
@@ -17,7 +16,6 @@ def cli():
 
 # Register command groups
 cli.add_command(agent)
-cli.add_command(skill)
 cli.add_command(plugin)
 
 

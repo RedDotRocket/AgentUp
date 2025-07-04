@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 PROVIDER_REGISTRY: dict[str, type[BaseLLMService]] = {
     "openai": OpenAIProvider,
     "anthropic": AnthropicProvider,
-    "claude": AnthropicProvider,  # Alias for anthropic
+    "claude": AnthropicProvider,
     "ollama": OllamaProvider,
 }
 
