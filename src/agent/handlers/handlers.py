@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Callable
+from typing import Any
 
 from a2a.types import Task
 
@@ -104,16 +105,92 @@ logger = logging.getLogger(__name__)
 # Handler registry - unified for all handlers (core, user, and individual)
 _handlers: dict[str, Callable[[Task], str]] = {}
 
+# Middleware configuration cache
+_middleware_config: list[dict[str, Any]] | None = None
+_global_middleware_applied = False
+
+
+def _load_middleware_config() -> list[dict[str, Any]]:
+    """Load middleware configuration from agent config."""
+    global _middleware_config
+    if _middleware_config is not None:
+        return _middleware_config
+
+    try:
+        from ..config import load_config
+
+        config = load_config()
+        _middleware_config = config.get("middleware", [])
+        logger.debug(f"Loaded middleware config: {_middleware_config}")
+        return _middleware_config
+    except Exception as e:
+        logger.warning(f"Could not load middleware config: {e}")
+        _middleware_config = []
+        return _middleware_config
+
+
+def _apply_middleware_to_handler(handler: Callable, skill_id: str) -> Callable:
+    """Apply configured middleware to a handler."""
+    # First load global middleware config
+    global_middleware_configs = _load_middleware_config()
+
+    # Check for skill-specific middleware override
+    try:
+        from ..config import load_config
+
+        config = load_config()
+        skills = config.get("skills", [])
+
+        # Find skill-specific configuration
+        skill_config = None
+        for skill in skills:
+            if skill.get("skill_id") == skill_id:
+                skill_config = skill
+                break
+
+        # If skill has middleware_override, use that instead
+        if skill_config and "middleware_override" in skill_config:
+            middleware_configs = skill_config["middleware_override"]
+            logger.info(f"Using skill-specific middleware override for '{skill_id}'")
+        else:
+            middleware_configs = global_middleware_configs
+
+    except Exception as e:
+        logger.debug(f"Could not check for skill-specific middleware: {e}")
+        middleware_configs = global_middleware_configs
+
+    if not middleware_configs:
+        logger.debug(f"No middleware to apply to {skill_id}")
+        return handler
+
+    # Apply middleware using the with_middleware decorator
+    try:
+        wrapped_handler = with_middleware(middleware_configs)(handler)
+        logger.info(f"Applied middleware to handler '{skill_id}': {[m.get('name') for m in middleware_configs]}")
+        return wrapped_handler
+    except Exception as e:
+        logger.error(f"Failed to apply middleware to handler '{skill_id}': {e}")
+        return handler
+
 
 def register_handler(skill_id: str):
-    """Decorator to register a skill handler by ID."""
+    """Decorator to register a skill handler by ID with automatic middleware application."""
 
     def decorator(func: Callable[[Task], str]):
-        _handlers[skill_id] = func
-        logger.debug(f"Registered handler: {skill_id}")
-        return func
+        # Apply middleware automatically based on agent config
+        wrapped_func = _apply_middleware_to_handler(func, skill_id)
+        _handlers[skill_id] = wrapped_func
+        logger.debug(f"Registered handler with middleware: {skill_id}")
+        return wrapped_func
 
     return decorator
+
+
+def register_handler_function(skill_id: str, handler: Callable[[Task], str]) -> None:
+    """Register a handler function directly (for plugins and dynamic registration)."""
+    wrapped_handler = _apply_middleware_to_handler(handler, skill_id)
+    _handlers[skill_id] = wrapped_handler
+    logger.debug(f"Registered handler function with middleware: {skill_id}")
 
 
 def get_handler(skill_id: str) -> Callable[[Task], str] | None:
@@ -149,6 +226,55 @@ def get_all_handlers() -> dict[str, Callable[[Task], str]]:
 def list_skills() -> list[str]:
     """list all available skill IDs."""
     return list(_handlers.keys())
+
+
+def apply_global_middleware() -> None:
+    """Apply middleware to all existing registered handlers (for retroactive application)."""
+    global _global_middleware_applied
+
+    if _global_middleware_applied:
+        logger.debug("Global middleware already applied, skipping")
+        return
+
+    middleware_configs = _load_middleware_config()
+    if not middleware_configs:
+        logger.debug("No global middleware to apply")
+        _global_middleware_applied = True
+        return
+
+    # Re-wrap all existing handlers with middleware
+    for skill_id, handler in list(_handlers.items()):
+        try:
+            # Only apply if not already wrapped (simple check)
+            if not hasattr(handler, "_agentup_middleware_applied"):
+                wrapped_handler = _apply_middleware_to_handler(handler, skill_id)
+                wrapped_handler._agentup_middleware_applied = True
+                _handlers[skill_id] = wrapped_handler
+                logger.debug(f"Applied global middleware to existing handler: {skill_id}")
+        except Exception as e:
+            logger.error(f"Failed to apply global middleware to {skill_id}: {e}")
+
+    _global_middleware_applied = True
+    logger.info(f"Applied global middleware to {len(_handlers)} handlers")
+
+
+def reset_middleware_cache() -> None:
+    """Reset middleware configuration cache (useful for testing or config reloading)."""
+    global _middleware_config, _global_middleware_applied
+    _middleware_config = None
+    _global_middleware_applied = False
+    logger.debug("Reset middleware configuration cache")
+
+
+def get_middleware_info() -> dict[str, Any]:
+    """Get information about current middleware configuration and application status."""
+    middleware_configs = _load_middleware_config()
+    return {
+        "config": middleware_configs,
+        "applied_globally": _global_middleware_applied,
+        "total_handlers": len(_handlers),
+        "middleware_names": [m.get("name") for m in middleware_configs],
+    }
 
 
 """

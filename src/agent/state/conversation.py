@@ -12,7 +12,7 @@ class ConversationManager:
         self.conversation_history: dict[str, list[dict[str, Any]]] = {}
 
     async def prepare_llm_conversation(
-        self, user_input: str, conversation: list[dict[str, Any]]
+        self, user_input: str | dict[str, Any], conversation: list[dict[str, Any]]
     ) -> list[dict[str, str]]:
         """Prepare conversation for LLM with system prompt and history."""
 
@@ -50,8 +50,13 @@ Always be helpful, accurate, and maintain a friendly tone.""",
             messages.append({"role": "user", "content": turn["user"]})
             messages.append({"role": "assistant", "content": turn["assistant"]})
 
-        # Add current user input
-        messages.append({"role": "user", "content": user_input})
+        # Add current user input - support both text string and A2A message dict
+        if isinstance(user_input, dict):
+            # A2A message format with parts
+            messages.append(user_input)
+        else:
+            # Simple text string
+            messages.append({"role": "user", "content": user_input})
 
         return messages
 

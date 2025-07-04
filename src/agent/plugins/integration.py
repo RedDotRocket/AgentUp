@@ -10,7 +10,7 @@ from typing import Any
 
 from a2a.types import Task
 
-from ..handlers.handlers import _handlers, register_handler
+from ..handlers.handlers import _handlers, register_handler_function
 from .adapter import PluginAdapter, get_plugin_manager
 
 logger = logging.getLogger(__name__)
@@ -58,9 +58,9 @@ def integrate_plugins_with_handlers() -> None:
         # Get the plugin-based handler
         handler = adapter.get_handler_for_skill(skill_id)
 
-        # Register it in the existing handler registry
-        register_handler(skill_id)(handler)
-        logger.info(f"Registered plugin skill '{skill_id}' as handler")
+        # Register it using the function registration (applies middleware automatically)
+        register_handler_function(skill_id, handler)
+        logger.info(f"Registered plugin skill '{skill_id}' as handler with middleware")
         registered_count += 1
 
     # Store the adapter globally for other uses
@@ -144,6 +144,24 @@ def enable_plugin_system() -> None:
     """
     try:
         integrate_plugins_with_handlers()
+
+        # Make multi-modal helper available to plugins
+        try:
+            # Store in global space for plugins to access
+            import sys
+
+            from ..utils.multimodal import MultiModalHelper
+
+            if "agentup.multimodal" not in sys.modules:
+                import types
+
+                module = types.ModuleType("agentup.multimodal")
+                module.MultiModalHelper = MultiModalHelper
+                sys.modules["agentup.multimodal"] = module
+                logger.debug("Multi-modal helper made available to plugins")
+        except Exception as e:
+            logger.warning(f"Could not make multi-modal helper available to plugins: {e}")
+
         logger.info("Plugin system enabled successfully")
     except Exception as e:
         logger.error(f"Failed to enable plugin system: {e}", exc_info=True)

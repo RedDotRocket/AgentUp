@@ -202,12 +202,6 @@ Enterprise deployment with comprehensive features:
 - State management and push notifications
 - Suitable for high-scale deployments
 
-### Demo Template
-Showcase agent with example skills:
-- Weather information (API integration example)
-- File operations (MCP filesystem demo)
-- Code analysis (repository processing)
-- Interactive conversation (basic chat)
 
 ## Plugin Development
 

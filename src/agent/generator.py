@@ -206,13 +206,9 @@ Plugins in this directory will be automatically discovered when installed.
             "description": self.config.get("description", ""),
             "features": self.features,
             "has_middleware": "middleware" in self.features,
-            "has_services": "services" in self.features,
             "has_state": "state" in self.features,
             "has_multimodal": "multimodal" in self.features,
             "has_auth": "auth" in self.features,
-            "has_monitoring": "monitoring" in self.features,
-            "has_testing": "testing" in self.features,
-            "has_deployment": "deployment" in self.features,
             "has_mcp": "mcp" in self.features,
             "template_name": self.template_name,
         }
@@ -317,12 +313,13 @@ Plugins in this directory will be automatically discovered when installed.
         config["routing"] = self._build_routing_config()
 
         # Add AI configuration for LLM-powered agents
-        if "services" in self.features:
-            selected_services = self.config.get("services", [])
-            llm_provider, llm_service_name, llm_model = self._get_llm_provider_info(selected_services)
-
-            # Use defaults if no LLM provider selected
-            if not llm_provider:
+        if "ai_provider" in self.features:
+            # Use ai_provider_config if available, otherwise use defaults
+            ai_provider_config = self.config.get("ai_provider_config")
+            if ai_provider_config:
+                llm_service_name = ai_provider_config.get("provider", "openai")
+                llm_model = ai_provider_config.get("model", "gpt-4o-mini")
+            else:
                 llm_service_name = "openai"
                 llm_model = "gpt-4o-mini"
 
@@ -355,6 +352,21 @@ Always be helpful, accurate, and maintain a friendly tone. You are designed to a
             config["security"]["enabled"] = True
             auth_type = self.config.get("feature_config", {}).get("auth", "api_key")
             config["security"]["type"] = auth_type
+
+        if "ai_provider" in self.features:
+            ai_provider_config = self.config.get("ai_provider_config")
+            if ai_provider_config:
+                config["ai_provider"] = ai_provider_config
+            else:
+                # Default AI provider configuration
+                config["ai_provider"] = {
+                    "provider": "openai",
+                    "api_key": "${OPENAI_API_KEY}",
+                    "model": "gpt-4o-mini",
+                    "temperature": 0.7,
+                    "max_tokens": 1000,
+                    "top_p": 1.0,
+                }
 
         if "services" in self.features:
             config["services"] = self._build_services_config()
@@ -391,36 +403,15 @@ Always be helpful, accurate, and maintain a friendly tone. You are designed to a
                     "patterns": [".*"],
                 }
             ]
-        elif self.template_name == "demo":
+        elif self.template_name == "standard":
             return [
                 {
-                    "skill_id": "file_assistant",
-                    "name": "File Assistant",
-                    "description": "Read and write files using MCP",
+                    "skill_id": "ai_assistant",
+                    "name": "AI Assistant",
+                    "description": "General purpose AI assistant",
                     "input_mode": "text",
                     "output_mode": "text",
-                },
-                {
-                    "skill_id": "weather_bot",
-                    "name": "Weather Bot",
-                    "description": "Get weather information using function calling",
-                    "input_mode": "text",
-                    "output_mode": "text",
-                },
-                {
-                    "skill_id": "code_analyzer",
-                    "name": "Code Analyzer",
-                    "description": "Analyze code repositories",
-                    "input_mode": "text",
-                    "output_mode": "text",
-                },
-                {
-                    "skill_id": "joke_teller",
-                    "name": "Joke Teller",
-                    "description": "Tell jokes on demand",
-                    "input_mode": "text",
-                    "output_mode": "text",
-                },
+                }
             ]
         elif self.template_name == "full":
             # Full template gets multiple skills
@@ -470,8 +461,8 @@ Always be helpful, accurate, and maintain a friendly tone. You are designed to a
 
         # If no services selected, use template defaults
         if not selected_services:
-            # Standard and demo templates get basic OpenAI
-            if self.template_name in ["standard", "demo"]:
+            # Standard template gets basic OpenAI
+            if self.template_name == "standard":
                 services["openai"] = self._build_llm_service_config("openai")
 
             # Full template gets everything
@@ -547,16 +538,6 @@ Always be helpful, accurate, and maintain a friendly tone. You are designed to a
                     "args": ["-y", "@modelcontextprotocol/server-github"],
                     "env": {"GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"},
                 },
-            ]
-        elif self.template_name == "demo":
-            # Demo-specific MCP configuration
-            mcp_config["client"]["servers"] = [
-                {
-                    "name": "demo-filesystem",
-                    "command": "npx",
-                    "args": ["-y", "@modelcontextprotocol/server-filesystem", "./demo-files"],
-                    "env": {},
-                }
             ]
 
         return mcp_config

@@ -114,10 +114,13 @@ class FunctionDispatcher:
             str: Response content for A2A message
         """
         try:
-            # Extract user message from A2A task
-            user_input = self._extract_user_message(task)
-            if not user_input:
+            # Extract user message from A2A task (with multi-modal support)
+            user_message = self._extract_user_message_full(task)
+            if not user_message:
                 return "I didn't receive any message to process."
+
+            # For backwards compatibility and debugging
+            user_input = user_message.get("content", "") if isinstance(user_message, dict) else str(user_message)
 
             # Get LLM service with automatic provider selection
             services = get_services()
@@ -149,8 +152,8 @@ class FunctionDispatcher:
 
             # Prepare LLM conversation with system prompt and function definitions
             try:
-                logger.debug(f"Preparing conversation for LLM with user input: {user_input}")
-                messages = await self.conversation_manager.prepare_llm_conversation(user_input, conversation)
+                logger.debug(f"Preparing conversation for LLM with user message: {user_message}")
+                messages = await self.conversation_manager.prepare_llm_conversation(user_message, conversation)
             except Exception as e:
                 logger.error(f"Error preparing conversation for LLM: {e}", exc_info=True)
                 return f"I encountered an error preparing your request: {str(e)}"
@@ -210,6 +213,27 @@ class FunctionDispatcher:
         # Fallback to task metadata
         if hasattr(task, "metadata") and task.metadata:
             return task.metadata.get("user_input", "")
+
+        return ""
+
+    def _extract_user_message_full(self, task: Task) -> dict[str, Any] | str:
+        """Extract full user message from A2A task with multi-modal support."""
+        # Get the latest A2A message from task history
+        if hasattr(task, "history") and task.history:
+            for message in reversed(task.history):
+                if hasattr(message, "role") and message.role == "user":
+                    # Convert A2A Message to dict format for LLM processing
+                    if hasattr(message, "parts") and message.parts:
+                        return {
+                            "role": "user",
+                            "parts": message.parts,  # Keep full A2A parts for multi-modal
+                            "messageId": getattr(message, "messageId", "unknown"),
+                        }
+
+        # Fallback to text extraction
+        user_text = self._extract_user_message(task)
+        if user_text:
+            return {"role": "user", "content": user_text}
 
         return ""
 

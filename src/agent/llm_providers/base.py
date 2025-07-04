@@ -46,7 +46,7 @@ class ChatMessage:
     """Standardized chat message format."""
 
     role: str  # system, user, assistant, function
-    content: str
+    content: str | list[dict[str, Any]]  # Support both text and structured content (for vision)
     function_call: FunctionCall | None = None
     function_calls: list[FunctionCall] | None = None  # For parallel function calling
     name: str | None = None  # For function responses

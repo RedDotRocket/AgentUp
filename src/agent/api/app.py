@@ -31,18 +31,17 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 try:
-    print("Attempting MCP import...")
     from ..mcp_support.mcp_integration import initialize_mcp_integration, shutdown_mcp_integration
 
-    print("MCP import successful!")
+    logger.debug("MCP support available")
     initialize_mcp_integration = initialize_mcp_integration
     shutdown_mcp_integration = shutdown_mcp_integration
 except ImportError as e:
-    print(f"MCP import failed: {e}")
+    logger.debug(f"MCP import failed: {e}")
     initialize_mcp_integration = None
     shutdown_mcp_integration = None
 except Exception as e:
-    print(f"MCP import failed with unexpected error: {e}")
+    logger.warning(f"MCP import failed with unexpected error: {e}")
     initialize_mcp_integration = None
     shutdown_mcp_integration = None
 
@@ -83,6 +82,41 @@ async def lifespan(app: FastAPI):
             logger.error(f"Failed to initialize services: {e}")
     else:
         logger.warning("Services initialization skipped")
+
+    # Apply global middleware to existing handlers
+    try:
+        from ..handlers.handlers import apply_global_middleware
+
+        apply_global_middleware()
+        logger.info("Global middleware applied to existing handlers")
+    except Exception as e:
+        logger.error(f"Failed to apply global middleware: {e}")
+
+    # Load multi-modal handlers to register them with the system
+    try:
+        from ..handlers import handlers_multimodal  # noqa: F401
+
+        # The import itself registers the handlers via @register_handler decorators
+        logger.info("Multi-modal handlers loaded and registered")
+    except Exception as e:
+        logger.warning(f"Multi-modal handlers not available: {e}")
+
+    # Initialize multi-modal service if configured
+    if svc_cfg.get("multimodal", {}).get("enabled", True):
+        try:
+            from ..services.registry import get_services
+
+            services = get_services()
+
+            # Register multi-modal service if not already present
+            multimodal_config = svc_cfg.get("multimodal", {})
+            if "multimodal" not in services.list_services():
+                await services.register_service("multimodal", "multimodal", multimodal_config)
+                logger.info("Multi-modal service registered and initialized")
+            else:
+                logger.info("Multi-modal service already registered")
+        except Exception as e:
+            logger.error(f"Failed to initialize multi-modal service: {e}")
 
     # Initialize plugin system if available
     plugin_cfg = config.get("plugins", {})

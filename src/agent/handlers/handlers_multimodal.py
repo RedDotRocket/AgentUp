@@ -54,13 +54,23 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-# @register_handler("analyze_image")
-# @ai_function(
-#     description="Analyze an uploaded image and return insights",
-#     parameters={
-#         "analysis_type": {"type": "string", "description": "Type of analysis (basic, detailed, color)"}
-#     }
-# )
+# Import register_handler
+try:
+    from ..handlers.handlers import register_handler
+except ImportError:
+
+    def register_handler(skill_id: str):
+        def decorator(func):
+            return func
+
+        return decorator
+
+
+@register_handler("analyze_image")
+@ai_function(
+    description="Analyze an uploaded image and return insights",
+    parameters={"analysis_type": {"type": "string", "description": "Type of analysis (basic, detailed, color)"}},
+)
 @timed()
 async def handle_analyze_image(task: Task) -> str:
     """
@@ -85,7 +95,9 @@ async def handle_analyze_image(task: Task) -> str:
 
     # Process first image
     image_part = image_parts[0]
-    result = MultiModalProcessor.process_image(image_part.data, image_part.mimeType)
+    if not image_part["data"]:
+        return "Error: No image data found. Images must be embedded as base64 data."
+    result = MultiModalProcessor.process_image(image_part["data"], image_part["mimeType"])
 
     if not result["success"]:
         return f"Error processing image: {result.get('error', 'Unknown error')}"
@@ -115,13 +127,11 @@ async def handle_analyze_image(task: Task) -> str:
     return "\n".join(response_parts)
 
 
-# @register_handler("process_document")
-# @ai_function(
-#     description="Process uploaded documents and extract content",
-#     parameters={
-#         "extraction_type": {"type": "string", "description": "Type of extraction (summary, full, metadata)"}
-#     }
-# )
+@register_handler("process_document")
+@ai_function(
+    description="Process uploaded documents and extract content",
+    parameters={"extraction_type": {"type": "string", "description": "Type of extraction (summary, full, metadata)"}},
+)
 @cached(ttl=600)
 @timed()
 async def handle_process_document(task: Task) -> str:
@@ -147,7 +157,9 @@ async def handle_process_document(task: Task) -> str:
 
     # Process first document
     doc_part = doc_parts[0]
-    result = MultiModalProcessor.process_document(doc_part.data, doc_part.mimeType)
+    if not doc_part["data"]:
+        return "Error: No document data found. Documents must be embedded as base64 data."
+    result = MultiModalProcessor.process_document(doc_part["data"], doc_part["mimeType"])
 
     if not result["success"]:
         return f"Error processing document: {result.get('error', 'Unknown error')}"
@@ -181,15 +193,15 @@ async def handle_process_document(task: Task) -> str:
     return "\n".join(response_parts)
 
 
-# @register_handler("transform_image")
-# @ai_function(
-#     description="Transform images with various operations",
-#     parameters={
-#         "operation": {"type": "string", "description": "Operation to perform (resize, format, thumbnail)"},
-#         "target_size": {"type": "string", "description": "Target size for resize (e.g., '800x600')"},
-#         "target_format": {"type": "string", "description": "Target format (PNG, JPEG, WEBP)"}
-#     }
-# )
+@register_handler("transform_image")
+@ai_function(
+    description="Transform images with various operations",
+    parameters={
+        "operation": {"type": "string", "description": "Operation to perform (resize, format, thumbnail)"},
+        "target_size": {"type": "string", "description": "Target size for resize (e.g., '800x600')"},
+        "target_format": {"type": "string", "description": "Target format (PNG, JPEG, WEBP)"},
+    },
+)
 @timed()
 async def handle_transform_image(task: Task) -> str:
     """
@@ -218,7 +230,9 @@ async def handle_transform_image(task: Task) -> str:
 
     # Process image
     image_part = image_parts[0]
-    result = MultiModalProcessor.process_image(image_part.data, image_part.mimeType)
+    if not image_part["data"]:
+        return "Error: No image data found. Images must be embedded as base64 data."
+    result = MultiModalProcessor.process_image(image_part["data"], image_part["mimeType"])
 
     if not result["success"]:
         return f"Error loading image: {result.get('error', 'Unknown error')}"
@@ -253,13 +267,11 @@ async def handle_transform_image(task: Task) -> str:
         return f"Error during transformation: {e}"
 
 
-# @register_handler("multimodal_chat")
-# @ai_function(
-#     description="Handle conversations with mixed text and media content",
-#     parameters={
-#         "response_mode": {"type": "string", "description": "Response mode (text, detailed, summary)"}
-#     }
-# )
+@register_handler("multimodal_chat")
+@ai_function(
+    description="Handle conversations with mixed text and media content",
+    parameters={"response_mode": {"type": "string", "description": "Response mode (text, detailed, summary)"}},
+)
 async def handle_multimodal_chat(task: Task) -> str:
     """
     Handle conversations with mixed text and media content.

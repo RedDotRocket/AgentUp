@@ -55,6 +55,9 @@ def validate(config: str, check_env: bool, check_handlers: bool, strict: bool):
     if "security" in config_data:
         validate_security_section(config_data["security"], errors, warnings)
 
+    if "middleware" in config_data:
+        validate_middleware_section(config_data["middleware"], errors, warnings)
+
     # Check environment variables
     if check_env:
         check_environment_variables(config_data, errors, warnings)
@@ -218,9 +221,16 @@ def validate_skills_section(skills: list[dict[str, Any]], errors: list[str], war
         if output_mode not in valid_modes:
             errors.append(f"Skill {i} has invalid output_mode '{output_mode}'. Must be one of: {valid_modes}")
 
-        # Validate middleware if present
+        # Validate middleware if present (deprecated in favor of middleware_override)
         if "middleware" in skill:
+            warnings.append(
+                f"Skill '{skill_id}' uses deprecated 'middleware' field. Use 'middleware_override' instead."
+            )
             validate_middleware_config(skill["middleware"], skill_id, errors, warnings)
+
+        # Validate middleware_override if present
+        if "middleware_override" in skill:
+            validate_middleware_config(skill["middleware_override"], skill_id, errors, warnings)
 
     click.echo(f"{click.style('✓', fg='green')} Found {len(skills)} skill(s)")
 
@@ -435,6 +445,48 @@ def validate_ai_requirements(config: dict[str, Any], errors: list[str], warnings
         warnings.append("AI is enabled but no skills use AI routing. Consider disabling AI or adding AI-routed skills")
 
     click.echo(f"{click.style('✓', fg='green')} AI requirements validated")
+
+
+def validate_middleware_section(middleware: list[dict[str, Any]], errors: list[str], warnings: list[str]):
+    """Validate global middleware configuration."""
+    if not isinstance(middleware, list):
+        errors.append("Middleware section must be a list")
+        return
+
+    valid_middleware_names = {"logged", "timed", "cached", "rate_limited", "retryable", "validated"}
+
+    for i, middleware_config in enumerate(middleware):
+        if not isinstance(middleware_config, dict):
+            errors.append(f"Middleware item {i} must be an object")
+            continue
+
+        if "name" not in middleware_config:
+            errors.append(f"Middleware item {i} missing required 'name' field")
+            continue
+
+        middleware_name = middleware_config["name"]
+        if middleware_name not in valid_middleware_names:
+            warnings.append(
+                f"Unknown middleware '{middleware_name}' in global config. Valid options: {', '.join(valid_middleware_names)}"
+            )
+
+        # Validate specific middleware parameters
+        params = middleware_config.get("params", {})
+        if middleware_name == "cached" and "ttl" in params:
+            if not isinstance(params["ttl"], int) or params["ttl"] <= 0:
+                errors.append("Cached middleware 'ttl' parameter must be a positive integer")
+
+        elif middleware_name == "rate_limited" and "requests_per_minute" in params:
+            if not isinstance(params["requests_per_minute"], int) or params["requests_per_minute"] <= 0:
+                errors.append("Rate limited middleware 'requests_per_minute' parameter must be a positive integer")
+
+        elif middleware_name == "logged" and "log_level" in params:
+            if not isinstance(params["log_level"], int) or not (0 <= params["log_level"] <= 50):
+                errors.append("Logged middleware 'log_level' parameter must be an integer between 0-50")
+
+    click.echo(
+        f"{click.style('✓', fg='green')} Middleware configuration validated ({len(middleware)} middleware items)"
+    )
 
 
 def display_results(errors: list[str], warnings: list[str], strict: bool = False):

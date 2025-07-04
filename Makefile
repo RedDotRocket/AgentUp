@@ -251,3 +251,56 @@ add-skill: ## Add skill to existing agent (interactive)
 
 validate-config: ## Validate agent configuration
 	uv run agentup validate
+
+# Middleware testing commands
+test-middleware: ## Run unit tests for middleware
+	uv run pytest tests/test_core/test_middleware.py -v
+
+test-middleware-integration: ## Run integration tests for middleware (requires running server)
+	uv run pytest tests/integration/test_middleware_integration.py -v -m integration
+
+test-middleware-stress: ## Run stress tests for middleware (requires running server)
+	uv run pytest tests/integration/test_middleware_integration.py -v -m stress
+
+test-middleware-all: test-middleware test-middleware-integration ## Run all middleware tests
+
+test-middleware-scripts: ## Run middleware testing scripts
+	@echo "Running rate limiting tests..."
+	chmod +x scripts/test_rate_limit.sh
+	./scripts/test_rate_limit.sh || echo "Rate limit test completed (server may not be running)"
+	@echo ""
+	@echo "Running retry tests..."
+	chmod +x scripts/test_retry.sh
+	./scripts/test_retry.sh || echo "Retry test completed (server may not be running)"
+
+benchmark-middleware: ## Run middleware performance benchmarks (requires running server)
+	uv run python scripts/benchmark_middleware.py
+
+benchmark-middleware-full: ## Run comprehensive middleware benchmarks (requires running server)
+	uv run python scripts/benchmark_middleware.py --requests 200 --concurrent 20 --tests rate_limiting caching timing throughput stress
+
+test-middleware-cli: ## Test middleware using CLI command (requires running server)
+	uv run agentup agent test-middleware --verbose
+
+middleware-help: ## Show middleware testing help
+	@echo "Middleware Testing Commands:"
+	@echo "=========================="
+	@echo ""
+	@echo "Prerequisites:"
+	@echo "  Start an agent server: make dev-server (or agentup agent serve)"
+	@echo ""
+	@echo "Unit Tests (no server required):"
+	@echo "  make test-middleware              # Run middleware unit tests"
+	@echo ""
+	@echo "Integration Tests (server required):"
+	@echo "  make test-middleware-integration  # Basic integration tests"
+	@echo "  make test-middleware-stress       # Stress tests"
+	@echo "  make test-middleware-scripts      # Shell script tests"
+	@echo "  make test-middleware-cli          # CLI-based tests"
+	@echo ""
+	@echo "Performance Testing (server required):"
+	@echo "  make benchmark-middleware         # Basic benchmarks"
+	@echo "  make benchmark-middleware-full    # Comprehensive benchmarks"
+	@echo ""
+	@echo "Combined:"
+	@echo "  make test-middleware-all          # Unit + integration tests"

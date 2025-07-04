@@ -1,0 +1,119 @@
+# Example: Per-Skill Middleware Override
+
+# Global middleware configuration - applies to all handlers by default
+middleware:
+  - name: logged
+    params:
+      log_level: 20  # INFO level
+  - name: timed
+    params: {}
+  - name: cached
+    params:
+      ttl: 300  # 5 minutes default cache
+  - name: rate_limited
+    params:
+      requests_per_minute: 60
+
+# Skills with custom middleware requirements
+skills:
+  # Standard skill - uses global middleware
+  - skill_id: standard_skill
+    name: Standard Skill
+    description: Uses the global middleware configuration
+    input_mode: text
+    output_mode: text
+    # No middleware_override, so uses global middleware
+
+  # Expensive operation - needs longer cache
+  - skill_id: expensive_analysis
+    name: Expensive Analysis
+    description: Complex analysis that takes time
+    input_mode: multimodal
+    output_mode: text
+    middleware_override:
+      - name: cached
+        params:
+          ttl: 3600  # Cache for 1 hour instead of 5 minutes
+      - name: logged
+        params:
+          log_level: 20
+      - name: timed
+        params: {}
+
+  # Real-time data - no caching
+  - skill_id: live_feed
+    name: Live Feed
+    description: Always returns fresh data
+    input_mode: text
+    output_mode: text
+    middleware_override:
+      - name: logged
+        params:
+          log_level: 20
+      - name: timed
+        params: {}
+      - name: rate_limited
+        params:
+          requests_per_minute: 120  # Higher rate limit
+      # Note: No caching middleware
+
+  # Debug mode skill - verbose logging
+  - skill_id: experimental_feature
+    name: Experimental Feature
+    description: New feature under development
+    input_mode: text
+    output_mode: text
+    middleware_override:
+      - name: logged
+        params:
+          log_level: 10  # DEBUG level for this skill only
+      - name: timed
+        params: {}
+      - name: retryable
+        params:
+          max_retries: 5  # More retries during testing
+          backoff_factor: 1
+
+  # High-performance skill - minimal middleware
+  - skill_id: fast_response
+    name: Fast Response
+    description: Optimized for speed
+    input_mode: text
+    output_mode: text
+    middleware_override:
+      - name: timed  # Only timing, no logging or caching
+        params: {}
+
+  # Raw performance - no middleware at all
+  - skill_id: bare_metal
+    name: Bare Metal Performance
+    description: No middleware overhead whatsoever
+    input_mode: text
+    output_mode: text
+    middleware_override: []  # Empty array = no middleware
+
+  # Selective exclusion - everything except caching
+  - skill_id: no_cache_api
+    name: No Cache API
+    description: External API that should never be cached
+    input_mode: text
+    output_mode: text
+    middleware_override:
+      - name: logged
+        params:
+          log_level: 20
+      - name: timed
+        params: {}
+      - name: rate_limited
+        params:
+          requests_per_minute: 60
+      # Note: Caching middleware excluded
+
+# The result:
+# - standard_skill: Gets all global middleware (logged, timed, cached, rate_limited)
+# - expensive_analysis: Gets custom caching (1 hour), plus logging and timing
+# - live_feed: No caching, higher rate limit
+# - experimental_feature: DEBUG logging, more retries
+# - fast_response: Only timing middleware for maximum performance
+# - bare_metal: NO middleware at all - raw performance
+# - no_cache_api: All middleware except caching

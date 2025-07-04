@@ -45,35 +45,62 @@ class MultiModalProcessor:
         matching_parts = []
 
         for part in parts:
-            if hasattr(part, "dataPart") and part.dataPart:
-                if part.dataPart.mimeType.startswith(mime_type_prefix):
+            # Check FilePart (for images, documents, etc.)
+            if hasattr(part, "root") and part.root.kind == "file":
+                file_part = part.root
+                if file_part.file.mimeType and file_part.file.mimeType.startswith(mime_type_prefix):
+                    matching_parts.append(part)
+            # Check DataPart (for structured data)
+            elif hasattr(part, "root") and part.root.kind == "data":
+                data_part = part.root
+                if (
+                    hasattr(data_part, "mimeType")
+                    and data_part.mimeType
+                    and data_part.mimeType.startswith(mime_type_prefix)
+                ):
                     matching_parts.append(part)
 
         return matching_parts
 
     @classmethod
-    def extract_image_parts(cls, parts: list[Part]) -> list[DataPart]:
-        """Extract image data parts from message parts."""
+    def extract_image_parts(cls, parts: list[Part]) -> list[dict[str, str]]:
+        """Extract image file parts from message parts."""
         image_parts = []
 
         for part in parts:
-            if hasattr(part, "dataPart") and part.dataPart:
-                data_part = part.dataPart
-                if data_part.mimeType.startswith("image/"):
-                    image_parts.append(data_part)
+            # Images should be FilePart according to A2A spec
+            if hasattr(part, "root") and part.root.kind == "file":
+                file_part = part.root
+                if file_part.file.mimeType and file_part.file.mimeType.startswith("image/"):
+                    # Return dict with file info for easier processing
+                    image_info = {
+                        "name": file_part.file.name or "image",
+                        "mimeType": file_part.file.mimeType,
+                        "data": file_part.file.bytes if hasattr(file_part.file, "bytes") else None,
+                        "uri": file_part.file.uri if hasattr(file_part.file, "uri") else None,
+                    }
+                    image_parts.append(image_info)
 
         return image_parts
 
     @classmethod
-    def extract_document_parts(cls, parts: list[Part]) -> list[DataPart]:
-        """Extract document data parts from message parts."""
+    def extract_document_parts(cls, parts: list[Part]) -> list[dict[str, str]]:
+        """Extract document file parts from message parts."""
         doc_parts = []
 
         for part in parts:
-            if hasattr(part, "dataPart") and part.dataPart:
-                data_part = part.dataPart
-                if data_part.mimeType in cls.DOCUMENT_FORMATS:
-                    doc_parts.append(data_part)
+            # Documents should be FilePart according to A2A spec
+            if hasattr(part, "root") and part.root.kind == "file":
+                file_part = part.root
+                if file_part.file.mimeType and file_part.file.mimeType in cls.DOCUMENT_FORMATS:
+                    # Return dict with file info for easier processing
+                    doc_info = {
+                        "name": file_part.file.name or "document",
+                        "mimeType": file_part.file.mimeType,
+                        "data": file_part.file.bytes if hasattr(file_part.file, "bytes") else None,
+                        "uri": file_part.file.uri if hasattr(file_part.file, "uri") else None,
+                    }
+                    doc_parts.append(doc_info)
 
         return doc_parts
 
@@ -259,29 +286,141 @@ class MultiModalProcessor:
         content = {"text": [], "images": [], "documents": [], "other": []}
 
         for part in parts:
-            if hasattr(part, "textPart") and part.textPart:
-                content["text"].append(part.textPart.text)
+            if hasattr(part, "root"):
+                if part.root.kind == "text":
+                    content["text"].append(part.root.text)
 
-            elif hasattr(part, "dataPart") and part.dataPart:
-                data_part = part.dataPart
+                elif part.root.kind == "file":
+                    file_part = part.root
+                    file_info = {
+                        "name": file_part.file.name or "file",
+                        "mime_type": file_part.file.mimeType,
+                        "data": file_part.file.bytes if hasattr(file_part.file, "bytes") else None,
+                        "uri": file_part.file.uri if hasattr(file_part.file, "uri") else None,
+                    }
 
-                if data_part.mimeType.startswith("image/"):
-                    content["images"].append(
-                        {"name": data_part.name, "mime_type": data_part.mimeType, "data": data_part.data}
-                    )
+                    if file_part.file.mimeType and file_part.file.mimeType.startswith("image/"):
+                        content["images"].append(file_info)
+                    elif file_part.file.mimeType and file_part.file.mimeType in cls.DOCUMENT_FORMATS:
+                        content["documents"].append(file_info)
+                    else:
+                        content["other"].append(file_info)
 
-                elif data_part.mimeType in cls.DOCUMENT_FORMATS:
-                    content["documents"].append(
-                        {"name": data_part.name, "mime_type": data_part.mimeType, "data": data_part.data}
-                    )
-
-                else:
+                elif part.root.kind == "data":
+                    data_part = part.root
                     content["other"].append(
-                        {"name": data_part.name, "mime_type": data_part.mimeType, "data": data_part.data}
+                        {"name": "structured_data", "mime_type": "application/json", "data": data_part.data}
                     )
 
         return content
 
 
-# Export utility class
-__all__ = ["MultiModalProcessor"]
+class MultiModalService:
+    """Service wrapper for multi-modal processing providing universal access."""
+
+    def __init__(self, name: str, config: dict[str, Any]):
+        self.name = name
+        self.config = config
+        self._initialized = False
+
+        # Configuration options
+        self.max_image_size_mb = config.get("max_image_size_mb", 10)
+        self.max_document_size_mb = config.get("max_document_size_mb", 50)
+        self.supported_image_formats = config.get(
+            "supported_image_formats", list(MultiModalProcessor.IMAGE_FORMATS.keys())
+        )
+        self.supported_document_formats = config.get(
+            "supported_document_formats", list(MultiModalProcessor.DOCUMENT_FORMATS.keys())
+        )
+
+    async def initialize(self) -> None:
+        """Initialize the multi-modal service."""
+        logger.info(f"Multi-modal service {self.name} initialized")
+        self._initialized = True
+
+    async def close(self) -> None:
+        """Close the multi-modal service."""
+        self._initialized = False
+
+    async def health_check(self) -> dict[str, Any]:
+        """Check multi-modal service health."""
+        try:
+            return {
+                "status": "healthy",
+                "supported_image_formats": len(self.supported_image_formats),
+                "supported_document_formats": len(self.supported_document_formats),
+                "max_image_size_mb": self.max_image_size_mb,
+                "max_document_size_mb": self.max_document_size_mb,
+            }
+        except Exception as e:
+            return {"status": "unhealthy", "error": str(e)}
+
+    @property
+    def is_initialized(self) -> bool:
+        """Check if service is initialized."""
+        return self._initialized
+
+    # Delegate to MultiModalProcessor for all processing methods
+    def extract_image_parts(self, parts: list[Part]) -> list[dict[str, str]]:
+        """Extract image file parts from message parts."""
+        return MultiModalProcessor.extract_image_parts(parts)
+
+    def extract_document_parts(self, parts: list[Part]) -> list[dict[str, str]]:
+        """Extract document file parts from message parts."""
+        return MultiModalProcessor.extract_document_parts(parts)
+
+    def extract_all_content(self, parts: list[Part]) -> dict[str, list[Any]]:
+        """Extract all content from message parts organized by type."""
+        return MultiModalProcessor.extract_all_content(parts)
+
+    def process_image(self, image_data: str, mime_type: str) -> dict[str, Any]:
+        """Process base64 encoded image data."""
+        # Validate size if configured
+        if not MultiModalProcessor.validate_file_size(image_data, "image"):
+            return {"success": False, "error": f"Image exceeds maximum size of {self.max_image_size_mb}MB"}
+
+        # Check format support
+        if mime_type not in self.supported_image_formats:
+            return {"success": False, "error": f"Unsupported image format: {mime_type}"}
+
+        return MultiModalProcessor.process_image(image_data, mime_type)
+
+    def process_document(self, doc_data: str, mime_type: str) -> dict[str, Any]:
+        """Process base64 encoded document data."""
+        # Validate size if configured
+        if not MultiModalProcessor.validate_file_size(doc_data, "document"):
+            return {"success": False, "error": f"Document exceeds maximum size of {self.max_document_size_mb}MB"}
+
+        # Check format support
+        if mime_type not in self.supported_document_formats:
+            return {"success": False, "error": f"Unsupported document format: {mime_type}"}
+
+        return MultiModalProcessor.process_document(doc_data, mime_type)
+
+    def resize_image(self, image: Image.Image, max_size: tuple) -> Image.Image:
+        """Resize image maintaining aspect ratio."""
+        return MultiModalProcessor.resize_image(image, max_size)
+
+    def convert_image_format(self, image: Image.Image, target_format: str) -> bytes:
+        """Convert image to different format."""
+        return MultiModalProcessor.convert_image_format(image, target_format)
+
+    def encode_image_base64(self, image: Image.Image, format: str = "PNG") -> str:
+        """Encode PIL Image to base64 string."""
+        return MultiModalProcessor.encode_image_base64(image, format)
+
+    def create_data_part(self, file_path: str | Path, name: str | None = None) -> DataPart | None:
+        """Create DataPart from file."""
+        return MultiModalProcessor.create_data_part(file_path, name)
+
+    def validate_file_size(self, data: str, file_type: str = "default") -> bool:
+        """Validate file size against limits."""
+        return MultiModalProcessor.validate_file_size(data, file_type)
+
+    def save_image(self, image: Image.Image, output_path: str | Path, format: str | None = None) -> bool:
+        """Save PIL Image to file."""
+        return MultiModalProcessor.save_image(image, output_path, format)
+
+
+# Export utility classes
+__all__ = ["MultiModalProcessor", "MultiModalService"]

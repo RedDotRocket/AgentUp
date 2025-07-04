@@ -106,6 +106,10 @@ class OllamaProvider(BaseLLMService):
                 LLMCapability.SYSTEM_MESSAGES,
             ]
 
+            # Add vision capability for vision models
+            if self._is_vision_model():
+                capabilities.append(LLMCapability.IMAGE_UNDERSTANDING)
+
         # Set capabilities (Ollama typically doesn't support function calling natively)
         for cap in capabilities:
             self._set_capability(cap, True)
@@ -203,6 +207,43 @@ class OllamaProvider(BaseLLMService):
         except KeyError as e:
             raise LLMProviderAPIError(f"Invalid Ollama API response format: {e}") from e
 
+    def _is_vision_model(self) -> bool:
+        """Check if the current model supports vision."""
+        vision_models = ["llava", "bakllava", "llava-llama3", "llava-phi3", "llava-code"]
+        return any(vision_model in self.model.lower() for vision_model in vision_models)
+
+    def _flatten_content_for_ollama(self, content: str | list[dict[str, Any]]) -> str | list[dict[str, Any]]:
+        """Handle multi-modal content for Ollama, preserving structure for vision models."""
+        if isinstance(content, str):
+            return content
+
+        if isinstance(content, list):
+            # If this is a vision model, preserve the structure
+            if self._is_vision_model():
+                return content
+
+            # For text-only models, extract text parts and handle images appropriately
+            text_parts = []
+            for part in content:
+                if part.get("type") == "text":
+                    text_content = part.get("text", "")
+                    # Check if this is file content (has document markers)
+                    if "--- Content of" in text_content and "---" in text_content:
+                        # This is extracted document content, include it directly
+                        text_parts.append(text_content)
+                    else:
+                        # Regular text content
+                        text_parts.append(text_content)
+                elif part.get("type") == "image_url":
+                    # Text-only models can't process images
+                    text_parts.append(
+                        "[Image attached - This model cannot process images directly. Please describe the image contents.]"
+                    )
+
+            return " ".join(text_parts)
+
+        return str(content)
+
     async def chat_complete(self, messages: list[ChatMessage], **kwargs) -> LLMResponse:
         """Generate chat completion from messages."""
         if not self._initialized:
@@ -211,7 +252,33 @@ class OllamaProvider(BaseLLMService):
         # Convert messages to Ollama chat format
         ollama_messages = []
         for msg in messages:
-            ollama_messages.append({"role": msg.role, "content": msg.content})
+            # Handle multi-modal content appropriately
+            content = self._flatten_content_for_ollama(msg.content)
+
+            # For vision models with structured content, handle images
+            if self._is_vision_model() and isinstance(content, list):
+                # Ollama vision models expect images as base64 data
+                text_content = ""
+                images = []
+
+                for part in content:
+                    if part.get("type") == "text":
+                        text_content += part.get("text", "")
+                    elif part.get("type") == "image_url":
+                        image_url = part.get("image_url", {}).get("url", "")
+                        if image_url.startswith("data:"):
+                            # Extract base64 data from data URL
+                            _, base64_data = image_url.split(",", 1)
+                            images.append(base64_data)
+
+                # Build message with proper Ollama format
+                ollama_msg = {"role": msg.role, "content": text_content}
+                if images:
+                    ollama_msg["images"] = images
+
+                ollama_messages.append(ollama_msg)
+            else:
+                ollama_messages.append({"role": msg.role, "content": content})
 
         payload = {
             "model": self.model,
@@ -257,7 +324,33 @@ class OllamaProvider(BaseLLMService):
         # Convert messages to Ollama chat format
         ollama_messages = []
         for msg in messages:
-            ollama_messages.append({"role": msg.role, "content": msg.content})
+            # Handle multi-modal content appropriately
+            content = self._flatten_content_for_ollama(msg.content)
+
+            # For vision models with structured content, handle images
+            if self._is_vision_model() and isinstance(content, list):
+                # Ollama vision models expect images as base64 data
+                text_content = ""
+                images = []
+
+                for part in content:
+                    if part.get("type") == "text":
+                        text_content += part.get("text", "")
+                    elif part.get("type") == "image_url":
+                        image_url = part.get("image_url", {}).get("url", "")
+                        if image_url.startswith("data:"):
+                            # Extract base64 data from data URL
+                            _, base64_data = image_url.split(",", 1)
+                            images.append(base64_data)
+
+                # Build message with proper Ollama format
+                ollama_msg = {"role": msg.role, "content": text_content}
+                if images:
+                    ollama_msg["images"] = images
+
+                ollama_messages.append(ollama_msg)
+            else:
+                ollama_messages.append({"role": msg.role, "content": content})
 
         payload = {
             "model": self.model,
