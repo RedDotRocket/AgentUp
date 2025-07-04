@@ -85,7 +85,7 @@ ci-deps: ## Check dependencies for CI
 agent-create: ## Create a test agent (interactive)
 	uv run agentup agent create --no-git
 
-agent-create-minimal: ## Create minimal test agent
+agent-create-minimal:
 	@echo "Creating minimal test agent..."
 	uv run agentup agent create \
 		--quick test-minimal \
