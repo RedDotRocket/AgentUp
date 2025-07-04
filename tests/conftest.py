@@ -184,7 +184,6 @@ def env_vars():
         "ANTHROPIC_API_KEY": "test_anthropic_key",
         "OLLAMA_BASE_URL": "http://localhost:11434",
         "VALKEY_URL": "valkey://localhost:6379",
-        "DATABASE_URL": "postgresql://test:test@localhost/test",
     }
 
     # Store original values

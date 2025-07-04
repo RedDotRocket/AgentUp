@@ -101,10 +101,6 @@ ai_provider:
 
 # External services configuration - Full enterprise setup (LLM configuration moved to ai_provider section)
 services:
-  postgres:
-    type: database
-    config:
-      connection_url: '${DATABASE_URL:postgresql://user:pass@localhost/db}'
   valkey:
     type: cache
     config:

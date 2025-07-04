@@ -247,9 +247,6 @@ def create_mock_services() -> MockServiceRegistry:
     # Add cache services
     registry.register_service("valkey", MockValkeyService(), "cache")
 
-    # Add database services
-    registry.register_service("postgres", MockDatabaseService(), "database")
-
     return registry
 
 

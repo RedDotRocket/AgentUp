@@ -159,7 +159,6 @@ class TestMockServices:
         assert "anthropic" in registry.list_services()
         assert "ollama" in registry.list_services()
         assert "valkey" in registry.list_services()
-        assert "postgres" in registry.list_services()
 
         # Test service retrieval
         openai_service = registry.get_llm("openai")
@@ -167,9 +166,6 @@ class TestMockServices:
 
         valkey_service = registry.get_cache("valkey")
         assert valkey_service is not None
-
-        postgres_service = registry.get_database("postgres")
-        assert postgres_service is not None
 
     @pytest.mark.asyncio
     async def test_mock_llm_services(self):
@@ -220,7 +216,6 @@ class TestMockServices:
         assert os.environ.get("ANTHROPIC_API_KEY") == "test_anthropic_key"
         assert os.environ.get("OLLAMA_BASE_URL") == "http://localhost:11434"
         assert os.environ.get("VALKEY_URL") == "valkey://localhost:6379"
-        assert os.environ.get("DATABASE_URL") == "postgresql://test:test@localhost/test"
 
 
 class TestAgentTemplates:

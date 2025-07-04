@@ -172,9 +172,6 @@ Plugins in this directory will be automatically discovered when installed.
 
 # Valkey/Redis URL (if using Valkey services)
 # VALKEY_URL=valkey://localhost:6379
-
-# PostgreSQL URL (if using PostgreSQL services)
-# POSTGRES_URL=postgresql://user:password@localhost:5432/dbname
 """
             env_file.write_text(env_content)
 
@@ -484,10 +481,6 @@ Always be helpful, accurate, and maintain a friendly tone. You are designed to a
             # Full template gets everything
             elif self.template_name == "full":
                 services["openai"] = self._build_llm_service_config("openai")
-                services["postgres"] = {
-                    "type": "database",
-                    "config": {"url": "${DATABASE_URL:postgresql://user:pass@localhost/db}"},
-                }
                 services["valkey"] = {
                     "type": "cache",
                     "config": {"url": "${VALKEY_URL:valkey://localhost:6379}", "db": 1, "max_connections": 10},
@@ -498,11 +491,6 @@ Always be helpful, accurate, and maintain a friendly tone. You are designed to a
                 # Handle LLM services
                 if service_type in ["openai", "anthropic", "ollama"]:
                     services[service_type] = self._build_llm_service_config(service_type)
-                elif service_type == "postgres":
-                    services["postgres"] = {
-                        "type": "database",
-                        "config": {"url": "${DATABASE_URL:postgresql://user:pass@localhost/db}"},
-                    }
                 elif service_type == "valkey":
                     services["valkey"] = {
                         "type": "cache",

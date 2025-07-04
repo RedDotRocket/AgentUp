@@ -156,21 +156,8 @@ services:
 #    restart: unless-stopped
 #    volumes:
 #      - valkey_data:/data
-
-#  postgres:
-#    image: postgres:15-alpine
-#    container_name: {image_name}-postgres
-#    environment:
-#      - POSTGRES_DB={image_name}
-#      - POSTGRES_USER=agent
-#      - POSTGRES_PASSWORD=changeme
-#    volumes:
-#      - postgres_data:/var/lib/postgresql/data
-#    restart: unless-stopped
-
 #volumes:
 #  valkey_data:
-#  postgres_data:
 """
 
     compose_path = output_dir / "docker-compose.yml"
@@ -356,7 +343,6 @@ stringData:
   api-key: your-api-key-here
   # Add other secrets as needed
   # openai-api-key: your-openai-key
-  # database-url: postgresql://user:pass@host/db
 """
 
     secret_path = k8s_dir / "secret.yaml"
@@ -480,14 +466,6 @@ services:
     enabled: false
     host: valkey
     port: 6379
-
-  postgres:
-    enabled: false
-    host: postgres
-    port: 5432
-    database: {agent_name}
-    username: agent
-    password: changeme
 
 # Agent configuration (will be mounted as agent_config.yaml)
 agentConfig: |

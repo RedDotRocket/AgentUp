@@ -75,7 +75,7 @@ class TestProjectGenerator:
         assert model == "gpt-4o-mini"
 
         # Test no LLM provider
-        provider, service_name, model = generator._get_llm_provider_info(["valkey", "postgres"])
+        provider, service_name, model = generator._get_llm_provider_info(["valkey"])
         assert provider is None
         assert service_name is None
         assert model is None
@@ -345,7 +345,7 @@ class TestConfigurationGeneration:
 
     def test_build_services_config_multiple_services(self, temp_dir: Path):
         """Test services configuration with multiple services."""
-        config = create_test_config("multi-service-test", "full", ["services"], ["openai", "valkey", "postgres"])
+        config = create_test_config("multi-service-test", "full", ["services"], ["openai", "valkey"])
         generator = ProjectGenerator(temp_dir, config)
 
         services_config = generator._build_services_config()
@@ -358,11 +358,6 @@ class TestConfigurationGeneration:
         assert "valkey" in services_config
         assert services_config["valkey"]["type"] == "cache"
         assert "url" in services_config["valkey"]["config"]
-
-        # Check PostgreSQL service
-        assert "postgres" in services_config
-        assert services_config["postgres"]["type"] == "database"
-        assert "url" in services_config["postgres"]["config"]
 
     def test_build_routing_config(self, temp_dir: Path):
         """Test routing configuration building."""

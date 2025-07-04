@@ -208,7 +208,6 @@ def create_agent(
             project_config["services"] = []
         else:
             service_choices = [
-                questionary.Choice("PostgreSQL", value="postgres"),
                 questionary.Choice("Valkey", value="valkey"),
                 questionary.Choice("Custom API", value="custom"),
             ]

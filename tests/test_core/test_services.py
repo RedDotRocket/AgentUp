@@ -9,7 +9,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
-from agent.services import CacheService, DatabaseService, Service, ServiceError, ServiceRegistry, WebAPIService
+from agent.services import CacheService, Service, ServiceError, ServiceRegistry, WebAPIService
 
 
 class TestService:
@@ -42,75 +42,6 @@ class TestService:
         health = await service.health_check()
 
         assert health == {"status": "unknown"}
-
-
-class TestDatabaseService:
-    """Test the DatabaseService implementation."""
-
-    def test_database_service_initialization(self):
-        """Test DatabaseService initialization."""
-        config = {"url": "postgresql://user:pass@localhost/db", "pool_size": 10}
-
-        db_service = DatabaseService("test_db", config)
-
-        assert db_service.name == "test_db"
-        assert db_service.config == config
-        assert db_service.connection_url == "postgresql://user:pass@localhost/db"
-        assert db_service.pool_size == 10
-        assert db_service.is_initialized is False
-
-    def test_database_service_default_config(self):
-        """Test DatabaseService with default configuration."""
-        config = {}
-
-        db_service = DatabaseService("test_db", config)
-
-        assert db_service.connection_url == "sqlite:///./agent.db"
-        assert db_service.pool_size == 5
-
-    @pytest.mark.asyncio
-    async def test_database_service_initialize(self):
-        """Test DatabaseService initialization."""
-        config = {"url": "postgresql://user:pass@localhost/db"}
-        db_service = DatabaseService("test_db", config)
-
-        await db_service.initialize()
-
-        assert db_service.is_initialized is True
-
-    @pytest.mark.asyncio
-    async def test_database_service_close(self):
-        """Test DatabaseService close method."""
-        config = {"url": "sqlite:///test.db"}
-        db_service = DatabaseService("test_db", config)
-        db_service._initialized = True
-
-        await db_service.close()
-
-        assert db_service.is_initialized is False
-
-    @pytest.mark.asyncio
-    async def test_database_service_health_check_healthy(self):
-        """Test DatabaseService health check when healthy."""
-        config = {"url": "postgresql://user:pass@localhost/db"}
-        db_service = DatabaseService("test_db", config)
-
-        health = await db_service.health_check()
-
-        assert health["status"] == "healthy"
-        assert "connection_url" in health
-        assert health["connection_url"] == "localhost/db"
-
-    @pytest.mark.asyncio
-    async def test_database_service_execute(self):
-        """Test DatabaseService execute method."""
-        config = {"url": "sqlite:///test.db"}
-        db_service = DatabaseService("test_db", config)
-
-        result = await db_service.execute("SELECT 1")
-
-        assert result == {"result": "query_executed"}
-        assert db_service.is_initialized is True
 
 
 class TestCacheService:
@@ -384,7 +315,6 @@ class TestServiceRegistry:
             "agent": {"name": "test"},
             "services": {
                 "valkey": {"type": "cache", "settings": {"url": "valkey://localhost:6379"}},
-                "postgres": {"type": "database", "settings": {"url": "postgresql://user:pass@localhost/db"}},
             },
         }
 
@@ -397,11 +327,9 @@ class TestServiceRegistry:
             registry.initialize_all()
 
             # Should have created services for configured items
-            assert len(registry._services) == 2
+            assert len(registry._services) == 1
             assert "valkey" in registry._services
-            assert "postgres" in registry._services
             assert isinstance(registry._services["valkey"], CacheService)
-            assert isinstance(registry._services["postgres"], DatabaseService)
 
 
 class TestServiceRegistryIntegration:
@@ -413,7 +341,6 @@ class TestServiceRegistryIntegration:
             "agent": {"name": "integration-test"},
             "services": {
                 "valkey": {"type": "cache", "settings": {"url": "valkey://localhost:6379"}},
-                "postgres": {"type": "database", "settings": {"url": "postgresql://user:pass@localhost/db"}},
                 "custom_api": {"type": "web_api", "settings": {"base_url": "https://api.example.com"}},
             },
         }
@@ -427,14 +354,12 @@ class TestServiceRegistryIntegration:
             registry.initialize_all()
 
             # Verify all services were created
-            assert len(registry._services) == 3
+            assert len(registry._services) == 2
             assert "valkey" in registry._services
-            assert "postgres" in registry._services
             assert "custom_api" in registry._services
 
             # Verify service types
             assert isinstance(registry._services["valkey"], CacheService)
-            assert isinstance(registry._services["postgres"], DatabaseService)
             assert isinstance(registry._services["custom_api"], WebAPIService)
 
     def test_llm_service_creation_separately(self):
