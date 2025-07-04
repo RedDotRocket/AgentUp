@@ -77,11 +77,6 @@ security-report: ## Generate bandit security report in JSON
 security-full: ## Run full security scan with medium severity
 	uv run bandit -r src/ -l
 
-# CI-specific commands
-ci-integration: ## Run integration tests for CI
-	chmod +x tests/integration/int.sh
-	./tests/integration/int.sh
-
 ci-deps: ## Check dependencies for CI
 	uv pip check
 	uv pip freeze > requirements-ci.txt

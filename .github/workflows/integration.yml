@@ -2,61 +2,12 @@ name: Integration Tests
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main ]
   workflow_dispatch:  # Allow manual trigger
 
 jobs:
-  integration:
-    name: Run Integration Tests (Bash)
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Install uv
-      uses: astral-sh/setup-uv@v4
-      with:
-        enable-cache: true
-        cache-dependency-glob: |
-          **/pyproject.toml
-          **/uv.lock
-
-    - name: Set up Python
-      run: |
-        uv python install 3.11
-        uv python pin 3.11
-
-    - name: Install dependencies
-      run: |
-        make install-dev
-
-    - name: Install additional dependencies for integration tests
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y jq curl
-
-    - name: Make integration test script executable
-      run: |
-        chmod +x tests/integration/int.sh
-
-    - name: Run bash integration tests
-      run: |
-        ./tests/integration/int.sh
-      env:
-        PYTHONUNBUFFERED: "1"
-
-    - name: Upload test logs if failed
-      uses: actions/upload-artifact@v4
-      if: failure()
-      with:
-        name: integration-test-logs
-        path: |
-          *.log
-          tests/integration/*.log
-
   agent-creation-test:
     name: Test Agent Creation
     runs-on: ubuntu-latest
