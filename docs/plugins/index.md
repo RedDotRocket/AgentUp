@@ -86,11 +86,12 @@ Provide LLM-callable functions for intelligent agent interactions.
 1. **[Getting Started](getting-started.md)** - Create your first plugin in 5 minutes
 2. **[Plugin Development](development.md)** - Comprehensive development guide
 3. **[AI Function Integration](ai-functions.md)** - Build LLM-callable functions
-4. **[Testing Plugins](testing.md)** - Test your plugins thoroughly
-5. **[Publishing](publishing.md)** - Share your plugins with the community
-6. **[CLI Reference](cli-reference.md)** - Complete CLI command documentation
-7. **[API Reference](api-reference.md)** - Plugin API and hook specifications
-8. **[Examples](examples.md)** - Real-world plugin examples
+4. **[System Prompts](../plugin-system-prompts.md)** - Customize AI behavior with skill-specific system prompts
+5. **[Testing Plugins](testing.md)** - Test your plugins thoroughly
+6. **[Publishing](publishing.md)** - Share your plugins with the community
+7. **[CLI Reference](cli-reference.md)** - Complete CLI command documentation
+8. **[API Reference](api-reference.md)** - Plugin API and hook specifications
+9. **[Examples](examples.md)** - Real-world plugin examples
 
 ## Why Use Plugins?
 

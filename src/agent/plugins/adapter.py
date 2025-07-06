@@ -137,6 +137,7 @@ class PluginAdapter:
             "output_mode": skill.output_mode,
             "tags": skill.tags,
             "priority": skill.priority,
+            "system_prompt": skill.system_prompt,
         }
 
     def get_ai_functions(self, skill_id: str):
