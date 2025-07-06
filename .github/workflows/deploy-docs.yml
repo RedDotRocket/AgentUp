@@ -34,7 +34,6 @@ jobs:
       uses: google-github-actions/auth@v2
       with:
         workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
-        service_account: ${{ secrets.SA_EMAIL }}
 
     - name: Set up gcloud CLI
       uses: google-github-actions/setup-gcloud@v1
