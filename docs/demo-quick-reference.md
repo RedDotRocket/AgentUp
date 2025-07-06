@@ -14,8 +14,8 @@ agentup agent create research-coordinator --template advanced --output-dir ./res
 agentup agent create data-analyst --template standard --output-dir ./data-analyst
 
 # Start agents (in separate terminals)
-cd research-coordinator && agentup dev --port 8001
-cd data-analyst && agentup dev --port 8002
+cd research-coordinator && agentup agent serve --port 8001
+cd data-analyst && agentup agent serve --port 8002
 ```
 
 ## Test Commands

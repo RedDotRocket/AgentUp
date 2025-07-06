@@ -42,26 +42,21 @@ pip install -e .
 
 ### 3. Use in Your Agent
 
-Plugins are discovered automatically through three methods:
+Plugins are discovered automatically through two methods:
 
-**a) Installed Plugins** (Recommended for production)
+**a) Development Mode** (Recommended for plugin development)
 ```bash
-# From any agent project directory
-agentup agent serve
-# Installed plugins are automatically loaded
-```
+# Navigate to your plugin directory
+cd /path/to/weather-plugin
 
-**b) Local Development** (For testing within a specific agent)
-```bash
-# From your agent project root
-mkdir -p skills/
-cp -r /path/to/weather-plugin skills/
+# Install in development mode
+pip install -e .
 
-# Start the agent - local plugins in ./skills/ are loaded
+# Now available to all agents - changes take effect immediately
 agentup agent serve
 ```
 
-**c) Entry Points** (For published packages)
+**b) Production Mode** (For published packages)
 ```bash
 # Install from PyPI or other sources
 pip install agentup-weather-plugin

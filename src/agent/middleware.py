@@ -269,11 +269,11 @@ def timed():
             try:
                 result = await func(*args, **kwargs)
                 execution_time = time.time() - start_time
-                logger.info(f"⏱️  {func.__name__} executed in {execution_time:.3f}s")
+                logger.info(f"{func.__name__} executed in {execution_time:.3f}s")
                 return result
             except Exception as e:
                 execution_time = time.time() - start_time
-                logger.warning(f"⏱️  {func.__name__} failed after {execution_time:.3f}s: {e}")
+                logger.warning(f"{func.__name__} failed after {execution_time:.3f}s: {e}")
                 raise
 
         return wrapper

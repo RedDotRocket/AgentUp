@@ -602,7 +602,7 @@ class TestCliOutput:
         assert "Next steps:" in result.output
         assert "cd output-test" in result.output  # Directory name preserves hyphens
         assert "uv sync" in result.output
-        assert "agentup dev" in result.output
+        assert "agentup agent serve" in result.output
 
     def test_cli_cancel_output(self, runner, mock_questionary):
         """Test output when user cancels."""

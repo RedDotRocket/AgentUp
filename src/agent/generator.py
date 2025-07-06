@@ -104,7 +104,7 @@ class ProjectGenerator:
         self._generate_template_files()
 
         # Create directories for local development
-        self._create_local_directories()
+        self._create_env_file()
 
         # Generate configuration
         self._generate_config_files()
@@ -123,35 +123,7 @@ class ProjectGenerator:
         gitignore_content = self._render_template(".gitignore")
         (self.output_dir / ".gitignore").write_text(gitignore_content)
 
-    def _create_local_directories(self):
-        """Create directories for local development (plugins, etc.)."""
-        # Create plugins directory for local plugin development
-        plugins_dir = self.output_dir / "plugins"
-        plugins_dir.mkdir(exist_ok=True)
-
-        # Create a README in plugins directory
-        plugins_readme = """# Local Plugins
-
-This directory is for developing local plugins for your agent.
-
-## Usage
-
-1. Create a new plugin directory: `mkdir plugins/my-plugin`
-2. Develop your plugin with the AgentUp plugin API
-3. Install in development mode: `pip install -e plugins/my-plugin`
-4. Add the plugin to your agent_config.yaml skills section
-
-## Plugin Development
-
-See the AgentUp documentation for plugin development guidelines:
-- Plugin API reference
-- Example plugins
-- Testing your plugins
-
-Plugins in this directory will be automatically discovered when installed.
-"""
-        (plugins_dir / "README.md").write_text(plugins_readme)
-
+    def _create_env_file(self):
         # Create .env file for environment variables
         env_file = self.output_dir / ".env"
         if not env_file.exists():

@@ -10,7 +10,7 @@ agentup agent create -q --no-git --output-dir "$temp_folder" myagent
 cd $temp_folder
 
 uv sync --active
-agentup dev
+agentup agent serve
 
 
 trap 'rm -rf "$temp_folder"' EXIT

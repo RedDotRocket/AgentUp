@@ -18,7 +18,7 @@
    agentup agent serve
    ```
 
-   Or manually:
+   Or run direct with uvicorn:
    ```bash
    uv run uvicorn agent.api.app:app --reload --port 8000
    ```
@@ -50,11 +50,9 @@ This agent was created with the **{{ template_name }}** template and includes:
 
 ## Development
 
-### Pure Config-Driven Architecture
+This agent runs from the AgentUp framework package.
 
-This agent runs entirely from the AgentUp framework package.
-
-#### 1. Adding New Skills via Plugins
+#### 1. Adding New Tools via Plugins
 
 **Create a Local Plugin:**
 ```bash
@@ -108,17 +106,6 @@ pip install --upgrade agentup
 agentup agent serve
 ```
 
-## Plugin Development
-
-See the `plugins/` directory for local plugin development. Each plugin should:
-
-1. Implement the AgentUp plugin API
-2. Provide one or more skills
-3. Include proper configuration validation
-4. Follow A2A specification compliance
-
-For detailed plugin development guidelines, see the AgentUp documentation.
-
 ## Testing
 
 Test your agent using A2A-compliant JSON-RPC calls:
@@ -152,7 +139,6 @@ curl http://localhost:8000/.well-known/agent.json
 {{ project_name_snake }}/
 ├── agent_config.yaml     # Main configuration
 ├── .env                  # Environment variables  
-├── plugins/              # Local plugin development
 ├── README.md            # This file
 └── pyproject.toml       # Dependencies (just agentup)
 ```
@@ -162,30 +148,13 @@ curl http://localhost:8000/.well-known/agent.json
 The agent can be deployed anywhere Python runs:
 
 ```bash
-# Production server
-gunicorn agent.api.app:app --workers 4 --bind 0.0.0.0:8000
-
-# Or with uvicorn
 uvicorn agent.api.app:app --host 0.0.0.0 --port 8000
 ```
-
-{% if has_deployment %}
-For advanced deployment options (Docker, Kubernetes), see the deployment documentation.
-{% endif %}
-
-## Production Checklist
-
-- [ ] Environment variables configured in `.env` or deployment environment
-- [ ] API keys and secrets properly secured
-- [ ] Agent configuration tested with expected workloads
-- [ ] Plugin dependencies installed and validated
-- [ ] A2A compliance verified with test clients
 
 ## Documentation
 
 For more information:
 - [AgentUp Documentation](https://docs.agentup.dev)
-- [A2A Specification](https://a2a.dev)
 - [Plugin Development Guide](https://docs.agentup.dev/plugins)
 
 ## License

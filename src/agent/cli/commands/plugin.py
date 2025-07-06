@@ -235,6 +235,10 @@ dependencies = [
     "pluggy>=1.5.0",
 ]
 
+classifiers = [
+    "Framework :: AgentUp :: Plugin",
+]
+
 [project.entry-points."agentup.skills"]
 {plugin_name.replace("-", "_")} = "{plugin_name.replace("-", "_")}.plugin:Plugin"
 

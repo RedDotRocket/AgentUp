@@ -53,9 +53,6 @@ class PluginManager:
         # Load from entry points
         self._load_entry_point_plugins()
 
-        # Load from local development directory
-        self._load_local_plugins()
-
         # Load from installed skills directory
         self._load_installed_plugins()
 
@@ -105,69 +102,6 @@ class PluginManager:
         except Exception as e:
             logger.error(f"Error loading entry point plugins: {e}")
 
-    def _load_local_plugins(self) -> None:
-        """Load plugins from local development directory."""
-        local_dir = Path("./skills")
-        if not local_dir.exists():
-            logger.debug("No local skills directory found")
-            return
-
-        for skill_dir in local_dir.iterdir():
-            if skill_dir.is_dir() and (skill_dir / "plugin.py").exists():
-                try:
-                    self._load_local_plugin(skill_dir)
-                except Exception as e:
-                    logger.error(f"Failed to load local plugin from {skill_dir}: {e}")
-
-    def _load_local_plugin(self, plugin_dir: Path) -> None:
-        """Load a single local plugin."""
-        plugin_name = f"local_{plugin_dir.name}"
-        plugin_file = plugin_dir / "plugin.py"
-
-        # Load the module
-        spec = importlib.util.spec_from_file_location(plugin_name, plugin_file)
-        if spec is None or spec.loader is None:
-            raise ValueError(f"Could not load plugin from {plugin_file}")
-
-        module = importlib.util.module_from_spec(spec)
-        sys.modules[plugin_name] = module
-        spec.loader.exec_module(module)
-
-        # Find and instantiate the plugin class
-        plugin_class = None
-        for _, obj in vars(module).items():
-            if hasattr(obj, "register_skill") and hasattr(obj, "__class__"):
-                plugin_class = obj.__class__
-                break
-
-        if plugin_class is None:
-            # Look for a class that implements our hooks
-            for _, obj in vars(module).items():
-                if isinstance(obj, type) and any(
-                    hasattr(obj, hook) for hook in ["register_skill", "execute_skill", "can_handle_task"]
-                ):
-                    plugin_class = obj
-                    break
-
-        if plugin_class is None:
-            raise ValueError(f"No plugin class found in {plugin_file}")
-
-        # Instantiate and register
-        plugin_instance = plugin_class()
-        self.pm.register(plugin_instance, name=plugin_name)
-
-        # Track plugin info
-        plugin_info = PluginInfo(
-            name=plugin_name,
-            version="dev",
-            status=PluginStatus.LOADED,
-            module_name=plugin_name,
-            metadata={"source": "local", "path": str(plugin_dir)},
-        )
-        self.plugins[plugin_name] = plugin_info
-
-        # Register the skill
-        self._register_plugin_skill(plugin_name, plugin_instance)
 
     def _load_installed_plugins(self) -> None:
         """Load plugins from installed skills directory."""
