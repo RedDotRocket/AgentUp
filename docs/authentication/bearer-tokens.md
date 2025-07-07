@@ -4,6 +4,9 @@
 
 Bearer token authentication in AgentUp provides JWT (JSON Web Token) validation for stateless, secure authentication. This guide covers setup, configuration, and best practices for implementing bearer token authentication.
 
+> **🚀 NEW: Comprehensive JWT Authentication**  
+> For production-ready JWT authentication with scope-based authorization, see the [**JWT Authentication Guide**](jwt-authentication.md) which includes the complete implementation with authentication context, scope-based access control, and production deployment patterns.
+
 ## Table of Contents
 
 - [Overview](#overview)

@@ -1,5 +1,3 @@
-"""Function Execution Logic for Function Dispatcher."""
-
 import inspect
 import logging
 import re

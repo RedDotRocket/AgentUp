@@ -35,7 +35,7 @@ from ..push.types import (
     listTaskPushNotificationConfigRequest,
     listTaskPushNotificationConfigResponse,
 )
-from ..security import protected
+from ..security import AuthContext, get_auth_result, protected
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -104,9 +104,11 @@ def create_agent_card() -> AgentCard:
         )
         extensions.append(mcp_extension)
 
+    pushNotifications = config.get("push_notifications", {})
+
     capabilities = AgentCapabilities(
-        streaming=True,
-        pushNotifications=True,  # Enabled since we have InMemoryPushNotifier configured
+        streaming=True,  # this is always true, as we support non-streaming and streaming methods
+        pushNotifications=pushNotifications.get("enabled", False),
         stateTransitionHistory=True,
         extensions=extensions if extensions else None,
     )
@@ -296,22 +298,27 @@ async def jsonrpc_endpoint(
                 content={"jsonrpc": "2.0", "error": {"code": -32600, "message": "Invalid Request"}, "id": request_id},
             )
 
+        # Get authentication result from request state (set by @protected decorator)
+        auth_result = get_auth_result(request)
+
         # Create JSONRPCHandler with the agent card, which is needed for capabilities,
         # security schemes, and other metadata for the agent.
         agent_card = create_agent_card()
         jsonrpc_handler = JSONRPCHandler(agent_card, handler)
 
-        # Route to appropriate handler based on method
+        # Route to appropriate handler based on method - wrapped with auth context
         if method == "message/send":
             # Non-streaming method
             rpc_request = SendMessageRequest(jsonrpc="2.0", id=request_id, method=method, params=params)
-            response = await jsonrpc_handler.on_message_send(rpc_request)
+            with AuthContext(auth_result):
+                response = await jsonrpc_handler.on_message_send(rpc_request)
             return JSONResponse(status_code=200, content=response.model_dump(by_alias=True))
 
         elif method == "message/stream":
             # Streaming method - return SSE
             rpc_request = SendStreamingMessageRequest(jsonrpc="2.0", id=request_id, method=method, params=params)
-            response_stream = jsonrpc_handler.on_message_send_stream(rpc_request)
+            with AuthContext(auth_result):
+                response_stream = jsonrpc_handler.on_message_send_stream(rpc_request)
             return StreamingResponse(
                 sse_generator(response_stream),
                 media_type="text/event-stream",
@@ -325,7 +332,8 @@ async def jsonrpc_endpoint(
         elif method == "tasks/get":
             # Non-streaming method
             rpc_request = GetTaskRequest(jsonrpc="2.0", id=request_id, method=method, params=params)
-            response = await jsonrpc_handler.on_get_task(rpc_request)
+            with AuthContext(auth_result):
+                response = await jsonrpc_handler.on_get_task(rpc_request)
             return JSONResponse(status_code=200, content=response.model_dump(by_alias=True))
 
         elif method == "tasks/cancel":

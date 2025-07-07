@@ -1,10 +1,30 @@
 import logging
+import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import httpx
 import uvicorn
 from a2a.server.tasks import InMemoryTaskStore
 from fastapi import FastAPI
+
+# Load .env file if it exists
+try:
+    from dotenv import load_dotenv
+
+    # Look for .env file in current directory and parent directories
+    env_file = Path.cwd() / ".env"
+    if env_file.exists():
+        load_dotenv(env_file)
+        print(f"Loaded environment variables from {env_file}")
+    else:
+        # Check parent directory (for development)
+        parent_env = Path.cwd().parent / ".env"
+        if parent_env.exists():
+            load_dotenv(parent_env)
+            print(f"Loaded environment variables from {parent_env}")
+except ImportError:
+    print("python-dotenv not available, .env files will not be loaded automatically")
 
 from ..config import load_config
 from ..config.constants import DEFAULT_SERVER_HOST, DEFAULT_SERVER_PORT
@@ -340,8 +360,6 @@ app = create_app()
 
 def main():
     """Main function to set up and run the agent."""
-    import os
-
     host = os.getenv("SERVER_HOST", DEFAULT_SERVER_HOST)
     port = int(os.getenv("SERVER_PORT", DEFAULT_SERVER_PORT))
 

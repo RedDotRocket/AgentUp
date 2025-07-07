@@ -1,4 +1,4 @@
-"""Core execution engine for AgentUp agents."""
+"""The Mothership of all modules for AgentUp orchestration."""
 
 from .dispatcher import FunctionDispatcher
 from .executor import AgentExecutor

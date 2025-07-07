@@ -55,7 +55,7 @@ class TestAgentCard:
 
         # Check capabilities
         assert card.capabilities.streaming is True
-        assert card.capabilities.pushNotifications is True
+        assert card.capabilities.pushNotifications is False
         assert card.capabilities.stateTransitionHistory is True
 
     @patch("agent.api.routes.load_config")

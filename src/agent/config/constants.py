@@ -1,5 +1,7 @@
 import os
 
+# General dumping ground for stuff that is going to stay constant across the project.
+
 # Default model configurations
 DEFAULT_MODELS = {
     "openai": "gpt-4o-mini",

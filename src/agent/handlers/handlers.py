@@ -181,6 +181,35 @@ def _resolve_state_config(skill_id: str) -> dict:
     return global_state_config
 
 
+def _apply_auth_to_handler(handler: Callable, skill_id: str) -> Callable:
+    """Apply authentication context to a handler."""
+    from functools import wraps
+
+    from ..security.context import create_skill_context, get_current_auth
+
+    @wraps(handler)
+    async def auth_wrapped_handler(task):
+        # Get current authentication information
+        auth_result = get_current_auth()
+
+        # Create skill context with authentication info
+        skill_context = create_skill_context(task, auth_result)
+
+        # Check if handler accepts context parameter
+        import inspect
+
+        sig = inspect.signature(handler)
+
+        if len(sig.parameters) > 1:
+            # Handler accepts context parameter
+            return await handler(task, skill_context)
+        else:
+            # Legacy handler - just pass task
+            return await handler(task)
+
+    return auth_wrapped_handler
+
+
 def _apply_state_to_handler(handler: Callable, skill_id: str) -> Callable:
     """Apply configured state management to a handler."""
     state_config = _resolve_state_config(skill_id)
@@ -232,15 +261,17 @@ def _apply_middleware_to_handler(handler: Callable, skill_id: str) -> Callable:
 
 
 def register_handler(skill_id: str):
-    """Decorator to register a skill handler by ID with automatic middleware and state application."""
+    """Decorator to register a skill handler by ID with automatic middleware, state, and auth application."""
 
     def decorator(func: Callable[[Task], str]):
+        # Apply authentication context first
+        wrapped_func = _apply_auth_to_handler(func, skill_id)
         # Apply middleware automatically based on agent config
-        wrapped_func = _apply_middleware_to_handler(func, skill_id)
+        wrapped_func = _apply_middleware_to_handler(wrapped_func, skill_id)
         # Apply state management automatically based on agent config
         wrapped_func = _apply_state_to_handler(wrapped_func, skill_id)
         _handlers[skill_id] = wrapped_func
-        logger.debug(f"Registered handler with middleware and state: {skill_id}")
+        logger.debug(f"Registered handler with auth, middleware and state: {skill_id}")
         return wrapped_func
 
     return decorator
@@ -248,10 +279,11 @@ def register_handler(skill_id: str):
 
 def register_handler_function(skill_id: str, handler: Callable[[Task], str]) -> None:
     """Register a handler function directly (for plugins and dynamic registration)."""
-    wrapped_handler = _apply_middleware_to_handler(handler, skill_id)
+    wrapped_handler = _apply_auth_to_handler(handler, skill_id)
+    wrapped_handler = _apply_middleware_to_handler(wrapped_handler, skill_id)
     wrapped_handler = _apply_state_to_handler(wrapped_handler, skill_id)
     _handlers[skill_id] = wrapped_handler
-    logger.debug(f"Registered handler function with middleware and state: {skill_id}")
+    logger.debug(f"Registered handler function with auth, middleware and state: {skill_id}")
 
 
 def get_handler(skill_id: str) -> Callable[[Task], str] | None:
@@ -428,84 +460,3 @@ async def handle_echo(task: Task) -> str:
 
     ConversationContext.increment_message_count(task.id)
     return f"Echo: {echo_msg}"
-
-
-@register_handler("ai_assistant")
-@ai_function(
-    description="AI-powered assistant for various tasks with state management",
-    parameters={
-        "query": {"type": "string", "description": "User query or request"},
-        "context": {"type": "string", "description": "Additional context for the request"},
-    },
-)
-async def handle_ai_assistant(task: Task, context=None, context_id=None) -> str:
-    """AI-powered assistant handler with state management capabilities."""
-
-    # Extract user message using proper A2A Part structure
-    user_message = "No message provided"
-    if task.history and len(task.history) > 0:
-        latest_message = task.history[-1]
-        if latest_message.parts and len(latest_message.parts) > 0:
-            for part in latest_message.parts:
-                if hasattr(part, "root") and hasattr(part.root, "kind"):
-                    if part.root.kind == "text" and hasattr(part.root, "text"):
-                        user_message = part.root.text
-                        break
-
-    response_parts = []
-
-    # Use state management if available
-    if context and context_id:
-        try:
-            # Get conversation count
-            conversation_count = await context.get_variable(context_id, "conversation_count", 0)
-            conversation_count += 1
-            await context.set_variable(context_id, "conversation_count", conversation_count)
-
-            # Store user preferences if mentioned
-            if "favorite" in user_message.lower() or "prefer" in user_message.lower():
-                preferences = await context.get_variable(context_id, "preferences", {})
-                # Simple preference extraction (you could make this more sophisticated)
-                if "color" in user_message.lower():
-                    colors = ["red", "blue", "green", "yellow", "purple", "orange", "pink", "black", "white"]
-                    for color in colors:
-                        if color in user_message.lower():
-                            preferences["favorite_color"] = color
-                            break
-                await context.set_variable(context_id, "preferences", preferences)
-                logger.info(f"Updated preferences for {context_id}: {preferences}")
-
-            # Add to conversation history
-            await context.add_to_history(context_id, "user", user_message, {"count": conversation_count})
-
-            # Get recent conversation history
-            recent_history = await context.get_history(context_id, limit=5)
-            preferences = await context.get_variable(context_id, "preferences", {})
-
-            # Build context-aware response
-            if "remember" in user_message.lower() or "what" in user_message.lower():
-                if preferences:
-                    response_parts.append(f"I remember your preferences: {preferences}")
-                if len(recent_history) > 1:
-                    response_parts.append(f"We've had {len(recent_history)} exchanges in this conversation.")
-            else:
-                response_parts.append(f"Hello! I'm your AI assistant (conversation #{conversation_count}).")
-                if preferences:
-                    response_parts.append(
-                        f"I remember you like: {', '.join(f'{k}: {v}' for k, v in preferences.items())}"
-                    )
-                response_parts.append(f"You said: {user_message}")
-                response_parts.append("I'm here to help with various tasks. Try asking me to remember something!")
-
-            logger.info(f"AI Assistant used state - Context: {context_id}, Count: {conversation_count}")
-
-        except Exception as e:
-            logger.error(f"AI Assistant state error: {e}")
-            response_parts.append(f"I'm having trouble with my memory right now: {e}")
-    else:
-        # Fallback without state
-        response_parts.append("Something went wrong with the conversation context.")
-        response_parts.append(f"You said: {user_message}")
-        logger.info("AI Assistant running without state management")
-
-    return " ".join(response_parts)

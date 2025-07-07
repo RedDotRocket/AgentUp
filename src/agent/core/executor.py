@@ -31,7 +31,7 @@ logger.setLevel(logging.DEBUG)
 
 
 class GenericAgentExecutor(AgentExecutor):
-    """Enhanced A2A-compliant AgentExecutor with streaming and multi-modal support."""
+    """A2A-compliant AgentExecutor with streaming and multi-modal support."""
 
     def __init__(self, agent: BaseAgent | AgentCard):
         self.agent = agent

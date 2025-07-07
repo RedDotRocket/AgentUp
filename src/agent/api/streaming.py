@@ -1,5 +1,3 @@
-"""Streaming Operations for Function Dispatcher."""
-
 import logging
 from collections.abc import AsyncIterator
 from typing import Any
@@ -97,6 +95,8 @@ class StreamingHandler:
         """Stream LLM responses with function calling support."""
         try:
             # This is a simplified version - actual implementation would depend on LLM provider
+            # Which I will need to dig into more deeply
+            # to understand how they handle function calls in streaming mode.
             # Most providers stream function calls as special tokens/markers
             function_executor = FunctionExecutor(self.function_registry, task)
 

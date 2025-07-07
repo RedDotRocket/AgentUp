@@ -154,10 +154,18 @@ class SecurityConfigValidator:
         if not isinstance(bearer_config, dict):
             raise SecurityConfigurationException("Bearer config must be a dictionary")
 
-        # Check for required token
+        # Check for JWT configuration first
+        jwt_secret = bearer_config.get("jwt_secret")
+        if jwt_secret:
+            # JWT mode - validate JWT config
+            if not isinstance(jwt_secret, str):
+                raise SecurityConfigurationException("JWT secret must be a string")
+            return
+
+        # Check for required bearer token (non-JWT mode)
         bearer_token = bearer_config.get("bearer_token") or config.get("bearer_token")
         if not bearer_token:
-            raise SecurityConfigurationException("Bearer token is required when using bearer auth type")
+            raise SecurityConfigurationException("Bearer token or JWT secret is required when using bearer auth type")
 
         # Skip validation for environment variable placeholders
         if isinstance(bearer_token, str) and bearer_token.startswith("${") and bearer_token.endswith("}"):

@@ -25,14 +25,50 @@ except ImportError:
 class BearerTokenAuthenticator(BaseAuthenticator):
     """Bearer Token based authentication."""
 
+    def _resolve_env_var(self, value: str | None) -> str | None:
+        """Resolve environment variable placeholders in configuration values."""
+        if not value or not isinstance(value, str):
+            return value
+
+        if value.startswith("${") and value.endswith("}"):
+            # Extract environment variable name and default value
+            env_expr = value[2:-1]  # Remove ${ and }
+            if ":" in env_expr:
+                env_var, default_value = env_expr.split(":", 1)
+                return os.getenv(env_var, default_value)
+            else:
+                return os.getenv(env_expr)
+
+        return value
+
     def _validate_config(self) -> None:
         """Validate Bearer token authenticator configuration."""
         # Check for bearer token in config
         bearer_config = self.config.get("bearer", {})
         bearer_token = bearer_config.get("bearer_token") or self.config.get("bearer_token")
 
+        # JWT-specific configuration
+        jwt_secret_raw = bearer_config.get("jwt_secret")
+        self.jwt_algorithm = bearer_config.get("algorithm", "HS256")
+        jwt_issuer_raw = bearer_config.get("issuer")
+        jwt_audience_raw = bearer_config.get("audience")
+
+        # Resolve JWT secret environment variable
+        self.jwt_secret = self._resolve_env_var(jwt_secret_raw)
+        self.jwt_issuer = self._resolve_env_var(jwt_issuer_raw)
+        self.jwt_audience = self._resolve_env_var(jwt_audience_raw)
+
+        # If JWT configuration is present, we're in JWT mode
+        if self.jwt_secret:
+            # JWT mode - no need for bearer_token
+            self.bearer_token = None
+            return
+
+        # Otherwise, require a simple bearer token
         if not bearer_token:
-            raise SecurityConfigurationException("Bearer token is required for bearer authentication")
+            raise SecurityConfigurationException(
+                "Bearer token is required for bearer authentication when not using JWT"
+            )
 
         # Handle environment variable placeholders
         if isinstance(bearer_token, str) and bearer_token.startswith("${") and bearer_token.endswith("}"):
@@ -46,12 +82,6 @@ class BearerTokenAuthenticator(BaseAuthenticator):
             raise SecurityConfigurationException("Invalid bearer token format")
 
         self.bearer_token = bearer_token
-
-        # Additional JWT-specific configuration
-        self.jwt_secret = bearer_config.get("jwt_secret")
-        self.jwt_algorithm = bearer_config.get("algorithm", "HS256")
-        self.jwt_issuer = bearer_config.get("issuer")
-        self.jwt_audience = bearer_config.get("audience")
 
     async def authenticate(self, request: Request) -> AuthenticationResult:
         """Authenticate request using Bearer token.
@@ -89,6 +119,11 @@ class BearerTokenAuthenticator(BaseAuthenticator):
         if self.jwt_secret and JWT_AVAILABLE:
             return self._validate_jwt_token(token, request_info)
 
+        # If we're in JWT-only mode but JWT is not available, error
+        if self.jwt_secret and not JWT_AVAILABLE:
+            log_security_event("authentication", request_info, False, "JWT mode configured but PyJWT not available")
+            raise InvalidCredentialsException("JWT validation not available")
+
         # Otherwise, validate as simple bearer token
         return self._validate_bearer_token(token, request_info)
 
@@ -114,6 +149,11 @@ class BearerTokenAuthenticator(BaseAuthenticator):
         Returns:
             AuthenticationResult: Authentication result
         """
+        # If we're in JWT-only mode, this method shouldn't be called
+        if self.bearer_token is None:
+            log_security_event("authentication", request_info, False, "Bearer token validation called in JWT-only mode")
+            raise InvalidCredentialsException("Unauthorized")
+
         configured_token = self.bearer_token
 
         # Handle environment variable placeholders
@@ -155,16 +195,8 @@ class BearerTokenAuthenticator(BaseAuthenticator):
             raise SecurityConfigurationException("JWT validation requires PyJWT library")
 
         try:
-            # Get JWT secret from environment if needed
+            # JWT secret should already be resolved in _validate_config
             jwt_secret = self.jwt_secret
-            if jwt_secret and jwt_secret.startswith("${") and jwt_secret.endswith("}"):
-                env_expr = jwt_secret[2:-1]  # Remove ${ and }
-                if ":" in env_expr:
-                    env_var, default_value = env_expr.split(":", 1)
-                    jwt_secret = os.getenv(env_var, default_value)
-                else:
-                    jwt_secret = os.getenv(env_expr)
-
             if not jwt_secret:
                 log_security_event("authentication", request_info, False, "JWT secret not configured")
                 raise InvalidCredentialsException("Unauthorized")

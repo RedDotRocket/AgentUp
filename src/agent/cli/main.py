@@ -1,6 +1,3 @@
-# SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2025 Luke Hinds <luke@rdrocket.com>
-
 import click
 
 from .commands.agent import agent

@@ -24,6 +24,24 @@ Security Best Practices:
 from typing import Any
 
 from .base import AuthenticationResult, SecurityPolicy
+from .context import (
+    AuthContext,
+    SkillContext,
+    create_skill_context,
+    get_current_auth,
+    get_current_scopes,
+    is_authenticated,
+    log_auth_event,
+)
+from .context import (
+    get_current_user_id as get_context_user_id,
+)
+from .context import (
+    has_scope as context_has_scope,
+)
+from .context import (
+    requires_scopes as context_requires_scopes,
+)
 from .decorators import (
     always_protected,
     api_key_required,
@@ -146,6 +164,7 @@ __all__ = [
     "SecurityManager",
     "AuthenticationResult",
     "SecurityPolicy",
+    "SkillContext",
     # Decorators
     "protected",
     "require_scopes",
@@ -157,6 +176,16 @@ __all__ = [
     "get_auth_result",
     "get_current_user_id",
     "has_scope",
+    # Context functions
+    "AuthContext",
+    "create_skill_context",
+    "get_current_auth",
+    "get_current_scopes",
+    "get_context_user_id",
+    "context_has_scope",
+    "is_authenticated",
+    "context_requires_scopes",
+    "log_auth_event",
     # Manager functions
     "create_security_manager",
     "set_global_security_manager",

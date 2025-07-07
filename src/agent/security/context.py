@@ -1,0 +1,206 @@
+"""
+Provides context management for passing authentication information
+from FastAPI requests through to skill handlers and plugins. The idea being
+plugin authors may want to access the authentication information such as
+scopes, user ID, etc. without having to pass it explicitly through every function call.
+"""
+
+import contextvars
+import logging
+from typing import Any
+
+from .base import AuthenticationResult
+
+logger = logging.getLogger(__name__)
+
+# Context variable to store authentication information per request
+_auth_context: contextvars.ContextVar[AuthenticationResult | None] = contextvars.ContextVar(
+    "auth_context", default=None
+)
+
+
+class AuthContext:
+    """Context manager for authentication information."""
+
+    def __init__(self, auth_result: AuthenticationResult | None):
+        self.auth_result = auth_result
+        self.token = None
+
+    def __enter__(self):
+        """Enter the context and set the authentication result."""
+        self.token = _auth_context.set(self.auth_result)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit the context and reset the authentication result."""
+        _auth_context.reset(self.token)
+
+
+def get_current_auth() -> AuthenticationResult | None:
+    """
+    Get the current authentication information for the request.
+
+    Returns:
+        AuthenticationResult or None: Authentication result if available
+    """
+    return _auth_context.get()
+
+
+def get_current_user_id() -> str | None:
+    """
+    Get the current user ID from authentication context.
+
+    Returns:
+        str or None: User ID if authenticated, None otherwise
+    """
+    auth_result = get_current_auth()
+    return auth_result.user_id if auth_result else None
+
+
+def get_current_scopes() -> set[str]:
+    """
+    Get the current user's scopes from authentication context.
+
+    Returns:
+        set[str]: Set of scopes, empty if not authenticated
+    """
+    auth_result = get_current_auth()
+    return auth_result.scopes or set() if auth_result else set()
+
+
+def has_scope(scope: str) -> bool:
+    """
+    Check if the current user has a specific scope.
+
+    Args:
+        scope: Scope to check for
+
+    Returns:
+        bool: True if user has the scope, False otherwise
+    """
+    return scope in get_current_scopes()
+
+
+def requires_scopes(required_scopes: set[str]) -> bool:
+    """
+    Check if the current user has all required scopes.
+
+    Args:
+        required_scopes: Set of required scopes
+
+    Returns:
+        bool: True if user has all required scopes, False otherwise
+    """
+    user_scopes = get_current_scopes()
+    return required_scopes.issubset(user_scopes)
+
+
+def is_authenticated() -> bool:
+    """
+    Check if there is an authenticated user in the current context.
+
+    Returns:
+        bool: True if user is authenticated, False otherwise
+    """
+    return get_current_auth() is not None
+
+
+class SkillContext:
+    """
+    Enhanced context object for skill handlers.
+
+    This class provides skill handlers with access to authentication information,
+    task data, and other contextual information needed for processing.
+    """
+
+    def __init__(self, task: Any, auth_result: AuthenticationResult | None = None):
+        """
+        Initialize skill context.
+
+        Args:
+            task: The A2A task being processed
+            auth_result: Authentication result for the request
+        """
+        self.task = task
+        self.auth_result = auth_result or get_current_auth()
+
+    @property
+    def user_id(self) -> str | None:
+        """Get the authenticated user ID."""
+        return self.auth_result.user_id if self.auth_result else None
+
+    @property
+    def user_scopes(self) -> set[str]:
+        """Get the user's scopes."""
+        return self.auth_result.scopes or set() if self.auth_result else set()
+
+    @property
+    def auth_metadata(self) -> dict[str, Any]:
+        """Get authentication metadata."""
+        return self.auth_result.metadata or {} if self.auth_result else {}
+
+    @property
+    def is_authenticated(self) -> bool:
+        """Check if user is authenticated."""
+        return self.auth_result is not None
+
+    def has_scope(self, scope: str) -> bool:
+        """Check if user has a specific scope."""
+        return scope in self.user_scopes
+
+    def requires_scopes(self, required_scopes: set[str]) -> bool:
+        """Check if user has all required scopes."""
+        return required_scopes.issubset(self.user_scopes)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert context to dictionary for logging/debugging."""
+        return {
+            "task_id": getattr(self.task, "id", None),
+            "user_id": self.user_id,
+            "scopes": list(self.user_scopes),
+            "is_authenticated": self.is_authenticated,
+        }
+
+
+def create_skill_context(task: Any, auth_result: AuthenticationResult | None = None) -> SkillContext:
+    """
+    Create a SkillContext for a task.
+
+    Args:
+        task: The A2A task being processed
+        auth_result: Optional authentication result (will use current context if not provided)
+
+    Returns:
+        SkillContext: Context object for the skill handler
+    """
+    return SkillContext(task, auth_result)
+
+
+# Logging utilities for security events
+def log_auth_event(event_type: str, skill_id: str, success: bool, details: str = ""):
+    """
+    Log authentication-related events for skills.
+
+    Args:
+        event_type: Type of event (e.g., "authorization", "scope_check")
+        skill_id: ID of the skill being accessed
+        success: Whether the event was successful
+        details: Additional details about the event
+    """
+    auth_result = get_current_auth()
+    user_id = auth_result.user_id if auth_result else "anonymous"
+    scopes = list(auth_result.scopes) if auth_result and auth_result.scopes else []
+
+    log_data = {
+        "event_type": event_type,
+        "skill_id": skill_id,
+        "user_id": user_id,
+        "scopes": scopes,
+        "success": success,
+        "details": details,
+    }
+
+    if success:
+        logger.info(f"Auth event: {event_type} for skill '{skill_id}' - {log_data}")
+    else:
+        logger.warning(f"Auth failure: {event_type} for skill '{skill_id}' - {log_data}")

@@ -44,6 +44,29 @@ security:
 
 ---
 
+### [JWT Authentication](jwt-authentication.md) 🚀 **NEW**
+**Perfect for**: Production JWT with scope-based authorization
+
+- **Full JWT validation** - Cryptographic signature verification
+- **Scope-based authorization** - Fine-grained permission control
+- **Authentication context** - Scopes passed to handlers automatically
+- **Production ready** - Environment variables, Docker, Kubernetes
+
+```yaml
+security:
+  enabled: true
+  type: "bearer"
+  bearer:
+    jwt_secret: "${JWT_SECRET}"
+    algorithm: "HS256"
+    issuer: "${JWT_ISSUER}"
+    audience: "${JWT_AUDIENCE}"
+```
+
+**When to use**: Production systems, scope-based access control, enterprise applications
+
+---
+
 ### [OAuth2 Authentication](oauth2.md)
 **Perfect for**: Enterprise integration, third-party access, production systems
 
@@ -263,6 +286,7 @@ curl -v http://localhost:8000/.well-known/agent.json
 ### Get Started
 - **[Quick Start Guide](quick-start.md)** - Secure your first agent
 - **[API Key Setup](api-keys.md)** - Simple authentication method
+- **[JWT Authentication](jwt-authentication.md)** - Production JWT with scopes 🚀 **NEW**
 - **[OAuth2 Setup](oauth2.md)** - Enterprise-grade authentication
 
 ### Advanced Topics
