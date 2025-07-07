@@ -22,6 +22,8 @@ def validate(config: str, check_env: bool, check_handlers: bool, strict: bool):
     - Required fields
     - Skill definitions
     - Service configurations
+    - System prompt configuration
+    - Plugin system prompts
     - Environment variables (with --check-env)
     - Handler implementations (with --check-handlers)
     """
@@ -57,6 +59,13 @@ def validate(config: str, check_env: bool, check_handlers: bool, strict: bool):
 
     if "middleware" in config_data:
         validate_middleware_section(config_data["middleware"], errors, warnings)
+
+    # Validate AI system prompt configuration
+    if "ai" in config_data:
+        validate_system_prompt_section(config_data["ai"], errors, warnings)
+
+    # Validate plugin system prompts in skills
+    validate_plugin_system_prompts(config_data.get("skills", []), errors, warnings)
 
     # Check environment variables
     if check_env:
@@ -115,6 +124,7 @@ def validate_required_fields(config: dict[str, Any], errors: list[str], warnings
         "services",
         "security",
         "ai",
+        "ai_provider",
         "mcp",
         "middleware",
         "monitoring",
@@ -123,6 +133,8 @@ def validate_required_fields(config: dict[str, Any], errors: list[str], warnings
         "registry_skills",
         "push_notifications",
         "state",
+        "cache",
+        "plugins",
     }
     unknown_fields = set(config.keys()) - known_fields
 
@@ -445,6 +457,83 @@ def validate_ai_requirements(config: dict[str, Any], errors: list[str], warnings
         warnings.append("AI is enabled but no skills use AI routing. Consider disabling AI or adding AI-routed skills")
 
     click.echo(f"{click.style('✓', fg='green')} AI requirements validated")
+
+
+def validate_system_prompt_section(ai_config: dict[str, Any], errors: list[str], warnings: list[str]):
+    """Validate system prompt configuration."""
+    if not isinstance(ai_config, dict):
+        return
+
+    system_prompt = ai_config.get("system_prompt")
+    if not system_prompt:
+        return  # System prompt is optional
+
+    if not isinstance(system_prompt, str):
+        errors.append("AI system_prompt must be a string")
+        return
+
+    # Validate prompt length
+    if len(system_prompt) < 10:
+        warnings.append("System prompt is very short (< 10 characters)")
+    elif len(system_prompt) > 8000:
+        warnings.append("System prompt is very long (> 8000 characters) - may impact performance")
+
+    # Check for common prompt injection patterns
+    dangerous_patterns = [
+        "ignore previous instructions",
+        "disregard",
+        "forget everything",
+        "jailbreak",
+        "developer mode",
+    ]
+
+    prompt_lower = system_prompt.lower()
+    for pattern in dangerous_patterns:
+        if pattern in prompt_lower:
+            warnings.append(f"System prompt contains potentially risky pattern: '{pattern}'")
+
+    # Validate prompt structure
+    if not any(word in prompt_lower for word in ["you are", "your role", "assistant", "help"]):
+        warnings.append("System prompt may lack clear role definition")
+
+    click.echo(f"{click.style('✓', fg='green')} System prompt validated")
+
+
+def validate_plugin_system_prompts(skills: list[dict[str, Any]], errors: list[str], warnings: list[str]):
+    """Validate plugin system prompts."""
+    plugin_prompt_count = 0
+
+    for i, skill in enumerate(skills):
+        if not isinstance(skill, dict):
+            continue
+
+        skill_id = skill.get("skill_id", f"skill_{i}")
+
+        # Check if skill has plugin-specific system prompt
+        if "system_prompt" in skill:
+            plugin_prompt_count += 1
+            system_prompt = skill["system_prompt"]
+
+            if not isinstance(system_prompt, str):
+                errors.append(f"Skill '{skill_id}' system_prompt must be a string")
+                continue
+
+            # Validate length
+            if len(system_prompt) < 10:
+                warnings.append(f"Skill '{skill_id}' system prompt is very short")
+            elif len(system_prompt) > 4000:
+                warnings.append(f"Skill '{skill_id}' system prompt is very long - may impact performance")
+
+            # Check for skill-specific guidance
+            prompt_lower = system_prompt.lower()
+            skill_name_lower = skill.get("name", skill_id).lower()
+            if skill_name_lower not in prompt_lower and skill_id.lower() not in prompt_lower:
+                warnings.append(f"Skill '{skill_id}' system prompt may lack skill-specific guidance")
+
+    if plugin_prompt_count > 0:
+        click.echo(f"{click.style('✓', fg='green')} Plugin system prompts validated ({plugin_prompt_count} found)")
+    else:
+        click.echo(f"{click.style('✓', fg='green')} No plugin system prompts found")
 
 
 def validate_middleware_section(middleware: list[dict[str, Any]], errors: list[str], warnings: list[str]):

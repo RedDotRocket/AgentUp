@@ -43,7 +43,7 @@ async def send_message(client: httpx.AsyncClient, content: str, skill_id: str = 
     """Send a message to the agent and return the response."""
     payload = {
         "jsonrpc": "2.0",
-        "method": "send_message",
+        "method": "message/send",
         "params": {"messages": [{"role": "user", "content": content}]},
         "id": f"test_{int(time.time() * 1000)}",
     }

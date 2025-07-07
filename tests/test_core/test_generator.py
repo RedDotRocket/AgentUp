@@ -146,16 +146,16 @@ class TestProjectGenerationFlow:
 
         # Mock file operations
         with (
-            patch.object(ProjectGenerator, "_create_local_directories") as mock_dirs,
             patch.object(ProjectGenerator, "_generate_template_files") as mock_template,
+            patch.object(ProjectGenerator, "_create_env_file") as mock_env,
             patch.object(ProjectGenerator, "_generate_config_files") as mock_config,
         ):
             generator = ProjectGenerator(temp_dir, config)
             generator.generate()
 
             # Verify methods were called
-            mock_dirs.assert_called_once()
             mock_template.assert_called_once()
+            mock_env.assert_called_once()
             mock_config.assert_called_once()
 
     def test_generate_standard_project_with_openai(self, temp_dir: Path, mock_template_system):
@@ -163,16 +163,16 @@ class TestProjectGenerationFlow:
         config = create_test_config("standard-openai-test", "standard", ["services", "middleware"], ["openai"])
 
         with (
-            patch.object(ProjectGenerator, "_create_local_directories") as mock_dirs,
             patch.object(ProjectGenerator, "_generate_template_files") as mock_template,
+            patch.object(ProjectGenerator, "_create_env_file") as mock_env,
             patch.object(ProjectGenerator, "_generate_config_files") as mock_config,
         ):
             generator = ProjectGenerator(temp_dir, config)
             generator.generate()
 
             # Verify all generation steps were called
-            mock_dirs.assert_called_once()
             mock_template.assert_called_once()
+            mock_env.assert_called_once()
             mock_config.assert_called_once()
 
     def test_generate_ollama_project(self, temp_dir: Path, mock_template_system):
