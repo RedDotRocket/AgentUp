@@ -1,5 +1,7 @@
 # AgentUp
 
+⭐ If you like AgentUp, give it a star on GitHub.
+
 **The fastest way to bootstrap full capability A2A-compliant AI Agents**
 
 AgentUp is a developer-focused framework that provides a complete foundation for building

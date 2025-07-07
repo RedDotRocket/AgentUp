@@ -109,6 +109,10 @@ _handlers: dict[str, Callable[[Task], str]] = {}
 _middleware_config: list[dict[str, Any]] | None = None
 _global_middleware_applied = False
 
+# State management configuration cache
+_state_config: dict[str, Any] | None = None
+_global_state_applied = False
+
 
 def _load_middleware_config() -> list[dict[str, Any]]:
     """Load middleware configuration from agent config."""
@@ -129,44 +133,98 @@ def _load_middleware_config() -> list[dict[str, Any]]:
         return _middleware_config
 
 
-def _apply_middleware_to_handler(handler: Callable, skill_id: str) -> Callable:
-    """Apply configured middleware to a handler."""
-    # First load global middleware config
-    global_middleware_configs = _load_middleware_config()
+def _load_state_config() -> dict[str, Any]:
+    """Load state management configuration from agent config."""
+    global _state_config
+    if _state_config is not None:
+        return _state_config
 
-    # Check for skill-specific middleware override
+    try:
+        from ..config import load_config
+
+        config = load_config()
+        _state_config = config.get("state_management", {})
+        logger.debug(f"Loaded state config: {_state_config}")
+        return _state_config
+    except Exception as e:
+        logger.warning(f"Could not load state config: {e}")
+        _state_config = {}
+        return _state_config
+
+
+def _get_skill_config(skill_id: str) -> dict | None:
+    """Get configuration for a specific skill."""
     try:
         from ..config import load_config
 
         config = load_config()
         skills = config.get("skills", [])
 
-        # Find skill-specific configuration
-        skill_config = None
         for skill in skills:
             if skill.get("skill_id") == skill_id:
-                skill_config = skill
-                break
-
-        # If skill has middleware_override, use that instead
-        if skill_config and "middleware_override" in skill_config:
-            middleware_configs = skill_config["middleware_override"]
-            logger.info(f"Using skill-specific middleware override for '{skill_id}'")
-        else:
-            middleware_configs = global_middleware_configs
-
+                return skill
+        return None
     except Exception as e:
-        logger.debug(f"Could not check for skill-specific middleware: {e}")
-        middleware_configs = global_middleware_configs
+        logger.debug(f"Could not load skill config for '{skill_id}': {e}")
+        return None
+
+
+def _resolve_state_config(skill_id: str) -> dict:
+    """Resolve state configuration for a skill (global or skill-specific)."""
+    global_state_config = _load_state_config()
+    skill_config = _get_skill_config(skill_id)
+
+    if skill_config and "state_override" in skill_config:
+        logger.info(f"Using skill-specific state override for '{skill_id}'")
+        return skill_config["state_override"]
+
+    return global_state_config
+
+
+def _apply_state_to_handler(handler: Callable, skill_id: str) -> Callable:
+    """Apply configured state management to a handler."""
+    state_config = _resolve_state_config(skill_id)
+
+    if not state_config.get("enabled", False):
+        logger.debug(f"State management disabled for {skill_id}")
+        return handler
+
+    try:
+        from ..state.decorators import with_state
+
+        wrapped_handler = with_state([state_config])(handler)
+        backend = state_config.get("backend", "memory")
+        logger.info(f"Applied state management to handler '{skill_id}': backend={backend}")
+        return wrapped_handler
+    except Exception as e:
+        logger.error(f"Failed to apply state management to handler '{skill_id}': {e}")
+        return handler
+
+
+def _resolve_middleware_config(skill_id: str) -> list[dict[str, Any]]:
+    """Resolve middleware configuration for a skill (global or skill-specific)."""
+    global_middleware_configs = _load_middleware_config()
+    skill_config = _get_skill_config(skill_id)
+
+    if skill_config and "middleware_override" in skill_config:
+        logger.info(f"Using skill-specific middleware override for '{skill_id}'")
+        return skill_config["middleware_override"]
+
+    return global_middleware_configs
+
+
+def _apply_middleware_to_handler(handler: Callable, skill_id: str) -> Callable:
+    """Apply configured middleware to a handler."""
+    middleware_configs = _resolve_middleware_config(skill_id)
 
     if not middleware_configs:
         logger.debug(f"No middleware to apply to {skill_id}")
         return handler
 
-    # Apply middleware using the with_middleware decorator
     try:
         wrapped_handler = with_middleware(middleware_configs)(handler)
-        logger.info(f"Applied middleware to handler '{skill_id}': {[m.get('name') for m in middleware_configs]}")
+        middleware_names = [m.get("name") for m in middleware_configs]
+        logger.info(f"Applied middleware to handler '{skill_id}': {middleware_names}")
         return wrapped_handler
     except Exception as e:
         logger.error(f"Failed to apply middleware to handler '{skill_id}': {e}")
@@ -174,13 +232,15 @@ def _apply_middleware_to_handler(handler: Callable, skill_id: str) -> Callable:
 
 
 def register_handler(skill_id: str):
-    """Decorator to register a skill handler by ID with automatic middleware application."""
+    """Decorator to register a skill handler by ID with automatic middleware and state application."""
 
     def decorator(func: Callable[[Task], str]):
         # Apply middleware automatically based on agent config
         wrapped_func = _apply_middleware_to_handler(func, skill_id)
+        # Apply state management automatically based on agent config
+        wrapped_func = _apply_state_to_handler(wrapped_func, skill_id)
         _handlers[skill_id] = wrapped_func
-        logger.debug(f"Registered handler with middleware: {skill_id}")
+        logger.debug(f"Registered handler with middleware and state: {skill_id}")
         return wrapped_func
 
     return decorator
@@ -189,8 +249,9 @@ def register_handler(skill_id: str):
 def register_handler_function(skill_id: str, handler: Callable[[Task], str]) -> None:
     """Register a handler function directly (for plugins and dynamic registration)."""
     wrapped_handler = _apply_middleware_to_handler(handler, skill_id)
+    wrapped_handler = _apply_state_to_handler(wrapped_handler, skill_id)
     _handlers[skill_id] = wrapped_handler
-    logger.debug(f"Registered handler function with middleware: {skill_id}")
+    logger.debug(f"Registered handler function with middleware and state: {skill_id}")
 
 
 def get_handler(skill_id: str) -> Callable[[Task], str] | None:
@@ -258,12 +319,50 @@ def apply_global_middleware() -> None:
     logger.info(f"Applied global middleware to {len(_handlers)} handlers")
 
 
+def apply_global_state() -> None:
+    """Apply state management to all existing registered handlers (for retroactive application)."""
+    global _global_state_applied
+
+    if _global_state_applied:
+        logger.debug("Global state already applied, skipping")
+        return
+
+    state_config = _load_state_config()
+    if not state_config.get("enabled", False):
+        logger.debug("State management disabled globally")
+        _global_state_applied = True
+        return
+
+    # Re-wrap all existing handlers with state management
+    for skill_id, handler in list(_handlers.items()):
+        try:
+            # Only apply if not already wrapped (simple check)
+            if not hasattr(handler, "_agentup_state_applied"):
+                wrapped_handler = _apply_state_to_handler(handler, skill_id)
+                wrapped_handler._agentup_state_applied = True
+                _handlers[skill_id] = wrapped_handler
+                logger.debug(f"Applied global state management to existing handler: {skill_id}")
+        except Exception as e:
+            logger.error(f"Failed to apply global state management to {skill_id}: {e}")
+
+    _global_state_applied = True
+    logger.info(f"Applied global state management to {len(_handlers)} handlers")
+
+
 def reset_middleware_cache() -> None:
     """Reset middleware configuration cache (useful for testing or config reloading)."""
     global _middleware_config, _global_middleware_applied
     _middleware_config = None
     _global_middleware_applied = False
     logger.debug("Reset middleware configuration cache")
+
+
+def reset_state_cache() -> None:
+    """Reset state configuration cache (useful for testing or config reloading)."""
+    global _state_config, _global_state_applied
+    _state_config = None
+    _global_state_applied = False
+    logger.debug("Reset state configuration cache")
 
 
 def get_middleware_info() -> dict[str, Any]:
@@ -274,6 +373,18 @@ def get_middleware_info() -> dict[str, Any]:
         "applied_globally": _global_middleware_applied,
         "total_handlers": len(_handlers),
         "middleware_names": [m.get("name") for m in middleware_configs],
+    }
+
+
+def get_state_info() -> dict[str, Any]:
+    """Get information about current state configuration and application status."""
+    state_config = _load_state_config()
+    return {
+        "config": state_config,
+        "applied_globally": _global_state_applied,
+        "total_handlers": len(_handlers),
+        "enabled": state_config.get("enabled", False),
+        "backend": state_config.get("backend", "memory"),
     }
 
 
@@ -317,3 +428,84 @@ async def handle_echo(task: Task) -> str:
 
     ConversationContext.increment_message_count(task.id)
     return f"Echo: {echo_msg}"
+
+
+@register_handler("ai_assistant")
+@ai_function(
+    description="AI-powered assistant for various tasks with state management",
+    parameters={
+        "query": {"type": "string", "description": "User query or request"},
+        "context": {"type": "string", "description": "Additional context for the request"},
+    },
+)
+async def handle_ai_assistant(task: Task, context=None, context_id=None) -> str:
+    """AI-powered assistant handler with state management capabilities."""
+
+    # Extract user message using proper A2A Part structure
+    user_message = "No message provided"
+    if task.history and len(task.history) > 0:
+        latest_message = task.history[-1]
+        if latest_message.parts and len(latest_message.parts) > 0:
+            for part in latest_message.parts:
+                if hasattr(part, "root") and hasattr(part.root, "kind"):
+                    if part.root.kind == "text" and hasattr(part.root, "text"):
+                        user_message = part.root.text
+                        break
+
+    response_parts = []
+
+    # Use state management if available
+    if context and context_id:
+        try:
+            # Get conversation count
+            conversation_count = await context.get_variable(context_id, "conversation_count", 0)
+            conversation_count += 1
+            await context.set_variable(context_id, "conversation_count", conversation_count)
+
+            # Store user preferences if mentioned
+            if "favorite" in user_message.lower() or "prefer" in user_message.lower():
+                preferences = await context.get_variable(context_id, "preferences", {})
+                # Simple preference extraction (you could make this more sophisticated)
+                if "color" in user_message.lower():
+                    colors = ["red", "blue", "green", "yellow", "purple", "orange", "pink", "black", "white"]
+                    for color in colors:
+                        if color in user_message.lower():
+                            preferences["favorite_color"] = color
+                            break
+                await context.set_variable(context_id, "preferences", preferences)
+                logger.info(f"Updated preferences for {context_id}: {preferences}")
+
+            # Add to conversation history
+            await context.add_to_history(context_id, "user", user_message, {"count": conversation_count})
+
+            # Get recent conversation history
+            recent_history = await context.get_history(context_id, limit=5)
+            preferences = await context.get_variable(context_id, "preferences", {})
+
+            # Build context-aware response
+            if "remember" in user_message.lower() or "what" in user_message.lower():
+                if preferences:
+                    response_parts.append(f"I remember your preferences: {preferences}")
+                if len(recent_history) > 1:
+                    response_parts.append(f"We've had {len(recent_history)} exchanges in this conversation.")
+            else:
+                response_parts.append(f"Hello! I'm your AI assistant (conversation #{conversation_count}).")
+                if preferences:
+                    response_parts.append(
+                        f"I remember you like: {', '.join(f'{k}: {v}' for k, v in preferences.items())}"
+                    )
+                response_parts.append(f"You said: {user_message}")
+                response_parts.append("I'm here to help with various tasks. Try asking me to remember something!")
+
+            logger.info(f"AI Assistant used state - Context: {context_id}, Count: {conversation_count}")
+
+        except Exception as e:
+            logger.error(f"AI Assistant state error: {e}")
+            response_parts.append(f"I'm having trouble with my memory right now: {e}")
+    else:
+        # Fallback without state
+        response_parts.append("Something went wrong with the conversation context.")
+        response_parts.append(f"You said: {user_message}")
+        logger.info("AI Assistant running without state management")
+
+    return " ".join(response_parts)

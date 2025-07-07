@@ -92,6 +92,15 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Failed to apply global middleware: {e}")
 
+    # Apply global state management to existing handlers
+    try:
+        from ..handlers.handlers import apply_global_state
+
+        apply_global_state()
+        logger.info("Global state management applied to existing handlers")
+    except Exception as e:
+        logger.error(f"Failed to apply global state management: {e}")
+
     # Load multi-modal handlers to register them with the system
     try:
         from ..handlers import handlers_multimodal  # noqa: F401
@@ -119,8 +128,16 @@ async def lifespan(app: FastAPI):
             logger.error(f"Failed to initialize multi-modal service: {e}")
 
     # Initialize plugin system if available
+    def _is_plugin_enabled(plugin_cfg) -> bool:
+        """Check if plugin system is enabled based on configuration type."""
+        if isinstance(plugin_cfg, dict):
+            return plugin_cfg.get("enabled", True)
+        elif isinstance(plugin_cfg, list):
+            return bool(plugin_cfg)  # Enabled if not empty
+        return True  # Default enabled for other types
+
     plugin_cfg = config.get("plugins", {})
-    if plugin_cfg.get("enabled", True):  # Enabled by default
+    if _is_plugin_enabled(plugin_cfg):
         try:
             from ..plugins.integration import enable_plugin_system
 

@@ -324,6 +324,12 @@ def with_middleware(middleware_configs: list[dict[str, Any]]):
             elif middleware_name == "validated":
                 wrapped_func = validated(**params)(wrapped_func)
 
+        # Preserve AI function attributes on the final wrapped function
+        if hasattr(func, "_is_ai_function"):
+            wrapped_func._is_ai_function = func._is_ai_function
+        if hasattr(func, "_ai_function_schema"):
+            wrapped_func._ai_function_schema = func._ai_function_schema
+
         return wrapped_func
 
     return decorator

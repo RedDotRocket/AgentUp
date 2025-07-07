@@ -416,7 +416,10 @@ def get_context_manager(storage_type: str = "memory", **kwargs) -> ConversationC
     """Get or create global context manager."""
     global _context_manager
 
-    if _context_manager is None:
+    # For testing or when force_new is True, create a new instance
+    force_new = kwargs.pop("force_new", False)
+
+    if _context_manager is None or force_new:
         if storage_type == "memory":
             storage = InMemoryStorage()
         elif storage_type == "file":
@@ -426,7 +429,10 @@ def get_context_manager(storage_type: str = "memory", **kwargs) -> ConversationC
         else:
             raise ValueError(f"Unknown storage type: {storage_type}")
 
-        _context_manager = ConversationContext(storage)
+        if force_new:
+            return ConversationContext(storage)
+        else:
+            _context_manager = ConversationContext(storage)
 
     return _context_manager
 

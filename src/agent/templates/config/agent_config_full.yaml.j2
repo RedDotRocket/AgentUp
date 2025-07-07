@@ -258,7 +258,21 @@ cache:
   key_prefix: "agentup:cache:"
   enabled: true
 
-# State management
+# State management configuration
+state_management:
+  enabled: true
+  backend: valkey          # Distributed state backend for production
+  ttl: 7200                # 2 hours expiration
+  config:
+    url: '${VALKEY_STATE_URL:valkey://localhost:6379}'
+    key_prefix: "agentup:state:"
+  # Skill-specific state overrides
+  skill_overrides:
+    ai_assistant:
+      enabled: true
+      ttl: 86400           # 24 hours for AI conversations
+    
+# Legacy state configuration (still supported)
 state:
   backend: valkey
   url: '${VALKEY_STATE_URL:valkey://localhost:6379}'

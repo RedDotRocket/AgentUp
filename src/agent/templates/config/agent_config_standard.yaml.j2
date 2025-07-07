@@ -174,9 +174,19 @@ push_notifications:
   validate_urls: true         # Enable webhook URL validation
 
 
-# State management
+# State management configuration
+state_management:
+  enabled: true
+  backend: valkey          # Use valkey backend for better performance
+  ttl: 3600                # 1 hour expiration
+  config:
+    url: '${VALKEY_URL:valkey://localhost:6379}'
+    key_prefix: "agentup:state:"
+
+# Legacy state configuration (still supported)
 state:
-  backend: file            # File-based state for standard template
-  storage_dir: "./conversation_states"
-  ttl: 3600  # 1 hour
+  backend: valkey
+  ttl: 3600  # 1 hour expiration
+  url: "valkey://localhost:6379"
+  key_prefix: "agentup:state:"
 

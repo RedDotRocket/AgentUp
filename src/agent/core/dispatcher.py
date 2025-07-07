@@ -119,8 +119,24 @@ class FunctionDispatcher:
             if not user_message:
                 return "I didn't receive any message to process."
 
-            # For backwards compatibility and debugging
-            user_input = user_message.get("content", "") if isinstance(user_message, dict) else str(user_message)
+            # Extract text from A2A parts or content for backwards compatibility
+            if isinstance(user_message, dict):
+                if "parts" in user_message:
+                    # Extract text from A2A parts using proper structure
+                    user_input = ""
+                    for part in user_message["parts"]:
+                        if hasattr(part, "root") and hasattr(part.root, "kind"):
+                            if part.root.kind == "text" and hasattr(part.root, "text"):
+                                user_input += part.root.text
+                        elif hasattr(part, "text"):
+                            user_input += part.text
+                        elif isinstance(part, dict) and "text" in part:
+                            user_input += part["text"]
+                else:
+                    # Fallback to content field
+                    user_input = user_message.get("content", "")
+            else:
+                user_input = str(user_message)
 
             # Get LLM service with automatic provider selection
             services = get_services()
@@ -169,6 +185,20 @@ class FunctionDispatcher:
             # Create function executor for this task
             function_executor = FunctionExecutor(self.function_registry, task)
 
+            # Apply state management to AI routing
+            ai_context = None
+            ai_context_id = None
+            try:
+                ai_context, ai_context_id = await self._get_ai_routing_state_context(task)
+                if ai_context and ai_context_id:
+                    logger.info(f"AI routing: Applied state management for context {ai_context_id}")
+                else:
+                    logger.warning(
+                        f"AI routing: No state context available - context={ai_context is not None}, context_id={ai_context_id}"
+                    )
+            except Exception as e:
+                logger.error(f"AI routing: Failed to initialize state management: {e}")
+
             # LLM processing with function calling
             if function_schemas:
                 try:
@@ -188,6 +218,16 @@ class FunctionDispatcher:
                     logger.error(f"Error during direct LLM response: {e}", exc_info=True)
                     return f"I encountered an error processing your request: {str(e)}"
 
+            # Store AI routing state if available
+            if ai_context and ai_context_id:
+                try:
+                    await self._store_ai_routing_state(ai_context, ai_context_id, user_input, response)
+                    logger.info(f"AI routing: Stored conversation state for context {ai_context_id}")
+                except Exception as e:
+                    logger.error(f"AI routing: Failed to store state: {e}")
+            else:
+                logger.warning("AI routing: Skipping state storage - no context available")
+
             # Update conversation history
             self.conversation_manager.update_conversation_history(context_id, user_input, response)
 
@@ -196,6 +236,73 @@ class FunctionDispatcher:
         except Exception as e:
             logger.error(f"Function dispatcher error: {e}", exc_info=True)
             return f"I encountered an error processing your request: {str(e)}"
+
+    async def _get_ai_routing_state_context(self, task: Task) -> tuple[Any, str] | tuple[None, None]:
+        """Get state context for AI routing if state management is enabled."""
+        try:
+            from ..handlers.handlers import _load_state_config
+            from ..state.context import get_context_manager
+
+            state_config = _load_state_config()
+            logger.info(
+                f"AI routing: State config loaded - enabled={state_config.get('enabled', False)}, backend={state_config.get('backend', 'none')}"
+            )
+
+            if not state_config.get("enabled", False):
+                logger.info("AI routing: State management disabled in config")
+                return None, None
+
+            backend = state_config.get("backend", "memory")
+            backend_config = state_config.get("config", {})
+
+            # Get context manager
+            context = get_context_manager(backend, **backend_config)
+
+            # Extract context ID from task
+            context_id = getattr(task, "contextId", None) or getattr(task, "context_id", None) or task.id
+            logger.info(
+                f"AI routing: Using context_id={context_id} (contextId={getattr(task, 'contextId', 'missing')}, task.id={task.id})"
+            )
+
+            return context, context_id
+
+        except Exception as e:
+            logger.error(f"Failed to get AI routing state context: {e}")
+            return None, None
+
+    async def _store_ai_routing_state(self, context, context_id: str, user_input: str, response: str):
+        """Store conversation state for AI routing."""
+        try:
+            # Get conversation count
+            conversation_count = await context.get_variable(context_id, "ai_conversation_count", 0)
+            conversation_count += 1
+            await context.set_variable(context_id, "ai_conversation_count", conversation_count)
+
+            # Store user preferences if mentioned in input
+            if "favorite" in user_input.lower() or "prefer" in user_input.lower():
+                preferences = await context.get_variable(context_id, "ai_preferences", {})
+                # Simple preference extraction
+                if "color" in user_input.lower():
+                    colors = ["red", "blue", "green", "yellow", "purple", "orange", "pink", "black", "white"]
+                    for color in colors:
+                        if color in user_input.lower():
+                            preferences["favorite_color"] = color
+                            break
+                await context.set_variable(context_id, "ai_preferences", preferences)
+                logger.info(f"AI routing: Updated preferences for {context_id}: {preferences}")
+
+            # Add to conversation history
+            await context.add_to_history(
+                context_id, "user", user_input, {"routing": "ai_direct", "count": conversation_count}
+            )
+            await context.add_to_history(
+                context_id, "assistant", response, {"routing": "ai_direct", "count": conversation_count}
+            )
+
+            logger.info(f"AI routing: Stored state - Context: {context_id}, Count: {conversation_count}")
+
+        except Exception as e:
+            logger.error(f"Failed to store AI routing state: {e}")
 
     def _extract_user_message(self, task: Task) -> str:
         """Extract user message from A2A task."""
@@ -422,13 +529,28 @@ def register_ai_functions_from_handlers():
 
     # Scan all handler modules for AI functions
     for handler_module in handler_modules:
+        logger.info(f"Scanning module {handler_module.__name__} for AI functions")
+        ai_functions_in_module = 0
         for name in dir(handler_module):
             obj = getattr(handler_module, name)
-            if callable(obj) and hasattr(obj, "_is_ai_function"):
-                schema = obj._ai_function_schema
-                registry.register_function(schema["name"], obj, schema)
-                logger.info(f"Auto-registered AI function: {schema['name']}")
-                registered_count += 1
+            if callable(obj):
+                has_ai_flag = hasattr(obj, "_is_ai_function")
+                has_schema = hasattr(obj, "_ai_function_schema")
+
+                # Only log functions that might be AI functions (start with handle_ or have AI attributes)
+                if name.startswith("handle_") or has_ai_flag or has_schema:
+                    logger.info(
+                        f"Function {name}: callable=True, _is_ai_function={has_ai_flag}, _ai_function_schema={has_schema}"
+                    )
+
+                if has_ai_flag and has_schema:
+                    schema = obj._ai_function_schema
+                    registry.register_function(schema["name"], obj, schema)
+                    logger.info(f"Auto-registered AI function: {schema['name']} from {name}")
+                    registered_count += 1
+                    ai_functions_in_module += 1
+
+        logger.info(f"Module {handler_module.__name__}: found {ai_functions_in_module} AI functions")
 
     logger.info(f"Registered {registered_count} AI functions from handlers")
 

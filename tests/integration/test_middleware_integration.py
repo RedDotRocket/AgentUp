@@ -39,12 +39,50 @@ async def ensure_server_running(client):
         pytest.skip("Test server is not running. Start with: agentup agent serve --port 8000")
 
 
+def extract_response_content(response: dict[str, Any]) -> str:
+    """Extract content from A2A Task response."""
+    result = response.get("result", {})
+
+    # Try to get from task history first
+    if "history" in result and result["history"]:
+        last_message = result["history"][-1]
+        if "parts" in last_message and last_message["parts"]:
+            for part in last_message["parts"]:
+                if part.get("kind") == "text" and "text" in part:
+                    return part["text"]
+
+    # Try to get from artifacts
+    if "artifacts" in result and result["artifacts"]:
+        last_artifact = result["artifacts"][-1]
+        if "parts" in last_artifact and last_artifact["parts"]:
+            for part in last_artifact["parts"]:
+                if part.get("kind") == "text" and "text" in part:
+                    return part["text"]
+
+    # Try to get from status message
+    if "status" in result and "message" in result["status"]:
+        status_msg = result["status"]["message"]
+        if isinstance(status_msg, dict) and "parts" in status_msg:
+            for part in status_msg["parts"]:
+                if part.get("kind") == "text" and "text" in part:
+                    return part["text"]
+
+    # Fallback to string representation
+    return str(result)
+
+
 async def send_message(client: httpx.AsyncClient, content: str, skill_id: str = None) -> dict[str, Any]:
     """Send a message to the agent and return the response."""
     payload = {
         "jsonrpc": "2.0",
         "method": "message/send",
-        "params": {"messages": [{"role": "user", "content": content}]},
+        "params": {
+            "message": {
+                "role": "user",
+                "parts": [{"kind": "text", "text": content}],
+                "messageId": f"msg_{int(time.time() * 1000)}",
+            }
+        },
         "id": f"test_{int(time.time() * 1000)}",
     }
 
@@ -117,8 +155,8 @@ class TestMiddlewareIntegration:
         assert "error" not in response2, f"Second request failed: {response2}"
 
         # Get the actual content from responses
-        content1 = response1["result"]["messages"][-1]["content"]
-        content2 = response2["result"]["messages"][-1]["content"]
+        content1 = extract_response_content(response1)
+        content2 = extract_response_content(response2)
 
         # Responses should be identical (cached)
         assert content1 == content2, "Cached responses should be identical"
@@ -152,7 +190,7 @@ class TestMiddlewareIntegration:
             print(f"Normal execution time: {execution_time:.3f}s")
 
         # Verify the response content
-        result_content = response["result"]["messages"][-1]["content"]
+        result_content = extract_response_content(response)
         assert content in result_content, "Response should contain the original content"
 
     @pytest.mark.asyncio
@@ -169,10 +207,11 @@ class TestMiddlewareIntegration:
 
         # Verify the response structure
         assert "result" in response
-        assert "messages" in response["result"]
-        assert len(response["result"]["messages"]) > 0
+        # Check that we got a valid response with content
+        content = extract_response_content(response)
+        assert content, "Response should contain content"
 
-        result_content = response["result"]["messages"][-1]["content"]
+        result_content = extract_response_content(response)
         assert content in result_content, "Response should contain the original content"
 
     @pytest.mark.asyncio
@@ -191,7 +230,7 @@ class TestMiddlewareIntegration:
 
         # Verify response structure
         assert "result" in response
-        result_content = response["result"]["messages"][-1]["content"]
+        result_content = extract_response_content(response)
         assert content in result_content, "Response should contain the original content"
 
         print(f"Request timing: {total_time:.3f}s")
@@ -217,11 +256,11 @@ class TestMiddlewareIntegration:
         for i, response in enumerate(responses):
             assert "error" not in response, f"Request {i} failed: {response}"
 
-            result_content = response["result"]["messages"][-1]["content"]
+            result_content = extract_response_content(response)
             assert content in result_content, f"Response {i} should contain the original content"
 
         # All cached responses should be identical
-        contents = [resp["result"]["messages"][-1]["content"] for resp in responses]
+        contents = [extract_response_content(resp) for resp in responses]
         assert all(content == contents[0] for content in contents), "All cached responses should be identical"
 
     @pytest.mark.asyncio
@@ -290,8 +329,8 @@ class TestMiddlewareIntegration:
         assert "error" not in response2, "Cached request should succeed"
 
         # Responses should be identical if caching is working
-        content1 = response1["result"]["messages"][-1]["content"]
-        content2 = response2["result"]["messages"][-1]["content"]
+        content1 = extract_response_content(response1)
+        content2 = extract_response_content(response2)
 
         if content1 == content2:
             print("Caching configuration appears to be working")
@@ -351,8 +390,14 @@ class TestMiddlewareStressTest:
         """Send a message for stress testing."""
         payload = {
             "jsonrpc": "2.0",
-            "method": "send_message",
-            "params": {"messages": [{"role": "user", "content": content}]},
+            "method": "message/send",
+            "params": {
+                "message": {
+                    "role": "user",
+                    "parts": [{"kind": "text", "text": content}],
+                    "messageId": f"stress_msg_{int(time.time() * 1000000)}",
+                }
+            },
             "id": f"stress_{int(time.time() * 1000000)}",
         }
 

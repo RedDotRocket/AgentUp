@@ -92,7 +92,13 @@ push_notifications:
 # Cache management - Not needed for minimal template (no external APIs)
 # Add cache configuration if you integrate external services
 
-# State management
+# State management configuration
+state_management:
+  enabled: true
+  backend: memory          # Simple memory backend for minimal template
+  config: {}               # Memory backend requires no configuration
+
+# Legacy state configuration (still supported)
 state:
   backend: memory           # Simple memory state for minimal template
   ttl: 3600  # 1 hour

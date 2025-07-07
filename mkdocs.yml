@@ -9,8 +9,8 @@ theme:
     text: Roboto
     # code: Roboto Mono
     code: Red Hat Mono
-  logo: assets/logo.png
-  favicon: assets/favicon.ico
+  logo: docs/images/icon.png
+  favicon: docs/images/favicon.ico
   features:
     - navigation.footer
     - content.code.copy

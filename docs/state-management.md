@@ -2,6 +2,31 @@
 
 AgentUp provides comprehensive state management capabilities that enable your agents to maintain persistent conversation memory, user preferences, and long-running task data across sessions and restarts.
 
+
+## Check History
+
+
+  For future reference, here's how you can check conversation state:
+
+  # 1. List all state keys
+  redis-cli keys "*"
+
+  # 2. Get basic info about a conversation
+  redis-cli get "agentup:state:context-001" | jq '{
+    variables: .variables,
+    message_count: (.history | length),
+    context_id: .context_id
+  }'
+
+  # 3. View conversation history
+  redis-cli get "agentup:state:context-001" | jq '.history[] | "[\(.timestamp)] \(.role): \(.content)"' -r
+
+  # 4. Check specific variables
+  redis-cli get "agentup:state:context-001" | jq '.variables'
+
+  # 5. Get recent messages only
+  redis-cli get "agentup:state:context-001" | jq '.history[-3:]'
+  
 ## Overview
 
 State management in AgentUp allows agents to:
@@ -38,36 +63,72 @@ AgentUp supports three storage backends, each optimized for different use cases:
 - **Scalability**: Excellent (supports multiple agent instances)
 - **Features**: TTL expiration, atomic operations, distributed access
 
-## Configuration
+## Auto-Application System
+
+**NEW in AgentUp**: State management now uses an auto-application system similar to middleware. You no longer need to manually add `@stateful` decorators to handlers!
+
+### How It Works
+
+1. **Configure once** in `agent_config.yaml` with the new `state_management` section
+2. **All handlers automatically get state management** based on configuration
+3. **Per-skill overrides** available for custom behavior
+4. **Fallback gracefully** if state backend is unavailable
+
+### Configuration
+
+State management supports two configuration formats:
+
+#### New Format (Recommended)
+```yaml
+state_management:
+  enabled: true
+  backend: valkey
+  ttl: 3600
+  config:
+    url: "valkey://localhost:6379"
+    db: 2
+    key_prefix: "agentup:state:"
+```
+
+#### Legacy Format (Still Supported)
+```yaml
+state:
+  backend: valkey
+  ttl: 3600
+  url: "valkey://localhost:6379"
+  key_prefix: "agentup:state:"
+```
+
+### Supported Backends
 
 Three different backends are supported for state management:
 - **Valkey**: For distributed, persistent state storage
 - **File**: For local, file-based state storage  
 - **Memory**: For in-memory state storage (not persistent)
 
-In time more will be added, but these are the most common use cases. If something is of particular importance to you (PostgreSQL etc.), please open an issue on GitHub. AgentUp is built to be extensible, so adding new backends should be straightforward using the `StateStorage` interface.
+Each backend has specific configuration requirements detailed below.
 
 ### Valkey Backend Configuration
 
-**IMPORTANT**: Valkey state management requires explicit configuration in the `state` section, even if Valkey is configured in `services`.
-
-Add Valkey configuration to your `agent_config.yaml`:
+For distributed, high-performance state management:
 
 ```yaml
-# External services configuration
-services:
-  valkey:
-    type: cache
-    config:
-      url: "valkey://localhost:6379"
-
-# State management - IMPORTANT: Explicit Valkey configuration required
-state:
+state_management:
+  enabled: true
   backend: valkey
   ttl: 3600  # 1 hour expiration
-  url: "valkey://localhost:6379"          # REQUIRED: Explicit Valkey URL
-  key_prefix: "agentup:state:"           # REQUIRED: Key prefix for namespacing
+  config:
+    url: "valkey://localhost:6379"
+    db: 2  # Use dedicated database for state
+    key_prefix: "agentup:state:"
+    max_connections: 5
 ```
+
+**Valkey Configuration Parameters:**
+- `url`: Valkey server URL (required)
+- `db`: Database number (optional, defaults to 0)
+- `key_prefix`: Namespace prefix (optional, defaults to "agentup:state:")
+- `max_connections`: Connection pool size (optional)
 
 **Why Explicit Configuration is Required:**
 1. **Service vs State separation**: The `services.valkey` is for caching, `state.valkey` is for conversation persistence
@@ -124,29 +185,92 @@ state:
 
 ### File Storage Configuration
 
-Useful for local development, single-instance deployments, IoT devices, and systems with a limited footprint. JSON is used for the state files.
+For local development and single-instance deployments. State is stored as JSON files on disk.
 
 ```yaml
-state:
+state_management:
+  enabled: true
   backend: file
-  storage_dir: "./agent_state"  # Optional, defaults to "./conversation_states"
+  config:
+    storage_dir: "./conversation_states"  # Directory for state files
 ```
+
+**File Configuration Parameters:**
+- `storage_dir`: Directory path for state files (required)
+
+**Note**: Only `storage_dir` is supported. Additional features like backup, compression, etc. are not implemented in the current FileStorage class.
 
 ### Memory Storage Configuration
 
-Even simpler, for development and testing purposes, or when you don't need persistence.
+For development and testing. State is stored in process memory (not persistent).
 
 ```yaml
-state:
+state_management:
+  enabled: true
   backend: memory
-  # No additional configuration needed
+  config: {}  # Memory backend requires no configuration
 ```
+
+**Memory Backend Characteristics:**
+- No configuration parameters required
+- No persistence across restarts
+- No TTL support (garbage collected with process)
+- Fast performance for development/testing
 
 ## Using State Management in Skills
 
-### The @stateful Decorator
+### Automatic State Application (NEW)
 
-To use state management in your skills, import and apply the `@stateful` decorator:
+**With the new auto-application system, handlers automatically receive state management capabilities based on configuration. No manual decorators required!**
+
+```python
+from src.agent.handlers import register_handler
+from a2a.types import Task
+
+@register_handler("ai_assistant")
+async def handle_ai_assistant(task: Task, context=None, context_id=None):
+    """This handler automatically gets state management if enabled in config."""
+    
+    if context:  # State management is available
+        # Get conversation history
+        history = await context.get_history(context_id, limit=10)
+        
+        # Store user preferences
+        await context.set_variable(context_id, 'user_preference', 'dark_mode')
+        
+        # Add to conversation history
+        await context.add_to_history(context_id, 'user', "User message")
+        await context.add_to_history(context_id, 'assistant', "Assistant response")
+    else:  # State management not available/enabled
+        # Handle gracefully without state
+        pass
+    
+    return "Response"
+```
+
+### Per-Skill State Overrides
+
+You can customize state behavior for individual skills:
+
+```yaml
+skills:
+  - skill_id: ai_assistant
+    name: AI Assistant
+    description: AI-powered assistant
+    # Override global state settings for this skill
+    state_override:
+      enabled: true
+      backend: valkey
+      ttl: 7200  # 2 hours instead of global default
+      config:
+        url: "valkey://localhost:6379"
+        db: 3  # Different database
+        key_prefix: "agentup:ai:"
+```
+
+### Manual @stateful Decorator (Legacy)
+
+For backward compatibility, you can still use the manual decorator:
 
 ```python
 from src.agent.context import stateful

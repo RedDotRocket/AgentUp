@@ -1,5 +1,6 @@
 """Function Execution Logic for Function Dispatcher."""
 
+import inspect
 import logging
 import re
 from typing import Any
@@ -95,6 +96,41 @@ class FunctionExecutor:
                 self.task.metadata = {}
             self.task.metadata.update(arguments)
 
-        # Execute handler
-        result = await handler(task_with_params)
+        # Apply state management if handler accepts context parameters
+        result = await self._execute_with_state_management(handler, task_with_params, function_name)
         return str(result)
+
+    async def _execute_with_state_management(self, handler, task, function_name: str):
+        """Execute handler with state management if applicable."""
+        try:
+            # Check if the function can accept context parameters
+            sig = inspect.signature(handler)
+            accepts_context = "context" in sig.parameters
+            accepts_context_id = "context_id" in sig.parameters
+
+            if accepts_context or accepts_context_id:
+                # Get state configuration and apply state management
+                try:
+                    from ..handlers.handlers import _load_state_config
+                    from ..state.decorators import with_state
+
+                    state_config = _load_state_config()
+                    if state_config.get("enabled", False):
+                        # Apply state management to this specific call
+                        state_configs = [state_config]
+                        wrapped_handler = with_state(state_configs)(handler)
+
+                        logger.info(f"AI routing: Applied state management to function '{function_name}'")
+                        return await wrapped_handler(task)
+                    else:
+                        logger.debug(f"AI routing: State management disabled for function '{function_name}'")
+
+                except Exception as e:
+                    logger.error(f"AI routing: Failed to apply state management to '{function_name}': {e}")
+
+            # Execute handler normally (without state or if state failed)
+            return await handler(task)
+
+        except Exception as e:
+            logger.error(f"AI routing: Error executing function '{function_name}': {e}")
+            raise
