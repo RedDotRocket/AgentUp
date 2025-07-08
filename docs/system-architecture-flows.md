@@ -139,6 +139,17 @@ Plugin-contributed skills undergo the same registration and auto-application pro
 
 Plugin handlers are automatically wrapped with the same authentication, middleware, and state management capabilities as core handlers, ensuring that plugin-provided functionality receives the same level of integration and support as built-in skills. The plugin system also supports middleware and service contributions, allowing plugins to extend the framework's capabilities beyond just adding new skills, enabling the creation of comprehensive plugin ecosystems that can provide specialized functionality for specific domains or use cases.
 
+### Multi-Modal Capabilities as Plugins
+
+The AgentUp framework follows a plugin-first approach for specialized capabilities like multi-modal processing. Rather than including image processing, document processing, or other multi-modal capabilities in the core framework, these features are implemented as external plugins that can be installed and configured as needed. This architectural decision provides several benefits:
+
+- **Reduced Core Dependencies**: The core framework remains lightweight without optional dependencies like PIL, numpy, or document processing libraries
+- **Modular Installation**: Users only install the capabilities they need, reducing deployment complexity and attack surface
+- **Specialized Maintenance**: Plugin-specific functionality can be maintained and updated independently from the core framework
+- **Extensible Architecture**: New multi-modal capabilities can be added through plugins without modifying the core framework
+
+The framework provides utility classes in `src/agent/utils/multimodal.py` and `src/agent/services/multimodal.py` that plugins can leverage for consistent multi-modal processing patterns, while the actual processing capabilities are provided by plugins like `agentup-image-processing` for image analysis and transformation.
+
 ## Function Execution and Result Processing
 
 The execution flow culminates when the fully wrapped handler is invoked with the original A2A `Task` object, along with any injected authentication context, middleware-provided enhancements, and state management capabilities that were configured for the specific skill. The handler executes its business logic with access to all framework services through the service registry, state backends for persistent data storage, and cross-cutting capabilities provided by the middleware chain.
@@ -169,3 +180,5 @@ The plugin system integration demonstrates the power of the auto-application app
 - **Function Execution**: `src/agent/core/function_executor.py` - FunctionExecutor class
 - **Configuration Models**: `src/agent/config/models.py` - SkillConfig, MiddlewareConfig classes
 - **Service Registry**: `src/agent/services/registry.py` - Service integration and health checks
+- **Multi-Modal Utilities**: `src/agent/utils/multimodal.py` - MultiModalHelper utility class for plugins
+- **Multi-Modal Services**: `src/agent/services/multimodal.py` - MultiModalProcessor and service classes for plugin use

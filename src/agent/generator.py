@@ -225,6 +225,21 @@ class ProjectGenerator:
         else:
             context["feature_config"] = {}
 
+        # Add state backend configuration
+        state_backend = None
+        if "feature_config" in self.config and "state_backend" in self.config["feature_config"]:
+            state_backend = self.config["feature_config"]["state_backend"]
+        elif "state" in self.features:
+            # Default to appropriate backend based on template
+            if self.template_name == "minimal":
+                state_backend = "memory"
+            elif self.template_name == "full":
+                state_backend = "valkey"
+            else:  # standard
+                state_backend = "file"
+
+        context["state_backend"] = state_backend
+
         # Render template with Jinja2
         template = self.jinja_env.get_template(template_filename)
         return template.render(context)

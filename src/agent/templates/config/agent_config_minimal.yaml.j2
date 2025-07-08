@@ -93,15 +93,53 @@ push_notifications:
 # Add cache configuration if you integrate external services
 
 # State management configuration
+{% if has_state %}
 state_management:
   enabled: true
-  backend: memory          # Simple memory backend for minimal template
-  config: {}               # Memory backend requires no configuration
+{% if state_backend == 'valkey' %}
+  backend: valkey          # Distributed state backend for production
+  ttl: 3600                # 1 hour expiration
+  config:
+    url: '${VALKEY_URL:valkey://localhost:6379}'
+    key_prefix: "agentup:state:"
+{% elif state_backend == 'memory' %}
+  backend: memory          # In-memory state backend for development
+  ttl: 3600                # 1 hour expiration
+  config: {}
+{% elif state_backend == 'file' %}
+  backend: file            # File-based state backend for local development
+  ttl: 3600                # 1 hour expiration
+  config:
+    storage_dir: "./conversation_states"
+{% endif %}
+
+# Legacy state configuration (still supported)
+{% if state_backend == 'valkey' %}
+state:
+  backend: valkey
+  ttl: 3600  # 1 hour expiration
+  url: "valkey://localhost:6379"
+  key_prefix: "agentup:state:"
+{% elif state_backend == 'memory' %}
+state:
+  backend: memory
+  ttl: 3600  # 1 hour expiration
+{% elif state_backend == 'file' %}
+state:
+  backend: file
+  storage_dir: "./conversation_states"
+  ttl: 3600  # 1 hour expiration
+{% endif %}
+{% else %}
+# State management disabled for minimal template
+state_management:
+  enabled: false
 
 # Legacy state configuration (still supported)
 state:
-  backend: memory           # Simple memory state for minimal template
+  backend: memory
   ttl: 3600  # 1 hour
+{% endif %}
 
 # Logging configuration
 logging:

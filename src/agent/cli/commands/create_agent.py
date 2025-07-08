@@ -134,11 +134,23 @@ def create_agent(
         # Use template's features
         template_features = get_template_features()
         project_config["features"] = template_features.get(selected_template, {}).get("features", [])
+
+        # Set default state backend for quick mode based on template
+        feature_config = {}
+        if "state" in project_config["features"]:
+            if selected_template == "minimal":
+                feature_config["state_backend"] = "memory"
+            elif selected_template == "full":
+                feature_config["state_backend"] = "valkey"
+            else:  # standard
+                feature_config["state_backend"] = "file"
+        project_config["feature_config"] = feature_config
     # Minimal mode - use minimal template with no features
     elif minimal:
         project_config["template"] = "minimal"
         project_config["description"] = f"AI Agent {name} Project."
         project_config["features"] = []
+        project_config["feature_config"] = {}
     else:
         # Project description
         description = questionary.text("Description:", default=f"AI Agent {name} Project.", style=custom_style).ask()
@@ -269,6 +281,19 @@ def configure_features(features: list) -> dict[str, Any]:
         ).ask()
 
         config["middleware"] = selected if selected else []
+
+    if "state" in features:
+        state_backend_choice = questionary.select(
+            "Select state management backend:",
+            choices=[
+                questionary.Choice("Valkey/Redis (production, distributed)", value="valkey"),
+                questionary.Choice("Memory (development, non-persistent)", value="memory"),
+                questionary.Choice("File (local development, persistent)", value="file"),
+            ],
+            style=custom_style,
+        ).ask()
+
+        config["state_backend"] = state_backend_choice
 
     if "auth" in features:
         auth_choice = questionary.select(

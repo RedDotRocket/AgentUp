@@ -438,6 +438,14 @@ def register_ai_functions_from_handlers():
             handler_modules.append(main_handlers)
         except ImportError:
             pass
+        try:
+            from ..handlers import handlers_multimodal
+
+            handler_modules.append(handlers_multimodal)
+        except ImportError as e:
+            logger.debug(f"handlers_multimodal not available: {e}")
+        except Exception as e:
+            logger.error(f"Failed to import handlers_multimodal: {e}", exc_info=True)
 
         try:
             from ..handlers import handlers_with_services
@@ -480,7 +488,7 @@ def register_ai_functions_from_handlers():
 
                 # Find all potential handler modules
                 for py_file in handlers_dir.glob("*.py"):
-                    if py_file.name in ["__init__.py", "handlers.py"]:
+                    if py_file.name in ["__init__.py", "handlers.py", "handlers_multimodal.py"]:
                         continue
 
                     module_name = py_file.stem

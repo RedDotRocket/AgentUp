@@ -18,7 +18,7 @@ def get_feature_choices() -> list[questionary.Choice]:
     """Get available features for custom template."""
     return [
         questionary.Choice("Middleware System (caching, retry, rate limiting)", value="middleware", checked=True),
-        questionary.Choice("State Management (file, memory, valkey)", value="state"),
+        questionary.Choice("State Management (conversation persistence)", value="state"),
         questionary.Choice("AI Provider (ollama, openai, anthropic)", value="ai_provider"),
         questionary.Choice("Authentication (API Key, JWT, OAuth)", value="auth", checked=True),
     ]
