@@ -1,11 +1,9 @@
-import logging
-
+import structlog
 from a2a.types import Task
 
 from ..config import load_config
 from ..services.multimodal import MultiModalProcessor
 
-# Load config and extract project name
 _config = load_config()
 _project_name = _config.get("agent", {}).get("name", "Agent")
 
@@ -51,7 +49,7 @@ except ImportError:
         return decorator
 
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 # Import register_handler

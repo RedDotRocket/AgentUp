@@ -1,9 +1,9 @@
-import logging
 from typing import Any
 
 import httpx
+import structlog
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class MCPHTTPClient:

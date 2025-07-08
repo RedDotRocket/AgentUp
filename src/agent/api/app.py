@@ -1,9 +1,9 @@
-import logging
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 import httpx
+import structlog
 import uvicorn
 from a2a.server.tasks import InMemoryTaskStore
 from fastapi import FastAPI
@@ -16,18 +16,17 @@ try:
     env_file = Path.cwd() / ".env"
     if env_file.exists():
         load_dotenv(env_file)
-        print(f"Loaded environment variables from {env_file}")
     else:
         # Check parent directory (for development)
         parent_env = Path.cwd().parent / ".env"
         if parent_env.exists():
             load_dotenv(parent_env)
-            print(f"Loaded environment variables from {parent_env}")
 except ImportError:
-    print("python-dotenv not available, .env files will not be loaded automatically")
+    pass  # python-dotenv not available
 
 from ..config import load_config
 from ..config.constants import DEFAULT_SERVER_HOST, DEFAULT_SERVER_PORT
+from ..config.logging import configure_logging_from_config, create_structlog_middleware_with_config
 from ..config.models import JSONRPCError
 from ..core.executor import GenericAgentExecutor as AgentExecutorImpl
 from ..push.handler import CustomRequestHandler
@@ -46,9 +45,26 @@ try:
 except ImportError:
     register_ai_functions_from_handlers = None
 
-# Configure logging first
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Configure structured logging at module level (before uvicorn configures its loggers)
+try:
+    # Load config early to configure logging
+    early_config = load_config(configure_logging=False)  # Don't configure yet
+
+    # Configure structured logging early
+    configure_logging_from_config(early_config)
+
+    # Clear context vars and get logger
+    structlog.contextvars.clear_contextvars()
+    logger = structlog.get_logger()
+
+    logger.info("Structured logging configured at module level")
+except Exception as e:
+    # Fallback to basic logging if structlog setup fails
+    import logging
+
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+    logger.error(f"Failed to configure structured logging: {e}")
 
 try:
     from ..mcp_support.mcp_integration import initialize_mcp_integration, shutdown_mcp_integration
@@ -69,14 +85,18 @@ except Exception as e:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan manager for the FastAPI application."""
-    # Load configuration and attach to app.state
-    config = load_config()
+    # Load configuration and attach to app.state (logging already configured at module level)
+    config = load_config(configure_logging=False)
     app.state.config = config
+
+    # Structured logging is now configured at module level, before uvicorn starts
 
     agent_cfg = config.get("agent", {})
     name = agent_cfg.get("name", "Agent")
     version = agent_cfg.get("version", "0.1.0")
-    logger.info(f"Starting {name} v{version}")
+
+    # Log startup with structured logging already configured
+    logger.info(f"Starting {name} v{version}", structured_logging=True, uvicorn_integration=True)
 
     # Initialize security manager
     try:
@@ -347,6 +367,42 @@ def create_app() -> FastAPI:
         version=agent_card.version,
         lifespan=lifespan,
     )
+
+    # Configure logging middleware during app creation (logging already configured at module level)
+    config = load_config(configure_logging=False)  # Don't reconfigure logging
+    logging_config = config.get("logging", {})
+
+    # Add structured logging middleware if correlation ID is enabled
+    if logging_config.get("correlation_id", True):
+        try:
+            # Optional import for correlation ID middleware
+            from asgi_correlation_id import CorrelationIdMiddleware
+
+            # Add correlation ID middleware first (order matters - this is the outer middleware)
+            app.add_middleware(CorrelationIdMiddleware)
+
+            # Add structured logging middleware (this is the inner middleware)
+            from ..config.logging import LoggingConfig
+
+            try:
+                logging_cfg = LoggingConfig(**logging_config)
+            except Exception:
+                # Use defaults if config is invalid
+                logging_cfg = LoggingConfig()
+
+            StructLogMiddleware = create_structlog_middleware_with_config(logging_cfg)
+            app.add_middleware(StructLogMiddleware)
+
+        except ImportError:
+            # Fall back to basic request logging if asgi-correlation-id not available
+            if logging_config.get("request_logging", True):
+                from .request_logging import add_correlation_id_to_logs
+
+                add_correlation_id_to_logs(app)
+    elif logging_config.get("request_logging", True):
+        from .request_logging import add_correlation_id_to_logs
+
+        add_correlation_id_to_logs(app)
 
     # Add default routes and exception handlers
     app.include_router(router)

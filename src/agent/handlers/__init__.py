@@ -1,8 +1,9 @@
 import importlib
-import logging
 from pathlib import Path
 
-logger = logging.getLogger(__name__)
+import structlog
+
+logger = structlog.get_logger(__name__)
 
 from .handlers import (  # noqa: E402
     get_all_handlers,

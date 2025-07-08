@@ -6,12 +6,13 @@ scopes, user ID, etc. without having to pass it explicitly through every functio
 """
 
 import contextvars
-import logging
 from typing import Any
+
+import structlog
 
 from .base import AuthenticationResult
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Context variable to store authentication information per request
 _auth_context: contextvars.ContextVar[AuthenticationResult | None] = contextvars.ContextVar(

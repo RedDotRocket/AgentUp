@@ -1,8 +1,8 @@
-import logging
 from collections.abc import AsyncGenerator
 from datetime import datetime
 from typing import Any
 
+import structlog
 from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.server.request_handlers.jsonrpc_handler import JSONRPCHandler
 from a2a.types import (
@@ -38,13 +38,12 @@ from ..push.types import (
 from ..security import AuthContext, get_auth_result, protected
 
 # Setup logger
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Create router
 router = APIRouter()
 
-# Load configuration
-config = load_config()
+# Configuration will be loaded when needed
 
 # Task storage
 task_storage: dict[str, dict[str, Any]] = {}
@@ -69,7 +68,7 @@ def get_request_handler() -> DefaultRequestHandler:
 def create_agent_card() -> AgentCard:
     """Create agent card with current configuration."""
 
-    config = load_config()
+    config = load_config(configure_logging=False)  # Don't reconfigure logging
     agent_info = config.get("agent", {})
     skills = config.get("skills", [])
 
@@ -202,7 +201,7 @@ async def get_task_status(task_id: str, request: Request) -> JSONResponse:
 @router.get("/health")
 async def health_check() -> JSONResponse:
     """Basic health check endpoint."""
-    config = load_config()
+    config = load_config(configure_logging=False)
     return JSONResponse(
         status_code=200,
         content={

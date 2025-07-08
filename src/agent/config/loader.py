@@ -5,7 +5,7 @@ from typing import Any
 import yaml
 
 
-def load_config(config_path: str = "agent_config.yaml") -> dict[str, Any]:
+def load_config(config_path: str = "agent_config.yaml", configure_logging: bool = True) -> dict[str, Any]:
     """Load agent configuration from YAML file."""
     # Check for config path from environment variable first
     env_config_path = os.getenv("AGENT_CONFIG_PATH")
@@ -23,6 +23,10 @@ def load_config(config_path: str = "agent_config.yaml") -> dict[str, Any]:
 
     # Process environment variables
     config = _process_env_vars(config)
+
+    # Configure logging early if requested
+    if configure_logging:
+        _configure_logging_from_config(config)
 
     return config
 
@@ -62,3 +66,24 @@ def merge_configs(base: dict[str, Any], override: dict[str, Any]) -> dict[str, A
             result[key] = value
 
     return result
+
+
+def _configure_logging_from_config(config: dict[str, Any]) -> None:
+    """Configure logging from agent configuration."""
+    try:
+        from .logging import configure_logging_from_config
+
+        configure_logging_from_config(config)
+    except ImportError:
+        # Fallback to basic logging if structlog is not available
+        import logging
+
+        logging_config = config.get("logging", {})
+        level = logging_config.get("level", "INFO")
+
+        try:
+            log_level = getattr(logging, level.upper())
+        except AttributeError:
+            log_level = logging.INFO
+
+        logging.basicConfig(level=log_level, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")

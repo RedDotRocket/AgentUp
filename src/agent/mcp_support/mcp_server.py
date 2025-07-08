@@ -1,10 +1,11 @@
 import asyncio
-import logging
 from collections.abc import Callable
 from datetime import datetime
 from typing import Any
 
-logger = logging.getLogger(__name__)
+import structlog
+
+logger = structlog.get_logger(__name__)
 
 
 # CONDITIONAL_MCP_IMPORTS

@@ -1,20 +1,13 @@
-"""
-Adapter to integrate plugin system with existing AgentUp infrastructure.
-
-This module bridges the new plugin system with the existing FunctionRegistry
-and skill loading mechanisms.
-"""
-
-import logging
 from typing import Any
 
+import structlog
 from a2a.types import Task
 
 from ..core.dispatcher import FunctionRegistry
 from .manager import PluginManager, get_plugin_manager
 from .models import SkillContext, SkillResult
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class PluginAdapter:

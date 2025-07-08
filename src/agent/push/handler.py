@@ -1,5 +1,4 @@
-import logging
-
+import structlog
 from a2a.server.context import ServerCallContext
 from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.types import (
@@ -8,7 +7,7 @@ from a2a.types import (
     Task,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class CustomRequestHandler(DefaultRequestHandler):

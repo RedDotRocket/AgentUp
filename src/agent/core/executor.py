@@ -1,6 +1,6 @@
-import logging
 from typing import Any
 
+import structlog
 from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
 from a2a.server.tasks import TaskUpdater
@@ -26,8 +26,7 @@ from a2a.utils.errors import ServerError
 
 from ..config.models import BaseAgent
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger = structlog.get_logger(__name__)
 
 
 class GenericAgentExecutor(AgentExecutor):

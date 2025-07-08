@@ -1,8 +1,8 @@
 import json
-import logging
 from typing import Any
 
 import httpx
+import structlog
 
 from .base import (
     BaseLLMService,
@@ -13,7 +13,7 @@ from .base import (
     LLMResponse,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class OllamaProvider(BaseLLMService):

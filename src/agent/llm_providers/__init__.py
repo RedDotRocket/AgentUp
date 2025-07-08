@@ -1,12 +1,13 @@
-import logging
 from typing import Any
+
+import structlog
 
 from .anthropic import AnthropicProvider
 from .base import BaseLLMService, ChatMessage, FunctionCall, LLMCapability, LLMResponse
 from .ollama import OllamaProvider
 from .openai import OpenAIProvider
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Provider registry
 PROVIDER_REGISTRY: dict[str, type[BaseLLMService]] = {

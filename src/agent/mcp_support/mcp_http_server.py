@@ -1,12 +1,12 @@
-import logging
 from collections.abc import Callable
 from datetime import datetime
 from typing import Any
 
+import structlog
 from mcp.server import Server
 from mcp.types import TextContent, Tool
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class MCPHTTPServer:

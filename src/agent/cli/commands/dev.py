@@ -4,6 +4,9 @@ import sys
 from pathlib import Path
 
 import click
+import structlog
+
+logger = structlog.get_logger(__name__)
 
 
 @click.command(context_settings={"help_option_names": ["-h", "--help"]})
@@ -38,8 +41,8 @@ import click
 @click.version_option("1.0.0", prog_name="dev-server")
 def dev(config: Path, host: str, port: int, reload: bool):
     """Start the development server."""
-    click.echo(f"Using config: {config}")
-    click.echo(f"Starting dev server at http://{host}:{port}  (reload={reload})")
+    logger.info(f"Using config: {config}")
+    logger.info(f"Starting dev server at http://{host}:{port}  (reload={reload})")
 
     # Resolve project root: ensure config exists at given path
     if not config.exists():
@@ -48,7 +51,6 @@ def dev(config: Path, host: str, port: int, reload: bool):
 
     # Always use framework mode - agents run from installed AgentUp package
     app_module = "agent.api.app:app"
-    click.echo("Running from installed package")
 
     # Prepare environment with config path
     env = os.environ.copy()
@@ -60,7 +62,7 @@ def dev(config: Path, host: str, port: int, reload: bool):
     if reload:
         cmd.append("--reload")
 
-    click.echo(f"Running command: {' '.join(cmd)}")
+    logger.debug(f"Running command: {' '.join(cmd)}")
 
     import signal
 

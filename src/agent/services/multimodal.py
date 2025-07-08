@@ -2,16 +2,16 @@ import base64
 import hashlib
 import io
 import json
-import logging
 import mimetypes
 from pathlib import Path
 from typing import Any
 
 import numpy as np
+import structlog
 from a2a.types import DataPart, Part
 from PIL import Image
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class MultiModalProcessor:

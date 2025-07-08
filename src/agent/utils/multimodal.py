@@ -1,16 +1,9 @@
-"""
-Multi-modal processing helper utilities for handlers and plugins.
-
-This module provides easy access to multi-modal capabilities for all handlers,
-enabling universal multi-modal processing across the framework.
-"""
-
-import logging
 from typing import Any
 
+import structlog
 from a2a.types import DataPart, Task
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class MultiModalHelper:

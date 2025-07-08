@@ -1,6 +1,6 @@
-import logging
 from typing import Any
 
+import structlog
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 from authlib.jose import JsonWebKey, jwt
 from authlib.jose.errors import JoseError
@@ -10,7 +10,7 @@ from ..base import AuthenticationResult, BaseAuthenticator
 from ..exceptions import InvalidCredentialsException, MissingCredentialsException, SecurityConfigurationException
 from ..utils import extract_bearer_token, get_request_info, log_security_event
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class OAuth2Authenticator(BaseAuthenticator):

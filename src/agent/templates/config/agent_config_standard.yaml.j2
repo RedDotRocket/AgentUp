@@ -190,3 +190,36 @@ state:
   url: "valkey://localhost:6379"
   key_prefix: "agentup:state:"
 
+# Logging configuration
+logging:
+  enabled: true
+  level: "INFO"
+  format: "text"  # Use "json" for production environments
+  
+  # Console output settings
+  console:
+    enabled: true
+    colors: true
+  
+  # File logging (disabled by default for standard template)
+  file:
+    enabled: false
+    path: "logs/{{ project_name_snake }}.log"
+    rotation: "100 MB"
+    retention: "1 week"
+  
+  # Advanced features
+  correlation_id: true        # Add correlation IDs to requests
+  request_logging: true       # Log HTTP requests/responses
+  
+  # Module-specific log levels
+  modules:
+    uvicorn: "INFO"
+    httpx: "WARNING"
+    
+  # Uvicorn integration
+  uvicorn:
+    access_log: true
+    disable_default_handlers: true
+    use_colors: true
+

@@ -9,13 +9,15 @@ from collections import defaultdict
 from collections.abc import Callable
 from typing import Any, TypeVar
 
+import structlog
+
 try:
     from a2a.types import Artifact
 except ImportError:
     # Mock for testing
     Artifact = str
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Type for handler functions
 T = TypeVar("T")

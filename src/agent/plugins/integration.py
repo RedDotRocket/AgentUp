@@ -1,19 +1,13 @@
-"""
-Integration module to connect the plugin system with existing AgentUp handlers.
-
-This provides a smooth migration path from the current handler system to plugins.
-"""
-
-import logging
 from collections.abc import Callable
 from typing import Any
 
+import structlog
 from a2a.types import Task
 
 from ..handlers.handlers import _handlers, register_handler_function
 from .adapter import PluginAdapter, get_plugin_manager
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 def integrate_plugins_with_handlers() -> None:

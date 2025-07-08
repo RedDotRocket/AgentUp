@@ -1,22 +1,12 @@
-"""
-Enhanced push notification system for AgentUp.
-
-Extends the a2a-sdk InMemoryPushNotifier to support:
-- Multiple configurations per task
-- list and delete operations
-- Security validation
-- Persistent storage backends
-"""
-
 import json
-import logging
 import uuid
-from urllib.parse import urlparse
+from urllib.parse import urlparse  # noqa: E402
 
 import httpx
+import structlog
 from a2a.types import PushNotificationAuthenticationInfo, PushNotificationConfig, Task, TaskPushNotificationConfig
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class EnhancedPushNotifier:

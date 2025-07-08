@@ -1,12 +1,12 @@
-import logging
 from collections.abc import AsyncIterator
 from typing import Any
 
+import structlog
 from a2a.types import Task
 
 from ..core.function_executor import FunctionExecutor
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class StreamingHandler:

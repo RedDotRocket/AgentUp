@@ -1,17 +1,16 @@
-import logging
 from collections.abc import AsyncIterator, Callable
 from typing import Any
 
+import structlog
 from a2a.types import Task
 
-# StreamingHandler imported lazily to avoid circular imports
 from ..services import get_services
 from ..services.llm.manager import LLMManager
 from ..state.conversation import ConversationManager
 from ..utils.messages import MessageProcessor
 from .function_executor import FunctionExecutor
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class FunctionRegistry:

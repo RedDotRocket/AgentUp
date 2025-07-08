@@ -1,6 +1,6 @@
-import logging
 from typing import Any
 
+import structlog
 from fastapi import HTTPException, Request
 
 from .authenticators import get_authenticator_class, list_authenticator_types  # noqa: F401
@@ -15,7 +15,7 @@ from .exceptions import (
 from .utils import get_request_info, log_security_event
 from .validators import SecurityConfigValidator
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class SecurityManager:

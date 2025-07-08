@@ -1,6 +1,7 @@
 from collections.abc import Callable
 from functools import wraps
 
+import structlog
 from fastapi import HTTPException, Request
 
 from .base import SecurityPolicy
@@ -104,9 +105,7 @@ def protected(
             if not should_authenticate:
                 # Log security bypass for audit purposes
                 if required and not force_auth:
-                    import logging
-
-                    logger = logging.getLogger(__name__)
+                    logger = structlog.get_logger(__name__)
                     endpoint = str(request.url.path) if request.url else "unknown"
                     logger.warning(
                         f"Security bypass: {endpoint} - Global security disabled, "

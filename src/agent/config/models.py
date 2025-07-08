@@ -25,6 +25,14 @@ from a2a.types import (
     TextPart,
 )
 from pydantic import BaseModel, Field
+from pydantic_settings import BaseSettings
+
+
+class Settings(BaseSettings):
+    LOG_LEVEL: str = "INFO"
+    LOG_JSON_FORMAT: bool = False
+    LOG_NAME: str = "your_app.app_logs"
+    LOG_ACCESS_NAME: str = "your_app.access_logs"
 
 
 class JSONRPCError(Exception):
@@ -106,6 +114,42 @@ class ServiceConfig(BaseModel):
     settings: dict[str, Any] | None = {}
 
 
+class LoggingConfig(BaseModel):
+    """Configuration model for logging settings."""
+
+    enabled: bool = True
+    level: str = "INFO"
+    format: str = "text"  # "text" or "json"
+
+    # Output destinations
+    console: dict[str, Any] = {
+        "enabled": True,
+        "colors": True,
+    }
+
+    file: dict[str, Any] = {
+        "enabled": False,
+        "path": "logs/agent.log",
+        "rotation": "100 MB",
+        "retention": "1 week",
+        "compression": True,
+    }
+
+    # Advanced configuration
+    correlation_id: bool = True
+    request_logging: bool = True
+
+    # Module-specific log levels
+    modules: dict[str, str] = {}
+
+    # Uvicorn integration
+    uvicorn: dict[str, Any] = {
+        "access_log": True,
+        "disable_default_handlers": True,
+        "use_colors": True,
+    }
+
+
 class SkillResponse(BaseModel):
     """Response from a skill handler."""
 
@@ -165,6 +209,7 @@ __all__ = [
     "RoutingConfig",
     "SkillConfig",
     "AgentConfig",
+    "LoggingConfig",
     "SkillResponse",
     "BaseAgent",
 ]

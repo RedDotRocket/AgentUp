@@ -1,4 +1,3 @@
-import logging
 import re
 import secrets
 import string
@@ -6,12 +5,13 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+import structlog
 import yaml
 from jinja2 import Environment, FileSystemLoader
 
 from .templates import get_template_features
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class ProjectGenerator:

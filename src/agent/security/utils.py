@@ -1,12 +1,11 @@
-"""Security utilities for AgentUp authentication."""
-
-import logging
 import re
 import secrets
 from datetime import datetime
 from typing import Any
 
-logger = logging.getLogger(__name__)
+import structlog
+
+logger = structlog.get_logger(__name__)
 
 
 def secure_compare(a: str | None, b: str | None) -> bool:

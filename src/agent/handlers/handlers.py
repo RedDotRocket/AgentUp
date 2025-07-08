@@ -1,7 +1,7 @@
-import logging
 from collections.abc import Callable
 from typing import Any
 
+import structlog
 from a2a.types import Task
 
 from ..config import load_config
@@ -100,7 +100,7 @@ except ImportError:
         return decorator
 
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Handler registry - unified for all handlers (core, user, and individual)
 _handlers: dict[str, Callable[[Task], str]] = {}

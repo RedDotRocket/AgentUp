@@ -1,15 +1,13 @@
-"""State management decorators and auto-application system."""
-
 import inspect
-import logging
 from collections.abc import Callable
 from typing import Any
 
+import structlog
 from a2a.types import Task
 
 from .context import get_context_manager
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 def _preserve_ai_attributes(wrapper: Callable, original: Callable) -> None:

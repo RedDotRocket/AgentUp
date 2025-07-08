@@ -7,12 +7,12 @@ Handles plugin discovery, loading, and lifecycle management.
 import importlib
 import importlib.metadata
 import importlib.util
-import logging
 import sys
 from pathlib import Path
 from typing import Any
 
 import pluggy
+import structlog
 
 from .hookspecs import SkillSpec
 from .models import (
@@ -25,7 +25,7 @@ from .models import (
     ValidationResult,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Hook implementation marker
 hookimpl = pluggy.HookimplMarker("agentup")
