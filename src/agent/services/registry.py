@@ -281,7 +281,6 @@ class ServiceRegistry:
         )
         return service
 
-
     def register_service_type(self, type_name: str, service_class: type[Service]) -> None:
         """Register a new service type."""
         self._service_types[type_name] = service_class
@@ -383,7 +382,6 @@ class ServiceRegistry:
         # Fall back to stdio client
         stdio_client = self.get_mcp_client()
         return stdio_client
-
 
     async def close_all(self) -> None:
         """Close all services."""

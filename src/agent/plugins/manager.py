@@ -84,7 +84,9 @@ class PluginManager:
                     # Track plugin info
                     plugin_info = PluginInfo(
                         name=entry_point.name,
-                        version=entry_point.dist.version if entry_point.dist else self._get_package_version(entry_point.name),
+                        version=entry_point.dist.version
+                        if entry_point.dist
+                        else self._get_package_version(entry_point.name),
                         status=PluginStatus.LOADED,
                         entry_point=str(entry_point),
                         module_name=entry_point.module,

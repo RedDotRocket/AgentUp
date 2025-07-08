@@ -141,7 +141,6 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Failed to apply global state management: {e}")
 
-
     # Initialize plugin system if available
     def _is_plugin_enabled(plugin_cfg) -> bool:
         """Check if plugin system is enabled based on configuration type."""
