@@ -22,7 +22,7 @@ skills:
     description: Process and analyze documents
     tags: [document, processing, analysis]
     # No keywords or patterns defined, only available via AI routing
-    input_mode: multimodal
+    input_mode: text
     output_mode: text
     priority: 90
   - skill_id: data_analyzer
@@ -31,7 +31,7 @@ skills:
     tags: [data, analysis, visualization]
     # No keywords or patterns defined, only available via AI routing
     input_mode: text
-    output_mode: multimodal
+    output_mode: text
     priority: 90
   - skill_id: hello_world
     name: Hello World
@@ -51,39 +51,6 @@ skills:
     keywords: [chat, talk, conversation]
     patterns: ['chat.*', 'talk.*', 'conversation.*']
     priority: 40
-  
-  # Multi-modal processing skills
-  - skill_id: analyze_image
-    name: Image Analysis
-    description: Analyze uploaded images and return insights
-    tags: [multimodal, image, analysis, ai]
-    input_mode: multimodal
-    output_mode: text
-    priority: 85
-  
-  - skill_id: process_document
-    name: Document Processing
-    description: Process uploaded documents and extract content
-    tags: [multimodal, document, processing, ai]
-    input_mode: multimodal
-    output_mode: text
-    priority: 85
-    
-  - skill_id: transform_image
-    name: Image Transformation
-    description: Transform images with various operations
-    tags: [multimodal, image, transformation, utility]
-    input_mode: multimodal
-    output_mode: text
-    priority: 80
-    
-  - skill_id: multimodal_chat
-    name: Multi-modal Chat
-    description: Handle conversations with mixed text and media content
-    tags: [multimodal, chat, conversation, ai]
-    input_mode: multimodal
-    output_mode: text
-    priority: 95
 
 # Registry skills section - for skills installed from AgentUp Skills Registry
 registry_skills: []
@@ -144,14 +111,14 @@ ai:
     Your role:
     - Understand complex user requests and break them down into actionable steps
     - Use the appropriate functions and tools to complete sophisticated tasks
-    - Handle multi-modal content including images, documents, and structured data
+    - Handle structured data and various content types
     - Maintain conversation context and state across extended interactions
     - Integrate with external services and APIs when needed
     - Provide detailed, accurate responses with proper error handling
     
     Capabilities include:
     - Advanced document processing and analysis
-    - Multi-modal content understanding (text, images, documents)
+    - Structured content understanding and analysis
     - Integration with external APIs and services
     - State management and conversation persistence
     - Enterprise-grade security and authentication
@@ -175,26 +142,6 @@ services:
       db: 1                    # Use DB 1 for cache (DB 0 for state)
       max_connections: 20
       retry_on_timeout: true
-  
-  multimodal:
-    type: multimodal
-    enabled: true
-    config:
-      max_image_size_mb: 25      # Enterprise-level limits
-      max_document_size_mb: 100
-      supported_image_formats:
-        - "image/png"
-        - "image/jpeg"
-        - "image/webp"
-        - "image/gif"
-        - "image/bmp"
-      supported_document_formats:
-        - "text/plain"
-        - "application/json"
-        - "application/pdf"
-        - "text/csv"
-        - "application/vnd.openxmlformats-officedocument.wordprocessingml.document"  # .docx
-        - "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"       # .xlsx
 
 # Model Context Protocol configuration - Full enterprise setup
 mcp:

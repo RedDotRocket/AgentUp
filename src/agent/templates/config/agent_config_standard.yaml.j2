@@ -17,31 +17,6 @@ skills:
     input_mode: text
     output_mode: text
     priority: 100
-{% if has_multimodal %}
-  - skill_id: analyze_image
-    name: Image Analysis
-    description: Analyze uploaded images and return insights
-    tags: [multimodal, image, analysis]
-    input_mode: multimodal
-    output_mode: text
-    priority: 90
-  
-  - skill_id: process_document
-    name: Document Processing
-    description: Process uploaded documents and extract content
-    tags: [multimodal, document, processing]
-    input_mode: multimodal
-    output_mode: text
-    priority: 90
-    
-  - skill_id: multimodal_chat
-    name: Multi-modal Chat
-    description: Handle conversations with mixed text and media content
-    tags: [multimodal, chat, conversation]
-    input_mode: multimodal
-    output_mode: text
-    priority: 95
-{% endif %}
 
 # Registry skills section - for skills installed from AgentUp Skills Registry
 registry_skills: []
@@ -91,7 +66,7 @@ ai:
     - Use the appropriate functions when needed to complete tasks
     - Provide helpful, accurate responses based on function results
     - Maintain context across conversations
-    - Handle multi-modal content (text, images, documents) when supported
+    - Handle various content types when supported by plugins
     
     When users ask for something:
     1. If you have a relevant function, call it with appropriate parameters
@@ -109,23 +84,6 @@ services:
       url: '${VALKEY_URL:valkey://localhost:6379}'
       db: 1                    # Use DB 1 for cache
       max_connections: 10
-{% if has_multimodal %}
-  multimodal:
-    type: multimodal
-    enabled: true
-    config:
-      max_image_size_mb: 10
-      max_document_size_mb: 50
-      supported_image_formats:
-        - "image/png"
-        - "image/jpeg"
-        - "image/webp"
-        - "image/gif"
-      supported_document_formats:
-        - "text/plain"
-        - "application/json"
-        - "application/pdf"
-{% endif %}
 
 # Model Context Protocol configuration
 mcp:

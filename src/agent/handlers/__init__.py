@@ -15,23 +15,6 @@ from .handlers import (  # noqa: E402
     register_handler,
 )
 
-# Import multimodal handlers if available
-try:
-    from .handlers_multimodal import (  # noqa: E402
-        handle_analyze_image,  # noqa: F401
-        handle_multimodal_chat,  # noqa: F401
-        handle_process_document,  # noqa: F401
-        handle_transform_image,  # noqa: F401
-    )
-
-    multimodal_available = True
-except ImportError as e:
-    logger.debug(f"Multimodal handlers not available: {e}")
-    multimodal_available = False
-except Exception as e:
-    logger.error(f"Failed to import multimodal handlers: {e}", exc_info=True)
-    multimodal_available = False
-
 
 # Dynamic handler discovery and import
 def discover_and_import_handlers():
@@ -95,17 +78,6 @@ __all__ = [
     "handle_echo",
 ]
 
-# Add multimodal handlers to exports if available
-if multimodal_available:
-    __all__.extend(
-        [
-            "handle_analyze_image",
-            "handle_process_document",
-            "handle_transform_image",
-            "handle_multimodal_chat",
-        ]
-    )
-
 
 # Auto-discovery of individual handler files
 def discover_user_handlers():
@@ -125,7 +97,7 @@ def discover_user_handlers():
 
     for handler_file in handler_files:
         # Skip special handler files
-        if handler_file.name in ["handlers.py", "handlers_multimodal.py"]:
+        if handler_file.name in ["handlers.py"]:
             continue
 
         try:

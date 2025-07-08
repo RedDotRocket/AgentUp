@@ -141,31 +141,6 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Failed to apply global state management: {e}")
 
-    # Load multi-modal handlers to register them with the system
-    try:
-        from ..handlers import handlers_multimodal  # noqa: F401
-
-        # The import itself registers the handlers via @register_handler decorators
-        logger.info("Multi-modal handlers loaded and registered")
-    except Exception as e:
-        logger.warning(f"Multi-modal handlers not available: {e}")
-
-    # Initialize multi-modal service if configured
-    if svc_cfg.get("multimodal", {}).get("enabled", True):
-        try:
-            from ..services.registry import get_services
-
-            services = get_services()
-
-            # Register multi-modal service if not already present
-            multimodal_config = svc_cfg.get("multimodal", {})
-            if "multimodal" not in services.list_services():
-                await services.register_service("multimodal", "multimodal", multimodal_config)
-                logger.info("Multi-modal service registered and initialized")
-            else:
-                logger.info("Multi-modal service already registered")
-        except Exception as e:
-            logger.error(f"Failed to initialize multi-modal service: {e}")
 
     # Initialize plugin system if available
     def _is_plugin_enabled(plugin_cfg) -> bool:

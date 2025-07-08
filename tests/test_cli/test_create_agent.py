@@ -44,7 +44,7 @@ class TestCreateAgentCommand:
             mock_features.return_value = {
                 "minimal": {"features": []},
                 "standard": {"features": ["services", "middleware", "mcp"]},
-                "full": {"features": ["services", "middleware", "auth", "state", "multimodal", "mcp", "monitoring"]},
+                "full": {"features": ["services", "middleware", "auth", "state", "mcp", "monitoring"]},
                 "demo": {"features": ["services", "middleware", "mcp"]},
             }
 
@@ -63,7 +63,6 @@ class TestCreateAgentCommand:
                 Choice("Middleware", value="middleware"),
                 Choice("Authentication", value="auth"),
                 Choice("State Management", value="state"),
-                Choice("Multimodal", value="multimodal"),
                 Choice("MCP Support", value="mcp"),
                 Choice("Monitoring", value="monitoring"),
             ]

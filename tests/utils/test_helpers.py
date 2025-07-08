@@ -184,7 +184,6 @@ def create_mock_generator_context(
         "has_middleware": "middleware" in features,
         "has_services": "services" in features,
         "has_state": "state" in features,
-        "has_multimodal": "multimodal" in features,
         "has_auth": "auth" in features,
         "has_monitoring": "monitoring" in features,
         "has_testing": "testing" in features,

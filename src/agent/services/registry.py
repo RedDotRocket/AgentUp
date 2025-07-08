@@ -226,14 +226,12 @@ class ServiceRegistry:
             "database": DatabaseService,
             "cache": CacheService,
             "web_api": WebAPIService,
-            "multimodal": "multimodal",  # Special case for multi-modal processor
         }
         self._factories: dict[str, Any] = {
             "llm": "llm",  # Special case handled in register_service
             "database": DatabaseService,
             "cache": CacheService,
             "web_api": WebAPIService,
-            "multimodal": "multimodal",  # Special case for multi-modal processor
         }
 
         if self.config.mcp_enabled:
@@ -283,12 +281,6 @@ class ServiceRegistry:
         )
         return service
 
-    def _create_multimodal_service(self, name: str, config: dict[str, Any]) -> Service:
-        """Create multi-modal processing service."""
-        from .multimodal import MultiModalService
-
-        logger.info(f"Creating multi-modal service '{name}'")
-        return MultiModalService(name, config)
 
     def register_service_type(self, type_name: str, service_class: type[Service]) -> None:
         """Register a new service type."""
@@ -308,9 +300,6 @@ class ServiceRegistry:
             if service_type == "llm":
                 logger.info(f"Creating LLM service for '{name}'")
                 service = self._create_llm_service(name, config)
-            elif service_type == "multimodal":
-                logger.info(f"Creating multi-modal service for '{name}'")
-                service = self._create_multimodal_service(name, config)
             elif callable(factory):
                 logger.info(f"Using callable factory for '{name}'")
                 service = factory(name, config)
@@ -395,12 +384,6 @@ class ServiceRegistry:
         stdio_client = self.get_mcp_client()
         return stdio_client
 
-    def get_multimodal(self, name: str = "multimodal") -> Any | None:
-        """Get multi-modal processing service."""
-        service = self.get_service(name)
-        if service and hasattr(service, "process_image") and hasattr(service, "process_document"):
-            return service
-        return None
 
     async def close_all(self) -> None:
         """Close all services."""

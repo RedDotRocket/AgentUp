@@ -179,7 +179,6 @@ class ProjectGenerator:
             "features": self.features,
             "has_middleware": "middleware" in self.features,
             "has_state": "state" in self.features,
-            "has_multimodal": "multimodal" in self.features,
             "has_auth": "auth" in self.features,
             "has_mcp": "mcp" in self.features,
             "template_name": self.template_name,
@@ -396,18 +395,11 @@ Always be helpful, accurate, and maintain a friendly tone. You are designed to a
                     "output_mode": "text",
                 },
                 {
-                    "skill_id": "document_processor",
-                    "name": "Document Processor",
-                    "description": "Process and analyze documents",
-                    "input_mode": "multimodal",
-                    "output_mode": "text",
-                },
-                {
                     "skill_id": "data_analyzer",
                     "name": "Data Analyzer",
                     "description": "Analyze and visualize data",
                     "input_mode": "text",
-                    "output_mode": "multimodal",
+                    "output_mode": "text",
                 },
             ]
         else:

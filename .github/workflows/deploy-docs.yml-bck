@@ -1,0 +1,44 @@
+# name: Build and Deploy Docs to GCS
+
+# on:
+#   push:
+#     paths:
+#       - 'docs/**'
+#       - 'mkdocs.yml'
+#   workflow_dispatch:
+
+# permissions:
+#   id-token: write
+#   contents: read
+
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#     - name: Checkout code
+#       uses: actions/checkout@v3
+
+#     - name: Set up Python
+#       uses: actions/setup-python@v4
+#       with:
+#         python-version: '3.11'
+
+#     - name: Install MkDocs + Material theme
+#       run: pip install mkdocs-material
+
+#     - name: Build MkDocs site
+#       run: mkdocs build -d site
+
+#     - name: Authenticate to Google Cloud (WIF)
+#       uses: google-github-actions/auth@v2
+#       with:
+#         workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+
+#     - name: Set up gcloud CLI
+#       uses: google-github-actions/setup-gcloud@v1
+
+#     - name: Upload docs to GCS
+#       run: |
+#         gsutil -m rsync -r site gs://agentup-site
+#         gsutil web set -m index.html -e 404.html gs://agentup-site

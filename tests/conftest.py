@@ -226,7 +226,7 @@ def agent_templates():
             "description": "AI-powered agent with MCP integration",
         },
         "full": {
-            "features": ["services", "middleware", "auth", "state", "multimodal", "mcp", "monitoring"],
+            "features": ["services", "middleware", "auth", "state", "mcp", "monitoring"],
             "description": "All features enabled including database, cache, monitoring",
         },
         "demo": {
