@@ -43,14 +43,12 @@ class TestCreateAgentCommand:
         ):
             mock_features.return_value = {
                 "minimal": {"features": []},
-                "standard": {"features": ["services", "middleware", "mcp"]},
                 "full": {"features": ["services", "middleware", "auth", "state", "mcp", "monitoring"]},
                 "demo": {"features": ["services", "middleware", "mcp"]},
             }
 
             mock_choices.return_value = [
                 {"name": "Minimal", "value": "minimal"},
-                {"name": "Standard", "value": "standard"},
                 {"name": "Full", "value": "full"},
                 {"name": "Demo", "value": "demo"},
             ]
@@ -119,7 +117,6 @@ class TestCreateAgentCommand:
         config = call_args[1]
         assert config["name"] == "my-interactive-agent"
         assert config["description"] == "My awesome interactive agent"
-        assert config["template"] == "standard"
 
     def test_create_agent_quick_mode(self, runner, mock_generator, temp_dir, mock_template_features):
         """Test creating an agent with --quick flag."""
@@ -139,7 +136,6 @@ class TestCreateAgentCommand:
         call_args = mock_generator.call_args[0]
         config = call_args[1]
         assert config["name"] == "quick-agent"
-        assert config["template"] == "standard"  # Default for quick mode
         assert "features" in config  # Should use template features
 
     def test_create_agent_minimal_mode(self, runner, mock_generator, temp_dir, mock_template_features):

@@ -1,0 +1,308 @@
+# AgentUp Configuration
+
+# Agent Information
+agent:
+  name: {{ project_name }}
+  description: {{ description }}
+  version: 0.1.0
+
+# Core skills configuration
+skills:
+{% for skill in selected_skills %}
+{% if skill == 'echo' %}
+  - skill_id: echo
+    name: Echo
+    description: Echo back the input text
+    tags: [echo, basic, simple]
+    input_mode: text
+    output_mode: text
+    keywords: [echo, repeat, say]
+    patterns: ['^echo ', '^repeat ', '^say ']
+    routing_mode: direct
+    priority: 50
+{% elif skill == 'ai_assistant' %}
+  - skill_id: ai_assistant
+    name: AI Assistant
+    description: AI-powered assistant for various tasks
+    tags: [ai, assistant, helper]
+    input_mode: text
+    output_mode: text
+    priority: 100
+{% elif skill == 'document_processor' %}
+  - skill_id: document_processor
+    name: Document Processor
+    description: Process and analyze documents
+    tags: [document, processing, analysis]
+    input_mode: text
+    output_mode: text
+    priority: 90
+{% elif skill == 'data_analyzer' %}
+  - skill_id: data_analyzer
+    name: Data Analyzer
+    description: Analyze and visualize data
+    tags: [data, analysis, visualization]
+    input_mode: text
+    output_mode: text
+    priority: 90
+{% elif skill == 'hello_world' %}
+  - skill_id: hello_world
+    name: Hello World
+    description: Simple greeting handler
+    tags: [greeting, basic, direct]
+    input_mode: text
+    output_mode: text
+    keywords: [hello, hi, hey, greetings]
+    patterns: ['hello.*', 'hi\\s+.*', 'greet.*']
+    priority: 30
+{% elif skill == 'conversation' %}
+  - skill_id: conversation
+    name: Conversation
+    description: Basic conversation handler
+    tags: [conversation, chat, direct]
+    input_mode: text
+    output_mode: text
+    keywords: [chat, talk, conversation]
+    patterns: ['chat.*', 'talk.*', 'conversation.*']
+    priority: 40
+{% endif %}
+{% endfor %}
+
+# Registry skills section - for skills installed from AgentUp Skills Registry
+registry_skills: []
+
+# Plugin configuration
+plugins:{{ ' ' + plugins | tojson if plugins else ' []' }}
+
+# Security configuration
+security:
+  enabled: {{ security_enabled | default(false) }}
+{% if security_enabled %}
+  type: {{ auth_type | default('api_key') }}
+{% if auth_type == 'api_key' %}
+  api_key:
+    header_name: {{ auth_header_name | default('X-API-Key') }}
+    location: {{ auth_location | default('header') }}
+    keys:
+      - "{{ generate_api_key() }}"
+{% if generate_multiple_keys %}
+      - "{{ generate_api_key() }}"
+{% endif %}
+{% elif auth_type == 'bearer' %}
+  bearer:
+    jwt_secret: '{{ generate_jwt_secret() }}'
+    algorithm: HS256
+    issuer: {{ project_name_snake }}
+    audience: a2a-clients
+{% elif auth_type == 'oauth2' %}
+  oauth2:
+    token_url: '${OAUTH_TOKEN_URL:/oauth/token}'
+    client_id: '${OAUTH_CLIENT_ID:your-client-id}'
+    client_secret: '{{ generate_client_secret() }}'
+    scopes:
+      read: Read access to agent capabilities
+      write: Write access to send messages
+      admin: Administrative access
+{% endif %}
+{% endif %}
+
+{% if ai_provider_config %}
+# AI Provider configuration
+ai_provider:
+  provider: {{ ai_provider_config.provider }}
+{% if ai_provider_config.provider == 'openai' %}
+  api_key: ${OPENAI_API_KEY}
+  model: {{ ai_provider_config.model | default('gpt-4o-mini') }}
+{% elif ai_provider_config.provider == 'anthropic' %}
+  api_key: ${ANTHROPIC_API_KEY}
+  model: {{ ai_provider_config.model | default('claude-3-5-sonnet-20241022') }}
+{% elif ai_provider_config.provider == 'ollama' %}
+  model: {{ ai_provider_config.model | default('llama3') }}
+  base_url: ${OLLAMA_BASE_URL:http://localhost:11434/v1}
+{% endif %}
+  temperature: {{ ai_temperature | default(0.7) }}
+  max_tokens: {{ ai_max_tokens | default(1000) }}
+  top_p: {{ ai_top_p | default(1.0) }}
+{% endif %}
+
+# AI system prompt and configuration
+ai:
+  enabled: {{ ai_enabled | default(true) }}
+{% if ai_system_prompt %}
+  system_prompt: |
+{{ ai_system_prompt | indent(4, True) }}
+{% else %}
+  system_prompt: |
+    You are {{ project_name }}, an AI agent created with AgentUp.
+    
+    Your role:
+    - Understand user requests naturally and conversationally
+    - Use the appropriate functions when needed to help users
+    - Provide helpful, accurate, and friendly responses
+    - Maintain context across conversations
+    
+    Always be helpful, accurate, and maintain a friendly tone.
+{% endif %}
+
+{% if has_middleware and 'cache' in feature_config.get('middleware', []) %}
+# Cache configuration
+cache:
+{% if feature_config.get('cache_backend') == 'valkey' %}
+  type: valkey
+  config:
+    url: '${VALKEY_CACHE_URL:valkey://localhost:6379}'
+    db: 1
+    max_connections: {{ cache_max_connections | default(10) }}
+    retry_on_timeout: true
+    default_ttl: {{ cache_ttl | default(300) }}
+{% else %}
+  type: memory
+  config:
+    max_size: {{ cache_max_size | default(1000) }}
+    default_ttl: {{ cache_ttl | default(300) }}
+{% endif %}
+{% endif %}
+
+# External services configuration
+services:{{ ' ' + services | tojson if services else ' {}' }}
+
+{% if has_mcp %}
+# Model Context Protocol
+mcp:
+  enabled: true
+  client:
+    enabled: {{ mcp_client_enabled | default(true) }}
+{% if mcp_servers %}
+    servers:
+{% for server in mcp_servers %}
+{% if server == 'filesystem' %}
+      - name: filesystem
+        command: npx
+        args: ['-y', '@modelcontextprotocol/server-filesystem', '{{ mcp_filesystem_path | default("/tmp") }}']
+        env: {}
+{% elif server == 'github' %}
+      - name: github
+        command: npx
+        args: ['-y', '@modelcontextprotocol/server-github']
+        env:
+          GITHUB_PERSONAL_ACCESS_TOKEN: '${GITHUB_TOKEN}'
+{% elif server == 'custom' and mcp_custom_server %}
+      - {{ mcp_custom_server | tojson }}
+{% endif %}
+{% endfor %}
+{% else %}
+    servers: []
+{% endif %}
+  server:
+    enabled: {{ mcp_server_enabled | default(true) }}
+    name: {{ project_name }}-mcp-server
+    expose_handlers: true
+    expose_resources: [agent_status, agent_capabilities]
+    port: {{ mcp_server_port | default(8001) }}
+{% endif %}
+
+# Middleware configuration
+middleware:
+  - name: timed
+    params: {}
+{% if has_middleware %}
+{% if 'cache' in feature_config.get('middleware', []) %}
+  - name: cached
+    params:
+      ttl: {{ middleware_cache_ttl | default(300) }}
+{% endif %}
+{% if 'rate_limit' in feature_config.get('middleware', []) %}
+  - name: rate_limited
+    params:
+      requests_per_minute: {{ rate_limit_rpm | default(60) }}
+{% endif %}
+{% if 'retry' in feature_config.get('middleware', []) %}
+  - name: retryable
+    params:
+      max_retries: {{ retry_max_attempts | default(3) }}
+      backoff_factor: {{ retry_backoff | default(2) }}
+{% endif %}
+{% if 'validation' in feature_config.get('middleware', []) %}
+  - name: validated
+    params: {}
+{% endif %}
+{% endif %}
+
+# Push notifications configuration
+push_notifications:
+  enabled: {{ push_enabled | default(true) }}
+  backend: {{ push_backend | default('memory') }}
+{% if push_backend == 'valkey' %}
+  key_prefix: "agentup:push:"
+{% endif %}
+  validate_urls: {{ push_validate_urls | default(true) }}
+  retry_attempts: {{ push_retry_attempts | default(3) }}
+  timeout: {{ push_timeout | default(30) }}
+
+{% if has_state %}
+# State management configuration
+state_management:
+  enabled: true
+{% if state_backend == 'valkey' %}
+  backend: valkey
+  ttl: {{ state_ttl | default(3600) }}
+  config:
+    url: '${VALKEY_STATE_URL:valkey://localhost:6379}'
+    key_prefix: "agentup:state:"
+{% elif state_backend == 'memory' %}
+  backend: memory
+  ttl: {{ state_ttl | default(3600) }}
+  config: {}
+{% elif state_backend == 'file' %}
+  backend: file
+  ttl: {{ state_ttl | default(3600) }}
+  config:
+    storage_dir: "{{ state_storage_dir | default('./conversation_states') }}"
+{% endif %}
+{% if state_skill_overrides %}
+  skill_overrides:
+{% for skill_id, override in state_skill_overrides.items() %}
+    {{ skill_id }}:
+      enabled: {{ override.enabled | default(true) }}
+      ttl: {{ override.ttl }}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+# Logging configuration
+logging:
+  enabled: {{ logging_enabled | default(true) }}
+  level: "{{ log_level | default('INFO') }}"
+  format: "{{ log_format | default('text') }}"
+  
+  # Console output settings
+  console:
+    enabled: {{ console_logging | default(true) }}
+    colors: {{ console_colors | default(true) }}
+  
+  # File logging
+  file:
+    enabled: {{ file_logging | default(false) }}
+{% if file_logging %}
+    path: "{{ log_file_path | default('logs/' + project_name_snake + '.log') }}"
+    rotation: "{{ log_rotation | default('100 MB') }}"
+    retention: "{{ log_retention | default('7 days') }}"
+    compression: {{ log_compression | default(false) }}
+{% endif %}
+  
+  # Advanced features
+  correlation_id: {{ correlation_id | default(false) }}
+  request_logging: {{ request_logging | default(false) }}
+  
+{% if log_modules %}
+  # Module-specific log levels
+  modules:
+{% for module, level in log_modules.items() %}
+    {{ module }}: "{{ level }}"
+{% endfor %}
+{% endif %}
+  
+  # Uvicorn integration
+  uvicorn:
+    access_log: {{ uvicorn_access_log | default(false) }}
+    disable_default_handlers: true
+    use_colors: {{ uvicorn_colors | default(console_colors | default(true)) }}

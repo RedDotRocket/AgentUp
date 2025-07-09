@@ -12,11 +12,11 @@ def agent():
 @click.option(
     "--template",
     "-t",
-    default="standard",
-    type=click.Choice(["minimal", "standard", "full"], case_sensitive=False),
-    help="Project template (default: standard)",
+    default="minimal",
+    type=click.Choice(["minimal", "full"], case_sensitive=False),
+    help="Project template (default: minimal)",
 )
-@click.option("--quick", "-q", is_flag=True, help="Quick setup with standard features (non-interactive)")
+@click.option("--quick", "-q", is_flag=True, help="Quick setup with minimal features (non-interactive)")
 @click.option("--output-dir", "-o", type=click.Path(), help="Output directory")
 @click.option("--config", "-c", type=click.Path(exists=True), help="Use existing agent_config.yaml as template")
 @click.option("--no-git", is_flag=True, help="Skip git repository initialization")
@@ -26,13 +26,12 @@ def create(name, template, quick, output_dir, config, no_git):
     \b
     Templates:
       minimal  - Barebone agent (no AI, no external dependencies)
-      standard - AI-powered agent with MCP (recommended)
       full     - Enterprise agent with all features
 
     \b
     Examples:
-      agentup agent create                      # Interactive mode (standard template)
-      agentup agent create my-bot               # Standard template with name
+      agentup agent create                      # Interactive mode (minimal template)
+      agentup agent create my-bot               # Minimal template with name
       agentup agent create --template minimal   # Minimal template
       agentup agent create --template full      # Full template with all features
     """

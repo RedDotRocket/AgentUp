@@ -50,7 +50,7 @@ test-integration: ## Run bash integration tests only
 	./tests/integration/int.sh
 
 template-test-syntax: ## Test template syntax only (quick)
-	uv run python -c "from jinja2 import Environment, FileSystemLoader; env = Environment(loader=FileSystemLoader('src/agent/templates')); [env.get_template(t) for t in ['config/agent_config_minimal.yaml.j2', 'config/agent_config_standard.yaml.j2', 'config/agent_config_full.yaml.j2', 'config/agent_config_demo.yaml.j2']]"
+	uv run python -c "from jinja2 import Environment, FileSystemLoader; env = Environment(loader=FileSystemLoader('src/agent/templates')); [env.get_template(t) for t in ['config/agent_config_minimal.yaml.j2', 'config/agent_config_full.yaml.j2']]"
 	@echo "Template syntax validated"
 
 # Code quality
@@ -94,14 +94,6 @@ agent-create-minimal:
 		--output-dir ./test-agents/minimal
 	@echo "Minimal agent created in ./test-agents/minimal"
 
-agent-create-standard: ## Create standard test agent
-	@echo "Creating standard test agent..."
-	uv run agentup agent create \
-		--quick test-standard \
-		--template standard \
-		--no-git \
-		--output-dir ./test-agents/standard
-	@echo "Standard agent created in ./test-agents/standard"
 
 agent-create-advanced: ## Create advanced test agent
 	@echo "Creating advanced test agent..."
@@ -113,13 +105,13 @@ agent-create-advanced: ## Create advanced test agent
 	@echo "Advanced agent created in ./test-agents/advanced"
 
 agent-test: ## Test a generated agent
-	@if [ -d "./test-agents/standard" ]; then \
-		echo "Testing standard agent..."; \
-		cd ./test-agents/standard && \
+	@if [ -d "./test-agents/minimal" ]; then \
+		echo "Testing minimal agent..."; \
+		cd ./test-agents/minimal && \
 		uv run python -m pytest tests/ -v 2>/dev/null || echo "⚠️ Tests not available"; \
 		echo "Agent test completed"; \
 	else \
-		echo "❌ No test agent found. Run 'make agent-create-standard' first"; \
+		echo "❌ No test agent found. Run 'make agent-create-minimal' first"; \
 	fi
 
 # Development server commands
@@ -127,12 +119,12 @@ dev-server: ## Start development server for reference implementation
 	uv run uvicorn src.agent.main:app --reload --port 8000
 
 dev-server-test: ## Start test agent server
-	@if [ -d "./test-agents/standard" ]; then \
+	@if [ -d "./test-agents/minimal" ]; then \
 		echo "Starting test agent server..."; \
-		cd ./test-agents/standard && \
-		uv run uvicorn src.agent.main:app --reload --port 8001; \
+		cd ./test-agents/minimal && \
+		uv run uvicorn agentup.api.app:app --reload --port 8001; \
 	else \
-		echo "❌ No test agent found. Run 'make agent-create-standard' first"; \
+		echo "❌ No test agent found. Run 'make agent-create-minimal' first"; \
 	fi
 
 
@@ -241,7 +233,7 @@ dev-full: ## Full development validation
 	make clean
 	make dev-setup
 	make validate-all
-	make agent-create-standard
+	make agent-create-minimal
 	make agent-test
 	@echo "Full development validation completed!"
 

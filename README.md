@@ -63,8 +63,8 @@ pip install agentup
 # Interactive setup with guided configuration
 agentup agent create my-agent
 
-# Quick start with standard template
-agentup agent create my-agent --template standard
+# Quick start with minimal template
+agentup agent create my-agent --template minimal
 
 # Navigate to your agent
 cd my-agent

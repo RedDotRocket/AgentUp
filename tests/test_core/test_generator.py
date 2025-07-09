@@ -393,7 +393,7 @@ class TestConfigurationGeneration:
 
     def test_build_mcp_config(self, temp_dir: Path):
         """Test MCP configuration building."""
-        config = create_test_config("mcp-test", "standard", ["mcp"])
+        config = create_test_config("mcp-test", "full", ["mcp"])
         generator = ProjectGenerator(temp_dir, config)
 
         mcp_config = generator._build_mcp_config()

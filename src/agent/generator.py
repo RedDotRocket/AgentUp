@@ -1,7 +1,6 @@
 import re
 import secrets
 import string
-import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -235,8 +234,8 @@ class ProjectGenerator:
                 state_backend = "memory"
             elif self.template_name == "full":
                 state_backend = "valkey"
-            else:  # standard
-                state_backend = "file"
+            else:
+                state_backend = "memory"
 
         context["state_backend"] = state_backend
 
@@ -389,16 +388,6 @@ Always be helpful, accurate, and maintain a friendly tone. You are designed to a
                     "patterns": [".*"],
                 }
             ]
-        elif self.template_name == "standard":
-            return [
-                {
-                    "skill_id": "ai_assistant",
-                    "name": "AI Assistant",
-                    "description": "General purpose AI assistant",
-                    "input_mode": "text",
-                    "output_mode": "text",
-                }
-            ]
         elif self.template_name == "full":
             # Full template gets multiple skills
             return [
@@ -440,12 +429,8 @@ Always be helpful, accurate, and maintain a friendly tone. You are designed to a
 
         # If no services selected, use template defaults
         if not selected_services:
-            # Standard template gets basic OpenAI
-            if self.template_name == "standard":
-                services["openai"] = self._build_llm_service_config("openai")
-
             # Full template gets everything
-            elif self.template_name == "full":
+            if self.template_name == "full":
                 services["openai"] = self._build_llm_service_config("openai")
                 services["valkey"] = {
                     "type": "cache",
@@ -492,17 +477,7 @@ Always be helpful, accurate, and maintain a friendly tone. You are designed to a
         }
 
         # Add template-specific MCP servers
-        if self.template_name == "standard":
-            # Basic filesystem access for standard template
-            mcp_config["client"]["servers"] = [
-                {
-                    "name": "filesystem",
-                    "command": "npx",
-                    "args": ["-y", "@modelcontextprotocol/server-filesystem", tempfile.gettempdir()],
-                    "env": {},
-                }
-            ]
-        elif self.template_name == "full":
+        if self.template_name == "full":
             # Multiple MCP servers for full template
             mcp_config["client"]["servers"] = [
                 {

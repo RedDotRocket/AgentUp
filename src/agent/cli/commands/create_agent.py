@@ -61,9 +61,7 @@ custom_style = Style(
 @click.command()
 @click.argument("name", required=False)
 @click.option("--template", "-t", help="Project template to use")
-@click.option(
-    "--quick", "-q", is_flag=True, help="Quick setup with standard features (middleware, services, auth, testing)"
-)
+@click.option("--quick", "-q", is_flag=True, help="Quick setup with minimal features (basic handlers only)")
 @click.option("--minimal", is_flag=True, help="Create with minimal features (basic handlers only)")
 @click.option("--output-dir", "-o", type=click.Path(), help="Output directory")
 @click.option("--config", "-c", type=click.Path(exists=True), help="Use existing agent_config.yaml as template")
@@ -85,7 +83,7 @@ def create_agent(
     Examples:
         agentup agent create                    # Interactive mode with git init
         agentup agent create my-agent           # Interactive with name
-        agentup agent create --quick my-agent   # Quick setup with standard features
+        agentup agent create --quick my-agent   # Quick setup with minimal features
         agentup agent create --minimal my-agent # Minimal setup (basic handlers only)
         agentup agent create --no-git my-agent  # Skip git initialization
         agentup agent create --template chatbot my-chatbot
@@ -126,9 +124,9 @@ def create_agent(
                 click.echo("Cancelled.")
                 return
 
-    # Quick mode - use specified template or default to standard
+    # Quick mode - use specified template or default to minimal
     if quick:
-        selected_template = template or "standard"
+        selected_template = template or "minimal"
         project_config["template"] = selected_template
         project_config["description"] = f"AI Agent {name} Project."
         # Use template's features
@@ -142,8 +140,8 @@ def create_agent(
                 feature_config["state_backend"] = "memory"
             elif selected_template == "full":
                 feature_config["state_backend"] = "valkey"
-            else:  # standard
-                feature_config["state_backend"] = "file"
+            else:  # minimal
+                feature_config["state_backend"] = "memory"
         project_config["feature_config"] = feature_config
     # Minimal mode - use minimal template with no features
     elif minimal:
