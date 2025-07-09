@@ -76,14 +76,26 @@ ai:
     
     Always be helpful, accurate, and maintain a friendly professional tone.
 
+# Cache configuration
+{% if has_middleware and 'cache' in feature_config.get('middleware', []) %}
+cache:
+{% if feature_config.get('cache_backend') == 'valkey' %}
+  type: valkey
+  config:
+    url: '${VALKEY_URL:valkey://localhost:6379}'
+    db: 1                    # Use DB 1 for cache
+    max_connections: 10
+    default_ttl: 300         # Default TTL for cache items in seconds (5 minutes)
+{% else %}
+  type: memory
+  config:
+    max_size: 1000           # Maximum number of items in memory cache
+    default_ttl: 300         # Default TTL for cache items in seconds (5 minutes)
+{% endif %}
+{% endif %}
+
 # External services configuration (non-LLM services)
-services:
-  valkey:
-    type: cache
-    config:
-      url: '${VALKEY_URL:valkey://localhost:6379}'
-      db: 1                    # Use DB 1 for cache
-      max_connections: 10
+services: {}
 
 # Model Context Protocol configuration
 mcp:

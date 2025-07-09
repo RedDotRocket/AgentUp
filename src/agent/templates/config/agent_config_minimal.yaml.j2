@@ -75,6 +75,24 @@ security:
     keys:
       - "{{ generate_api_key() }}"
 
+# Cache configuration
+{% if has_middleware and 'cache' in feature_config.get('middleware', []) %}
+cache:
+{% if feature_config.get('cache_backend') == 'valkey' %}
+  type: valkey
+  config:
+    url: '${VALKEY_URL:valkey://localhost:6379}'
+    db: 1                    # Use DB 1 for cache
+    max_connections: 10
+    default_ttl: 300         # Default TTL for cache items in seconds (5 minutes)
+{% else %}
+  type: memory
+  config:
+    max_size: 1000           # Maximum number of items in memory cache
+    default_ttl: 300         # Default TTL for cache items in seconds (5 minutes)
+{% endif %}
+{% endif %}
+
 # Middleware configuration
 middleware:
   - name: logged
@@ -82,6 +100,11 @@ middleware:
       log_level: 20  # INFO level
   - name: timed
     params: {}
+{% if has_middleware and 'cache' in feature_config.get('middleware', []) %}
+  - name: cached
+    params:
+      ttl: 300  # 5 minutes
+{% endif %}
 
 # Push notifications configuration
 push_notifications:
@@ -89,8 +112,6 @@ push_notifications:
   backend: memory             # Simple memory backend for minimal template
   validate_urls: false        # Disable validation for minimal setup
 
-# Cache management - Not needed for minimal template (no external APIs)
-# Add cache configuration if you integrate external services
 
 # State management configuration
 {% if has_state %}

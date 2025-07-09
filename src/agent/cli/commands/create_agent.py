@@ -282,6 +282,19 @@ def configure_features(features: list) -> dict[str, Any]:
 
         config["middleware"] = selected if selected else []
 
+        # If cache is selected, ask for cache backend
+        if "cache" in (selected or []):
+            cache_backend_choice = questionary.select(
+                "Select cache backend:",
+                choices=[
+                    questionary.Choice("Memory (development, fast)", value="memory"),
+                    questionary.Choice("Valkey/Redis (production, persistent)", value="valkey"),
+                ],
+                style=custom_style,
+            ).ask()
+
+            config["cache_backend"] = cache_backend_choice
+
     if "state" in features:
         state_backend_choice = questionary.select(
             "Select state management backend:",

@@ -106,13 +106,38 @@ _rate_limiter = RateLimiter()
 
 
 # Caching
-class SimpleCache:
+class CacheBackend:
+    """Base class for cache backends."""
+
+    def __init__(self, default_ttl: int = 300):
+        self.default_ttl = default_ttl
+
+    async def get(self, key: str) -> Any | None:
+        """Get value from cache."""
+        raise NotImplementedError
+
+    async def set(self, key: str, value: Any, ttl: int | None = None) -> None:
+        """Set value in cache with TTL."""
+        raise NotImplementedError
+
+    async def delete(self, key: str) -> None:
+        """Delete value from cache."""
+        raise NotImplementedError
+
+    async def clear(self) -> None:
+        """Clear all cache entries."""
+        raise NotImplementedError
+
+
+class MemoryCache(CacheBackend):
     """Simple in-memory cache with TTL."""
 
-    def __init__(self):
+    def __init__(self, max_size: int = 1000, default_ttl: int = 300):
+        super().__init__(default_ttl)
         self.cache: dict[str, dict[str, Any]] = {}
+        self.max_size = max_size
 
-    def get(self, key: str) -> Any | None:
+    async def get(self, key: str) -> Any | None:
         """Get value from cache."""
         if key in self.cache:
             entry = self.cache[key]
@@ -125,25 +150,223 @@ class SimpleCache:
                 logger.debug(f"Cache expired for key: {key}")
         return None
 
-    def set(self, key: str, value: Any, ttl: int = 300) -> None:
+    async def set(self, key: str, value: Any, ttl: int | None = None) -> None:
         """Set value in cache with TTL."""
-        self.cache[key] = {"value": value, "expires_at": time.time() + ttl}
-        logger.debug(f"Cache set for key: {key}, TTL: {ttl}s")
+        # Use provided TTL or fall back to default
+        effective_ttl = ttl if ttl is not None else self.default_ttl
 
-    def delete(self, key: str) -> None:
+        # Simple eviction: remove oldest entry if at capacity
+        if len(self.cache) >= self.max_size:
+            oldest_key = next(iter(self.cache))
+            del self.cache[oldest_key]
+
+        self.cache[key] = {"value": value, "expires_at": time.time() + effective_ttl}
+        logger.debug(f"Cache set for key: {key}, TTL: {effective_ttl}s")
+
+    async def delete(self, key: str) -> None:
         """Delete value from cache."""
         if key in self.cache:
             del self.cache[key]
             logger.debug(f"Cache deleted for key: {key}")
 
-    def clear(self) -> None:
+    async def clear(self) -> None:
         """Clear all cache entries."""
         self.cache.clear()
         logger.debug("Cache cleared")
 
 
-# Global cache
+class ValkeyCache(CacheBackend):
+    """Valkey/Redis cache backend."""
+
+    def __init__(self, url: str, db: int = 1, max_connections: int = 10, default_ttl: int = 300):
+        super().__init__(default_ttl)
+        self.url = url
+        self.db = db
+        self.max_connections = max_connections
+        self._client = None
+
+    async def _get_client(self):
+        """Get Valkey client, creating if needed."""
+        if self._client is None:
+            try:
+                # Try valkey first, then fall back to redis
+                try:
+                    import valkey.asyncio as valkey
+
+                    self._client = valkey.from_url(
+                        self.url, db=self.db, max_connections=self.max_connections, decode_responses=True
+                    )
+                    logger.info(f"Connected to Valkey at {self.url}")
+                except ImportError:
+                    # Fallback to redis library for compatibility
+                    import redis.asyncio as redis
+
+                    self._client = redis.from_url(
+                        self.url, db=self.db, max_connections=self.max_connections, decode_responses=True
+                    )
+                    logger.info(f"Connected to Redis at {self.url}")
+            except ImportError:
+                logger.error(
+                    "Neither valkey nor redis library available. Install with: pip install valkey or pip install redis"
+                )
+                raise
+        return self._client
+
+    async def get(self, key: str) -> Any | None:
+        """Get value from cache."""
+        try:
+            client = await self._get_client()
+            value = await client.get(key)
+            if value:
+                logger.debug(f"Cache hit for key: {key}")
+                # Try to deserialize JSON
+                try:
+                    import json
+
+                    return json.loads(value)
+                except (json.JSONDecodeError, TypeError):
+                    return value
+            return None
+        except Exception as e:
+            logger.error(f"Cache get error for key {key}: {e}")
+            return None
+
+    async def set(self, key: str, value: Any, ttl: int | None = None) -> None:
+        """Set value in cache with TTL."""
+        try:
+            client = await self._get_client()
+            # Use provided TTL or fall back to default
+            effective_ttl = ttl if ttl is not None else self.default_ttl
+
+            # Serialize to JSON if not string
+            if not isinstance(value, str):
+                import json
+
+                value = json.dumps(value)
+            await client.setex(key, effective_ttl, value)
+            logger.debug(f"Cache set for key: {key}, TTL: {effective_ttl}s")
+        except Exception as e:
+            logger.error(f"Cache set error for key {key}: {e}")
+
+    async def delete(self, key: str) -> None:
+        """Delete value from cache."""
+        try:
+            client = await self._get_client()
+            await client.delete(key)
+            logger.debug(f"Cache deleted for key: {key}")
+        except Exception as e:
+            logger.error(f"Cache delete error for key {key}: {e}")
+
+    async def clear(self) -> None:
+        """Clear all cache entries."""
+        try:
+            client = await self._get_client()
+            await client.flushdb()
+            logger.debug("Cache cleared")
+        except Exception as e:
+            logger.error(f"Cache clear error: {e}")
+
+
+# Legacy SimpleCache for backward compatibility
+class SimpleCache:
+    """Legacy simple cache - delegates to memory cache."""
+
+    def __init__(self):
+        self._backend = MemoryCache()
+
+    @property
+    def cache(self) -> dict[str, dict[str, Any]]:
+        """Access underlying cache for backward compatibility."""
+        return self._backend.cache
+
+    def get(self, key: str) -> Any | None:
+        """Get value from cache (sync version)."""
+        import asyncio
+
+        try:
+            return asyncio.run(self._backend.get(key))
+        except RuntimeError:
+            # Already in event loop
+            return None
+
+    def set(self, key: str, value: Any, ttl: int | None = None) -> None:
+        """Set value in cache (sync version)."""
+        import asyncio
+
+        try:
+            asyncio.run(self._backend.set(key, value, ttl))
+        except RuntimeError:
+            # Already in event loop
+            pass
+
+    def delete(self, key: str) -> None:
+        """Delete value from cache (sync version)."""
+        import asyncio
+
+        try:
+            asyncio.run(self._backend.delete(key))
+        except RuntimeError:
+            # Already in event loop
+            pass
+
+    def clear(self) -> None:
+        """Clear all cache entries (sync version)."""
+        import asyncio
+
+        try:
+            asyncio.run(self._backend.clear())
+        except RuntimeError:
+            # Already in event loop
+            pass
+
+
+# Global cache instance - will be configured based on agent config
 _cache = SimpleCache()
+_cache_backend: CacheBackend | None = None
+
+
+def configure_cache_backend(config: dict[str, Any]) -> CacheBackend:
+    """Configure cache backend based on agent configuration."""
+    cache_config = config.get("cache", {})
+    cache_type = cache_config.get("type", "memory")
+    cache_settings = cache_config.get("config", {})
+
+    # Extract default_ttl from cache config
+    default_ttl = cache_settings.get("default_ttl", 300)
+
+    if cache_type == "valkey":
+        url = cache_settings.get("url", "redis://localhost:6379")
+        db = cache_settings.get("db", 1)
+        max_connections = cache_settings.get("max_connections", 10)
+        return ValkeyCache(url, db, max_connections, default_ttl)
+    elif cache_type == "memory":
+        max_size = cache_settings.get("max_size", 1000)
+        return MemoryCache(max_size, default_ttl)
+    else:
+        logger.warning(f"Unknown cache type: {cache_type}, falling back to memory")
+        return MemoryCache(1000, default_ttl)
+
+
+def get_cache_backend() -> CacheBackend:
+    """Get the configured cache backend."""
+    global _cache_backend
+    if _cache_backend is None:
+        # Load configuration and create backend
+        try:
+            # Try relative import first (development context)
+            try:
+                from ..config import load_config
+            except ImportError:
+                # Try installed package import (agent context)
+                from agent.config import load_config
+
+            config = load_config()
+            _cache_backend = configure_cache_backend(config)
+            logger.info(f"Cache backend configured: {type(_cache_backend).__name__}")
+        except Exception as e:
+            logger.error(f"Failed to configure cache backend: {e}")
+            _cache_backend = MemoryCache()
+    return _cache_backend
 
 
 # Retry logic
@@ -198,24 +421,60 @@ def rate_limited(requests_per_minute: int = 60):
     return decorator
 
 
-def cached(ttl: int = 300):
+def cached(ttl: int | None = None):
     """Caching middleware decorator."""
 
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         async def wrapper(*args, **kwargs):
-            # Generate cache key
-            key_data = f"{func.__name__}:{str(args)}:{str(kwargs)}"
+            # Generate cache key based on function name and message content
+            # Extract content from Task object if present
+            cache_key_parts = [func.__name__]
+
+            for arg in args:
+                if hasattr(arg, "history") and arg.history:
+                    # Extract message content from Task history
+                    try:
+                        latest_message = arg.history[-1]  # Get latest message
+                        if hasattr(latest_message, "parts") and latest_message.parts:
+                            # Extract text from message parts
+                            text_parts = []
+                            for part in latest_message.parts:
+                                if hasattr(part, "root") and hasattr(part.root, "text"):
+                                    text_parts.append(part.root.text)
+                            if text_parts:
+                                cache_key_parts.append(":".join(text_parts))
+                        elif hasattr(latest_message, "content"):
+                            cache_key_parts.append(str(latest_message.content))
+                    except (AttributeError, IndexError):
+                        # Fallback to string representation if structure is unexpected
+                        cache_key_parts.append(str(arg))
+                else:
+                    # For non-Task arguments, use string representation
+                    cache_key_parts.append(str(arg))
+
+            # Add kwargs to cache key
+            for key, value in kwargs.items():
+                cache_key_parts.append(f"{key}={value}")
+
+            key_data = ":".join(cache_key_parts)
             cache_key = hashlib.sha256(key_data.encode()).hexdigest()
 
+            # Get configured cache backend
+            cache_backend = get_cache_backend()
+
             # Try to get from cache
-            result = _cache.get(cache_key)
+            result = await cache_backend.get(cache_key)
             if result is not None:
+                logger.debug(f"Cache hit for key: {cache_key[:16]}...")
                 return result
 
             # Execute function and cache result
+            # If TTL is provided, use it; otherwise cache backend will use its default_ttl
             result = await func(*args, **kwargs)
-            _cache.set(cache_key, result, ttl)
+            await cache_backend.set(cache_key, result, ttl)
+            ttl_info = f"TTL: {ttl}s" if ttl is not None else f"TTL: {cache_backend.default_ttl}s (default)"
+            logger.debug(f"Cache miss, stored result for key: {cache_key[:16]}... {ttl_info}")
             return result
 
         return wrapper
@@ -343,7 +602,7 @@ def apply_rate_limiting(handler: Callable, requests_per_minute: int = 60) -> Cal
     return rate_limited(requests_per_minute)(handler)
 
 
-def apply_caching(handler: Callable, ttl: int = 300) -> Callable:
+def apply_caching(handler: Callable, ttl: int | None = None) -> Callable:
     """Apply caching to a handler."""
     return cached(ttl)(handler)
 
@@ -355,25 +614,94 @@ def apply_retry(handler: Callable, max_attempts: int = 3) -> Callable:
 
 # Cache management functions
 def clear_cache() -> None:
-    """Clear all cached data."""
-    _cache.clear()
+    """Clear all cached data (sync version for backward compatibility)."""
+    cache_backend = get_cache_backend()
+
+    # Use the legacy SimpleCache clear method for backward compatibility
+    if hasattr(cache_backend, "clear"):
+        import asyncio
+
+        try:
+            asyncio.run(cache_backend.clear())
+        except RuntimeError:
+            # Already in event loop - use legacy cache
+            _cache.clear()
+    else:
+        _cache.clear()
+
+
+async def clear_cache_async() -> None:
+    """Clear all cached data (async version)."""
+    cache_backend = get_cache_backend()
+    await cache_backend.clear()
 
 
 def get_cache_stats() -> dict[str, Any]:
-    """Get cache statistics."""
-    total_entries = len(_cache.cache)
-    expired_entries = 0
-    current_time = time.time()
+    """Get cache statistics (sync version for backward compatibility)."""
+    cache_backend = get_cache_backend()
 
-    for entry in _cache.cache.values():
-        if current_time >= entry["expires_at"]:
-            expired_entries += 1
+    if isinstance(cache_backend, MemoryCache):
+        total_entries = len(cache_backend.cache)
+        expired_entries = 0
+        current_time = time.time()
 
-    return {
-        "total_entries": total_entries,
-        "expired_entries": expired_entries,
-        "active_entries": total_entries - expired_entries,
-    }
+        for entry in cache_backend.cache.values():
+            if current_time >= entry["expires_at"]:
+                expired_entries += 1
+
+        return {
+            "backend": "memory",
+            "total_entries": total_entries,
+            "expired_entries": expired_entries,
+            "active_entries": total_entries - expired_entries,
+        }
+    elif isinstance(cache_backend, ValkeyCache):
+        # For sync version, return basic info
+        return {
+            "backend": "valkey",
+            "url": cache_backend.url,
+            "db": cache_backend.db,
+            "max_connections": cache_backend.max_connections,
+        }
+    else:
+        return {"backend": "unknown"}
+
+
+async def get_cache_stats_async() -> dict[str, Any]:
+    """Get cache statistics (async version)."""
+    cache_backend = get_cache_backend()
+
+    if isinstance(cache_backend, MemoryCache):
+        total_entries = len(cache_backend.cache)
+        expired_entries = 0
+        current_time = time.time()
+
+        for entry in cache_backend.cache.values():
+            if current_time >= entry["expires_at"]:
+                expired_entries += 1
+
+        return {
+            "backend": "memory",
+            "total_entries": total_entries,
+            "expired_entries": expired_entries,
+            "active_entries": total_entries - expired_entries,
+        }
+    elif isinstance(cache_backend, ValkeyCache):
+        try:
+            client = await cache_backend._get_client()
+            info = await client.info("memory")
+            return {
+                "backend": "valkey",
+                "used_memory": info.get("used_memory", 0),
+                "used_memory_human": info.get("used_memory_human", "0B"),
+                "max_memory": info.get("maxmemory", 0),
+                "connected_clients": info.get("connected_clients", 0),
+            }
+        except Exception as e:
+            logger.error(f"Error getting Valkey stats: {e}")
+            return {"backend": "valkey", "error": str(e)}
+    else:
+        return {"backend": "unknown"}
 
 
 # Rate limiter management functions
@@ -409,6 +737,11 @@ __all__ = [
     "get_cache_stats",
     "reset_rate_limits",
     "get_rate_limit_stats",
+    "configure_cache_backend",
+    "get_cache_backend",
+    "CacheBackend",
+    "MemoryCache",
+    "ValkeyCache",
     "MiddlewareError",
     "RateLimitError",
     "ValidationError",

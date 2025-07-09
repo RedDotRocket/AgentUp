@@ -133,15 +133,27 @@ ai:
     
     Always prioritize accuracy, security, and user experience.
 
+# Cache configuration
+{% if has_middleware and 'cache' in feature_config.get('middleware', []) %}
+cache:
+{% if feature_config.get('cache_backend') == 'valkey' %}
+  type: valkey
+  config:
+    url: '${VALKEY_CACHE_URL:valkey://localhost:6379}'
+    db: 1                    # Use DB 1 for cache (DB 0 for state)
+    max_connections: 20
+    retry_on_timeout: true
+    default_ttl: 300         # Default TTL for cache items in seconds (5 minutes)
+{% else %}
+  type: memory
+  config:
+    max_size: 1000           # Maximum number of items in memory cache
+    default_ttl: 300         # Default TTL for cache items in seconds (5 minutes)
+{% endif %}
+{% endif %}
+
 # External services configuration - Full enterprise setup (LLM configuration moved to ai_provider section)
-services:
-  valkey:
-    type: cache
-    config:
-      url: '${VALKEY_CACHE_URL:valkey://localhost:6379}'
-      db: 1                    # Use DB 1 for cache (DB 0 for state)
-      max_connections: 20
-      retry_on_timeout: true
+services: {}
 
 # Model Context Protocol configuration - Full enterprise setup
 mcp:
@@ -198,12 +210,6 @@ push_notifications:
   retry_attempts: 3           # Number of retry attempts for failed webhooks
   timeout: 30                 # Webhook request timeout in seconds
 
-# Cache management
-cache:
-  backend: valkey
-  default_ttl: 1800           # 30 minutes
-  key_prefix: "agentup:cache:"
-  enabled: true
 
 # State management configuration
 {% if has_state %}

@@ -9,7 +9,6 @@ def get_template_choices() -> list[questionary.Choice]:
         questionary.Choice(
             "Minimal - Barebone agent (no AI, no external dependencies)", value="minimal", shortcut_key="m"
         ),
-        questionary.Choice("Standard - AI-powered agent with MCP (recommended)", value="standard", shortcut_key="s"),
         questionary.Choice("Full - Enterprise agent with all features", value="full", shortcut_key="f"),
     ]
 
@@ -21,6 +20,8 @@ def get_feature_choices() -> list[questionary.Choice]:
         questionary.Choice("State Management (conversation persistence)", value="state"),
         questionary.Choice("AI Provider (ollama, openai, anthropic)", value="ai_provider"),
         questionary.Choice("Authentication (API Key, JWT, OAuth)", value="auth", checked=True),
+        questionary.Choice("MCP Integration (Model Context Protocol)", value="mcp", checked=True),
+        questionary.Choice("Push Notifications (webhooks)", value="custom"),
     ]
 
 
@@ -31,10 +32,6 @@ def get_template_features(template: str = None) -> dict[str, dict[str, Any]]:
             "features": [],
             "description": "Barebone agent with text processing only - no AI, no external dependencies",
         },
-        "standard": {
-            "features": ["middleware", "ai_provider", "auth", "mcp"],
-            "description": "AI-powered agent with MCP integration - recommended for most users",
-        },
         "full": {
             "features": [
                 "middleware",
@@ -42,6 +39,7 @@ def get_template_features(template: str = None) -> dict[str, dict[str, Any]]:
                 "ai_provider",
                 "auth",
                 "mcp",
+                "push_notifications",
             ],
             "description": "Enterprise-ready agent with all features including multiple MCP servers",
         },
