@@ -161,7 +161,7 @@ create_retry_test_handler() {
 
 @register_handler("retry_test")
 @retryable(max_attempts=3, backoff_factor=1, max_delay=10)
-@logged(log_level=logging.INFO)
+@timed()
 async def handle_retry_test(task: Task) -> str:
     """Test handler that simulates failures for retry testing."""
     import random

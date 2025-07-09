@@ -329,9 +329,8 @@ middleware:
   - name: cached
     params:
       ttl: 600  # Cache multi-modal processing results
-  - name: logged
-    params:
-      log_level: 20
+  - name: timed
+    params: {}
 
 skills:
   - skill_id: multimodal_chat

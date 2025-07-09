@@ -231,7 +231,7 @@ context = {
 ```yaml
 {% if has_middleware %}
 middleware:
-  - name: logged
+  - name: timed
     params: {}
 {% if has_middleware and 'cache' in feature_config.get('middleware', []) %}
   - name: cached

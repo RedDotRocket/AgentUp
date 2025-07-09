@@ -23,7 +23,7 @@ cat >> src/agent/handlers.py << 'EOF'
 
 @register_handler("retry_test")
 @retryable(max_retries=3, delay=1, backoff=2)
-@logged(level='INFO')
+@timed()
 async def handle_retry_test(task: Task) -> str:
     """Test handler that randomly fails to demonstrate retry logic."""
     import random

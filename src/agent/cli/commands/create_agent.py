@@ -273,7 +273,6 @@ def configure_features(features: list) -> dict[str, Any]:
             questionary.Choice("Caching", value="cache", checked=True),
             questionary.Choice("Input Validation", value="validation"),
             questionary.Choice("Retry Logic", value="retry"),
-            questionary.Choice("Logging", value="logging", checked=True),
         ]
 
         selected = questionary.checkbox(

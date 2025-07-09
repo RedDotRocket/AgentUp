@@ -528,12 +528,6 @@ Always be helpful, accurate, and maintain a friendly tone. You are designed to a
         # Always include basic middleware for A2A
         middleware.extend(
             [
-                {
-                    "name": "logged",
-                    "params": {
-                        "log_level": 20  # INFO level
-                    },
-                },
                 {"name": "timed", "params": {}},
             ]
         )

@@ -127,20 +127,10 @@ def setup_logging(config: LoggingConfig | None = None, json_logs: bool | None = 
     if config.format == "json":
         log_renderer = structlog.processors.JSONRenderer()
     else:
-        # Use plain ConsoleRenderer with normal font weight
+        # Use default ConsoleRenderer with standard structlog colors
         log_renderer = structlog.dev.ConsoleRenderer(
             colors=config.console.get("colors", True),
             pad_event=25,  # Consistent padding
-            level_styles={
-                "CRITICAL": "\x1b[91m",  # Red, no bold
-                "EXCEPTION": "\x1b[91m",  # Red, no bold
-                "ERROR": "\x1b[91m",  # Red, no bold
-                "WARN": "\x1b[93m",  # Yellow, no bold
-                "WARNING": "\x1b[93m",  # Yellow, no bold
-                "INFO": "\x1b[92m",  # Green, no bold
-                "DEBUG": "\x1b[94m",  # Blue, no bold
-                "NOTSET": "\x1b[90m",  # Gray, no bold
-            },
         )
 
     formatter = structlog.stdlib.ProcessorFormatter(

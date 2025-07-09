@@ -1,8 +1,5 @@
-"""Comprehensive tests for the middleware system."""
-
 import asyncio
 import functools
-import logging
 import time
 from unittest.mock import patch
 
@@ -24,7 +21,6 @@ from agent.middleware import (
     execute_with_retry,
     get_cache_stats,
     get_rate_limit_stats,
-    logged,
     rate_limited,
     reset_rate_limits,
     retryable,
@@ -384,21 +380,6 @@ class TestMiddlewareDecorators:
         assert call_count == 3
 
     @pytest.mark.asyncio
-    async def test_logged_decorator(self):
-        """Test logged decorator."""
-        with patch("agent.middleware.logger") as mock_logger:
-
-            @logged(log_level=logging.INFO)
-            async def test_func():
-                return "success"
-
-            result = await test_func()
-            assert result == "success"
-
-            # Verify logging calls
-            assert mock_logger.log.call_count >= 2  # Start and completion logs
-
-    @pytest.mark.asyncio
     async def test_timed_decorator(self):
         """Test timed decorator."""
         with patch("agent.middleware.logger") as mock_logger:
@@ -440,7 +421,6 @@ class TestMiddlewareDecorators:
 
         @with_middleware(
             [
-                {"name": "logged", "params": {"log_level": logging.DEBUG}},
                 {"name": "timed", "params": {}},
             ]
         )
@@ -471,7 +451,6 @@ class TestMiddlewareComposition:
         @rate_limited(requests_per_minute=3600)  # High rate limit to avoid interference
         @cached(ttl=300)
         @timed()
-        @logged(log_level=logging.INFO)
         async def test_func(arg):
             nonlocal call_count
             call_count += 1
@@ -493,16 +472,12 @@ class TestMiddlewareComposition:
         """Test middleware behavior when wrapped function raises exception."""
 
         @rate_limited(requests_per_minute=3600)  # High rate limit to avoid interference
-        @logged(log_level=logging.INFO)
         async def test_func():
             raise ValueError("Test exception")
 
-        with patch("agent.middleware.logger") as mock_logger:
-            with pytest.raises(ValueError, match="Test exception"):
-                await test_func()
-
-            # Verify error logging
-            mock_logger.error.assert_called()
+        # Test that middleware doesn't interfere with exception propagation
+        with pytest.raises(ValueError, match="Test exception"):
+            await test_func()
 
 
 class TestUtilityFunctions:

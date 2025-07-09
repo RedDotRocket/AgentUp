@@ -542,7 +542,7 @@ def validate_middleware_section(middleware: list[dict[str, Any]], errors: list[s
         errors.append("Middleware section must be a list")
         return
 
-    valid_middleware_names = {"logged", "timed", "cached", "rate_limited", "retryable", "validated"}
+    valid_middleware_names = {"timed", "cached", "rate_limited", "retryable", "validated"}
 
     for i, middleware_config in enumerate(middleware):
         if not isinstance(middleware_config, dict):
@@ -568,10 +568,6 @@ def validate_middleware_section(middleware: list[dict[str, Any]], errors: list[s
         elif middleware_name == "rate_limited" and "requests_per_minute" in params:
             if not isinstance(params["requests_per_minute"], int) or params["requests_per_minute"] <= 0:
                 errors.append("Rate limited middleware 'requests_per_minute' parameter must be a positive integer")
-
-        elif middleware_name == "logged" and "log_level" in params:
-            if not isinstance(params["log_level"], int) or not (0 <= params["log_level"] <= 50):
-                errors.append("Logged middleware 'log_level' parameter must be an integer between 0-50")
 
     click.echo(
         f"{click.style('✓', fg='green')} Middleware configuration validated ({len(middleware)} middleware items)"

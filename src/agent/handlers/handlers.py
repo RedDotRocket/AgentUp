@@ -7,7 +7,7 @@ from a2a.types import Task
 from ..config import load_config
 
 # Import middleware decorators
-from ..middleware import logged, rate_limited, retryable, timed
+from ..middleware import rate_limited, retryable, timed
 
 # Load agent config to pull in project name
 _config = load_config()
@@ -48,16 +48,10 @@ except ImportError:
 
 # Optional middleware decorators (no-ops if unavailable)
 try:
-    from ..middleware import logged, rate_limited, retryable, timed, with_middleware
+    from ..middleware import rate_limited, retryable, timed, with_middleware
 except ImportError:
 
     def rate_limited(requests_per_minute=60):
-        def decorator(f):
-            return f
-
-        return decorator
-
-    def logged(level=None):
         def decorator(f):
             return f
 

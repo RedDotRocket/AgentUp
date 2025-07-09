@@ -1,9 +1,6 @@
-"""Middleware system for handler functions."""
-
 import asyncio
 import functools
 import hashlib
-import logging
 import time
 from collections import defaultdict
 from collections.abc import Callable
@@ -496,30 +493,6 @@ def retryable(max_attempts: int = 3, backoff_factor: float = 1.0, max_delay: flo
     return decorator
 
 
-def logged(log_level: int = logging.INFO):
-    """Logging middleware decorator."""
-
-    def decorator(func: Callable) -> Callable:
-        @functools.wraps(func)
-        async def wrapper(*args, **kwargs):
-            start_time = time.time()
-            logger.log(log_level, f"Starting {func.__name__}")
-
-            try:
-                result = await func(*args, **kwargs)
-                execution_time = time.time() - start_time
-                logger.log(log_level, f"Completed {func.__name__} in {execution_time:.3f}s")
-                return result
-            except Exception as e:
-                execution_time = time.time() - start_time
-                logger.error(f"Failed {func.__name__} after {execution_time:.3f}s: {e}")
-                raise
-
-        return wrapper
-
-    return decorator
-
-
 def timed():
     """Timing middleware decorator that logs execution time."""
 
@@ -578,8 +551,6 @@ def with_middleware(middleware_configs: list[dict[str, Any]]):
                 wrapped_func = cached(**params)(wrapped_func)
             elif middleware_name == "retryable":
                 wrapped_func = retryable(**params)(wrapped_func)
-            elif middleware_name == "logged":
-                wrapped_func = logged(**params)(wrapped_func)
             elif middleware_name == "timed":
                 wrapped_func = timed()(wrapped_func)
             elif middleware_name == "validated":
@@ -719,7 +690,6 @@ def get_rate_limit_stats() -> dict[str, Any]:
 _registry.register("rate_limited", rate_limited)
 _registry.register("cached", cached)
 _registry.register("retryable", retryable)
-_registry.register("logged", logged)
 _registry.register("timed", timed)
 _registry.register("validated", validated)
 
@@ -729,7 +699,6 @@ __all__ = [
     "rate_limited",
     "cached",
     "retryable",
-    "logged",
     "timed",
     "validated",
     "with_middleware",

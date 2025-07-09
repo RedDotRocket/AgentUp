@@ -161,12 +161,12 @@ def test_middleware_integration():
     
     try:
         # Test that existing middleware still works with new logging
-        from agent.middleware import logged
+        from agent.middleware import timed
         from agent.config.logging import get_logger
         
         logger = get_logger("test_middleware")
         
-        @logged(log_level=20)  # INFO level
+        @timed()  # Use timed middleware instead of logged
         async def test_function():
             logger.info("Inside middleware-wrapped function")
             return "success"

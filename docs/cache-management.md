@@ -184,7 +184,6 @@ Or disable only caching while keeping other middleware:
 skills:
   - skill_id: real_time_data
     middleware_override:
-      - name: logged
       - name: timed
       - name: rate_limited
       # Notice: no 'cached' middleware = caching disabled

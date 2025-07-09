@@ -94,7 +94,7 @@ services:
 **Status:** ✅ **Fully Implemented and Auto-Applied**
 
 **Current Implementation:**
-- Middleware decorators fully implemented: `@cached()`, `@rate_limited()`, `@retryable()`, `@logged()`, `@timed()`
+- Middleware decorators fully implemented: `@cached()`, `@rate_limited()`, `@retryable()`, `@timed()`
 - Configuration system exists in `agent_config.yaml`
 - Template generation includes middleware config
 - **NEW:** Automatic application system implemented
@@ -109,8 +109,8 @@ services:
 ```yaml
 # Middleware config (now automatically applied to all handlers)
 middleware:
-  - name: logged
-    params: {log_level: 20}
+  - name: timed
+    params: {}
   - name: cached
     params: {ttl: 300}
   - name: rate_limited
@@ -269,8 +269,8 @@ The old skills system applied features per-skill, which doesn't fit the new arch
 ```python
 # handlers.py - Manual application required
 @cached(ttl=300)
-@rate_limited(requests_per_minute=60)  
-@logged()
+@rate_limited(requests_per_minute=60)
+@timed()
 async def my_handler(task):
     # handler logic
 ```
@@ -354,8 +354,8 @@ features:
   middleware:
     auto_apply: true
     global_config:
-      - name: logged
-        params: {log_level: 20}
+      - name: timed
+        params: {}
     skill_overrides:
       expensive_skill:
         - name: cached
@@ -432,12 +432,12 @@ register_handler_function("plugin_skill", plugin_handler)
 ```yaml
 # agent_config.yaml
 middleware:
-  - name: logged
-    params: {log_level: 20}
   - name: timed
     params: {}
   - name: cached  
     params: {ttl: 300}
+  - name: rate_limited
+    params: {requests_per_minute: 60}
 ```
 
 **Result:** All handlers and plugin skills automatically receive logging, timing, and caching middleware without any manual decorator application.

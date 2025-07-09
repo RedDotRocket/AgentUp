@@ -95,9 +95,6 @@ cache:
 
 # Middleware configuration
 middleware:
-  - name: logged
-    params:
-      log_level: 20  # INFO level
   - name: timed
     params: {}
 {% if has_middleware and 'cache' in feature_config.get('middleware', []) %}

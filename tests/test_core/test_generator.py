@@ -384,7 +384,6 @@ class TestConfigurationGeneration:
 
         # Should always include basic middleware
         middleware_names = [mw["name"] for mw in middleware_config]
-        assert "logged" in middleware_names
         assert "timed" in middleware_names
 
         # Should include feature-specific middleware

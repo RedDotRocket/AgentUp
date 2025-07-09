@@ -24,8 +24,8 @@ AgentUp follows a **configuration-driven, universal application** approach where
 **Configuration:**
 ```yaml
 middleware:
-  - name: logged
-    params: {log_level: 20}
+  - name: timed
+    params: {}
   - name: cached
     params: {ttl: 300}
   - name: rate_limited
@@ -162,9 +162,8 @@ agent:
 
 # Universal middleware - applied to ALL handlers
 middleware:
-  - name: logged
-    params: {log_level: 20}
   - name: timed
+    params: {}
     params: {}
   - name: cached
     params: {ttl: 300}

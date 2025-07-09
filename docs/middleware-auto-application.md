@@ -25,9 +25,6 @@ Define middleware in your `agent_config.yaml`:
 
 ```yaml
 middleware:
-  - name: logged
-    params:
-      log_level: 20  # INFO level
   - name: timed
     params: {}
   - name: cached
@@ -55,7 +52,6 @@ When the agent starts:
 
 | Middleware | Purpose | Key Parameters |
 |------------|---------|----------------|
-| `logged` | Log handler calls | `log_level` (10=DEBUG, 20=INFO) |
 | `timed` | Track execution time | None |
 | `cached` | Cache responses | `ttl` (seconds) |
 | `rate_limited` | Limit request rate | `requests_per_minute` |
@@ -110,9 +106,8 @@ logger.info("Global middleware applied to existing handlers")
 
 ```yaml
 middleware:
-  - name: logged
-    params:
-      log_level: 30  # WARNING and above
+  - name: timed
+    params: {}
   - name: timed
     params: {}
 ```
@@ -121,9 +116,6 @@ middleware:
 
 ```yaml
 middleware:
-  - name: logged
-    params:
-      log_level: 20  # INFO level
   - name: timed
     params: {}
   - name: rate_limited
@@ -166,12 +158,9 @@ middleware:
     params: {ttl: 300}
   - name: rate_limited
     params: {requests_per_minute: 60}
-  - name: logged
-    params: {log_level: 20}
+  - name: timed
+    params: {}
   
-  # Less optimal - logs every request even if cached
-  - name: logged
-    params: {log_level: 20}
   - name: cached
     params: {ttl: 300}
 ```
@@ -183,8 +172,8 @@ While middleware is applied globally by default, you can override middleware for
 ```yaml
 # Global middleware for all handlers
 middleware:
-  - name: logged
-    params: {log_level: 20}
+  - name: timed
+    params: {}
   - name: cached
     params: {ttl: 300}  # 5 minutes default
 
@@ -196,17 +185,16 @@ skills:
     middleware_override:
       - name: cached
         params: {ttl: 3600}  # 1 hour for this specific skill
-      - name: logged
-        params: {log_level: 10}  # DEBUG level for troubleshooting
+      - name: timed
+        params: {}  # Timing for troubleshooting
       
   - skill_id: realtime_data
     name: Real-time Data
     description: Always needs fresh data
     middleware_override:
       # No caching for real-time data
-      - name: logged
-        params: {log_level: 20}
       - name: timed
+        params: {}
         params: {}
 ```
 
@@ -234,8 +222,8 @@ skills:
    skills:
      - skill_id: stock_ticker
        middleware_override:
-         - name: logged
-           params: {log_level: 20}
+         - name: timed
+           params: {}
          # No caching middleware
    ```
 
@@ -253,9 +241,8 @@ skills:
    skills:
      - skill_id: problematic_skill
        middleware_override:
-         - name: logged
-           params: {log_level: 10}  # DEBUG level
          - name: timed
+           params: {}
            params: {}  # Track performance
    ```
 
@@ -273,8 +260,8 @@ Since `middleware_override` completely replaces the global middleware, you can e
 ```yaml
 # Global middleware
 middleware:
-  - name: logged
-    params: {log_level: 20}
+  - name: timed
+    params: {}
   - name: cached
     params: {ttl: 300}
   - name: rate_limited
@@ -284,8 +271,8 @@ skills:
   # This skill gets everything EXCEPT caching
   - skill_id: no_cache_skill
     middleware_override:
-      - name: logged
-        params: {log_level: 20}
+      - name: timed
+        params: {}
       - name: rate_limited
         params: {requests_per_minute: 60}
       # Note: No caching middleware listed
@@ -293,8 +280,8 @@ skills:
   # This skill gets ONLY logging
   - skill_id: minimal_skill
     middleware_override:
-      - name: logged
-        params: {log_level: 20}
+      - name: timed
+        params: {}
   
   # This skill gets NO middleware at all
   - skill_id: bare_metal_skill
