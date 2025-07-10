@@ -21,16 +21,35 @@ def plugin():
 
 
 @plugin.command("list")
-@click.option("--verbose", "-v", is_flag=True, help="Show detailed plugin information")
+@click.option("--verbose", "-v", is_flag=True, help="Show detailed plugin information and logging")
+@click.option("--capabilities", "-c", is_flag=True, help="Show available capabilities/AI functions")
 @click.option("--format", "-f", type=click.Choice(["table", "json", "yaml"]), default="table", help="Output format")
-def list_plugins(verbose: bool, format: str):
+@click.option("--debug", is_flag=True, help="Show debug logging output")
+def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
     """List all loaded plugins and their capabilities."""
     try:
+        # Configure logging based on verbose/debug flags
+        import logging
+        import os
+        
+        if debug:
+            os.environ["AGENTUP_LOG_LEVEL"] = "DEBUG"
+            logging.getLogger("agent.plugins").setLevel(logging.DEBUG)
+            logging.getLogger("agent.plugins.manager").setLevel(logging.DEBUG)
+        elif verbose:
+            # Show INFO level for verbose mode
+            logging.getLogger("agent.plugins").setLevel(logging.INFO)
+            logging.getLogger("agent.plugins.manager").setLevel(logging.INFO)
+        else:
+            # Suppress all plugin discovery logs for clean output
+            logging.getLogger("agent.plugins").setLevel(logging.WARNING)
+            logging.getLogger("agent.plugins.manager").setLevel(logging.WARNING)
+        
         from agent.plugins.manager import get_plugin_manager
 
         manager = get_plugin_manager()
         plugins = manager.list_plugins()
-        capabilities = manager.list_capabilities()
+        available_capabilities = manager.list_capabilities()
 
         if format == "json":
             output = {
@@ -43,8 +62,12 @@ def list_plugins(verbose: bool, format: str):
                         "description": p.description,
                     }
                     for p in plugins
-                ],
-                "capabilities": [
+                ]
+            }
+            
+            # Only include capabilities if -c flag is used
+            if capabilities:
+                output["capabilities"] = [
                     {
                         "id": c.id,
                         "name": c.name,
@@ -52,9 +75,9 @@ def list_plugins(verbose: bool, format: str):
                         "plugin": manager.capability_to_plugin.get(c.id),
                         "features": c.capabilities,
                     }
-                    for c in capabilities
-                ],
-            }
+                    for c in available_capabilities
+                ]
+            
             console.print_json(json.dumps(output, indent=2))
             return
 
@@ -71,8 +94,12 @@ def list_plugins(verbose: bool, format: str):
                         "description": p.description,
                     }
                     for p in plugins
-                ],
-                "capabilities": [
+                ]
+            }
+            
+            # Only include capabilities if -c flag is used
+            if capabilities:
+                output["capabilities"] = [
                     {
                         "id": c.id,
                         "name": c.name,
@@ -80,9 +107,9 @@ def list_plugins(verbose: bool, format: str):
                         "plugin": manager.capability_to_plugin.get(c.id),
                         "features": c.capabilities,
                     }
-                    for c in capabilities
-                ],
-            }
+                    for c in available_capabilities
+                ]
+            
             console.print(yaml.dump(output, default_flow_style=False))
             return
 
@@ -93,26 +120,33 @@ def list_plugins(verbose: bool, format: str):
             console.print("To install from registry: [cyan]agentup plugin install <name>[/cyan]")
             return
 
-        # Plugins table
+        # Plugins table - simplified
         plugin_table = Table(title="Loaded Plugins", box=box.ROUNDED, title_style="bold cyan")
         plugin_table.add_column("Plugin", style="cyan")
+        plugin_table.add_column("Name", style="white")
         plugin_table.add_column("Version", style="green", justify="center")
         plugin_table.add_column("Status", style="blue", justify="center")
-        plugin_table.add_column("Capabilities", style="yellow", justify="center")
 
         if verbose:
             plugin_table.add_column("Source", style="dim")
             plugin_table.add_column("Author", style="white")
 
         for plugin in plugins:
-            # Count capabilities from this plugin
-            capability_count = sum(1 for cid, pid in manager.capability_to_plugin.items() if pid == plugin.name)
+            # Get the friendly name from available_capabilities or use plugin name
+            plugin_display_name = plugin.name
+            # Find the first capability for this plugin to get its name
+            for cap_id, plugin_name in manager.capability_to_plugin.items():
+                if plugin_name == plugin.name:
+                    capability_info = manager.capabilities.get(cap_id)
+                    if capability_info and capability_info.name:
+                        plugin_display_name = capability_info.name
+                        break
 
             row = [
                 plugin.name,
+                plugin_display_name,
                 plugin.version,
                 plugin.status.value,
-                str(capability_count),
             ]
 
             if verbose:
@@ -123,38 +157,87 @@ def list_plugins(verbose: bool, format: str):
 
         console.print(plugin_table)
 
-        # Capabilities table
+        # Only show capabilities table if --capabilities flag is used
         if capabilities:
+            # AI Functions table - show individual functions instead of capabilities
             console.print()  # Blank line
-            capability_table = Table(title="Available Capabilities", box=box.ROUNDED, title_style="bold cyan")
-            capability_table.add_column("Capability ID", style="cyan")
-            capability_table.add_column("Name", style="white")
-            capability_table.add_column("Plugin", style="dim")
-            capability_table.add_column("Features", style="green")
-
-            if verbose:
-                capability_table.add_column("Version", style="yellow", justify="center")
-                capability_table.add_column("Priority", style="blue", justify="center")
-
-            for capability in capabilities:
+            
+            # Collect all AI functions from all capabilities
+            all_ai_functions = []
+            for capability in available_capabilities:
                 plugin_name = manager.capability_to_plugin.get(capability.id, "unknown")
-                # Handle both string and enum capability features
-                caps = []
-                for cap in capability.capabilities:
-                    if hasattr(cap, "value"):
-                        caps.append(cap.value)
-                    else:
-                        caps.append(str(cap))
-                features = ", ".join(caps)
+                ai_functions = manager.get_ai_functions(capability.id)
+                
+                if ai_functions:
+                    for func in ai_functions:
+                        # Extract parameter names from the function schema
+                        param_names = []
+                        if "properties" in func.parameters:
+                            param_names = list(func.parameters["properties"].keys())
+                        
+                        all_ai_functions.append({
+                            "name": func.name,
+                            "description": func.description,
+                            "parameters": param_names,
+                            "plugin": plugin_name,
+                            "capability_id": capability.id
+                        })
 
-                row = [capability.id, capability.name, plugin_name, features]
+            if all_ai_functions:
+                ai_table = Table(title="Available Capabilities", box=box.ROUNDED, title_style="bold cyan")
+                ai_table.add_column("Capability ID", style="cyan")
+                ai_table.add_column("Plugin", style="dim")
+                ai_table.add_column("Parameters", style="green")
 
                 if verbose:
-                    row.extend([capability.version, str(capability.priority)])
+                    ai_table.add_column("Description", style="white")
 
-                capability_table.add_row(*row)
+                for func in all_ai_functions:
+                    parameters_str = ", ".join(func["parameters"]) if func["parameters"] else "none"
+                    
+                    row = [
+                        func["name"],
+                        func["plugin"],
+                        parameters_str,
+                    ]
 
-            console.print(capability_table)
+                    if verbose:
+                        row.append(func["description"][:80] + "..." if len(func["description"]) > 80 else func["description"])
+
+                    ai_table.add_row(*row)
+
+                console.print(ai_table)
+            elif manager.list_capabilities():
+                # Fallback to showing basic capabilities if no AI functions
+                capability_table = Table(title="Available Capabilities", box=box.ROUNDED, title_style="bold cyan")
+                capability_table.add_column("Capability ID", style="cyan")
+                capability_table.add_column("Name", style="white")
+                capability_table.add_column("Plugin", style="dim")
+                capability_table.add_column("Features", style="green")
+
+                if verbose:
+                    capability_table.add_column("Version", style="yellow", justify="center")
+                    capability_table.add_column("Priority", style="blue", justify="center")
+
+                for capability in manager.list_capabilities():
+                    plugin_name = manager.capability_to_plugin.get(capability.id, "unknown")
+                    # Handle both string and enum capability features
+                    caps = []
+                    for cap in capability.capabilities:
+                        if hasattr(cap, "value"):
+                            caps.append(cap.value)
+                        else:
+                            caps.append(str(cap))
+                    features = ", ".join(caps)
+
+                    row = [capability.id, capability.name, plugin_name, features]
+
+                    if verbose:
+                        row.extend([capability.version, str(capability.priority)])
+
+                    capability_table.add_row(*row)
+
+                console.print(capability_table)
 
     except ImportError:
         console.print("[red]Plugin system not available. Please check your installation.[/red]")
@@ -239,7 +322,7 @@ classifiers = [
     "Framework :: AgentUp :: Plugin",
 ]
 
-[project.entry-points."agentup.capabilities"]
+[project.entry-points."agentup.available_capabilities"]
 {plugin_name.replace("-", "_")} = "{plugin_name.replace("-", "_")}.plugin:Plugin"
 
 [build-system]
@@ -412,7 +495,7 @@ The plugin uses pluggy hooks to integrate with AgentUp:
 ### Entry Point
 The plugin is registered via entry point in `pyproject.toml`:
 ```toml
-[project.entry-points."agentup.capabilities"]
+[project.entry-points."agentup.available_capabilities"]
 {plugin_name.replace("-", "_")} = "{plugin_name.replace("-", "_")}.plugin:Plugin"
 ```
 
@@ -435,7 +518,7 @@ def register_capability(self) -> CapabilityInfo:
         name="{display_name}",
         version="0.1.0",
         description="{description}",
-        capabilities=[CapabilityType.TEXT],  # Add capabilities as needed
+        available_capabilities=[CapabilityType.TEXT],  # Add available_capabilities as needed
         tags=["{plugin_name}", "custom"],
         config_schema={{
             # JSON schema for configuration validation
@@ -759,7 +842,7 @@ class Plugin:
             name="{display_name}",
             version="0.1.0",
             description="{description}",
-            capabilities=[CapabilityType.TEXT],
+            available_capabilities=[CapabilityType.TEXT],
             tags=["{plugin_name}", "custom"],
         )
 
@@ -832,7 +915,7 @@ class Plugin:
             name="{display_name}",
             version="0.1.0",
             description="{description}",
-            capabilities=[CapabilityType.TEXT, CapabilityType.STATEFUL],
+            available_capabilities=[CapabilityType.TEXT, CapabilityType.STATEFUL],
             tags=["{plugin_name}", "advanced", "custom"],
             config_schema={{
                 "type": "object",
@@ -991,7 +1074,7 @@ class Plugin:
 def _generate_ai_plugin_code(plugin_name: str, capability_id: str, display_name: str, description: str) -> str:
     """Generate AI-enabled plugin template."""
     return f'''"""
-{display_name} plugin for AgentUp with AI capabilities.
+{display_name} plugin for AgentUp with AI available_capabilities.
 
 {description}
 """
@@ -1020,14 +1103,14 @@ class Plugin:
             name="{display_name}",
             version="0.1.0",
             description="{description}",
-            capabilities=[CapabilityType.TEXT, CapabilityType.AI_FUNCTION],
+            available_capabilities=[CapabilityType.TEXT, CapabilityType.AI_FUNCTION],
             tags=["{plugin_name}", "ai", "llm"],
         )
 
     @hookimpl
     def validate_config(self, config: dict) -> ValidationResult:
         """Validate capability configuration."""
-        # AI capabilities typically don't need much config
+        # AI available_capabilities typically don't need much config
         return ValidationResult(valid=True)
 
     @hookimpl
