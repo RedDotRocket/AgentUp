@@ -67,12 +67,6 @@ plugins:
 {% endif %}
 {% endfor %}
 
-# Registry plugins section - for plugins installed from AgentUp Plugins Registry
-registry_plugins: []
-
-# Additional plugin configuration
-additional_plugins:{{ ' ' + additional_plugins | tojson if additional_plugins else ' []' }}
-
 # Security configuration
 security:
   enabled: {{ security_enabled | default(false) }}

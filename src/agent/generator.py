@@ -252,15 +252,8 @@ class ProjectGenerator:
                 "description": self.config.get("description", ""),
                 "version": "0.1.0",
             },
-            # Legacy configuration (kept for backward compatibility)
-            # 'project_name': self.project_name,
-            # 'description': self.config.get('description', ''),
-            # 'version': '0.1.0',
-            # Core configuration
             "plugins": self._build_plugins_config(),
             "routing": self._build_routing_config(),
-            # Registry plugins section - for plugins installed from AgentUp Plugins Registry
-            "registry_plugins": [],
         }
 
         # Add AgentUp security configuration

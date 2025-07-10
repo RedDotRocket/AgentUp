@@ -24,9 +24,6 @@ plugins:
     keywords: [echo, repeat, say]
     patterns: ['.echo']  # Catch-all for minimal template
 
-# Registry plugins section - for plugins installed from AgentUp Plugins Registry
-registry_plugins: []
-
 # Security configuration
 security:
   enabled: false

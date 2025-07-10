@@ -130,7 +130,6 @@ def validate_required_fields(config: dict[str, Any], errors: list[str], warnings
         "monitoring",
         "observability",
         "development",
-        "registry_plugins",
         "push_notifications",
         "state",
         "cache",
