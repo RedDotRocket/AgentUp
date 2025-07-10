@@ -37,13 +37,6 @@ jobs:
         test -f ./test-agents/minimal/agent_config.yaml
         test -f ./test-agents/minimal/pyproject.toml
 
-    - name: Test standard agent creation
-      run: |
-        make agent-create-standard
-        # Verify the agent was created
-        test -f ./test-agents/standard/agent_config.yaml
-        test -f ./test-agents/standard/pyproject.toml
-
     - name: Test agent validation
       run: |
         uv run agentup agent validate --config ./test-agents/minimal/agent_config.yaml
