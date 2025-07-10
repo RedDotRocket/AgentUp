@@ -16,7 +16,7 @@ def integrate_plugins_with_handlers() -> None:
 
     This function:
     1. Discovers and loads all plugins
-    2. Registers only configured plugin skills as handlers
+    2. Registers only configured plugin capabilities as handlers
     3. Makes them available through the existing get_handler() mechanism
     """
     logger.info("Integrating plugin system with existing handlers...")
@@ -25,43 +25,43 @@ def integrate_plugins_with_handlers() -> None:
     plugin_manager = get_plugin_manager()
     adapter = PluginAdapter(plugin_manager)
 
-    # Get configured skills from the agent config
+    # Get configured capabilities from the agent config
     try:
         from ..config import load_config
 
         config = load_config()
-        configured_skills = {skill.get("skill_id") for skill in config.get("skills", [])}
+        configured_capabilities = {plugin.get("plugin_id") for plugin in config.get("plugins", [])}
     except Exception as e:
         logger.warning(f"Could not load agent config, registering all plugins: {e}")
-        configured_skills = set(adapter.list_available_skills())
+        configured_capabilities = set(adapter.list_available_capabilities())
 
     registered_count = 0
 
-    # Register each configured plugin skill as a handler
-    for skill_id in adapter.list_available_skills():
-        # Only register skills that are configured in agent_config.yaml
-        if skill_id not in configured_skills:
-            logger.debug(f"Skill '{skill_id}' not in agent config, skipping registration")
+    # Register each configured plugin capability as a handler
+    for capability_id in adapter.list_available_capabilities():
+        # Only register capabilities that are configured in agent_config.yaml
+        if capability_id not in configured_capabilities:
+            logger.debug(f"Capability '{capability_id}' not in agent config, skipping registration")
             continue
 
         # Skip if handler already exists (don't override existing handlers)
-        if skill_id in _handlers:
-            logger.debug(f"Skill '{skill_id}' already registered as handler, skipping plugin")
+        if capability_id in _handlers:
+            logger.debug(f"Capability '{capability_id}' already registered as handler, skipping plugin")
             continue
 
         # Get the plugin-based handler
-        handler = adapter.get_handler_for_skill(skill_id)
+        handler = adapter.get_handler_for_capability(capability_id)
 
         # Register it using the function registration (applies middleware automatically)
-        register_handler_function(skill_id, handler)
-        logger.info(f"Registered plugin skill '{skill_id}' as handler with middleware")
+        register_handler_function(capability_id, handler)
+        logger.info(f"Registered plugin capability '{capability_id}' as handler with middleware")
         registered_count += 1
 
     # Store the adapter globally for other uses
     _plugin_adapter[0] = adapter
 
     logger.info(
-        f"Plugin integration complete. Added {registered_count} plugin skills (out of {len(adapter.list_available_skills())} discovered)"
+        f"Plugin integration complete. Added {registered_count} plugin capabilities (out of {len(adapter.list_available_capabilities())} discovered)"
     )
 
 
@@ -78,7 +78,7 @@ def create_plugin_handler_wrapper(plugin_handler: Callable) -> Callable[[Task], 
     """
     Wrap a plugin handler to be compatible with the existing handler signature.
 
-    This converts between the plugin's SkillContext and the simple Task parameter.
+    This converts between the plugin's CapabilityContext and the simple Task parameter.
     """
 
     async def wrapped_handler(task: Task) -> str:
@@ -88,46 +88,50 @@ def create_plugin_handler_wrapper(plugin_handler: Callable) -> Callable[[Task], 
     return wrapped_handler
 
 
-def list_all_skills() -> list[str]:
+def list_all_capabilities() -> list[str]:
     """
-    List all available skills from both handlers and plugins.
+    List all available capabilities from both handlers and plugins.
     """
-    # Get skills from existing handlers
-    handler_skills = list(_handlers.keys())
+    # Get capabilities from existing handlers
+    handler_capabilities = list(_handlers.keys())
 
-    # Get skills from plugins if integrated
-    plugin_skills = []
+    # Get capabilities from plugins if integrated
+    plugin_capabilities = []
     adapter = get_plugin_adapter()
     if adapter:
-        plugin_skills = adapter.list_available_skills()
+        plugin_capabilities = adapter.list_available_capabilities()
 
     # Combine and deduplicate
-    all_skills = list(set(handler_skills + plugin_skills))
-    return sorted(all_skills)
+    all_capabilities = list(set(handler_capabilities + plugin_capabilities))
+    return sorted(all_capabilities)
 
 
-def get_skill_info(skill_id: str) -> dict[str, Any]:
+
+
+def get_capability_info(capability_id: str) -> dict[str, Any]:
     """
-    Get information about a skill from either handlers or plugins.
+    Get information about a capability from either handlers or plugins.
     """
-    # Check if it's a plugin skill
+    # Check if it's a plugin capability
     adapter = get_plugin_adapter()
     if adapter:
-        info = adapter.get_skill_info(skill_id)
+        info = adapter.get_capability_info(capability_id)
         if info:
             return info
 
     # Fallback to basic handler info
-    if skill_id in _handlers:
-        handler = _handlers[skill_id]
+    if capability_id in _handlers:
+        handler = _handlers[capability_id]
         return {
-            "skill_id": skill_id,
-            "name": skill_id.replace("_", " ").title(),
+            "capability_id": capability_id,
+            "name": capability_id.replace("_", " ").title(),
             "description": handler.__doc__ or "No description available",
             "source": "handler",
         }
 
     return {}
+
+
 
 
 def enable_plugin_system() -> None:

@@ -140,48 +140,48 @@ def _load_state_config() -> dict[str, Any]:
         return _state_config
 
 
-def _get_skill_config(skill_id: str) -> dict | None:
-    """Get configuration for a specific skill."""
+def _get_plugin_config(plugin_id: str) -> dict | None:
+    """Get configuration for a specific plugin."""
     try:
         from ..config import load_config
 
         config = load_config()
-        skills = config.get("skills", [])
+        plugins = config.get("plugins", [])
 
-        for skill in skills:
-            if skill.get("skill_id") == skill_id:
-                return skill
+        for plugin in plugins:
+            if plugin.get("plugin_id") == plugin_id:
+                return plugin
         return None
     except Exception as e:
-        logger.debug(f"Could not load skill config for '{skill_id}': {e}")
+        logger.debug(f"Could not load plugin config for '{plugin_id}': {e}")
         return None
 
 
-def _resolve_state_config(skill_id: str) -> dict:
-    """Resolve state configuration for a skill (global or skill-specific)."""
+def _resolve_state_config(plugin_id: str) -> dict:
+    """Resolve state configuration for a plugin (global or plugin-specific)."""
     global_state_config = _load_state_config()
-    skill_config = _get_skill_config(skill_id)
+    plugin_config = _get_plugin_config(plugin_id)
 
-    if skill_config and "state_override" in skill_config:
-        logger.info(f"Using skill-specific state override for '{skill_id}'")
-        return skill_config["state_override"]
+    if plugin_config and "state_override" in plugin_config:
+        logger.info(f"Using plugin-specific state override for '{plugin_id}'")
+        return plugin_config["state_override"]
 
     return global_state_config
 
 
-def _apply_auth_to_handler(handler: Callable, skill_id: str) -> Callable:
+def _apply_auth_to_handler(handler: Callable, plugin_id: str) -> Callable:
     """Apply authentication context to a handler."""
     from functools import wraps
 
-    from ..security.context import create_skill_context, get_current_auth
+    from ..security.context import create_capability_context, get_current_auth
 
     @wraps(handler)
     async def auth_wrapped_handler(task):
         # Get current authentication information
         auth_result = get_current_auth()
 
-        # Create skill context with authentication info
-        skill_context = create_skill_context(task, auth_result)
+        # Create plugin context with authentication info
+        plugin_context = create_capability_context(task, auth_result)
 
         # Check if handler accepts context parameter
         import inspect
@@ -190,7 +190,7 @@ def _apply_auth_to_handler(handler: Callable, skill_id: str) -> Callable:
 
         if len(sig.parameters) > 1:
             # Handler accepts context parameter
-            return await handler(task, skill_context)
+            return await handler(task, plugin_context)
         else:
             # Legacy handler - just pass task
             return await handler(task)
@@ -198,86 +198,90 @@ def _apply_auth_to_handler(handler: Callable, skill_id: str) -> Callable:
     return auth_wrapped_handler
 
 
-def _apply_state_to_handler(handler: Callable, skill_id: str) -> Callable:
+def _apply_state_to_handler(handler: Callable, plugin_id: str) -> Callable:
     """Apply configured state management to a handler."""
-    state_config = _resolve_state_config(skill_id)
+    state_config = _resolve_state_config(plugin_id)
 
     if not state_config.get("enabled", False):
-        logger.debug(f"State management disabled for {skill_id}")
+        logger.debug(f"State management disabled for {plugin_id}")
         return handler
 
     try:
         from ..state.decorators import with_state
 
+        # Mark the original handler as having state applied before wrapping
+        handler._agentup_state_applied = True
         wrapped_handler = with_state([state_config])(handler)
         backend = state_config.get("backend", "memory")
-        logger.info(f"Applied state management to handler '{skill_id}': backend={backend}")
+        logger.info(f"Applied state management to handler '{plugin_id}': backend={backend}")
         return wrapped_handler
     except Exception as e:
-        logger.error(f"Failed to apply state management to handler '{skill_id}': {e}")
+        logger.error(f"Failed to apply state management to handler '{plugin_id}': {e}")
         return handler
 
 
-def _resolve_middleware_config(skill_id: str) -> list[dict[str, Any]]:
-    """Resolve middleware configuration for a skill (global or skill-specific)."""
+def _resolve_middleware_config(plugin_id: str) -> list[dict[str, Any]]:
+    """Resolve middleware configuration for a plugin (global or plugin-specific)."""
     global_middleware_configs = _load_middleware_config()
-    skill_config = _get_skill_config(skill_id)
+    plugin_config = _get_plugin_config(plugin_id)
 
-    if skill_config and "middleware_override" in skill_config:
-        logger.info(f"Using skill-specific middleware override for '{skill_id}'")
-        return skill_config["middleware_override"]
+    if plugin_config and "middleware_override" in plugin_config:
+        logger.info(f"Using plugin-specific middleware override for '{plugin_id}'")
+        return plugin_config["middleware_override"]
 
     return global_middleware_configs
 
 
-def _apply_middleware_to_handler(handler: Callable, skill_id: str) -> Callable:
+def _apply_middleware_to_handler(handler: Callable, plugin_id: str) -> Callable:
     """Apply configured middleware to a handler."""
-    middleware_configs = _resolve_middleware_config(skill_id)
+    middleware_configs = _resolve_middleware_config(plugin_id)
 
     if not middleware_configs:
-        logger.debug(f"No middleware to apply to {skill_id}")
+        logger.debug(f"No middleware to apply to {plugin_id}")
         return handler
 
     try:
+        # Mark the original handler as having middleware applied before wrapping
+        handler._agentup_middleware_applied = True
         wrapped_handler = with_middleware(middleware_configs)(handler)
         middleware_names = [m.get("name") for m in middleware_configs]
-        logger.info(f"Applied middleware to handler '{skill_id}': {middleware_names}")
+        logger.info(f"Applied middleware to handler '{plugin_id}': {middleware_names}")
         return wrapped_handler
     except Exception as e:
-        logger.error(f"Failed to apply middleware to handler '{skill_id}': {e}")
+        logger.error(f"Failed to apply middleware to handler '{plugin_id}': {e}")
         return handler
 
 
-def register_handler(skill_id: str):
-    """Decorator to register a skill handler by ID with automatic middleware, state, and auth application."""
+def register_handler(plugin_id: str):
+    """Decorator to register a plugin handler by ID with automatic middleware, state, and auth application."""
 
     def decorator(func: Callable[[Task], str]):
         # Apply authentication context first
-        wrapped_func = _apply_auth_to_handler(func, skill_id)
+        wrapped_func = _apply_auth_to_handler(func, plugin_id)
         # Apply middleware automatically based on agent config
-        wrapped_func = _apply_middleware_to_handler(wrapped_func, skill_id)
+        wrapped_func = _apply_middleware_to_handler(wrapped_func, plugin_id)
         # Apply state management automatically based on agent config
-        wrapped_func = _apply_state_to_handler(wrapped_func, skill_id)
-        _handlers[skill_id] = wrapped_func
-        logger.debug(f"Registered handler with auth, middleware and state: {skill_id}")
+        wrapped_func = _apply_state_to_handler(wrapped_func, plugin_id)
+        _handlers[plugin_id] = wrapped_func
+        logger.debug(f"Registered handler with auth, middleware and state: {plugin_id}")
         return wrapped_func
 
     return decorator
 
 
-def register_handler_function(skill_id: str, handler: Callable[[Task], str]) -> None:
+def register_handler_function(plugin_id: str, handler: Callable[[Task], str]) -> None:
     """Register a handler function directly (for plugins and dynamic registration)."""
-    wrapped_handler = _apply_auth_to_handler(handler, skill_id)
-    wrapped_handler = _apply_middleware_to_handler(wrapped_handler, skill_id)
-    wrapped_handler = _apply_state_to_handler(wrapped_handler, skill_id)
-    _handlers[skill_id] = wrapped_handler
-    logger.debug(f"Registered handler function with auth, middleware and state: {skill_id}")
+    wrapped_handler = _apply_auth_to_handler(handler, plugin_id)
+    wrapped_handler = _apply_middleware_to_handler(wrapped_handler, plugin_id)
+    wrapped_handler = _apply_state_to_handler(wrapped_handler, plugin_id)
+    _handlers[plugin_id] = wrapped_handler
+    logger.debug(f"Registered handler function with auth, middleware and state: {plugin_id}")
 
 
-def get_handler(skill_id: str) -> Callable[[Task], str] | None:
-    """Retrieve a registered handler by ID from unified registry, demo handlers, and registry skills."""
+def get_handler(plugin_id: str) -> Callable[[Task], str] | None:
+    """Retrieve a registered handler by ID from unified registry, demo handlers, and registry plugins."""
     # First check unified handlers registry (includes core and individual handlers)
-    handler = _handlers.get(skill_id)
+    handler = _handlers.get(plugin_id)
     if handler:
         return handler
 
@@ -293,20 +297,22 @@ async def handle_status(task: Task) -> str:
 
 @register_handler("capabilities")
 async def handle_capabilities(task: Task) -> str:
-    """list agent capabilities and available skills."""
-    skills = list(_handlers.keys())
-    lines = "\n".join(f"- {skill}" for skill in skills)
+    """list agent capabilities and available plugins."""
+    plugins = list(_handlers.keys())
+    lines = "\n".join(f"- {plugin}" for plugin in plugins)
     return f"{_project_name} capabilities:\n{lines}"
 
 
 def get_all_handlers() -> dict[str, Callable[[Task], str]]:
-    """Return a copy of the skill handler registry."""
+    """Return a copy of the plugin handler registry."""
     return _handlers.copy()
 
 
-def list_skills() -> list[str]:
-    """list all available skill IDs."""
+def list_plugins() -> list[str]:
+    """list all available plugin IDs."""
     return list(_handlers.keys())
+
+
 
 
 def apply_global_middleware() -> None:
@@ -323,20 +329,37 @@ def apply_global_middleware() -> None:
         _global_middleware_applied = True
         return
 
-    # Re-wrap all existing handlers with middleware
-    for skill_id, handler in list(_handlers.items()):
+    # Count handlers that already have middleware applied
+    handlers_with_middleware = []
+    handlers_needing_middleware = []
+
+    for plugin_id, handler in _handlers.items():
+        has_middleware_flag = hasattr(handler, "_agentup_middleware_applied")
+        logger.debug(f"Handler '{plugin_id}' has middleware flag: {has_middleware_flag}")
+        if has_middleware_flag:
+            handlers_with_middleware.append(plugin_id)
+        else:
+            handlers_needing_middleware.append(plugin_id)
+
+    logger.debug(f"Handlers with middleware: {handlers_with_middleware}")
+    logger.debug(f"Handlers needing middleware: {handlers_needing_middleware}")
+
+    # Only apply middleware to handlers that don't already have it
+    for plugin_id in handlers_needing_middleware:
+        handler = _handlers[plugin_id]
         try:
-            # Only apply if not already wrapped (simple check)
-            if not hasattr(handler, "_agentup_middleware_applied"):
-                wrapped_handler = _apply_middleware_to_handler(handler, skill_id)
-                wrapped_handler._agentup_middleware_applied = True
-                _handlers[skill_id] = wrapped_handler
-                logger.debug(f"Applied global middleware to existing handler: {skill_id}")
+            wrapped_handler = _apply_middleware_to_handler(handler, plugin_id)
+            _handlers[plugin_id] = wrapped_handler
+            logger.debug(f"Applied global middleware to existing handler: {plugin_id}")
         except Exception as e:
-            logger.error(f"Failed to apply global middleware to {skill_id}: {e}")
+            logger.error(f"Failed to apply global middleware to {plugin_id}: {e}")
 
     _global_middleware_applied = True
-    logger.info(f"Applied global middleware to {len(_handlers)} handlers")
+
+    if handlers_needing_middleware:
+        logger.info(f"Applied global middleware to {len(handlers_needing_middleware)} handlers: {handlers_needing_middleware}")
+    else:
+        logger.debug("All handlers already have middleware applied during registration - no additional work needed")
 
 
 def apply_global_state() -> None:
@@ -354,19 +377,30 @@ def apply_global_state() -> None:
         return
 
     # Re-wrap all existing handlers with state management
-    for skill_id, handler in list(_handlers.items()):
+    for plugin_id, handler in list(_handlers.items()):
         try:
             # Only apply if not already wrapped (simple check)
             if not hasattr(handler, "_agentup_state_applied"):
-                wrapped_handler = _apply_state_to_handler(handler, skill_id)
-                wrapped_handler._agentup_state_applied = True
-                _handlers[skill_id] = wrapped_handler
-                logger.debug(f"Applied global state management to existing handler: {skill_id}")
+                wrapped_handler = _apply_state_to_handler(handler, plugin_id)
+                _handlers[plugin_id] = wrapped_handler
+                logger.debug(f"Applied global state management to existing handler: {plugin_id}")
+            else:
+                logger.debug(f"Handler '{plugin_id}' already has state management applied, skipping")
         except Exception as e:
-            logger.error(f"Failed to apply global state management to {skill_id}: {e}")
+            logger.error(f"Failed to apply global state management to {plugin_id}: {e}")
 
     _global_state_applied = True
-    logger.info(f"Applied global state management to {len(_handlers)} handlers")
+
+    # Count handlers that actually needed global state management
+    handlers_needing_state = [
+        plugin_id for plugin_id, handler in _handlers.items()
+        if not hasattr(handler, "_agentup_state_applied")
+    ]
+
+    if handlers_needing_state:
+        logger.info(f"Applied global state management to {len(handlers_needing_state)} handlers: {handlers_needing_state}")
+    else:
+        logger.debug("All handlers already have state management applied during registration")
 
 
 def reset_middleware_cache() -> None:

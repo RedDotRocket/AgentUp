@@ -48,31 +48,31 @@ class GenericAgentExecutor(AgentExecutor):
         config = load_config()
 
         # Parse routing configuration (implicit routing based on keywords/patterns)
-        self.fallback_skill = "echo"  # Default fallback skill
+        self.fallback_plugin = "echo"  # Default fallback plugin
         self.fallback_enabled = True
 
-        # Parse skills with implicit routing configuration
-        self.skills = {}
-        for skill_data in config.get("skills", []):
-            if skill_data.get("enabled", True):
-                skill_id = skill_data["skill_id"]
-                keywords = skill_data.get("keywords", [])
-                patterns = skill_data.get("patterns", [])
+        # Parse plugins with implicit routing configuration
+        self.plugins = {}
+        for plugin_data in config.get("plugins", []):
+            if plugin_data.get("enabled", True):
+                plugin_id = plugin_data["plugin_id"]
+                keywords = plugin_data.get("keywords", [])
+                patterns = plugin_data.get("patterns", [])
 
                 # Implicit routing: if keywords or patterns exist, direct routing is available
                 has_direct_routing = bool(keywords or patterns)
 
-                self.skills[skill_id] = {
+                self.plugins[plugin_id] = {
                     "has_direct_routing": has_direct_routing,
                     "keywords": keywords,
                     "patterns": patterns,
-                    "name": skill_data.get("name", skill_id),
-                    "description": skill_data.get("description", ""),
-                    "priority": skill_data.get("priority", 100),
+                    "name": plugin_data.get("name", plugin_id),
+                    "description": plugin_data.get("description", ""),
+                    "priority": plugin_data.get("priority", 100),
                 }
 
-        # Initialize Function Dispatcher for AI routing (all skills are available for AI routing)
-        # AI routing is available when there are skills without direct routing or as fallback
+        # Initialize Function Dispatcher for AI routing (all plugins are available for AI routing)
+        # AI routing is available when there are plugins without direct routing or as fallback
         from .dispatcher import get_function_dispatcher
 
         self.dispatcher = get_function_dispatcher()
@@ -120,20 +120,20 @@ class GenericAgentExecutor(AgentExecutor):
                 )
                 return
 
-            # New routing system: determine skill and routing mode
+            # New routing system: determine plugin and routing mode
             user_input = self._extract_user_message(task)
-            target_skill, routing_mode = self._determine_skill_and_routing(user_input)
+            target_plugin, routing_mode = self._determine_plugin_and_routing(user_input)
 
             if routing_mode == "ai":
                 logger.info(
                     f"Processing task {task.id} using {routing_mode} routing (LLM will select appropriate functions)"
                 )
             else:
-                logger.info(f"Processing task {task.id} with skill '{target_skill}' using {routing_mode} routing")
+                logger.info(f"Processing task {task.id} with plugin '{target_plugin}' using {routing_mode} routing")
 
             # Process based on determined routing mode
             if routing_mode == "ai":
-                # Use AI routing - LLM selects the appropriate skill
+                # Use AI routing - LLM selects the appropriate plugin
                 if self.supports_streaming:
                     # Stream responses incrementally
                     await self._process_streaming(task, updater, event_queue)
@@ -142,8 +142,8 @@ class GenericAgentExecutor(AgentExecutor):
                     result = await self.dispatcher.process_task(task)
                     await self._create_response_artifact(result, task, updater)
             else:
-                # Use direct routing - invoke specific skill handler
-                result = await self._process_direct_routing(task, target_skill)
+                # Use direct routing - invoke specific plugin handler
+                result = await self._process_direct_routing(task, target_plugin)
                 await self._create_response_artifact(result, task, updater)
 
         except ValueError as e:
@@ -171,81 +171,81 @@ class GenericAgentExecutor(AgentExecutor):
                 final=True,
             )
 
-    def _determine_skill_and_routing(self, user_input: str) -> tuple[str, str]:
-        """Determine which skill and routing mode to use for the user input.
+    def _determine_plugin_and_routing(self, user_input: str) -> tuple[str, str]:
+        """Determine which plugin and routing mode to use for the user input.
 
         New implicit routing logic:
         1. Check for direct routing matches (keywords/patterns) with priority
         2. If no direct match found, use AI routing
-        3. If multiple direct matches, use highest priority skill
+        3. If multiple direct matches, use highest priority plugin
         """
         import re
 
         if not user_input:
-            return self.fallback_skill, "direct"
+            return self.fallback_plugin, "direct"
 
         direct_matches = []
 
-        # Check each skill for direct routing matches
-        for skill_id, skill_config in self.skills.items():
-            if not skill_config["has_direct_routing"]:
+        # Check each plugin for direct routing matches
+        for plugin_id, plugin_config in self.plugins.items():
+            if not plugin_config["has_direct_routing"]:
                 continue
 
-            keywords = skill_config.get("keywords", [])
-            patterns = skill_config.get("patterns", [])
+            keywords = plugin_config.get("keywords", [])
+            patterns = plugin_config.get("patterns", [])
 
             # Check keywords
             for keyword in keywords:
                 if keyword.lower() in user_input.lower():
-                    logger.debug(f"Matched keyword '{keyword}' for skill '{skill_id}'")
-                    direct_matches.append((skill_id, skill_config["priority"]))
-                    break  # Found a match for this skill, no need to check more keywords
+                    logger.debug(f"Matched keyword '{keyword}' for plugin '{plugin_id}'")
+                    direct_matches.append((plugin_id, plugin_config["priority"]))
+                    break  # Found a match for this plugin, no need to check more keywords
 
-            # Check patterns if no keyword match found for this skill
-            if not any(match[0] == skill_id for match in direct_matches):
+            # Check patterns if no keyword match found for this plugin
+            if not any(match[0] == plugin_id for match in direct_matches):
                 for pattern in patterns:
                     try:
                         if re.search(pattern, user_input, re.IGNORECASE):
-                            logger.debug(f"Matched pattern '{pattern}' for skill '{skill_id}'")
-                            direct_matches.append((skill_id, skill_config["priority"]))
-                            break  # Found a match for this skill
+                            logger.debug(f"Matched pattern '{pattern}' for plugin '{plugin_id}'")
+                            direct_matches.append((plugin_id, plugin_config["priority"]))
+                            break  # Found a match for this plugin
                     except re.error as e:
-                        logger.warning(f"Invalid regex pattern '{pattern}' in skill '{skill_id}': {e}")
+                        logger.warning(f"Invalid regex pattern '{pattern}' in plugin '{plugin_id}': {e}")
 
         # If direct matches found, use the highest priority one
         if direct_matches:
             # Sort by priority (lower number = higher priority)
             direct_matches.sort(key=lambda x: x[1])
-            selected_skill = direct_matches[0][0]
-            logger.info(f"Direct routing to skill '{selected_skill}' (priority: {direct_matches[0][1]})")
-            return selected_skill, "direct"
+            selected_plugin = direct_matches[0][0]
+            logger.info(f"Direct routing to plugin '{selected_plugin}' (priority: {direct_matches[0][1]})")
+            return selected_plugin, "direct"
 
         # No direct routing match found, use AI routing
         logger.info("No direct routing match found, using AI routing")
         return None, "ai"
 
-    async def _process_direct_routing(self, task: Task, target_skill: str = None) -> str:
+    async def _process_direct_routing(self, task: Task, target_plugin: str = None) -> str:
         """Process task using direct handler routing (no AI)."""
         logger.info(f"Starting direct routing for task: {task}")
 
-        # Use provided target skill or fall back to fallback skill
-        skill_id = target_skill or self.fallback_skill
-        logger.info(f"Routing to skill: {skill_id}")
+        # Use provided target plugin or fall back to fallback plugin
+        plugin_id = target_plugin or self.fallback_plugin
+        logger.info(f"Routing to plugin: {plugin_id}")
 
-        # Get handler for the skill
+        # Get handler for the plugin
         from ..handlers import get_handler
 
-        handler = get_handler(skill_id)
+        handler = get_handler(plugin_id)
 
         if not handler:
-            return f"No handler found for skill: {skill_id}"
+            return f"No handler found for plugin: {plugin_id}"
 
         # Call handler directly
         try:
             result = await handler(task)
             return result if isinstance(result, str) else str(result)
         except Exception as e:
-            logger.error(f"Error in handler {skill_id}: {e}")
+            logger.error(f"Error in handler {plugin_id}: {e}")
             return f"Error processing request: {str(e)}"
 
     def _extract_user_message(self, task: Task) -> str:

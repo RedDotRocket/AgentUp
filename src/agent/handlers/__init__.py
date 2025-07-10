@@ -11,7 +11,7 @@ from .handlers import (  # noqa: E402
     handle_capabilities,
     handle_echo,
     handle_status,
-    list_skills,
+    list_plugins,
     register_handler,
 )
 
@@ -71,7 +71,7 @@ __all__ = [
     "get_handler",
     "register_handler",
     "get_all_handlers",
-    "list_skills",
+    "list_plugins",
     # Core handlers
     "handle_status",
     "handle_capabilities",

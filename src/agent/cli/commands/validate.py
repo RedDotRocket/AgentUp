@@ -20,7 +20,7 @@ def validate(config: str, check_env: bool, check_handlers: bool, strict: bool):
     Checks for:
     - Valid YAML syntax
     - Required fields
-    - Skill definitions
+    - Plugin definitions
     - Service configurations
     - System prompt configuration
     - Plugin system prompts
@@ -41,13 +41,13 @@ def validate(config: str, check_env: bool, check_handlers: bool, strict: bool):
     # Validate structure
     validate_required_fields(config_data, errors, warnings)
     validate_agent_section(config_data.get("agent", {}), errors, warnings)
-    validate_skills_section(config_data.get("skills", []), errors, warnings)
+    validate_plugins_section(config_data.get("plugins", []), errors, warnings)
 
     # Validate routing configuration
     if "routing" in config_data:
         validate_routing_section(config_data["routing"], errors, warnings)
 
-    # Validate AI configuration against skills requirements
+    # Validate AI configuration against plugins requirements
     validate_ai_requirements(config_data, errors, warnings)
 
     # Optional validations
@@ -64,8 +64,8 @@ def validate(config: str, check_env: bool, check_handlers: bool, strict: bool):
     if "ai" in config_data:
         validate_system_prompt_section(config_data["ai"], errors, warnings)
 
-    # Validate plugin system prompts in skills
-    validate_plugin_system_prompts(config_data.get("skills", []), errors, warnings)
+    # Validate plugin system prompts in plugins
+    validate_plugin_system_prompts(config_data.get("plugins", []), errors, warnings)
 
     # Check environment variables
     if check_env:
@@ -73,7 +73,7 @@ def validate(config: str, check_env: bool, check_handlers: bool, strict: bool):
 
     # Check handler implementations
     if check_handlers:
-        check_handler_implementations(config_data.get("skills", []), errors, warnings)
+        check_handler_implementations(config_data.get("plugins", []), errors, warnings)
 
     # Display results
     display_results(errors, warnings, strict)
@@ -108,7 +108,7 @@ def load_yaml_config(config_path: str, errors: list[str]) -> dict[str, Any] | No
 
 def validate_required_fields(config: dict[str, Any], errors: list[str], warnings: list[str]):
     """Validate required top-level fields."""
-    required_fields = ["agent", "skills"]
+    required_fields = ["agent", "plugins"]
 
     for field in required_fields:
         if field not in config:
@@ -119,7 +119,7 @@ def validate_required_fields(config: dict[str, Any], errors: list[str], warnings
     # Check for unknown top-level fields
     known_fields = {
         "agent",
-        "skills",
+        "plugins",
         "routing",
         "services",
         "security",
@@ -130,11 +130,10 @@ def validate_required_fields(config: dict[str, Any], errors: list[str], warnings
         "monitoring",
         "observability",
         "development",
-        "registry_skills",
+        "registry_plugins",
         "push_notifications",
         "state",
         "cache",
-        "plugins",
     }
     unknown_fields = set(config.keys()) - known_fields
 
@@ -164,126 +163,126 @@ def validate_agent_section(agent: dict[str, Any], errors: list[str], warnings: l
     click.echo(f"{click.style('✓', fg='green')} Agent configuration valid")
 
 
-def validate_skills_section(skills: list[dict[str, Any]], errors: list[str], warnings: list[str]):
-    """Validate skills section."""
-    if not skills:
-        errors.append("No skills defined. At least one skill is required.")
+def validate_plugins_section(plugins: list[dict[str, Any]], errors: list[str], warnings: list[str]):
+    """Validate plugins section."""
+    if not plugins:
+        errors.append("No plugins defined. At least one plugin is required.")
         return
 
-    if not isinstance(skills, list):
-        errors.append("Skills must be a list")
+    if not isinstance(plugins, list):
+        errors.append("Plugins must be a list")
         return
 
-    skill_ids = set()
+    plugin_ids = set()
 
-    for i, skill in enumerate(skills):
-        if not isinstance(skill, dict):
-            errors.append(f"Skill {i} must be a dictionary")
+    for i, plugin in enumerate(plugins):
+        if not isinstance(plugin, dict):
+            errors.append(f"Plugin {i} must be a dictionary")
             continue
 
-        # Required skill fields
-        required_skill_fields = ["skill_id", "name", "description"]
+        # Required plugin fields
+        required_plugin_fields = ["plugin_id", "name", "description"]
 
-        for field in required_skill_fields:
-            if field not in skill:
-                errors.append(f"Skill {i} missing required field: '{field}'")
-            elif not skill[field]:
-                errors.append(f"Skill {i} field '{field}' is empty")
+        for field in required_plugin_fields:
+            if field not in plugin:
+                errors.append(f"Plugin {i} missing required field: '{field}'")
+            elif not plugin[field]:
+                errors.append(f"Plugin {i} field '{field}' is empty")
 
-        # Check for duplicate skill IDs
-        skill_id = skill.get("skill_id")
-        if skill_id:
-            if skill_id in skill_ids:
-                errors.append(f"Duplicate skill ID: '{skill_id}'")
+        # Check for duplicate plugin IDs
+        plugin_id = plugin.get("plugin_id")
+        if plugin_id:
+            if plugin_id in plugin_ids:
+                errors.append(f"Duplicate plugin ID: '{plugin_id}'")
             else:
-                skill_ids.add(skill_id)
+                plugin_ids.add(plugin_id)
 
-            # Validate skill ID format
-            if not re.match(r"^[a-zA-Z][a-zA-Z0-9_]*$", skill_id):
+            # Validate plugin ID format
+            if not re.match(r"^[a-zA-Z][a-zA-Z0-9_]*$", plugin_id):
                 errors.append(
-                    f"Invalid skill ID '{skill_id}'. Must start with letter and contain only letters, numbers, and underscores."
+                    f"Invalid plugin ID '{plugin_id}'. Must start with letter and contain only letters, numbers, and underscores."
                 )
 
         # Validate routing configuration
-        routing_mode = skill.get("routing_mode")
+        routing_mode = plugin.get("routing_mode")
         if routing_mode and routing_mode not in ["ai", "direct"]:
-            errors.append(f"Skill {i} has invalid routing_mode '{routing_mode}'. Must be 'ai' or 'direct'")
+            errors.append(f"Plugin {i} has invalid routing_mode '{routing_mode}'. Must be 'ai' or 'direct'")
 
         # For direct routing, check that keywords or patterns are provided
         if routing_mode == "direct":
-            keywords = skill.get("keywords", [])
-            patterns = skill.get("patterns", [])
+            keywords = plugin.get("keywords", [])
+            patterns = plugin.get("patterns", [])
             if not keywords and not patterns:
-                warnings.append(f"Skill {i} uses direct routing but has no keywords or patterns defined")
+                warnings.append(f"Plugin {i} uses direct routing but has no keywords or patterns defined")
 
             # Validate regex patterns
             for pattern in patterns:
                 try:
                     re.compile(pattern)
                 except re.error as e:
-                    errors.append(f"Skill {i} has invalid regex pattern '{pattern}': {e}")
+                    errors.append(f"Plugin {i} has invalid regex pattern '{pattern}': {e}")
 
         # Validate input/output modes
-        input_mode = skill.get("input_mode", "text")
-        output_mode = skill.get("output_mode", "text")
+        input_mode = plugin.get("input_mode", "text")
+        output_mode = plugin.get("output_mode", "text")
         valid_modes = ["text", "multimodal"]
 
         if input_mode not in valid_modes:
-            errors.append(f"Skill {i} has invalid input_mode '{input_mode}'. Must be one of: {valid_modes}")
+            errors.append(f"Plugin {i} has invalid input_mode '{input_mode}'. Must be one of: {valid_modes}")
         if output_mode not in valid_modes:
-            errors.append(f"Skill {i} has invalid output_mode '{output_mode}'. Must be one of: {valid_modes}")
+            errors.append(f"Plugin {i} has invalid output_mode '{output_mode}'. Must be one of: {valid_modes}")
 
         # Validate middleware if present (deprecated in favor of middleware_override)
-        if "middleware" in skill:
+        if "middleware" in plugin:
             warnings.append(
-                f"Skill '{skill_id}' uses deprecated 'middleware' field. Use 'middleware_override' instead."
+                f"Plugin '{plugin_id}' uses deprecated 'middleware' field. Use 'middleware_override' instead."
             )
-            validate_middleware_config(skill["middleware"], skill_id, errors, warnings)
+            validate_middleware_config(plugin["middleware"], plugin_id, errors, warnings)
 
         # Validate middleware_override if present
-        if "middleware_override" in skill:
-            validate_middleware_config(skill["middleware_override"], skill_id, errors, warnings)
+        if "middleware_override" in plugin:
+            validate_middleware_config(plugin["middleware_override"], plugin_id, errors, warnings)
 
-    click.echo(f"{click.style('✓', fg='green')} Found {len(skills)} skill(s)")
+    click.echo(f"{click.style('✓', fg='green')} Found {len(plugins)} plugin(s)")
 
 
-def validate_middleware_config(middleware: list[dict[str, Any]], skill_id: str, errors: list[str], warnings: list[str]):
+def validate_middleware_config(middleware: list[dict[str, Any]], plugin_id: str, errors: list[str], warnings: list[str]):
     """Validate middleware configuration."""
     if not isinstance(middleware, list):
-        errors.append(f"Skill '{skill_id}' middleware must be a list")
+        errors.append(f"Plugin '{plugin_id}' middleware must be a list")
         return
 
     valid_middleware_types = {"rate_limit", "cache", "validation", "retry", "logging", "timing", "transform"}
 
     for mw in middleware:
         if not isinstance(mw, dict):
-            errors.append(f"Skill '{skill_id}' middleware entry must be a dictionary")
+            errors.append(f"Plugin '{plugin_id}' middleware entry must be a dictionary")
             continue
 
         if "type" not in mw:
-            errors.append(f"Skill '{skill_id}' middleware missing 'type' field")
+            errors.append(f"Plugin '{plugin_id}' middleware missing 'type' field")
             continue
 
         mw_type = mw["type"]
         if mw_type not in valid_middleware_types:
-            warnings.append(f"Skill '{skill_id}' has unknown middleware type: '{mw_type}'")
+            warnings.append(f"Plugin '{plugin_id}' has unknown middleware type: '{mw_type}'")
 
         # Validate specific middleware configurations
         if mw_type == "rate_limit" and "requests_per_minute" in mw:
             try:
                 rpm = int(mw["requests_per_minute"])
                 if rpm <= 0:
-                    errors.append(f"Skill '{skill_id}' rate limit must be positive")
+                    errors.append(f"Plugin '{plugin_id}' rate limit must be positive")
             except (ValueError, TypeError):
-                errors.append(f"Skill '{skill_id}' rate limit must be a number")
+                errors.append(f"Plugin '{plugin_id}' rate limit must be a number")
 
         if mw_type == "cache" and "ttl" in mw:
             try:
                 ttl = int(mw["ttl"])
                 if ttl <= 0:
-                    errors.append(f"Skill '{skill_id}' cache TTL must be positive")
+                    errors.append(f"Plugin '{plugin_id}' cache TTL must be positive")
             except (ValueError, TypeError):
-                errors.append(f"Skill '{skill_id}' cache TTL must be a number")
+                errors.append(f"Plugin '{plugin_id}' cache TTL must be a number")
 
 
 def validate_services_section(services: dict[str, Any], errors: list[str], warnings: list[str]):
@@ -369,7 +368,7 @@ def check_environment_variables(config: dict[str, Any], errors: list[str], warni
         click.echo(f"{click.style('✓', fg='green')} All environment variables present or have defaults")
 
 
-def check_handler_implementations(skills: list[dict[str, Any]], errors: list[str], warnings: list[str]):
+def check_handler_implementations(plugins: list[dict[str, Any]], errors: list[str], warnings: list[str]):
     """Check if handler implementations exist."""
     handlers_path = Path("src/agent/handlers.py")
 
@@ -383,20 +382,20 @@ def check_handler_implementations(skills: list[dict[str, Any]], errors: list[str
 
         click.echo(f"\n{click.style('🔍 Handler Implementations:', fg='yellow')}")
 
-        for skill in skills:
-            skill_id = skill.get("skill_id")
-            if not skill_id:
+        for plugin in plugins:
+            plugin_id = plugin.get("plugin_id")
+            if not plugin_id:
                 continue
 
             # Check for handler registration
-            if f'@register_handler("{skill_id}")' in handlers_content:
-                click.echo(f"{click.style('✓', fg='green')} Handler found for '{skill_id}'")
+            if f'@register_handler("{plugin_id}")' in handlers_content:
+                click.echo(f"{click.style('✓', fg='green')} Handler found for '{plugin_id}'")
             else:
-                warnings.append(f"No handler implementation found for skill '{skill_id}'")
+                warnings.append(f"No handler implementation found for plugin '{plugin_id}'")
 
             # Check for handler function
-            if f"def handle_{skill_id}" not in handlers_content:
-                warnings.append(f"Handler function 'handle_{skill_id}' not found")
+            if f"def handle_{plugin_id}" not in handlers_content:
+                warnings.append(f"Handler function 'handle_{plugin_id}' not found")
 
     except Exception as e:
         errors.append(f"Error checking handlers: {str(e)}")
@@ -417,27 +416,27 @@ def validate_routing_section(routing: dict[str, Any], errors: list[str], warning
 
 
 def validate_ai_requirements(config: dict[str, Any], errors: list[str], warnings: list[str]):
-    """Validate AI configuration requirements based on skills."""
-    skills = config.get("skills", [])
+    """Validate AI configuration requirements based on plugins."""
+    plugins = config.get("plugins", [])
     routing = config.get("routing", {})
     ai_config = config.get("ai", {})
     services = config.get("services", {})
 
-    # Check if any skill requires AI routing
+    # Check if any plugin requires AI routing
     default_mode = routing.get("default_mode", "ai")
 
     needs_ai = False
 
-    for skill in skills:
-        skill_routing_mode = skill.get("routing_mode", default_mode)
-        if skill_routing_mode == "ai":
+    for plugin in plugins:
+        plugin_routing_mode = plugin.get("routing_mode", default_mode)
+        if plugin_routing_mode == "ai":
             needs_ai = True
             break
 
     if needs_ai:
         # AI is required, validate AI configuration
         if not ai_config.get("enabled", True):
-            errors.append("AI routing is required by skills but ai.enabled is false")
+            errors.append("AI routing is required by plugins but ai.enabled is false")
 
         # Check that at least one LLM service is configured
         llm_services = []
@@ -454,7 +453,7 @@ def validate_ai_requirements(config: dict[str, Any], errors: list[str], warnings
             errors.append(f"AI configuration references llm_service '{llm_service}' but it's not defined in services")
 
     elif ai_config.get("enabled", False):
-        warnings.append("AI is enabled but no skills use AI routing. Consider disabling AI or adding AI-routed skills")
+        warnings.append("AI is enabled but no plugins use AI routing. Consider disabling AI or adding AI-routed plugins")
 
     click.echo(f"{click.style('✓', fg='green')} AI requirements validated")
 
@@ -499,36 +498,36 @@ def validate_system_prompt_section(ai_config: dict[str, Any], errors: list[str],
     click.echo(f"{click.style('✓', fg='green')} System prompt validated")
 
 
-def validate_plugin_system_prompts(skills: list[dict[str, Any]], errors: list[str], warnings: list[str]):
+def validate_plugin_system_prompts(plugins: list[dict[str, Any]], errors: list[str], warnings: list[str]):
     """Validate plugin system prompts."""
     plugin_prompt_count = 0
 
-    for i, skill in enumerate(skills):
-        if not isinstance(skill, dict):
+    for i, plugin in enumerate(plugins):
+        if not isinstance(plugin, dict):
             continue
 
-        skill_id = skill.get("skill_id", f"skill_{i}")
+        plugin_id = plugin.get("plugin_id", f"plugin_{i}")
 
-        # Check if skill has plugin-specific system prompt
-        if "system_prompt" in skill:
+        # Check if plugin has plugin-specific system prompt
+        if "system_prompt" in plugin:
             plugin_prompt_count += 1
-            system_prompt = skill["system_prompt"]
+            system_prompt = plugin["system_prompt"]
 
             if not isinstance(system_prompt, str):
-                errors.append(f"Skill '{skill_id}' system_prompt must be a string")
+                errors.append(f"Plugin '{plugin_id}' system_prompt must be a string")
                 continue
 
             # Validate length
             if len(system_prompt) < 10:
-                warnings.append(f"Skill '{skill_id}' system prompt is very short")
+                warnings.append(f"Plugin '{plugin_id}' system prompt is very short")
             elif len(system_prompt) > 4000:
-                warnings.append(f"Skill '{skill_id}' system prompt is very long - may impact performance")
+                warnings.append(f"Plugin '{plugin_id}' system prompt is very long - may impact performance")
 
-            # Check for skill-specific guidance
+            # Check for plugin-specific guidance
             prompt_lower = system_prompt.lower()
-            skill_name_lower = skill.get("name", skill_id).lower()
-            if skill_name_lower not in prompt_lower and skill_id.lower() not in prompt_lower:
-                warnings.append(f"Skill '{skill_id}' system prompt may lack skill-specific guidance")
+            plugin_name_lower = plugin.get("name", plugin_id).lower()
+            if plugin_name_lower not in prompt_lower and plugin_id.lower() not in prompt_lower:
+                warnings.append(f"Plugin '{plugin_id}' system prompt may lack plugin-specific guidance")
 
     if plugin_prompt_count > 0:
         click.echo(f"{click.style('✓', fg='green')} Plugin system prompts validated ({plugin_prompt_count} found)")

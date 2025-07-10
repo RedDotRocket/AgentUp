@@ -35,7 +35,7 @@ def create_test_agent_config(
     """Create a test agent configuration YAML structure."""
     config = {
         "agent": {"name": agent_name, "description": f"Test agent {agent_name}", "version": "0.1.0"},
-        "routing": {"default_mode": "ai", "fallback_skill": "ai_assistant", "fallback_enabled": True},
+        "routing": {"default_mode": "ai", "fallback_capability": "ai_assistant", "fallback_enabled": True},
         "skills": [
             {
                 "skill_id": "ai_assistant",

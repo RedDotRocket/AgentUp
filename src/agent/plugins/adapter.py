@@ -5,7 +5,7 @@ from a2a.types import Task
 
 from ..core.dispatcher import FunctionRegistry
 from .manager import PluginManager, get_plugin_manager
-from .models import SkillContext, SkillResult
+from .models import CapabilityContext, CapabilityResult
 
 logger = structlog.get_logger(__name__)
 
@@ -23,13 +23,13 @@ class PluginAdapter:
         self._function_registry = registry
 
         # Register all AI functions from plugins
-        for skill_id, skill_info in self.plugin_manager.skills.items():
-            # Skip if skill doesn't support AI functions
-            if "ai_function" not in skill_info.capabilities:
+        for capability_id, capability_info in self.plugin_manager.capabilities.items():
+            # Skip if capability doesn't support AI functions
+            if "ai_function" not in capability_info.capabilities:
                 continue
 
-            # Get AI functions from the skill
-            ai_functions = self.plugin_manager.get_ai_functions(skill_id)
+            # Get AI functions from the capability
+            ai_functions = self.plugin_manager.get_ai_functions(capability_id)
 
             for ai_func in ai_functions:
                 # Create OpenAI-compatible function schema
@@ -39,39 +39,39 @@ class PluginAdapter:
                     "parameters": ai_func.parameters,
                 }
 
-                # Create a wrapper that converts Task to SkillContext
-                handler = self._create_ai_function_handler(skill_id, ai_func)
+                # Create a wrapper that converts Task to CapabilityContext
+                handler = self._create_ai_function_handler(capability_id, ai_func)
 
                 # Register with the function registry
                 registry.register_function(ai_func.name, handler, schema)
-                logger.info(f"Registered AI function '{ai_func.name}' from skill '{skill_id}'")
+                logger.info(f"Registered AI function '{ai_func.name}' from capability '{capability_id}'")
 
-    def _create_ai_function_handler(self, skill_id: str, ai_func):
+    def _create_ai_function_handler(self, capability_id: str, ai_func):
         """Create a handler that adapts AI function calls to plugin execution."""
 
         async def handler(task: Task) -> str:
-            # Create skill context from task
-            context = self._create_skill_context(task)
+            # Create capability context from task
+            context = self._create_capability_context(task)
 
             # If the AI function has its own handler, use it
             if ai_func.handler:
                 try:
                     # Call the AI function's specific handler
                     result = await ai_func.handler(task, context)
-                    if isinstance(result, SkillResult):
+                    if isinstance(result, CapabilityResult):
                         return result.content
                     return str(result)
                 except Exception as e:
                     logger.error(f"Error calling AI function handler: {e}")
                     return f"Error: {str(e)}"
             else:
-                # Fallback to skill's main execute method
-                result = self.plugin_manager.execute_skill(skill_id, context)
+                # Fallback to capability's main execute method
+                result = self.plugin_manager.execute_capability(capability_id, context)
                 return result.content
 
         return handler
 
-    def _create_skill_context(self, task: Task) -> SkillContext:
+    def _create_capability_context(self, task: Task) -> CapabilityContext:
         """Create a skill context from an A2A task."""
         # Extract metadata and configuration
         metadata = getattr(task, "metadata", {}) or {}
@@ -84,7 +84,7 @@ class PluginAdapter:
         except Exception:
             services = {}
 
-        return SkillContext(
+        return CapabilityContext(
             task=task,
             config=metadata.get("config", {}),
             services=services,
@@ -97,45 +97,46 @@ class PluginAdapter:
         # For now, we'll just log that we could do this
         logger.info(f"Could register {len(handlers)} legacy handlers as plugins")
 
-    def get_handler_for_skill(self, skill_id: str):
-        """Get a handler function for a skill that's compatible with the old system."""
+    def get_handler_for_capability(self, capability_id: str):
+        """Get a handler function for a capability that's compatible with the old system."""
 
         async def handler(task: Task) -> str:
-            context = self._create_skill_context(task)
-            result = self.plugin_manager.execute_skill(skill_id, context)
+            context = self._create_capability_context(task)
+            result = self.plugin_manager.execute_capability(capability_id, context)
             return result.content
 
         return handler
 
-    def find_skills_for_task(self, task: Task) -> list[tuple[str, float]]:
-        """Find skills that can handle a task, compatible with old routing."""
-        context = self._create_skill_context(task)
-        return self.plugin_manager.find_skills_for_task(context)
+    def find_capabilities_for_task(self, task: Task) -> list[tuple[str, float]]:
+        """Find capabilities that can handle a task, compatible with old routing."""
+        context = self._create_capability_context(task)
+        return self.plugin_manager.find_capabilities_for_task(context)
 
-    def list_available_skills(self) -> list[str]:
-        """List all available skill IDs."""
-        return list(self.plugin_manager.skills.keys())
+    def list_available_capabilities(self) -> list[str]:
+        """List all available capability IDs."""
+        return list(self.plugin_manager.capabilities.keys())
 
-    def get_skill_info(self, skill_id: str) -> dict[str, Any]:
-        """Get skill information in a format compatible with the old system."""
-        skill = self.plugin_manager.get_skill(skill_id)
-        if not skill:
+    def get_capability_info(self, capability_id: str) -> dict[str, Any]:
+        """Get capability information in a format compatible with the old system."""
+        capability = self.plugin_manager.get_capability(capability_id)
+        if not capability:
             return {}
 
         return {
-            "skill_id": skill.id,
-            "name": skill.name,
-            "description": skill.description,
-            "input_mode": skill.input_mode,
-            "output_mode": skill.output_mode,
-            "tags": skill.tags,
-            "priority": skill.priority,
-            "system_prompt": skill.system_prompt,
+            "capability_id": capability.id,
+            "name": capability.name,
+            "description": capability.description,
+            "input_mode": capability.input_mode,
+            "output_mode": capability.output_mode,
+            "tags": capability.tags,
+            "priority": capability.priority,
+            "system_prompt": capability.system_prompt,
         }
 
-    def get_ai_functions(self, skill_id: str):
-        """Get AI functions for a skill."""
-        return self.plugin_manager.get_ai_functions(skill_id)
+    def get_ai_functions(self, capability_id: str):
+        """Get AI functions for a capability."""
+        return self.plugin_manager.get_ai_functions(capability_id)
+
 
 
 def integrate_plugins_with_registry(registry: FunctionRegistry) -> PluginAdapter:
@@ -149,11 +150,13 @@ def integrate_plugins_with_registry(registry: FunctionRegistry) -> PluginAdapter
     return adapter
 
 
-def replace_skill_loader() -> PluginAdapter:
+def replace_capability_loader() -> PluginAdapter:
     """
-    Replace the current skill loading system with plugins.
+    Replace the current capability loading system with plugins.
 
     This returns an adapter that can be used as a drop-in replacement
-    for the current skill loading mechanism.
+    for the current capability loading mechanism.
     """
     return PluginAdapter()
+
+

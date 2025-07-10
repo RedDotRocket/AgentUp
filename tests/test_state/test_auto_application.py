@@ -5,7 +5,7 @@ from a2a.types import Task
 
 from src.agent.handlers.handlers import (
     _apply_state_to_handler,
-    _get_skill_config,
+    _get_plugin_config,
     _handlers,
     _load_state_config,
     _resolve_state_config,
@@ -39,7 +39,7 @@ class TestStateConfigResolution:
 
     def test_load_state_config_missing(self):
         """Test loading state configuration when not present."""
-        mock_config = {"skills": []}  # No state_management section
+        mock_config = {"plugins": []}  # No state_management section
 
         with patch("src.agent.handlers.handlers.load_config", return_value=mock_config):
             # Reset cache first
@@ -62,26 +62,26 @@ class TestStateConfigResolution:
     def test_get_skill_config_found(self):
         """Test getting skill configuration when skill exists."""
         mock_config = {
-            "skills": [
-                {"skill_id": "test_skill", "name": "Test Skill", "state_override": {"backend": "memory"}},
-                {"skill_id": "other_skill", "name": "Other Skill"},
+            "plugins": [
+                {"plugin_id": "test_skill", "name": "Test Skill", "state_override": {"backend": "memory"}},
+                {"plugin_id": "other_skill", "name": "Other Skill"},
             ]
         }
 
         with patch("src.agent.handlers.handlers.load_config", return_value=mock_config):
-            result = _get_skill_config("test_skill")
+            result = _get_plugin_config("test_skill")
 
             assert result is not None
-            assert result["skill_id"] == "test_skill"
+            assert result["plugin_id"] == "test_skill"
             assert result["name"] == "Test Skill"
             assert "state_override" in result
 
-    def test_get_skill_config_not_found(self):
-        """Test getting skill configuration when skill doesn't exist."""
-        mock_config = {"skills": [{"skill_id": "other_skill", "name": "Other Skill"}]}
+    def test_get_plugin_config_not_found(self):
+        """Test getting plugin configuration when plugin doesn't exist."""
+        mock_config = {"plugins": [{"plugin_id": "other_skill", "name": "Other Skill"}]}
 
         with patch("src.agent.handlers.handlers.load_config", return_value=mock_config):
-            result = _get_skill_config("nonexistent_skill")
+            result = _get_plugin_config("nonexistent_skill")
 
             assert result is None
 
@@ -91,7 +91,7 @@ class TestStateConfigResolution:
         skill_config = {"skill_id": "test_skill", "name": "Test Skill"}
 
         with patch("src.agent.handlers.handlers._load_state_config", return_value=global_config):
-            with patch("src.agent.handlers.handlers._get_skill_config", return_value=skill_config):
+            with patch("src.agent.handlers.handlers._get_plugin_config", return_value=skill_config):
                 result = _resolve_state_config("test_skill")
 
                 assert result == global_config
@@ -106,7 +106,7 @@ class TestStateConfigResolution:
         }
 
         with patch("src.agent.handlers.handlers._load_state_config", return_value=global_config):
-            with patch("src.agent.handlers.handlers._get_skill_config", return_value=skill_config):
+            with patch("src.agent.handlers.handlers._get_plugin_config", return_value=skill_config):
                 result = _resolve_state_config("test_skill")
 
                 assert result == skill_config["state_override"]
@@ -161,7 +161,7 @@ class TestStateApplication:
         state_config = {"enabled": True, "backend": "memory", "config": {}}
 
         with patch("src.agent.handlers.handlers._resolve_state_config", return_value=state_config):
-            with patch("src.agent.handlers.handlers.with_state", side_effect=Exception("State error")):
+            with patch("src.agent.state.decorators.with_state", side_effect=Exception("State error")):
                 result = _apply_state_to_handler(mock_handler, "test_skill")
 
                 # Should return original handler on error
@@ -462,15 +462,15 @@ class TestIntegrationWithRealScenarios:
         """Test complete state application workflow."""
         # Create a realistic agent configuration
         agent_config = {
-            "skills": [
+            "plugins": [
                 {
-                    "skill_id": "ai_assistant",
+                    "plugin_id": "ai_assistant",
                     "name": "AI Assistant",
                     "description": "AI-powered assistant",
                     "tags": ["ai", "assistant"],
                 },
                 {
-                    "skill_id": "stateful_echo",
+                    "plugin_id": "stateful_echo",
                     "name": "Stateful Echo",
                     "description": "Echo with state",
                     "tags": ["echo", "stateful"],

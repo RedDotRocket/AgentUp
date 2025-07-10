@@ -63,9 +63,9 @@ class TestAgentCard:
         """Test creating agent card with skills."""
         mock_load_config.return_value = {
             "agent": {"name": "SkillfulAgent", "description": "Agent with skills", "version": "2.0.0"},
-            "skills": [
+            "plugins": [
                 {
-                    "skill_id": "chat",
+                    "plugin_id": "chat",
                     "name": "Chat",
                     "description": "General chat capabilities",
                     "input_mode": "text",

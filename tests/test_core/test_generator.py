@@ -278,39 +278,39 @@ class TestTemplateRendering:
 class TestConfigurationGeneration:
     """Test configuration file generation."""
 
-    def test_build_skills_config_minimal(self, temp_dir: Path):
-        """Test skills configuration for minimal template."""
+    def test_build_plugins_config_minimal(self, temp_dir: Path):
+        """Test plugins configuration for minimal template."""
         config = create_test_config("minimal-test", "minimal")
         generator = ProjectGenerator(temp_dir, config)
 
-        skills_config = generator._build_skills_config()
+        plugins_config = generator._build_plugins_config()
 
-        assert len(skills_config) == 1
-        assert skills_config[0]["skill_id"] == "echo"
-        assert skills_config[0]["routing_mode"] == "direct"
-        assert "echo" in skills_config[0]["keywords"]
+        assert len(plugins_config) == 1
+        assert plugins_config[0]["plugin_id"] == "echo"
+        assert plugins_config[0]["routing_mode"] == "direct"
+        assert "echo" in plugins_config[0]["keywords"]
 
-    def test_build_skills_config_standard(self, temp_dir: Path):
-        """Test skills configuration for standard template."""
+    def test_build_plugins_config_standard(self, temp_dir: Path):
+        """Test plugins configuration for standard template."""
         config = create_test_config("standard-test", "standard")
         generator = ProjectGenerator(temp_dir, config)
 
-        skills_config = generator._build_skills_config()
+        plugins_config = generator._build_plugins_config()
 
-        assert len(skills_config) == 1
-        assert skills_config[0]["skill_id"] == "ai_assistant"
+        assert len(plugins_config) == 1
+        assert plugins_config[0]["plugin_id"] == "ai_assistant"
         # Note: routing_mode is not always present in standard template
 
-    def test_build_skills_config_demo(self, temp_dir: Path):
-        """Test skills configuration for demo template."""
+    def test_build_plugins_config_demo(self, temp_dir: Path):
+        """Test plugins configuration for demo template."""
         config = create_test_config("demo-test", "demo")
         generator = ProjectGenerator(temp_dir, config)
 
-        skills_config = generator._build_skills_config()
+        plugins_config = generator._build_plugins_config()
 
         # Demo template falls back to standard, so should have 1 skill
-        assert len(skills_config) == 1
-        assert skills_config[0]["skill_id"] == "ai_assistant"
+        assert len(plugins_config) == 1
+        assert plugins_config[0]["plugin_id"] == "ai_assistant"
 
     def test_build_services_config_openai(self, temp_dir: Path):
         """Test services configuration with OpenAI."""
@@ -362,7 +362,7 @@ class TestConfigurationGeneration:
         minimal_routing = minimal_generator._build_routing_config()
 
         assert minimal_routing["default_mode"] == "direct"
-        assert minimal_routing["fallback_skill"] == "echo"
+        assert minimal_routing["fallback_capability"] == "echo"
         assert minimal_routing["fallback_enabled"] is True
 
         # Test standard template routing
@@ -371,7 +371,7 @@ class TestConfigurationGeneration:
         standard_routing = standard_generator._build_routing_config()
 
         assert standard_routing["default_mode"] == "ai"
-        assert standard_routing["fallback_skill"] == "ai_assistant"
+        assert standard_routing["fallback_capability"] == "ai_assistant"
         assert standard_routing["fallback_enabled"] is True
 
     def test_build_middleware_config(self, temp_dir: Path):

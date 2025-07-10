@@ -67,14 +67,14 @@ class RoutingConfig(BaseModel):
     """Global routing configuration."""
 
     default_mode: str = "ai"  # "ai" or "direct"
-    fallback_skill: str | None = None  # Fallback skill when no match
+    fallback_plugin: str | None = None  # Fallback plugin when no match
     fallback_enabled: bool = True  # Allow AI→Direct fallback
 
 
-class SkillConfig(BaseModel):
-    """Configuration for a skill - extends A2A with routing config."""
+class PluginConfig(BaseModel):
+    """Configuration for a plugin - extends A2A with routing config."""
 
-    skill_id: str
+    plugin_id: str
     name: str
     description: str
     input_mode: str = "text"
@@ -84,7 +84,7 @@ class SkillConfig(BaseModel):
     patterns: list[str] | None = None  # For direct routing
     config: dict[str, Any] | None = None
     middleware: list[dict[str, Any]] | None = None
-    enabled: bool = True  # Allow disabling skills
+    enabled: bool = True  # Allow disabling plugins
 
 
 class AgentConfig(BaseModel):
@@ -103,7 +103,7 @@ class AgentConfig(BaseModel):
     mcp_init_path: str | None = None  # e.g. "src.agent.mcp.mcp_integration:initialize_mcp_integration"
     mcp_shutdown_path: str | None = None
 
-    skills: list[SkillConfig] = []
+    plugins: list[PluginConfig] = []
     security: dict[str, Any] | None = None
     services: dict[str, Any] | None = None
 
@@ -150,8 +150,8 @@ class LoggingConfig(BaseModel):
     }
 
 
-class SkillResponse(BaseModel):
-    """Response from a skill handler."""
+class PluginResponse(BaseModel):
+    """Response from a plugin handler."""
 
     success: bool
     result: str | None = None
@@ -207,9 +207,9 @@ __all__ = [
     "InvalidAgentResponseError",
     # Custom models
     "RoutingConfig",
-    "SkillConfig",
+    "PluginConfig",
     "AgentConfig",
     "LoggingConfig",
-    "SkillResponse",
+    "PluginResponse",
     "BaseAgent",
 ]

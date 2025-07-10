@@ -1,5 +1,5 @@
 """
-Plugin manager for AgentUp skill plugins.
+Plugin manager for AgentUp capability plugins.
 
 Handles plugin discovery, loading, and lifecycle management.
 """
@@ -14,14 +14,14 @@ from typing import Any
 import pluggy
 import structlog
 
-from .hookspecs import SkillSpec
+from .hookspecs import CapabilitySpec
 from .models import (
     AIFunction,
+    CapabilityContext,
+    CapabilityInfo,
+    CapabilityResult,
     PluginInfo,
     PluginStatus,
-    SkillContext,
-    SkillInfo,
-    SkillResult,
     ValidationResult,
 )
 
@@ -32,19 +32,20 @@ hookimpl = pluggy.HookimplMarker("agentup")
 
 
 class PluginManager:
-    """Manages skill plugins for AgentUp."""
+    """Manages capability plugins for AgentUp."""
 
     def __init__(self):
         """Initialize the plugin manager."""
         self.pm = pluggy.PluginManager("agentup")
-        self.pm.add_hookspecs(SkillSpec)
+        self.pm.add_hookspecs(CapabilitySpec)
 
         self.plugins: dict[str, PluginInfo] = {}
-        self.skills: dict[str, SkillInfo] = {}
-        self.skill_to_plugin: dict[str, str] = {}
+        self.capabilities: dict[str, CapabilityInfo] = {}
+        self.capability_to_plugin: dict[str, str] = {}
 
-        # Track plugin hooks for each skill
-        self.skill_hooks: dict[str, Any] = {}
+        # Track plugin hooks for each capability
+        self.capability_hooks: dict[str, Any] = {}
+
 
     def discover_plugins(self) -> None:
         """Discover and load all available plugins."""
@@ -53,26 +54,28 @@ class PluginManager:
         # Load from entry points
         self._load_entry_point_plugins()
 
-        # Load from installed skills directory
+        # Load from installed plugins directory
         self._load_installed_plugins()
 
-        logger.info(f"Discovered {len(self.plugins)} plugins providing {len(self.skills)} skills")
+        logger.info(f"Discovered {len(self.plugins)} plugins providing {len(self.capabilities)} capabilities")
 
     def _load_entry_point_plugins(self) -> None:
         """Load plugins from Python entry points."""
         try:
-            # Get all entry points in the agentup.skills group
+            # Get all entry points in the agentup.capabilities group
             entry_points = importlib.metadata.entry_points()
 
             # Handle different Python versions
             if hasattr(entry_points, "select"):
                 # Python 3.10+
-                skill_entries = entry_points.select(group="agentup.skills")
+                capability_entries = entry_points.select(group="agentup.capabilities")
             else:
                 # Python 3.9
-                skill_entries = entry_points.get("agentup.skills", [])
+                capability_entries = entry_points.get("agentup.capabilities", [])
 
-            for entry_point in skill_entries:
+            logger.debug(f"Found {len(capability_entries)} entry points")
+
+            for entry_point in capability_entries:
                 try:
                     logger.debug(f"Loading entry point: {entry_point.name}")
                     plugin_class = entry_point.load()
@@ -93,8 +96,8 @@ class PluginManager:
                     )
                     self.plugins[entry_point.name] = plugin_info
 
-                    # Register the skill
-                    self._register_plugin_skill(entry_point.name, plugin_instance)
+                    # Register the capability
+                    self._register_plugin_capability(entry_point.name, plugin_instance)
 
                 except Exception as e:
                     logger.error(f"Failed to load entry point {entry_point.name}: {e}")
@@ -105,7 +108,7 @@ class PluginManager:
             logger.error(f"Error loading entry point plugins: {e}")
 
     def _load_installed_plugins(self) -> None:
-        """Load plugins from installed skills directory."""
+        """Load plugins from installed plugins directory."""
         installed_dir = Path.home() / ".agentup" / "plugins"
         if not installed_dir.exists():
             logger.debug("No installed plugins directory found")
@@ -141,9 +144,15 @@ class PluginManager:
         if plugin_class is None:
             # Search for a class with our hooks
             for _, obj in vars(module).items():
-                if isinstance(obj, type) and hasattr(obj, "register_skill"):
+                if isinstance(obj, type) and hasattr(obj, "register_capability"):
                     plugin_class = obj
                     break
+            # Fallback to old interface
+            if plugin_class is None:
+                for _, obj in vars(module).items():
+                    if isinstance(obj, type) and hasattr(obj, "register_skill"):
+                        plugin_class = obj
+                        break
 
         if plugin_class is None:
             raise ValueError(f"No plugin class found in {plugin_file}")
@@ -173,44 +182,46 @@ class PluginManager:
         )
         self.plugins[plugin_name] = plugin_info
 
-        # Register the skill
-        self._register_plugin_skill(plugin_name, plugin_instance)
+        # Register the capability
+        self._register_plugin_capability(plugin_name, plugin_instance)
 
-    def _register_plugin_skill(self, plugin_name: str, plugin_instance: Any) -> None:
-        """Register a skill from a plugin."""
+    def _register_plugin_capability(self, plugin_name: str, plugin_instance: Any) -> None:
+        """Register a capability from a plugin."""
         try:
-            # Get skill info from the plugin
-            results = self.pm.hook.register_skill()
+            # Get capability info from the plugin
+            results = self.pm.hook.register_capability()
             if not results:
-                logger.warning(f"Plugin {plugin_name} did not return skill info")
+                logger.warning(f"Plugin {plugin_name} did not return capability info")
                 return
 
             # Find the result from this specific plugin
-            skill_info = None
+            capability_info = None
             for result in results:
                 # Check if this result came from our plugin
-                if hasattr(plugin_instance, "register_skill"):
-                    test_result = plugin_instance.register_skill()
+                if hasattr(plugin_instance, "register_capability"):
+                    test_result = plugin_instance.register_capability()
                     if test_result == result:
-                        skill_info = result
+                        capability_info = result
                         break
 
-            if skill_info is None:
-                skill_info = results[-1]  # Fallback to last result
+            if capability_info is None:
+                capability_info = results[-1]  # Fallback to last result
 
-            if not isinstance(skill_info, SkillInfo):
-                logger.error(f"Plugin {plugin_name} returned invalid skill info")
+            # Check if this is a CapabilityInfo object (handle different import paths)
+            if not (hasattr(capability_info, 'id') and hasattr(capability_info, 'name') and 
+                   hasattr(capability_info, 'capabilities') and type(capability_info).__name__ == 'CapabilityInfo'):
+                logger.error(f"Plugin {plugin_name} returned invalid capability info: {type(capability_info)}")
                 return
 
-            # Register the skill
-            self.skills[skill_info.id] = skill_info
-            self.skill_to_plugin[skill_info.id] = plugin_name
-            self.skill_hooks[skill_info.id] = plugin_instance
+            # Register the capability
+            self.capabilities[capability_info.id] = capability_info
+            self.capability_to_plugin[capability_info.id] = plugin_name
+            self.capability_hooks[capability_info.id] = plugin_instance
 
-            logger.info(f"Discovered skill '{skill_info.id}' from plugin '{plugin_name}'")
+            logger.info(f"Discovered capability '{capability_info.id}' from plugin '{plugin_name}'")
 
         except Exception as e:
-            logger.error(f"Failed to register skill from plugin {plugin_name}: {e}")
+            logger.error(f"Failed to register capability from plugin {plugin_name}: {e}")
 
     def _get_package_version(self, package_name: str) -> str:
         """Get version of an installed package."""
@@ -219,89 +230,97 @@ class PluginManager:
         except Exception:
             return "unknown"
 
-    def get_skill(self, skill_id: str) -> SkillInfo | None:
-        """Get skill information by ID."""
-        return self.skills.get(skill_id)
+    def get_capability(self, capability_id: str) -> CapabilityInfo | None:
+        """Get capability information by ID."""
+        return self.capabilities.get(capability_id)
 
-    def list_skills(self) -> list[SkillInfo]:
-        """List all available skills."""
-        return list(self.skills.values())
+    def list_capabilities(self) -> list[CapabilityInfo]:
+        """List all available capabilities."""
+        return list(self.capabilities.values())
+
 
     def list_plugins(self) -> list[PluginInfo]:
         """List all loaded plugins."""
         return list(self.plugins.values())
 
-    def can_handle_task(self, skill_id: str, context: SkillContext) -> bool | float:
-        """Check if a skill can handle a task."""
-        if skill_id not in self.skill_hooks:
+    def can_handle_task(self, capability_id: str, context: CapabilityContext) -> bool | float:
+        """Check if a capability can handle a task."""
+        if capability_id not in self.capability_hooks:
             return False
 
-        plugin = self.skill_hooks[skill_id]
+        plugin = self.capability_hooks[capability_id]
         if hasattr(plugin, "can_handle_task"):
             try:
                 return plugin.can_handle_task(context)
             except Exception as e:
-                logger.error(f"Error checking if skill {skill_id} can handle task: {e}")
+                logger.error(f"Error checking if capability {capability_id} can handle task: {e}")
                 return False
         return True  # Default to true if no handler
 
-    def execute_skill(self, skill_id: str, context: SkillContext) -> SkillResult:
-        """Execute a skill."""
-        if skill_id not in self.skill_hooks:
-            return SkillResult(content=f"Skill '{skill_id}' not found", success=False, error="Skill not found")
+    def execute_capability(self, capability_id: str, context: CapabilityContext) -> CapabilityResult:
+        """Execute a capability."""
+        if capability_id not in self.capability_hooks:
+            return CapabilityResult(
+                content=f"Capability '{capability_id}' not found", success=False, error="Capability not found"
+            )
 
-        plugin = self.skill_hooks[skill_id]
+        plugin = self.capability_hooks[capability_id]
         try:
-            return plugin.execute_skill(context)
+            # Try new interface first
+            if hasattr(plugin, "execute_capability"):
+                return plugin.execute_capability(context)
+            else:
+                raise AttributeError("Plugin has no execute method")
         except Exception as e:
-            logger.error(f"Error executing skill {skill_id}: {e}", exc_info=True)
-            return SkillResult(content=f"Error executing skill: {str(e)}", success=False, error=str(e))
+            logger.error(f"Error executing capability {capability_id}: {e}", exc_info=True)
+            return CapabilityResult(content=f"Error executing capability: {str(e)}", success=False, error=str(e))
 
-    def get_ai_functions(self, skill_id: str) -> list[AIFunction]:
-        """Get AI functions from a skill."""
-        if skill_id not in self.skill_hooks:
+
+    def get_ai_functions(self, capability_id: str) -> list[AIFunction]:
+        """Get AI functions from a capability."""
+        if capability_id not in self.capability_hooks:
             return []
 
-        plugin = self.skill_hooks[skill_id]
+        plugin = self.capability_hooks[capability_id]
         if hasattr(plugin, "get_ai_functions"):
             try:
                 return plugin.get_ai_functions()
             except Exception as e:
-                logger.error(f"Error getting AI functions from skill {skill_id}: {e}")
+                logger.error(f"Error getting AI functions from capability {capability_id}: {e}")
         return []
 
-    def validate_config(self, skill_id: str, config: dict) -> ValidationResult:
-        """Validate skill configuration."""
-        if skill_id not in self.skill_hooks:
-            return ValidationResult(valid=False, errors=[f"Skill '{skill_id}' not found"])
+    def validate_config(self, capability_id: str, config: dict) -> ValidationResult:
+        """Validate capability configuration."""
+        if capability_id not in self.capability_hooks:
+            return ValidationResult(valid=False, errors=[f"Capability '{capability_id}' not found"])
 
-        plugin = self.skill_hooks[skill_id]
+        plugin = self.capability_hooks[capability_id]
         if hasattr(plugin, "validate_config"):
             try:
                 return plugin.validate_config(config)
             except Exception as e:
-                logger.error(f"Error validating config for skill {skill_id}: {e}")
+                logger.error(f"Error validating config for capability {capability_id}: {e}")
                 return ValidationResult(valid=False, errors=[f"Validation error: {str(e)}"])
         return ValidationResult(valid=True)  # Default to valid if no validator
 
-    def configure_services(self, skill_id: str, services: dict) -> None:
-        """Configure services for a skill."""
-        if skill_id not in self.skill_hooks:
+    def configure_services(self, capability_id: str, services: dict) -> None:
+        """Configure services for a capability."""
+        if capability_id not in self.capability_hooks:
             return
 
-        plugin = self.skill_hooks[skill_id]
+        plugin = self.capability_hooks[capability_id]
         if hasattr(plugin, "configure_services"):
             try:
                 plugin.configure_services(services)
             except Exception as e:
-                logger.error(f"Error configuring services for skill {skill_id}: {e}")
+                logger.error(f"Error configuring services for capability {capability_id}: {e}")
 
-    def find_skills_for_task(self, context: SkillContext) -> list[tuple[str, float]]:
-        """Find skills that can handle a task, sorted by confidence."""
+    def find_capabilities_for_task(self, context: CapabilityContext) -> list[tuple[str, float]]:
+        """Find capabilities that can handle a task, sorted by confidence."""
         candidates = []
 
-        for skill_id, _ in self.skills.items():
-            confidence = self.can_handle_task(skill_id, context)
+        for capability_id, _ in self.capabilities.items():
+            confidence = self.can_handle_task(capability_id, context)
             if confidence:
                 # Convert boolean True to 1.0
                 if confidence is True:
@@ -309,11 +328,12 @@ class PluginManager:
                 elif confidence is False:
                     continue
 
-                candidates.append((skill_id, float(confidence)))
+                candidates.append((capability_id, float(confidence)))
 
         # Sort by confidence (highest first) and priority
-        candidates.sort(key=lambda x: (x[1], self.skills[x[0]].priority), reverse=True)
+        candidates.sort(key=lambda x: (x[1], self.capabilities[x[0]].priority), reverse=True)
         return candidates
+
 
     def reload_plugin(self, plugin_name: str) -> bool:
         """Reload a plugin (useful for development)."""
@@ -322,14 +342,14 @@ class PluginManager:
             if plugin_name in self.plugins:
                 self.pm.unregister(name=plugin_name)
 
-                # Remove associated skills
-                skills_to_remove = [
-                    skill_id for skill_id, pname in self.skill_to_plugin.items() if pname == plugin_name
+                # Remove associated capabilities
+                capabilities_to_remove = [
+                    capability_id for capability_id, pname in self.capability_to_plugin.items() if pname == plugin_name
                 ]
-                for skill_id in skills_to_remove:
-                    del self.skills[skill_id]
-                    del self.skill_to_plugin[skill_id]
-                    del self.skill_hooks[skill_id]
+                for capability_id in capabilities_to_remove:
+                    del self.capabilities[capability_id]
+                    del self.capability_to_plugin[capability_id]
+                    del self.capability_hooks[capability_id]
 
             # Reload based on source
             plugin_info = self.plugins.get(plugin_name)

@@ -2,7 +2,7 @@ import asyncio
 from typing import Any
 from unittest.mock import Mock
 
-from src.agent.plugins.models import SkillContext, SkillInfo, SkillResult
+from src.agent.plugins.models import CapabilityContext, CapabilityInfo, CapabilityResult
 
 
 class MockTask:
@@ -25,10 +25,10 @@ class PluginTestCase:
         services: dict[str, Any] | None = None,
         state: dict[str, Any] | None = None,
         metadata: dict[str, Any] | None = None,
-    ) -> SkillContext:
+    ) -> CapabilityContext:
         """Create a test context."""
         task = MockTask(user_input)
-        return SkillContext(
+        return CapabilityContext(
             task=task,
             config=config or {},
             services=services or {},
@@ -36,24 +36,24 @@ class PluginTestCase:
             metadata=metadata or {},
         )
 
-    def assert_skill_info_valid(self, skill_info: SkillInfo) -> None:
+    def assert_capability_info_valid(self, capability_info: CapabilityInfo) -> None:
         """Assert that skill info is valid."""
-        assert isinstance(skill_info, SkillInfo)
-        assert skill_info.id
-        assert skill_info.name
-        assert skill_info.version
-        assert isinstance(skill_info.capabilities, list)
+        assert isinstance(capability_info, CapabilityInfo)
+        assert capability_info.id
+        assert capability_info.name
+        assert capability_info.version
+        assert isinstance(capability_info.capabilities, list)
 
-    def assert_result_success(self, result: SkillResult) -> None:
+    def assert_result_success(self, result: CapabilityResult) -> None:
         """Assert that a skill result indicates success."""
-        assert isinstance(result, SkillResult)
+        assert isinstance(result, CapabilityResult)
         assert result.success
         assert result.content
         assert result.error is None
 
-    def assert_result_failure(self, result: SkillResult) -> None:
+    def assert_result_failure(self, result: CapabilityResult) -> None:
         """Assert that a skill result indicates failure."""
-        assert isinstance(result, SkillResult)
+        assert isinstance(result, CapabilityResult)
         assert not result.success
         assert result.error is not None
 
@@ -77,10 +77,10 @@ class PluginTestRunner:
     def test_registration(self) -> bool:
         """Test plugin registration."""
         try:
-            skill_info = self.plugin.register_skill()
-            assert isinstance(skill_info, SkillInfo)
-            assert skill_info.id
-            assert skill_info.name
+            capability_info = self.plugin.register_capability()
+            assert isinstance(capability_info, CapabilityInfo)
+            assert capability_info.id
+            assert capability_info.name
             return True
         except Exception as e:
             print(f"Registration test failed: {e}")
@@ -103,9 +103,9 @@ class PluginTestRunner:
         try:
             for user_input in test_inputs:
                 task = MockTask(user_input)
-                context = SkillContext(task=task)
-                result = self.plugin.execute_skill(context)
-                assert isinstance(result, SkillResult)
+                context = CapabilityContext(task=task)
+                result = self.plugin.execute_capability(context)
+                assert isinstance(result, CapabilityResult)
             return True
         except Exception as e:
             print(f"Execution test failed: {e}")
@@ -116,7 +116,7 @@ class PluginTestRunner:
         try:
             for user_input, expected in test_cases:
                 task = MockTask(user_input)
-                context = SkillContext(task=task)
+                context = CapabilityContext(task=task)
                 result = self.plugin.can_handle_task(context)
 
                 if isinstance(expected, bool):
@@ -148,8 +148,8 @@ def create_test_plugin(skill_id: str, name: str) -> type:
     """Create a simple test plugin class."""
 
     class TestPlugin:
-        def register_skill(self) -> SkillInfo:
-            return SkillInfo(
+        def register_capability(self) -> CapabilityInfo:
+            return CapabilityInfo(
                 id=skill_id,
                 name=name,
                 version="1.0.0",
@@ -162,11 +162,11 @@ def create_test_plugin(skill_id: str, name: str) -> type:
 
             return ValidationResult(valid=True)
 
-        def can_handle_task(self, context: SkillContext) -> bool:
+        def can_handle_task(self, context: CapabilityContext) -> bool:
             return True
 
-        def execute_skill(self, context: SkillContext) -> SkillResult:
-            return SkillResult(
+        def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
+            return CapabilityResult(
                 content=f"Executed {skill_id}",
                 success=True,
             )
@@ -180,11 +180,11 @@ async def test_plugin_async(plugin_instance) -> dict[str, Any]:
 
     # Test registration
     try:
-        skill_info = plugin_instance.register_skill()
+        capability_info = plugin_instance.register_capability()
         results["registration"] = {
             "success": True,
-            "skill_id": skill_info.id,
-            "skill_name": skill_info.name,
+            "capability_id": capability_info.id,
+            "capability_name": capability_info.name,
         }
     except Exception as e:
         results["registration"] = {
@@ -203,13 +203,13 @@ async def test_plugin_async(plugin_instance) -> dict[str, Any]:
     for user_input in test_inputs:
         try:
             task = MockTask(user_input)
-            context = SkillContext(task=task)
+            context = CapabilityContext(task=task)
 
             # Handle both sync and async execute methods
-            if asyncio.iscoroutinefunction(plugin_instance.execute_skill):
-                result = await plugin_instance.execute_skill(context)
+            if asyncio.iscoroutinefunction(plugin_instance.execute_capability):
+                result = await plugin_instance.execute_capability(context)
             else:
-                result = plugin_instance.execute_skill(context)
+                result = plugin_instance.execute_capability(context)
 
             execution_results.append(
                 {

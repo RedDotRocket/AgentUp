@@ -1,6 +1,6 @@
 """
 Provides context management for passing authentication information
-from FastAPI requests through to skill handlers and plugins. The idea being
+from FastAPI requests through to capability handlers and plugins. The idea being
 plugin authors may want to access the authentication information such as
 scopes, user ID, etc. without having to pass it explicitly through every function call.
 """
@@ -106,17 +106,17 @@ def is_authenticated() -> bool:
     return get_current_auth() is not None
 
 
-class SkillContext:
+class CapabilityContext:
     """
-    Enhanced context object for skill handlers.
+    Enhanced context object for capability handlers.
 
-    This class provides skill handlers with access to authentication information,
+    This class provides capability handlers with access to authentication information,
     task data, and other contextual information needed for processing.
     """
 
     def __init__(self, task: Any, auth_result: AuthenticationResult | None = None):
         """
-        Initialize skill context.
+        Initialize capability context.
 
         Args:
             task: The A2A task being processed
@@ -163,28 +163,28 @@ class SkillContext:
         }
 
 
-def create_skill_context(task: Any, auth_result: AuthenticationResult | None = None) -> SkillContext:
+def create_capability_context(task: Any, auth_result: AuthenticationResult | None = None) -> CapabilityContext:
     """
-    Create a SkillContext for a task.
+    Create a CapabilityContext for a task.
 
     Args:
         task: The A2A task being processed
         auth_result: Optional authentication result (will use current context if not provided)
 
     Returns:
-        SkillContext: Context object for the skill handler
+        CapabilityContext: Context object for the capability handler
     """
-    return SkillContext(task, auth_result)
+    return CapabilityContext(task, auth_result)
 
 
 # Logging utilities for security events
-def log_auth_event(event_type: str, skill_id: str, success: bool, details: str = ""):
+def log_auth_event(event_type: str, capability_id: str, success: bool, details: str = ""):
     """
-    Log authentication-related events for skills.
+    Log authentication-related events for capabilities.
 
     Args:
         event_type: Type of event (e.g., "authorization", "scope_check")
-        skill_id: ID of the skill being accessed
+        capability_id: ID of the capability being accessed
         success: Whether the event was successful
         details: Additional details about the event
     """
@@ -194,7 +194,7 @@ def log_auth_event(event_type: str, skill_id: str, success: bool, details: str =
 
     log_data = {
         "event_type": event_type,
-        "skill_id": skill_id,
+        "capability_id": capability_id,
         "user_id": user_id,
         "scopes": scopes,
         "success": success,
@@ -202,6 +202,6 @@ def log_auth_event(event_type: str, skill_id: str, success: bool, details: str =
     }
 
     if success:
-        logger.info(f"Auth event: {event_type} for skill '{skill_id}' - {log_data}")
+        logger.info(f"Auth event: {event_type} for capability '{capability_id}' - {log_data}")
     else:
-        logger.warning(f"Auth failure: {event_type} for skill '{skill_id}' - {log_data}")
+        logger.warning(f"Auth failure: {event_type} for capability '{capability_id}' - {log_data}")

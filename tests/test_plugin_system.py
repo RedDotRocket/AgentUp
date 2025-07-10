@@ -1,6 +1,6 @@
 import pytest
 
-from src.agent.plugins import PluginManager, SkillContext, SkillInfo, SkillResult
+from src.agent.plugins import CapabilityContext, CapabilityInfo, CapabilityResult, PluginManager
 from src.agent.plugins.example_plugin import ExamplePlugin
 from tests.utils.plugin_testing import MockTask, create_test_plugin
 
@@ -14,18 +14,18 @@ class TestPluginSystem:
         assert manager is not None
         assert hasattr(manager, "pm")
         assert hasattr(manager, "plugins")
-        assert hasattr(manager, "skills")
+        assert hasattr(manager, "capabilities")
 
     def test_example_plugin_registration(self):
         """Test that the example plugin registers correctly."""
         plugin = ExamplePlugin()
-        skill_info = plugin.register_skill()
+        capability_info = plugin.register_capability()
 
-        assert isinstance(skill_info, SkillInfo)
-        assert skill_info.id == "example"
-        assert skill_info.name == "Example Skill"
-        assert "text" in [cap.value for cap in skill_info.capabilities]
-        assert "ai_function" in [cap.value for cap in skill_info.capabilities]
+        assert isinstance(capability_info, CapabilityInfo)
+        assert capability_info.id == "example"
+        assert capability_info.name == "Example Capability"
+        assert "text" in [cap.value for cap in capability_info.capabilities]
+        assert "ai_function" in [cap.value for cap in capability_info.capabilities]
 
     def test_example_plugin_execution(self):
         """Test that the example plugin can execute."""
@@ -33,12 +33,12 @@ class TestPluginSystem:
 
         # Create test context
         task = MockTask("Hello, world!")
-        context = SkillContext(task=task)
+        context = CapabilityContext(task=task)
 
-        # Execute skill
-        result = plugin.execute_skill(context)
+        # Execute capability
+        result = plugin.execute_capability(context)
 
-        assert isinstance(result, SkillResult)
+        assert isinstance(result, CapabilityResult)
         assert result.success
         assert "Hello, you said: Hello, world!" in result.content
 
@@ -48,13 +48,13 @@ class TestPluginSystem:
 
         # Test with matching keywords
         task1 = MockTask("This is an example test")
-        context1 = SkillContext(task=task1)
+        context1 = CapabilityContext(task=task1)
         confidence1 = plugin.can_handle_task(context1)
         assert confidence1 > 0
 
         # Test without matching keywords
         task2 = MockTask("Unrelated content")
-        context2 = SkillContext(task=task2)
+        context2 = CapabilityContext(task=task2)
         confidence2 = plugin.can_handle_task(context2)
         assert confidence2 == 0
 
@@ -67,42 +67,42 @@ class TestPluginSystem:
         assert any(f.name == "greet_user" for f in ai_functions)
         assert any(f.name == "echo_message" for f in ai_functions)
 
-    def test_plugin_manager_skill_registration(self):
-        """Test registering a skill with the plugin manager."""
+    def test_plugin_manager_capability_registration(self):
+        """Test registering a capability with the plugin manager."""
         manager = PluginManager()
 
         # Create and register a test plugin
-        TestPlugin = create_test_plugin("test_skill", "Test Skill")
+        TestPlugin = create_test_plugin("test_capability", "Test Skill")
         plugin = TestPlugin()
 
         # Manually register the plugin properly
         manager.pm.register(plugin, name="test_plugin")
 
-        # Get skill info directly and store it
-        skill_info = plugin.register_skill()
-        manager.skills[skill_info.id] = skill_info
-        manager.skill_to_plugin[skill_info.id] = "test_plugin"
-        manager.skill_hooks[skill_info.id] = plugin
+        # Get capability info directly and store it
+        capability_info = plugin.register_capability()
+        manager.capabilities[capability_info.id] = capability_info
+        manager.capability_to_plugin[capability_info.id] = "test_plugin"
+        manager.capability_hooks[capability_info.id] = plugin
 
-        # Check skill was registered
-        assert "test_skill" in manager.skills
-        skill = manager.get_skill("test_skill")
-        assert skill is not None
-        assert skill.name == "Test Skill"
+        # Check capability was registered
+        assert "test_capability" in manager.capabilities
+        capability = manager.get_capability("test_capability")
+        assert capability is not None
+        assert capability.name == "Test Skill"
 
     def test_plugin_manager_execution(self):
-        """Test executing a skill through the plugin manager."""
+        """Test executing a capability through the plugin manager."""
         manager = PluginManager()
 
         # Register example plugin
         plugin = ExamplePlugin()
         manager.pm.register(plugin, name="example_plugin")
-        manager._register_plugin_skill("example_plugin", plugin)
+        manager._register_plugin_capability("example_plugin", plugin)
 
-        # Execute skill
+        # Execute capability
         task = MockTask("Test input")
-        context = SkillContext(task=task)
-        result = manager.execute_skill("example", context)
+        context = CapabilityContext(task=task)
+        result = manager.execute_capability("example", context)
 
         assert result.success
         assert result.content
@@ -117,18 +117,18 @@ class TestPluginSystem:
         # Register example plugin
         plugin = ExamplePlugin()
         manager.pm.register(plugin, name="example_plugin")
-        manager._register_plugin_skill("example_plugin", plugin)
+        manager._register_plugin_capability("example_plugin", plugin)
 
         adapter = PluginAdapter(manager)
 
-        # Test listing skills
-        skills = adapter.list_available_skills()
-        assert "example" in skills
+        # Test listing capabilitys
+        capabilitys = adapter.list_available_capabilities()
+        assert "example" in capabilitys
 
-        # Test getting skill info
-        info = adapter.get_skill_info("example")
-        assert info["skill_id"] == "example"
-        assert info["name"] == "Example Skill"
+        # Test getting capability info
+        info = adapter.get_capability_info("example")
+        assert info["capability_id"] == "example"
+        assert info["name"] == "Example Capability"
 
     @pytest.mark.asyncio
     async def test_plugin_async_execution(self):
@@ -139,7 +139,7 @@ class TestPluginSystem:
         results = await test_plugin_async(plugin)
 
         assert results["registration"]["success"]
-        assert results["registration"]["skill_id"] == "example"
+        assert results["registration"]["capability_id"] == "example"
 
         # Check execution results
         assert len(results["execution"]) > 0

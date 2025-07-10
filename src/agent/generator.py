@@ -257,10 +257,10 @@ class ProjectGenerator:
             # 'description': self.config.get('description', ''),
             # 'version': '0.1.0',
             # Core configuration
-            "skills": self._build_skills_config(),
+            "plugins": self._build_plugins_config(),
             "routing": self._build_routing_config(),
-            # Registry skills section - for skills installed from AgentUp Skills Registry
-            "registry_skills": [],
+            # Registry plugins section - for plugins installed from AgentUp Plugins Registry
+            "registry_plugins": [],
         }
 
         # Add AgentUp security configuration
@@ -312,7 +312,7 @@ class ProjectGenerator:
                 "enabled": True,
                 "llm_service": llm_service_name,
                 "model": llm_model,
-                "system_prompt": f"""You are {self.project_name}, an AI agent with access to specific functions/skills.
+                "system_prompt": f"""You are {self.project_name}, an AI agent with access to specific functions/plugins.
 
 Your role:
 - Understand user requests naturally and conversationally
@@ -373,12 +373,12 @@ Always be helpful, accurate, and maintain a friendly tone. You are designed to a
 
         return config
 
-    def _build_skills_config(self) -> list[dict[str, Any]]:
-        """Build skills configuration based on template."""
+    def _build_plugins_config(self) -> list[dict[str, Any]]:
+        """Build plugins configuration based on template."""
         if self.template_name == "minimal":
             return [
                 {
-                    "skill_id": "echo",
+                    "plugin_id": "echo",
                     "name": "Echo",
                     "description": "Echo back the input text",
                     "input_mode": "text",
@@ -389,17 +389,17 @@ Always be helpful, accurate, and maintain a friendly tone. You are designed to a
                 }
             ]
         elif self.template_name == "full":
-            # Full template gets multiple skills
+            # Full template gets multiple plugins
             return [
                 {
-                    "skill_id": "ai_assistant",
+                    "plugin_id": "ai_assistant",
                     "name": "AI Assistant",
                     "description": "General purpose AI assistant",
                     "input_mode": "text",
                     "output_mode": "text",
                 },
                 {
-                    "skill_id": "data_analyzer",
+                    "plugin_id": "data_analyzer",
                     "name": "Data Analyzer",
                     "description": "Analyze and visualize data",
                     "input_mode": "text",
@@ -410,7 +410,7 @@ Always be helpful, accurate, and maintain a friendly tone. You are designed to a
             # Standard template
             return [
                 {
-                    "skill_id": "ai_assistant",
+                    "plugin_id": "ai_assistant",
                     "name": "AI Assistant",
                     "description": "General purpose AI assistant",
                     "input_mode": "text",
@@ -532,15 +532,15 @@ Always be helpful, accurate, and maintain a friendly tone. You are designed to a
 
     def _build_routing_config(self) -> dict[str, Any]:
         """Build routing configuration based on template."""
-        # Determine routing mode and fallback skill based on template
+        # Determine routing mode and fallback capability based on template
         if self.template_name == "minimal":
             default_mode = "direct"
-            fallback_skill = "echo"
+            fallback_capability = "echo"
         else:
             default_mode = "ai"
-            fallback_skill = "ai_assistant"
+            fallback_capability = "ai_assistant"
 
-        return {"default_mode": default_mode, "fallback_skill": fallback_skill, "fallback_enabled": True}
+        return {"default_mode": default_mode, "fallback_capability": fallback_capability, "fallback_enabled": True}
 
     def _get_auth_config(self, auth_type: str) -> dict[str, Any]:
         """Get authentication configuration."""

@@ -11,11 +11,15 @@ logger = structlog.get_logger(__name__)
 
 
 def _preserve_ai_attributes(wrapper: Callable, original: Callable) -> None:
-    """Preserve AI function attributes on the wrapper."""
+    """Preserve AI function attributes and middleware/state flags on the wrapper."""
     if hasattr(original, "_is_ai_function"):
         wrapper._is_ai_function = original._is_ai_function
     if hasattr(original, "_ai_function_schema"):
         wrapper._ai_function_schema = original._ai_function_schema
+    if hasattr(original, "_agentup_middleware_applied"):
+        wrapper._agentup_middleware_applied = original._agentup_middleware_applied
+    if hasattr(original, "_agentup_state_applied"):
+        wrapper._agentup_state_applied = original._agentup_state_applied
 
 
 def _inject_state_if_supported(

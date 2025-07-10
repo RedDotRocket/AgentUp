@@ -14,7 +14,7 @@ logger = structlog.get_logger(__name__)
 
 
 class FunctionRegistry:
-    """Registry for LLM-callable functions (skills)."""
+    """Registry for LLM-callable functions (plugins)."""
 
     def __init__(self):
         self._functions: dict[str, dict[str, Any]] = {}
@@ -23,10 +23,10 @@ class FunctionRegistry:
         self._mcp_client = None
 
     def register_function(self, name: str, handler: Callable, schema: dict[str, Any]):
-        """Register a skill as an LLM-callable function."""
+        """Register a plugin as an LLM-callable function."""
         self._functions[name] = schema
         self._handlers[name] = handler
-        logger.info(f"Registered AI function: {name}")
+        logger.debug(f"Registered AI function: {name}")
 
     def get_function_schemas(self) -> list[dict[str, Any]]:
         """Get all function schemas for LLM function calling (local + MCP)."""
@@ -369,9 +369,9 @@ class FunctionDispatcher:
         return f"I received your message: '{user_input}'. However, my AI capabilities are currently unavailable. Please try again later."
 
 
-# Decorator for registering skills as AI functions
+# Decorator for registering plugins as AI functions
 def ai_function(description: str, parameters: dict[str, Any] | None = None):
-    """Decorator to register a skill as an LLM-callable function.
+    """Decorator to register a plugin as an LLM-callable function.
 
     Args:
         description: Description of what the function does
@@ -545,7 +545,7 @@ def register_ai_functions_from_handlers():
                 if has_ai_flag and has_schema:
                     schema = obj._ai_function_schema
                     registry.register_function(schema["name"], obj, schema)
-                    logger.info(f"Auto-registered AI function: {schema['name']} from {name}")
+                    logger.debug(f"Auto-registered AI function: {schema['name']} from {name}")
                     registered_count += 1
                     ai_functions_in_module += 1
 
@@ -561,26 +561,26 @@ def register_ai_functions_from_handlers():
         if plugin_adapter:
             plugin_functions_count = 0
 
-            # Get all available plugin skills
-            available_skills = plugin_adapter.list_available_skills()
+            # Get all available plugin capabilities
+            available_plugins = plugin_adapter.list_available_capabilities()
 
-            # Get configured skills from agent config
+            # Get configured plugins from agent config
             try:
                 from ..config import load_config
 
                 config = load_config()
-                configured_skills = {skill.get("skill_id") for skill in config.get("skills", [])}
+                configured_plugins = {plugin.get("plugin_id") for plugin in config.get("plugins", [])}
             except Exception as e:
                 logger.warning(f"Could not load agent config for plugin AI functions: {e}")
-                configured_skills = set(available_skills)
+                configured_plugins = set(available_plugins)
 
-            # Register AI functions only for configured plugin skills
-            for skill_id in available_skills:
-                if skill_id not in configured_skills:
-                    logger.debug(f"Skipping AI functions for unconfigured plugin skill: {skill_id}")
+            # Register AI functions only for configured plugins
+            for plugin_id in available_plugins:
+                if plugin_id not in configured_plugins:
+                    logger.debug(f"Skipping AI functions for unconfigured plugin: {plugin_id}")
                     continue
 
-                ai_functions = plugin_adapter.get_ai_functions(skill_id)
+                ai_functions = plugin_adapter.get_ai_functions(plugin_id)
                 for ai_function in ai_functions:
                     # Convert plugin AIFunction to registry format
                     schema = {
@@ -594,9 +594,9 @@ def register_ai_functions_from_handlers():
                     def create_wrapper(func_handler):
                         async def plugin_function_wrapper(task, **kwargs):
                             # Create plugin context from task
-                            from ..plugins.models import SkillContext
+                            from ..plugins.models import CapabilityContext
 
-                            context = SkillContext(task=task, metadata={"parameters": kwargs})
+                            context = CapabilityContext(task=task, metadata={"parameters": kwargs})
                             result = await func_handler(task, context)
                             return result.content if hasattr(result, "content") else str(result)
 
@@ -604,7 +604,7 @@ def register_ai_functions_from_handlers():
 
                     wrapped_handler = create_wrapper(ai_function.handler)
                     registry.register_function(ai_function.name, wrapped_handler, schema)
-                    logger.info(f"Registered plugin AI function: {ai_function.name} from {skill_id}")
+                    logger.debug(f"Registered plugin AI function: {ai_function.name} from {plugin_id}")
                     plugin_functions_count += 1
 
             if plugin_functions_count > 0:

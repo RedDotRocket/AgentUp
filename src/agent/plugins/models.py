@@ -18,8 +18,8 @@ class PluginStatus(str, Enum):
     ERROR = "error"
 
 
-class SkillCapability(str, Enum):
-    """Skill capability types."""
+class CapabilityType(str, Enum):
+    """Capability feature types."""
 
     TEXT = "text"
     MULTIMODAL = "multimodal"
@@ -44,14 +44,14 @@ class PluginInfo:
 
 
 @dataclass
-class SkillInfo:
-    """Information about a skill provided by a plugin."""
+class CapabilityInfo:
+    """Information about a capability provided by a plugin."""
 
     id: str
     name: str
     version: str
     description: str | None = None
-    capabilities: list[SkillCapability] = field(default_factory=list)
+    capabilities: list[CapabilityType] = field(default_factory=list)
     input_mode: str = "text"
     output_mode: str = "text"
     tags: list[str] = field(default_factory=list)
@@ -68,13 +68,13 @@ class AIFunction:
     name: str
     description: str
     parameters: dict[str, Any]
-    handler: Any  # Callable[[Task, SkillContext], SkillResult]
+    handler: Any  # Callable[[Task, CapabilityContext], CapabilityResult]
     examples: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass
-class SkillContext:
-    """Runtime context provided to skill execution."""
+class CapabilityContext:
+    """Runtime context provided to capability execution."""
 
     task: Task
     config: dict[str, Any] = field(default_factory=dict)
@@ -84,8 +84,8 @@ class SkillContext:
 
 
 @dataclass
-class SkillResult:
-    """Result from skill execution."""
+class CapabilityResult:
+    """Result from capability execution."""
 
     content: str
     success: bool = True
@@ -103,3 +103,5 @@ class ValidationResult:
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     suggestions: list[str] = field(default_factory=list)
+
+

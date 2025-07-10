@@ -1,4 +1,4 @@
-# Example: Per-Skill Middleware Override
+# Example: Per-Plugin Middleware Override
 
 # Global middleware configuration - applies to all handlers by default
 middleware:
@@ -14,18 +14,18 @@ middleware:
     params:
       requests_per_minute: 60
 
-# Skills with custom middleware requirements
-skills:
-  # Standard skill - uses global middleware
-  - skill_id: standard_skill
-    name: Standard Skill
+# Plugins with custom middleware requirements
+plugins:
+  # Standard plugin - uses global middleware
+  - plugin_id: standard_plugin
+    name: Standard Plugin
     description: Uses the global middleware configuration
     input_mode: text
     output_mode: text
     # No middleware_override, so uses global middleware
 
   # Expensive operation - needs longer cache
-  - skill_id: expensive_analysis
+  - plugin_id: expensive_analysis
     name: Expensive Analysis
     description: Complex analysis that takes time
     input_mode: multimodal
@@ -41,7 +41,7 @@ skills:
         params: {}
 
   # Real-time data - no caching
-  - skill_id: live_feed
+  - plugin_id: live_feed
     name: Live Feed
     description: Always returns fresh data
     input_mode: text
@@ -57,8 +57,8 @@ skills:
           requests_per_minute: 120  # Higher rate limit
       # Note: No caching middleware
 
-  # Debug mode skill - verbose logging
-  - skill_id: experimental_feature
+  # Debug mode plugin - verbose logging
+  - plugin_id: experimental_feature
     name: Experimental Feature
     description: New feature under development
     input_mode: text
@@ -74,8 +74,8 @@ skills:
           max_retries: 5  # More retries during testing
           backoff_factor: 1
 
-  # High-performance skill - minimal middleware
-  - skill_id: fast_response
+  # High-performance plugin - minimal middleware
+  - plugin_id: fast_response
     name: Fast Response
     description: Optimized for speed
     input_mode: text
@@ -85,7 +85,7 @@ skills:
         params: {}
 
   # Raw performance - no middleware at all
-  - skill_id: bare_metal
+  - plugin_id: bare_metal
     name: Bare Metal Performance
     description: No middleware overhead whatsoever
     input_mode: text
@@ -93,7 +93,7 @@ skills:
     middleware_override: []  # Empty array = no middleware
 
   # Selective exclusion - everything except caching
-  - skill_id: no_cache_api
+  - plugin_id: no_cache_api
     name: No Cache API
     description: External API that should never be cached
     input_mode: text
@@ -110,7 +110,7 @@ skills:
       # Note: Caching middleware excluded
 
 # The result:
-# - standard_skill: Gets all global middleware (logged, timed, cached, rate_limited)
+# - standard_plugin: Gets all global middleware (logged, timed, cached, rate_limited)
 # - expensive_analysis: Gets custom caching (1 hour), plus logging and timing
 # - live_feed: No caching, higher rate limit
 # - experimental_feature: DEBUG logging, more retries

@@ -173,9 +173,9 @@ class MCPHTTPClient:
             logger.error(f"Failed to call MCP tool {tool_name}: {e}")
             raise
 
-    async def call_agent_skill(self, skill_id: str, message: str, metadata: dict | None = None) -> str:
+    async def call_agent_capability(self, capability_id: str, message: str, metadata: dict | None = None) -> str:
         """
-        Call an agent skill via A2A protocol (fallback when MCP is not available).
+        Call an agent capability via A2A protocol (fallback when MCP is not available).
         """
         try:
             headers = self._get_headers()
@@ -186,7 +186,7 @@ class MCPHTTPClient:
                 "method": "send_message",
                 "params": {
                     "messages": [{"role": "user", "content": message}],
-                    "metadata": {"skill_id": skill_id, **(metadata or {})},
+                    "metadata": {"plugin_id": capability_id, **(metadata or {})},
                 },
                 "id": 3,
             }
@@ -206,8 +206,13 @@ class MCPHTTPClient:
                     return f"Error: {response.status_code}"
 
         except Exception as e:
-            logger.error(f"Failed to call agent skill {skill_id}: {e}")
+            logger.error(f"Failed to call agent capability {capability_id}: {e}")
             return f"Error: {str(e)}"
+
+    # Backward compatibility method
+    async def call_agent_skill(self, capability_id: str, message: str, metadata: dict | None = None) -> str:
+        """Backward compatibility alias for call_agent_capability."""
+        return await self.call_agent_capability(capability_id, message, metadata)
 
     def get_available_tools(self) -> list[dict[str, Any]]:
         """Get list of available MCP tools."""

@@ -24,13 +24,13 @@ def plugin():
 @click.option("--verbose", "-v", is_flag=True, help="Show detailed plugin information")
 @click.option("--format", "-f", type=click.Choice(["table", "json", "yaml"]), default="table", help="Output format")
 def list_plugins(verbose: bool, format: str):
-    """List all loaded plugins and their skills."""
+    """List all loaded plugins and their capabilities."""
     try:
         from agent.plugins.manager import get_plugin_manager
 
         manager = get_plugin_manager()
         plugins = manager.list_plugins()
-        skills = manager.list_skills()
+        capabilities = manager.list_capabilities()
 
         if format == "json":
             output = {
@@ -44,15 +44,15 @@ def list_plugins(verbose: bool, format: str):
                     }
                     for p in plugins
                 ],
-                "skills": [
+                "capabilities": [
                     {
-                        "id": s.id,
-                        "name": s.name,
-                        "version": s.version,
-                        "plugin": manager.skill_to_plugin.get(s.id),
-                        "capabilities": s.capabilities,
+                        "id": c.id,
+                        "name": c.name,
+                        "version": c.version,
+                        "plugin": manager.capability_to_plugin.get(c.id),
+                        "features": c.capabilities,
                     }
-                    for s in skills
+                    for c in capabilities
                 ],
             }
             console.print_json(json.dumps(output, indent=2))
@@ -72,15 +72,15 @@ def list_plugins(verbose: bool, format: str):
                     }
                     for p in plugins
                 ],
-                "skills": [
+                "capabilities": [
                     {
-                        "id": s.id,
-                        "name": s.name,
-                        "version": s.version,
-                        "plugin": manager.skill_to_plugin.get(s.id),
-                        "capabilities": s.capabilities,
+                        "id": c.id,
+                        "name": c.name,
+                        "version": c.version,
+                        "plugin": manager.capability_to_plugin.get(c.id),
+                        "features": c.capabilities,
                     }
-                    for s in skills
+                    for c in capabilities
                 ],
             }
             console.print(yaml.dump(output, default_flow_style=False))
@@ -98,21 +98,21 @@ def list_plugins(verbose: bool, format: str):
         plugin_table.add_column("Plugin", style="cyan")
         plugin_table.add_column("Version", style="green", justify="center")
         plugin_table.add_column("Status", style="blue", justify="center")
-        plugin_table.add_column("Skills", style="yellow", justify="center")
+        plugin_table.add_column("Capabilities", style="yellow", justify="center")
 
         if verbose:
             plugin_table.add_column("Source", style="dim")
             plugin_table.add_column("Author", style="white")
 
         for plugin in plugins:
-            # Count skills from this plugin
-            skill_count = sum(1 for sid, pid in manager.skill_to_plugin.items() if pid == plugin.name)
+            # Count capabilities from this plugin
+            capability_count = sum(1 for cid, pid in manager.capability_to_plugin.items() if pid == plugin.name)
 
             row = [
                 plugin.name,
                 plugin.version,
                 plugin.status.value,
-                str(skill_count),
+                str(capability_count),
             ]
 
             if verbose:
@@ -123,38 +123,38 @@ def list_plugins(verbose: bool, format: str):
 
         console.print(plugin_table)
 
-        # Skills table
-        if skills:
+        # Capabilities table
+        if capabilities:
             console.print()  # Blank line
-            skill_table = Table(title="Available Skills", box=box.ROUNDED, title_style="bold cyan")
-            skill_table.add_column("Skill ID", style="cyan")
-            skill_table.add_column("Name", style="white")
-            skill_table.add_column("Plugin", style="dim")
-            skill_table.add_column("Capabilities", style="green")
+            capability_table = Table(title="Available Capabilities", box=box.ROUNDED, title_style="bold cyan")
+            capability_table.add_column("Capability ID", style="cyan")
+            capability_table.add_column("Name", style="white")
+            capability_table.add_column("Plugin", style="dim")
+            capability_table.add_column("Features", style="green")
 
             if verbose:
-                skill_table.add_column("Version", style="yellow", justify="center")
-                skill_table.add_column("Priority", style="blue", justify="center")
+                capability_table.add_column("Version", style="yellow", justify="center")
+                capability_table.add_column("Priority", style="blue", justify="center")
 
-            for skill in skills:
-                plugin_name = manager.skill_to_plugin.get(skill.id, "unknown")
-                # Handle both string and enum capabilities
+            for capability in capabilities:
+                plugin_name = manager.capability_to_plugin.get(capability.id, "unknown")
+                # Handle both string and enum capability features
                 caps = []
-                for cap in skill.capabilities:
+                for cap in capability.capabilities:
                     if hasattr(cap, "value"):
                         caps.append(cap.value)
                     else:
                         caps.append(str(cap))
-                capabilities = ", ".join(caps)
+                features = ", ".join(caps)
 
-                row = [skill.id, skill.name, plugin_name, capabilities]
+                row = [capability.id, capability.name, plugin_name, features]
 
                 if verbose:
-                    row.extend([skill.version, str(skill.priority)])
+                    row.extend([capability.version, str(capability.priority)])
 
-                skill_table.add_row(*row)
+                capability_table.add_row(*row)
 
-            console.print(skill_table)
+            console.print(capability_table)
 
     except ImportError:
         console.print("[red]Plugin system not available. Please check your installation.[/red]")
@@ -195,8 +195,8 @@ def create(plugin_name: str | None, template: str, output_dir: str | None, no_gi
 
     author = questionary.text("Author name:").ask()
 
-    skill_id = questionary.text(
-        "Primary skill ID:", default=plugin_name.replace("-", "_"), validate=lambda x: x.replace("_", "").isalnum()
+    capability_id = questionary.text(
+        "Primary capability ID:", default=plugin_name.replace("-", "_"), validate=lambda x: x.replace("_", "").isalnum()
     ).ask()
 
     # Determine output directory
@@ -239,7 +239,7 @@ classifiers = [
     "Framework :: AgentUp :: Plugin",
 ]
 
-[project.entry-points."agentup.skills"]
+[project.entry-points."agentup.capabilities"]
 {plugin_name.replace("-", "_")} = "{plugin_name.replace("-", "_")}.plugin:Plugin"
 
 [build-system]
@@ -250,11 +250,11 @@ build-backend = "hatchling.build"
 
         # Create plugin.py based on template
         if template == "ai":
-            plugin_code = _generate_ai_plugin_code(plugin_name, skill_id, display_name, description)
+            plugin_code = _generate_ai_plugin_code(plugin_name, capability_id, display_name, description)
         elif template == "advanced":
-            plugin_code = _generate_advanced_plugin_code(plugin_name, skill_id, display_name, description)
+            plugin_code = _generate_advanced_plugin_code(plugin_name, capability_id, display_name, description)
         else:
-            plugin_code = _generate_basic_plugin_code(plugin_name, skill_id, display_name, description)
+            plugin_code = _generate_basic_plugin_code(plugin_name, capability_id, display_name, description)
 
         (src_dir / "plugin.py").write_text(plugin_code)
 
@@ -283,21 +283,21 @@ pip install {plugin_name}
 
 ## Usage
 
-This plugin provides the `{skill_id}` skill to AgentUp agents.
+This plugin provides the `{capability_id}` capability to AgentUp agents.
 
 ## Development
 
-1. Edit `src/{plugin_name.replace("-", "_")}/plugin.py` to implement your skill logic
+1. Edit `src/{plugin_name.replace("-", "_")}/plugin.py` to implement your capability logic
 2. Test locally with an AgentUp agent
 3. Publish to PyPI when ready
 
 ## Configuration
 
-The skill can be configured in `agent_config.yaml`:
+The capability can be configured in `agent_config.yaml`:
 
 ```yaml
-skills:
-  - skill_id: {skill_id}
+plugins:
+  - plugin_id: {capability_id}
     config:
       # Add your configuration options here
 ```
@@ -308,18 +308,18 @@ skills:
         test_content = f'''"""Tests for {display_name} plugin."""
 
 import pytest
-from agent.plugins.models import SkillContext, SkillInfo
+from agent.plugins.models import CapabilityContext, CapabilityInfo
 from {plugin_name.replace("-", "_")}.plugin import Plugin
 
 
 def test_plugin_registration():
     """Test that the plugin registers correctly."""
     plugin = Plugin()
-    skill_info = plugin.register_skill()
+    capability_info = plugin.register_capability()
 
-    assert isinstance(skill_info, SkillInfo)
-    assert skill_info.id == "{skill_id}"
-    assert skill_info.name == "{display_name}"
+    assert isinstance(capability_info, CapabilityInfo)
+    assert capability_info.id == "{capability_id}"
+    assert capability_info.name == "{display_name}"
 
 
 def test_plugin_execution():
@@ -329,9 +329,9 @@ def test_plugin_execution():
     # Create a mock context
     from unittest.mock import Mock
     task = Mock()
-    context = SkillContext(task=task)
+    context = CapabilityContext(task=task)
 
-    result = plugin.execute_skill(context)
+    result = plugin.execute_capability(context)
 
     assert result.success
     assert result.content
@@ -401,9 +401,9 @@ This plugin is designed to be fully A2A-specification compliant. Always consult 
 ### Hook System
 The plugin uses pluggy hooks to integrate with AgentUp:
 
-- `@hookimpl def register_skill()` - **Required** - Registers the plugin's skill(s)
+- `@hookimpl def register_capability()` - **Required** - Registers the plugin's capability(s)
 - `@hookimpl def can_handle_task()` - **Required** - Determines if plugin can handle a task
-- `@hookimpl def execute_skill()` - **Required** - Main skill execution logic
+- `@hookimpl def execute_capability()` - **Required** - Main capability execution logic
 - `@hookimpl def validate_config()` - Optional - Validates plugin configuration
 - `@hookimpl def get_ai_functions()` - Optional - Provides AI-callable functions
 - `@hookimpl def configure_services()` - Optional - Configures external services
@@ -412,7 +412,7 @@ The plugin uses pluggy hooks to integrate with AgentUp:
 ### Entry Point
 The plugin is registered via entry point in `pyproject.toml`:
 ```toml
-[project.entry-points."agentup.skills"]
+[project.entry-points."agentup.capabilities"]
 {plugin_name.replace("-", "_")} = "{plugin_name.replace("-", "_")}.plugin:Plugin"
 ```
 
@@ -426,16 +426,16 @@ The plugin is registered via entry point in `pyproject.toml`:
 
 ### Plugin Implementation Patterns
 
-#### 1. Skill Registration
+#### 1. Capability Registration
 ```python
 @hookimpl
-def register_skill(self) -> SkillInfo:
-    return SkillInfo(
-        id="{skill_id}",
+def register_capability(self) -> CapabilityInfo:
+    return CapabilityInfo(
+        id="{capability_id}",
         name="{display_name}",
         version="0.1.0",
         description="{description}",
-        capabilities=[SkillCapability.TEXT],  # Add capabilities as needed
+        capabilities=[CapabilityType.TEXT],  # Add capabilities as needed
         tags=["{plugin_name}", "custom"],
         config_schema={{
             # JSON schema for configuration validation
@@ -446,7 +446,7 @@ def register_skill(self) -> SkillInfo:
 #### 2. Task Routing
 ```python
 @hookimpl
-def can_handle_task(self, context: SkillContext) -> float:
+def can_handle_task(self, context: CapabilityContext) -> float:
     user_input = self._extract_user_input(context).lower()
 
     # Return confidence score (0.0 to 1.0)
@@ -461,23 +461,23 @@ def can_handle_task(self, context: SkillContext) -> float:
     return confidence
 ```
 
-#### 3. Skill Execution
+#### 3. Capability Execution
 ```python
 @hookimpl
-def execute_skill(self, context: SkillContext) -> SkillResult:
+def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
     try:
         user_input = self._extract_user_input(context)
 
-        # Your skill logic here
+        # Your capability logic here
         response = self._process_request(user_input)
 
-        return SkillResult(
+        return CapabilityResult(
             content=response,
             success=True,
-            metadata={{"skill": "{skill_id}"}}
+            metadata={{"capability": "{capability_id}"}}
         )
     except Exception as e:
-        return SkillResult(
+        return CapabilityResult(
             content=f"Error: {{str(e)}}",
             success=False,
             error=str(e)
@@ -508,7 +508,7 @@ def get_ai_functions(self) -> list[AIFunction]:
 ```
 
 ### Error Handling
-- Always return SkillResult objects from execute_skill
+- Always return CapabilityResult objects from execute_capability
 - Use success=False for errors
 - Include descriptive error messages
 - Log errors appropriately for debugging
@@ -520,7 +520,7 @@ def get_ai_functions(self) -> list[AIFunction]:
 - Use pytest and async test patterns
 
 ### Configuration
-- Define configuration schema in register_skill()
+- Define configuration schema in register_capability()
 - Validate configuration in validate_config() hook
 - Use environment variables for sensitive data
 - Provide sensible defaults
@@ -553,11 +553,11 @@ agentup plugin validate {plugin_name.replace("-", "_")}
 ## Plugin Capabilities
 
 ### Available Capabilities
-- `SkillCapability.TEXT` - Text processing
-- `SkillCapability.MULTIMODAL` - Images, documents, etc.
-- `SkillCapability.AI_FUNCTION` - LLM-callable functions
-- `SkillCapability.STREAMING` - Streaming responses
-- `SkillCapability.STATEFUL` - State management
+- `CapabilityType.TEXT` - Text processing
+- `CapabilityType.MULTIMODAL` - Images, documents, etc.
+- `CapabilityType.AI_FUNCTION` - LLM-callable functions
+- `CapabilityType.STREAMING` - Streaming responses
+- `CapabilityType.STATEFUL` - State management
 
 ### Middleware Support
 Request middleware for common functionality:
@@ -652,8 +652,8 @@ def validate_config(self, config: dict) -> ValidationResult:
 import logging
 logger = logging.getLogger(__name__)
 
-def execute_skill(self, context: SkillContext) -> SkillResult:
-    logger.info("Processing request", extra={{"skill": "{skill_id}"}})
+def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
+    logger.info("Processing request", extra={{"capability": "{capability_id}"}})
     # ... implementation
 ```
 
@@ -730,7 +730,7 @@ Remember: This plugin is part of the AgentUp ecosystem. Always consider how it i
             shutil.rmtree(output_dir)
 
 
-def _generate_basic_plugin_code(plugin_name: str, skill_id: str, display_name: str, description: str) -> str:
+def _generate_basic_plugin_code(plugin_name: str, capability_id: str, display_name: str, description: str) -> str:
     """Generate basic plugin template code."""
     return f'''"""
 {display_name} plugin for AgentUp.
@@ -739,7 +739,7 @@ def _generate_basic_plugin_code(plugin_name: str, skill_id: str, display_name: s
 """
 
 import pluggy
-from agent.plugins import SkillInfo, SkillContext, SkillResult, ValidationResult, SkillCapability
+from agent.plugins import CapabilityInfo, CapabilityContext, CapabilityResult, ValidationResult, CapabilityType
 
 hookimpl = pluggy.HookimplMarker("agentup")
 
@@ -752,46 +752,46 @@ class Plugin:
         self.name = "{plugin_name}"
 
     @hookimpl
-    def register_skill(self) -> SkillInfo:
-        """Register the skill with AgentUp."""
-        return SkillInfo(
-            id="{skill_id}",
+    def register_capability(self) -> CapabilityInfo:
+        """Register the capability with AgentUp."""
+        return CapabilityInfo(
+            id="{capability_id}",
             name="{display_name}",
             version="0.1.0",
             description="{description}",
-            capabilities=[SkillCapability.TEXT],
+            capabilities=[CapabilityType.TEXT],
             tags=["{plugin_name}", "custom"],
         )
 
     @hookimpl
     def validate_config(self, config: dict) -> ValidationResult:
-        """Validate skill configuration."""
+        """Validate capability configuration."""
         # Add your validation logic here
         return ValidationResult(valid=True)
 
     @hookimpl
-    def can_handle_task(self, context: SkillContext) -> bool:
-        """Check if this skill can handle the task."""
+    def can_handle_task(self, context: CapabilityContext) -> bool:
+        """Check if this capability can handle the task."""
         # Add your routing logic here
         # For now, return True to handle all tasks
         return True
 
     @hookimpl
-    def execute_skill(self, context: SkillContext) -> SkillResult:
-        """Execute the skill logic."""
+    def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
+        """Execute the capability logic."""
         # Extract user input from the task
         user_input = self._extract_user_input(context)
 
-        # Your skill logic here
+        # Your capability logic here
         response = f"Processed by {display_name}: {{user_input}}"
 
-        return SkillResult(
+        return CapabilityResult(
             content=response,
             success=True,
-            metadata={{"skill": "{skill_id}"}},
+            metadata={{"capability": "{capability_id}"}},
         )
 
-    def _extract_user_input(self, context: SkillContext) -> str:
+    def _extract_user_input(self, context: CapabilityContext) -> str:
         """Extract user input from the task context."""
         if hasattr(context.task, "history") and context.task.history:
             last_msg = context.task.history[-1]
@@ -801,7 +801,7 @@ class Plugin:
 '''
 
 
-def _generate_advanced_plugin_code(plugin_name: str, skill_id: str, display_name: str, description: str) -> str:
+def _generate_advanced_plugin_code(plugin_name: str, capability_id: str, display_name: str, description: str) -> str:
     """Generate advanced plugin template with more features."""
     return f'''"""
 {display_name} plugin for AgentUp.
@@ -810,7 +810,7 @@ def _generate_advanced_plugin_code(plugin_name: str, skill_id: str, display_name
 """
 
 import pluggy
-from agent.plugins import SkillInfo, SkillContext, SkillResult, ValidationResult, SkillCapability
+from agent.plugins import CapabilityInfo, CapabilityContext, CapabilityResult, ValidationResult, CapabilityType
 
 hookimpl = pluggy.HookimplMarker("agentup")
 
@@ -825,14 +825,14 @@ class Plugin:
         self.config = {{}}
 
     @hookimpl
-    def register_skill(self) -> SkillInfo:
-        """Register the skill with AgentUp."""
-        return SkillInfo(
-            id="{skill_id}",
+    def register_capability(self) -> CapabilityInfo:
+        """Register the capability with AgentUp."""
+        return CapabilityInfo(
+            id="{capability_id}",
             name="{display_name}",
             version="0.1.0",
             description="{description}",
-            capabilities=[SkillCapability.TEXT, SkillCapability.STATEFUL],
+            capabilities=[CapabilityType.TEXT, CapabilityType.STATEFUL],
             tags=["{plugin_name}", "advanced", "custom"],
             config_schema={{
                 "type": "object",
@@ -858,7 +858,7 @@ class Plugin:
 
     @hookimpl
     def validate_config(self, config: dict) -> ValidationResult:
-        """Validate skill configuration."""
+        """Validate capability configuration."""
         errors = []
         warnings = []
 
@@ -886,14 +886,14 @@ class Plugin:
         # Access services like: services.get("llm"), services.get("database"), etc.
 
     @hookimpl
-    def can_handle_task(self, context: SkillContext) -> float:
-        """Check if this skill can handle the task."""
+    def can_handle_task(self, context: CapabilityContext) -> float:
+        """Check if this capability can handle the task."""
         # Advanced routing with confidence scoring
         user_input = self._extract_user_input(context).lower()
 
         # Define keywords and their confidence scores
         keywords = {{
-            "{skill_id}": 1.0,
+            "{capability_id}": 1.0,
             "{plugin_name}": 0.9,
             # Add more keywords here
         }}
@@ -907,8 +907,8 @@ class Plugin:
         return confidence
 
     @hookimpl
-    def execute_skill(self, context: SkillContext) -> SkillResult:
-        """Execute the skill logic."""
+    def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
+        """Execute the capability logic."""
         try:
             # Get configuration
             self.config = context.config
@@ -919,7 +919,7 @@ class Plugin:
             # Access state if needed
             state = context.state
 
-            # Your advanced skill logic here
+            # Your advanced capability logic here
             # Example: Make API call, process data, etc.
 
             response = f"{display_name} processed: {{user_input}}"
@@ -930,18 +930,18 @@ class Plugin:
                 "process_count": state.get("process_count", 0) + 1,
             }}
 
-            return SkillResult(
+            return CapabilityResult(
                 content=response,
                 success=True,
                 metadata={{
-                    "skill": "{skill_id}",
+                    "capability": "{capability_id}",
                     "confidence": self.can_handle_task(context),
                 }},
                 state_updates=state_updates,
             )
 
         except Exception as e:
-            return SkillResult(
+            return CapabilityResult(
                 content=f"Error processing request: {{str(e)}}",
                 success=False,
                 error=str(e),
@@ -949,7 +949,7 @@ class Plugin:
 
     @hookimpl
     def get_middleware_config(self) -> list[dict]:
-        """Request middleware for this skill."""
+        """Request middleware for this capability."""
         return [
             {{"type": "rate_limit", "requests_per_minute": 60}},
             {{"type": "cache", "ttl": 300}},
@@ -978,7 +978,7 @@ class Plugin:
             "config_loaded": bool(self.config),
         }}
 
-    def _extract_user_input(self, context: SkillContext) -> str:
+    def _extract_user_input(self, context: CapabilityContext) -> str:
         """Extract user input from the task context."""
         if hasattr(context.task, "history") and context.task.history:
             last_msg = context.task.history[-1]
@@ -988,7 +988,7 @@ class Plugin:
 '''
 
 
-def _generate_ai_plugin_code(plugin_name: str, skill_id: str, display_name: str, description: str) -> str:
+def _generate_ai_plugin_code(plugin_name: str, capability_id: str, display_name: str, description: str) -> str:
     """Generate AI-enabled plugin template."""
     return f'''"""
 {display_name} plugin for AgentUp with AI capabilities.
@@ -998,7 +998,7 @@ def _generate_ai_plugin_code(plugin_name: str, skill_id: str, display_name: str,
 
 import pluggy
 from agent.plugins import (
-    SkillInfo, SkillContext, SkillResult, ValidationResult, SkillCapability, AIFunction
+    CapabilityInfo, CapabilityContext, CapabilityResult, ValidationResult, CapabilityType, AIFunction
 )
 
 hookimpl = pluggy.HookimplMarker("agentup")
@@ -1013,21 +1013,21 @@ class Plugin:
         self.llm_service = None
 
     @hookimpl
-    def register_skill(self) -> SkillInfo:
-        """Register the skill with AgentUp."""
-        return SkillInfo(
-            id="{skill_id}",
+    def register_capability(self) -> CapabilityInfo:
+        """Register the capability with AgentUp."""
+        return CapabilityInfo(
+            id="{capability_id}",
             name="{display_name}",
             version="0.1.0",
             description="{description}",
-            capabilities=[SkillCapability.TEXT, SkillCapability.AI_FUNCTION],
+            capabilities=[CapabilityType.TEXT, CapabilityType.AI_FUNCTION],
             tags=["{plugin_name}", "ai", "llm"],
         )
 
     @hookimpl
     def validate_config(self, config: dict) -> ValidationResult:
-        """Validate skill configuration."""
-        # AI skills typically don't need much config
+        """Validate capability configuration."""
+        # AI capabilities typically don't need much config
         return ValidationResult(valid=True)
 
     @hookimpl
@@ -1037,18 +1037,18 @@ class Plugin:
         self.llm_service = services.get("llm")
 
     @hookimpl
-    def can_handle_task(self, context: SkillContext) -> bool:
-        """Check if this skill can handle the task."""
+    def can_handle_task(self, context: CapabilityContext) -> bool:
+        """Check if this capability can handle the task."""
         # For AI functions, let the LLM decide
         return True
 
     @hookimpl
-    def execute_skill(self, context: SkillContext) -> SkillResult:
-        """Execute the skill logic."""
-        # This is called when the skill is invoked directly
+    def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
+        """Execute the capability logic."""
+        # This is called when the capability is invoked directly
         user_input = self._extract_user_input(context)
 
-        return SkillResult(
+        return CapabilityResult(
             content=f"{display_name} is ready to help with: {{user_input}}",
             success=True,
         )
@@ -1058,7 +1058,7 @@ class Plugin:
         """Provide AI functions for LLM function calling."""
         return [
             AIFunction(
-                name="process_with_{skill_id}",
+                name="process_with_{capability_id}",
                 description="Process user input with {display_name}",
                 parameters={{
                     "type": "object",
@@ -1089,7 +1089,7 @@ class Plugin:
                 handler=self._process_function,
             ),
             AIFunction(
-                name="analyze_with_{skill_id}",
+                name="analyze_with_{capability_id}",
                 description="Analyze data with {display_name}",
                 parameters={{
                     "type": "object",
@@ -1110,7 +1110,7 @@ class Plugin:
             ),
         ]
 
-    async def _process_function(self, task, context: SkillContext) -> SkillResult:
+    async def _process_function(self, task, context: CapabilityContext) -> CapabilityResult:
         """Handle the process AI function."""
         params = context.metadata.get("parameters", {{}})
         input_text = params.get("input", "")
@@ -1134,9 +1134,9 @@ class Plugin:
         elif format_type == "markdown":
             result = f"## Processing Result\\n\\n{{result}}"
 
-        return SkillResult(content=result, success=True)
+        return CapabilityResult(content=result, success=True)
 
-    async def _analyze_function(self, task, context: SkillContext) -> SkillResult:
+    async def _analyze_function(self, task, context: CapabilityContext) -> CapabilityResult:
         """Handle the analyze AI function."""
         params = context.metadata.get("parameters", {{}})
         data = params.get("data", "")
@@ -1150,13 +1150,13 @@ class Plugin:
         else:  # comparison
             result = f"Comparison analysis not yet implemented for: {{data[:50]}}..."
 
-        return SkillResult(
+        return CapabilityResult(
             content=result,
             success=True,
             metadata={{"analysis_type": analysis_type}},
         )
 
-    def _extract_user_input(self, context: SkillContext) -> str:
+    def _extract_user_input(self, context: CapabilityContext) -> str:
         """Extract user input from the task context."""
         if hasattr(context.task, "history") and context.task.history:
             last_msg = context.task.history[-1]
@@ -1270,35 +1270,35 @@ def reload(plugin_name: str):
 
 
 @plugin.command()
-@click.argument("skill_id")
-def info(skill_id: str):
-    """Show detailed information about a plugin skill."""
+@click.argument("capability_id")
+def info(capability_id: str):
+    """Show detailed information about a plugin capability."""
     try:
         from agent.plugins.manager import get_plugin_manager
 
         manager = get_plugin_manager()
-        skill = manager.get_skill(skill_id)
+        capability = manager.get_capability(capability_id)
 
-        if not skill:
-            console.print(f"[yellow]Skill '{skill_id}' not found[/yellow]")
+        if not capability:
+            console.print(f"[yellow]Capability '{capability_id}' not found[/yellow]")
             return
 
         # Get plugin info
-        plugin_name = manager.skill_to_plugin.get(skill_id, "unknown")
+        plugin_name = manager.capability_to_plugin.get(capability_id, "unknown")
         plugin = manager.plugins.get(plugin_name)
 
         # Build info panel
         info_lines = [
-            f"[bold]Skill ID:[/bold] {skill.id}",
-            f"[bold]Name:[/bold] {skill.name}",
-            f"[bold]Version:[/bold] {skill.version}",
-            f"[bold]Description:[/bold] {skill.description or 'No description'}",
+            f"[bold]Capability ID:[/bold] {capability.id}",
+            f"[bold]Name:[/bold] {capability.name}",
+            f"[bold]Version:[/bold] {capability.version}",
+            f"[bold]Description:[/bold] {capability.description or 'No description'}",
             f"[bold]Plugin:[/bold] {plugin_name}",
-            f"[bold]Capabilities:[/bold] {', '.join([cap.value if hasattr(cap, 'value') else str(cap) for cap in skill.capabilities])}",
-            f"[bold]Tags:[/bold] {', '.join(skill.tags) if skill.tags else 'None'}",
-            f"[bold]Priority:[/bold] {skill.priority}",
-            f"[bold]Input Mode:[/bold] {skill.input_mode}",
-            f"[bold]Output Mode:[/bold] {skill.output_mode}",
+            f"[bold]Features:[/bold] {', '.join([cap.value if hasattr(cap, 'value') else str(cap) for cap in capability.capabilities])}",
+            f"[bold]Tags:[/bold] {', '.join(capability.tags) if capability.tags else 'None'}",
+            f"[bold]Priority:[/bold] {capability.priority}",
+            f"[bold]Input Mode:[/bold] {capability.input_mode}",
+            f"[bold]Output Mode:[/bold] {capability.output_mode}",
         ]
 
         if plugin:
@@ -1316,24 +1316,24 @@ def info(skill_id: str):
                 info_lines.append(f"[bold red]Error:[/bold red] {plugin.error}")
 
         # Configuration schema
-        if skill.config_schema:
+        if capability.config_schema:
             info_lines.extend(["", "[bold cyan]Configuration Schema:[/bold cyan]"])
             import json
 
-            schema_str = json.dumps(skill.config_schema, indent=2)
+            schema_str = json.dumps(capability.config_schema, indent=2)
             info_lines.append(f"[dim]{schema_str}[/dim]")
 
         # AI functions
-        ai_functions = manager.get_ai_functions(skill_id)
+        ai_functions = manager.get_ai_functions(capability_id)
         if ai_functions:
             info_lines.extend(["", "[bold cyan]AI Functions:[/bold cyan]"])
             for func in ai_functions:
                 info_lines.append(f"  • [green]{func.name}[/green]: {func.description}")
 
         # Health status
-        if hasattr(manager.skill_hooks.get(skill_id), "get_health_status"):
+        if hasattr(manager.capability_hooks.get(capability_id), "get_health_status"):
             try:
-                health = manager.skill_hooks[skill_id].get_health_status()
+                health = manager.capability_hooks[capability_id].get_health_status()
                 info_lines.extend(["", "[bold cyan]Health Status:[/bold cyan]"])
                 for key, value in health.items():
                     info_lines.append(f"  • {key}: {value}")
@@ -1344,7 +1344,7 @@ def info(skill_id: str):
         # Create panel
         panel = Panel(
             "\n".join(info_lines),
-            title=f"[bold cyan]{skill.name}[/bold cyan]",
+            title=f"[bold cyan]{capability.name}[/bold cyan]",
             border_style="blue",
             padding=(1, 2),
         )
@@ -1354,7 +1354,7 @@ def info(skill_id: str):
     except ImportError:
         console.print("[red]Plugin system not available.[/red]")
     except Exception as e:
-        console.print(f"[red]Error getting skill info: {e}[/red]")
+        console.print(f"[red]Error getting capability info: {e}[/red]")
 
 
 @plugin.command()
@@ -1369,23 +1369,23 @@ def validate():
 
         console.print("[cyan]Validating plugins...[/cyan]\n")
 
-        # Get skill configurations
-        skill_configs = {skill.get("skill_id"): skill.get("config", {}) for skill in config.get("skills", [])}
+        # Get capability configurations
+        capability_configs = {plugin.get("plugin_id"): plugin.get("config", {}) for plugin in config.get("plugins", [])}
 
         all_valid = True
         results = []
 
-        for skill_id, skill_info in manager.skills.items():
-            skill_config = skill_configs.get(skill_id, {})
-            validation = manager.validate_config(skill_id, skill_config)
+        for capability_id, capability_info in manager.capabilities.items():
+            capability_config = capability_configs.get(capability_id, {})
+            validation = manager.validate_config(capability_id, capability_config)
 
             results.append(
                 {
-                    "skill_id": skill_id,
-                    "skill_name": skill_info.name,
-                    "plugin": manager.skill_to_plugin.get(skill_id),
+                    "capability_id": capability_id,
+                    "capability_name": capability_info.name,
+                    "plugin": manager.capability_to_plugin.get(capability_id),
                     "validation": validation,
-                    "has_config": skill_id in skill_configs,
+                    "has_config": capability_id in capability_configs,
                 }
             )
 
@@ -1394,13 +1394,13 @@ def validate():
 
         # Display results
         table = Table(title="Plugin Validation Results", box=box.ROUNDED, title_style="bold cyan")
-        table.add_column("Skill", style="cyan")
+        table.add_column("Capability", style="cyan")
         table.add_column("Plugin", style="dim")
         table.add_column("Status", justify="center")
         table.add_column("Issues", style="yellow")
 
         for result in results:
-            skill_id = result["skill_id"]
+            capability_id = result["capability_id"]
             plugin = result["plugin"]
             validation = result["validation"]
 
@@ -1417,7 +1417,7 @@ def validate():
                     issues += " | "
                 issues += "[yellow]Warnings: " + "; ".join(validation.warnings) + "[/yellow]"
 
-            table.add_row(skill_id, plugin, status, issues)
+            table.add_row(capability_id, plugin, status, issues)
 
         console.print(table)
 

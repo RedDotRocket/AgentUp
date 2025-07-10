@@ -1,20 +1,20 @@
 """
 Example plugin demonstrating the AgentUp plugin system.
 
-This shows how to create a simple skill plugin that implements
+This shows how to create a simple capability plugin that implements
 all the necessary hooks.
 """
 
 import pluggy
 
-from .models import AIFunction, SkillCapability, SkillContext, SkillInfo, SkillResult, ValidationResult
+from .models import AIFunction, CapabilityContext, CapabilityInfo, CapabilityResult, CapabilityType, ValidationResult
 
 # Hook implementation marker
 hookimpl = pluggy.HookimplMarker("agentup")
 
 
 class ExamplePlugin:
-    """Example skill plugin for testing and demonstration."""
+    """Example capability plugin for testing and demonstration."""
 
     def __init__(self):
         """Initialize the plugin."""
@@ -22,14 +22,14 @@ class ExamplePlugin:
         self.llm_service = None
 
     @hookimpl
-    def register_skill(self) -> SkillInfo:
-        """Register the example skill."""
-        return SkillInfo(
+    def register_capability(self) -> CapabilityInfo:
+        """Register the example capability."""
+        return CapabilityInfo(
             id="example",
-            name="Example Skill",
+            name="Example Capability",
             version="1.0.0",
-            description="A simple example skill demonstrating the plugin system",
-            capabilities=[SkillCapability.TEXT, SkillCapability.AI_FUNCTION],
+            description="A simple example capability demonstrating the plugin system",
+            capabilities=[CapabilityType.TEXT, CapabilityType.AI_FUNCTION],
             tags=["example", "demo", "test"],
             config_schema={
                 "type": "object",
@@ -56,7 +56,7 @@ class ExamplePlugin:
         return ValidationResult(valid=len(errors) == 0, errors=errors, warnings=warnings)
 
     @hookimpl
-    def can_handle_task(self, context: SkillContext) -> float:
+    def can_handle_task(self, context: CapabilityContext) -> float:
         """Check if we can handle this task."""
         # Get the task content
         content = ""
@@ -76,7 +76,7 @@ class ExamplePlugin:
         return confidence
 
     @hookimpl
-    def execute_skill(self, context: SkillContext) -> SkillResult:
+    def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
         """Execute the example skill."""
         # Get configuration
         config = context.config
@@ -91,8 +91,8 @@ class ExamplePlugin:
         if excited:
             response += "!!!"
 
-        return SkillResult(
-            content=response, success=True, metadata={"skill": "example", "processed_by": "example_plugin"}
+        return CapabilityResult(
+            content=response, success=True, metadata={"capability": "example", "processed_by": "example_plugin"}
         )
 
     @hookimpl
@@ -131,7 +131,7 @@ class ExamplePlugin:
             ),
         ]
 
-    async def _greet_user(self, task, context: SkillContext) -> SkillResult:
+    async def _greet_user(self, task, context: CapabilityContext) -> CapabilityResult:
         """Handle the greet_user function."""
         # Extract parameters from task metadata
         params = context.metadata.get("parameters", {})
@@ -146,16 +146,16 @@ class ExamplePlugin:
         else:  # casual
             greeting = f"Hi {name}, how's it going?"
 
-        return SkillResult(content=greeting, success=True)
+        return CapabilityResult(content=greeting, success=True)
 
-    async def _echo_message(self, task, context: SkillContext) -> SkillResult:
+    async def _echo_message(self, task, context: CapabilityContext) -> CapabilityResult:
         """Handle the echo_message function."""
         params = context.metadata.get("parameters", {})
         message = params.get("message", "")
         uppercase = params.get("uppercase", False)
 
         result = message.upper() if uppercase else message
-        return SkillResult(content=f"Echo: {result}", success=True)
+        return CapabilityResult(content=f"Echo: {result}", success=True)
 
     @hookimpl
     def configure_services(self, services: dict) -> None:
@@ -166,7 +166,7 @@ class ExamplePlugin:
 
     @hookimpl
     def get_middleware_config(self) -> list[dict]:
-        """Request middleware for this skill."""
+        """Request middleware for this capability."""
         return [{"type": "rate_limit", "requests_per_minute": 100}, {"type": "logging", "level": "INFO"}]
 
     @hookimpl
@@ -174,7 +174,7 @@ class ExamplePlugin:
         """Report health status."""
         return {"status": "healthy", "version": "1.0.0", "has_llm": self.llm_service is not None}
 
-    def _extract_user_input(self, context: SkillContext) -> str:
+    def _extract_user_input(self, context: CapabilityContext) -> str:
         """Extract user input from the task."""
         if hasattr(context.task, "history") and context.task.history:
             last_msg = context.task.history[-1]

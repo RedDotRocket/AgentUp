@@ -26,8 +26,8 @@ from typing import Any
 from .base import AuthenticationResult, SecurityPolicy
 from .context import (
     AuthContext,
-    SkillContext,
-    create_skill_context,
+    CapabilityContext,
+    create_capability_context,
     get_current_auth,
     get_current_scopes,
     is_authenticated,
@@ -164,7 +164,7 @@ __all__ = [
     "SecurityManager",
     "AuthenticationResult",
     "SecurityPolicy",
-    "SkillContext",
+    "CapabilityContext",
     # Decorators
     "protected",
     "require_scopes",
@@ -178,7 +178,7 @@ __all__ = [
     "has_scope",
     # Context functions
     "AuthContext",
-    "create_skill_context",
+    "create_capability_context",
     "get_current_auth",
     "get_current_scopes",
     "get_context_user_id",

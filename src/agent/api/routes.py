@@ -70,18 +70,18 @@ def create_agent_card() -> AgentCard:
 
     config = load_config(configure_logging=False)  # Don't reconfigure logging
     agent_info = config.get("agent", {})
-    skills = config.get("skills", [])
+    plugins = config.get("plugins", [])
 
-    # Convert skills to A2A Skill format
+    # Convert plugins to A2A Skill format
     agent_skills = []
-    for skill in skills:
+    for plugin in plugins:
         agent_skill = AgentSkill(
-            id=skill.get("skill_id"),
-            name=skill.get("name"),
-            description=skill.get("description"),
-            inputModes=[skill.get("input_mode", "text")],
-            outputModes=[skill.get("output_mode", "text")],
-            tags=skill.get("tags", ["general"]),
+            id=plugin.get("plugin_id"),
+            name=plugin.get("name"),
+            description=plugin.get("description"),
+            inputModes=[plugin.get("input_mode", "text")],
+            outputModes=[plugin.get("output_mode", "text")],
+            tags=plugin.get("tags", ["general"]),
         )
         agent_skills.append(agent_skill)
 

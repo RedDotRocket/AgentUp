@@ -8,10 +8,10 @@ minimal_config:
     version: 0.1.0
   routing:
     default_mode: direct
-    fallback_skill: echo
+    fallback_plugin: echo
     fallback_enabled: true
-  skills:
-    - skill_id: echo
+  plugins:
+    - plugin_id: echo
       name: Echo
       description: Echo back the input text
       input_mode: text
@@ -28,10 +28,10 @@ standard_openai_config:
     version: 0.1.0
   routing:
     default_mode: ai
-    fallback_skill: ai_assistant
+    fallback_plugin: ai_assistant
     fallback_enabled: true
-  skills:
-    - skill_id: ai_assistant
+  plugins:
+    - plugin_id: ai_assistant
       name: AI Assistant
       description: General purpose AI assistant
       input_mode: text
@@ -59,10 +59,10 @@ ollama_config:
     version: 0.1.0
   routing:
     default_mode: ai
-    fallback_skill: ai_assistant
+    fallback_plugin: ai_assistant
     fallback_enabled: true
-  skills:
-    - skill_id: ai_assistant
+  plugins:
+    - plugin_id: ai_assistant
       name: AI Assistant
       description: General purpose AI assistant
       input_mode: text
@@ -90,10 +90,10 @@ anthropic_config:
     version: 0.1.0
   routing:
     default_mode: ai
-    fallback_skill: ai_assistant
+    fallback_plugin: ai_assistant
     fallback_enabled: true
-  skills:
-    - skill_id: ai_assistant
+  plugins:
+    - plugin_id: ai_assistant
       name: AI Assistant
       description: General purpose AI assistant
       input_mode: text
@@ -121,16 +121,16 @@ full_config:
     version: 0.1.0
   routing:
     default_mode: ai
-    fallback_skill: ai_assistant
+    fallback_plugin: ai_assistant
     fallback_enabled: true
-  skills:
-    - skill_id: ai_assistant
+  plugins:
+    - plugin_id: ai_assistant
       name: AI Assistant
       description: General purpose AI assistant
       input_mode: text
       output_mode: text
       routing_mode: ai
-    - skill_id: document_processor
+    - plugin_id: document_processor
       name: Document Processor
       description: Process and analyze documents
       input_mode: multimodal
@@ -207,7 +207,7 @@ invalid_config:
   agent:
     name: invalid-test
     # Missing description and version
-  skills: []
+  plugins: []
   # Missing routing section
   ai:
     enabled: true

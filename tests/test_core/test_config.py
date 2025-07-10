@@ -328,7 +328,7 @@ class TestConfigValidation:
         minimal_config = {
             "agent": {"name": "minimal-test", "version": "0.1.0"},
             "skills": [{"skill_id": "echo", "name": "Echo", "description": "Echo back input"}],
-            "routing": {"default_mode": "direct", "fallback_skill": "echo"},
+            "routing": {"default_mode": "direct", "fallback_capability": "echo"},
         }
 
         config_file = temp_dir / "minimal_test.yaml"
@@ -379,7 +379,7 @@ class TestConfigIntegration:
         """Test loading and processing a full configuration."""
         full_config = {
             "agent": {"name": "integration-test", "description": "Integration test agent", "version": "0.1.0"},
-            "routing": {"default_mode": "ai", "fallback_skill": "ai_assistant", "fallback_enabled": True},
+            "routing": {"default_mode": "ai", "fallback_capability": "ai_assistant", "fallback_enabled": True},
             "skills": [
                 {
                     "skill_id": "ai_assistant",

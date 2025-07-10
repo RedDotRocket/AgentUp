@@ -171,7 +171,7 @@ class MiddlewareBenchmark:
         tasks = []
         
         for i in range(requests):
-            task = self._send_request(f"rate limit test {i}", skill_id="echo")
+            task = self._send_request(f"rate limit test {i}", plugin_id="echo")
             tasks.append(task)
         
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -191,7 +191,7 @@ class MiddlewareBenchmark:
         for key_id in range(cache_keys):
             for request_id in range(requests_per_key):
                 content = f"cache test key {key_id}"  # Repeated content for caching
-                task = self._send_request(content, skill_id="echo")
+                task = self._send_request(content, plugin_id="echo")
                 tasks.append(task)
         
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -206,7 +206,7 @@ class MiddlewareBenchmark:
         start_time = time.time()
         
         for i in range(self.config.total_requests):
-            result = await self._send_request(f"timing test {i}", skill_id="echo")
+            result = await self._send_request(f"timing test {i}", plugin_id="echo")
             results.append(result)
         
         total_duration = time.time() - start_time
@@ -220,7 +220,7 @@ class MiddlewareBenchmark:
         
         async def limited_request(request_id: int) -> RequestResult:
             async with semaphore:
-                return await self._send_request(f"throughput test {request_id}", skill_id="echo")
+                return await self._send_request(f"throughput test {request_id}", plugin_id="echo")
         
         start_time = time.time()
         tasks = [limited_request(i) for i in range(self.config.total_requests)]
@@ -239,7 +239,7 @@ class MiddlewareBenchmark:
         tasks = []
         
         for i in range(stress_requests):
-            task = self._send_request(f"stress test {i}", skill_id="echo")
+            task = self._send_request(f"stress test {i}", plugin_id="echo")
             tasks.append(task)
         
         # Execute with high concurrency
@@ -253,7 +253,7 @@ class MiddlewareBenchmark:
         
         return self._analyze_results("stress", results, total_duration, stress_requests)
     
-    async def _send_request(self, content: str, skill_id: str = "echo") -> RequestResult:
+    async def _send_request(self, content: str, plugin_id: str = "echo") -> RequestResult:
         """Send a single request and measure performance."""
         payload = {
             "jsonrpc": "2.0",
@@ -264,8 +264,8 @@ class MiddlewareBenchmark:
             "id": f"bench_{int(time.time() * 1000000)}"
         }
         
-        if skill_id:
-            payload["params"]["skill_id"] = skill_id
+        if plugin_id:
+            payload["params"]["plugin_id"] = plugin_id
         
         start_time = time.time()
         try:

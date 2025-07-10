@@ -6,11 +6,11 @@ agent:
   description: {{ description }}
   version: 0.1.0
 
-# Core skills configuration
-skills:
-{% for skill in selected_skills %}
-{% if skill == 'echo' %}
-  - skill_id: echo
+# Core plugins configuration
+plugins:
+{% for plugin in selected_plugins %}
+{% if plugin == 'echo' %}
+  - plugin_id: echo
     name: Echo
     description: Echo back the input text
     tags: [echo, basic, simple]
@@ -20,32 +20,32 @@ skills:
     patterns: ['^echo ', '^repeat ', '^say ']
     routing_mode: direct
     priority: 50
-{% elif skill == 'ai_assistant' %}
-  - skill_id: ai_assistant
+{% elif plugin == 'ai_assistant' %}
+  - plugin_id: ai_assistant
     name: AI Assistant
     description: AI-powered assistant for various tasks
     tags: [ai, assistant, helper]
     input_mode: text
     output_mode: text
     priority: 100
-{% elif skill == 'document_processor' %}
-  - skill_id: document_processor
+{% elif plugin == 'document_processor' %}
+  - plugin_id: document_processor
     name: Document Processor
     description: Process and analyze documents
     tags: [document, processing, analysis]
     input_mode: text
     output_mode: text
     priority: 90
-{% elif skill == 'data_analyzer' %}
-  - skill_id: data_analyzer
+{% elif plugin == 'data_analyzer' %}
+  - plugin_id: data_analyzer
     name: Data Analyzer
     description: Analyze and visualize data
     tags: [data, analysis, visualization]
     input_mode: text
     output_mode: text
     priority: 90
-{% elif skill == 'hello_world' %}
-  - skill_id: hello_world
+{% elif plugin == 'hello_world' %}
+  - plugin_id: hello_world
     name: Hello World
     description: Simple greeting handler
     tags: [greeting, basic, direct]
@@ -54,8 +54,8 @@ skills:
     keywords: [hello, hi, hey, greetings]
     patterns: ['hello.*', 'hi\\s+.*', 'greet.*']
     priority: 30
-{% elif skill == 'conversation' %}
-  - skill_id: conversation
+{% elif plugin == 'conversation' %}
+  - plugin_id: conversation
     name: Conversation
     description: Basic conversation handler
     tags: [conversation, chat, direct]
@@ -67,11 +67,11 @@ skills:
 {% endif %}
 {% endfor %}
 
-# Registry skills section - for skills installed from AgentUp Skills Registry
-registry_skills: []
+# Registry plugins section - for plugins installed from AgentUp Plugins Registry
+registry_plugins: []
 
-# Plugin configuration
-plugins:{{ ' ' + plugins | tojson if plugins else ' []' }}
+# Additional plugin configuration
+additional_plugins:{{ ' ' + additional_plugins | tojson if additional_plugins else ' []' }}
 
 # Security configuration
 security:
@@ -258,10 +258,10 @@ state_management:
   config:
     storage_dir: "{{ state_storage_dir | default('./conversation_states') }}"
 {% endif %}
-{% if state_skill_overrides %}
-  skill_overrides:
-{% for skill_id, override in state_skill_overrides.items() %}
-    {{ skill_id }}:
+{% if state_plugin_overrides %}
+  plugin_overrides:
+{% for plugin_id, override in state_plugin_overrides.items() %}
+    {{ plugin_id }}:
       enabled: {{ override.enabled | default(true) }}
       ttl: {{ override.ttl }}
 {% endfor %}

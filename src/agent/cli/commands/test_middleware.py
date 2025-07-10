@@ -252,7 +252,7 @@ class MiddlewareTestRunner:
         self,
         client: httpx.AsyncClient,
         content: str,
-        skill_id: str = "echo",
+        capability_id: str = "echo",
     ) -> dict[str, Any]:
         """Send a message to the server."""
         payload = {
@@ -262,8 +262,8 @@ class MiddlewareTestRunner:
             "id": f"test_{int(time.time() * 1000000)}",
         }
 
-        if skill_id:
-            payload["params"]["skill_id"] = skill_id
+        if capability_id:
+            payload["params"]["capability_id"] = capability_id
 
         response = await client.post(self.url, json=payload)
         return response.json()

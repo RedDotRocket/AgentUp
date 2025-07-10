@@ -167,10 +167,10 @@ async def lifespan(app: FastAPI):
     default_mode = routing_cfg.get("default_mode", "ai")
     logger.info(f"Routing default mode set to: {default_mode}")
 
-    # Register AI functions if any skills might use AI routing
-    # Note: In mixed routing, skills can override the default mode
-    skills = config.get("skills", [])
-    needs_ai = any(skill.get("routing_mode", default_mode) == "ai" for skill in skills)
+    # Register AI functions if any plugins might use AI routing
+    # Note: In mixed routing, plugins can override the default mode
+    plugins = config.get("plugins", [])
+    needs_ai = any(plugin.get("routing_mode", default_mode) == "ai" for plugin in plugins)
 
     if register_ai_functions_from_handlers and needs_ai and svc_cfg.get("ai_functions", True):
         try:
@@ -179,7 +179,7 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error(f"Failed to register AI functions: {e}")
     elif not needs_ai:
-        logger.info("No AI routing skills found - skipping AI function registration")
+        logger.info("No AI routing plugins found - skipping AI function registration")
 
     # Initialize state management if configured
     state_cfg = config.get("state", {})

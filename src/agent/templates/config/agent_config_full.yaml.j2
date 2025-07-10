@@ -7,9 +7,9 @@ agent:
   description: {{ description }}
   version: 0.1.0
 
-# Core skills configuration
-skills:
-  - skill_id: ai_assistant
+# Core plugins configuration
+plugins:
+  - plugin_id: ai_assistant
     name: AI Assistant
     description: AI-powered assistant for various tasks
     tags: [ai, assistant, helper]
@@ -17,7 +17,7 @@ skills:
     input_mode: text
     output_mode: text
     priority: 100
-  - skill_id: document_processor
+  - plugin_id: document_processor
     name: Document Processor
     description: Process and analyze documents
     tags: [document, processing, analysis]
@@ -25,7 +25,7 @@ skills:
     input_mode: text
     output_mode: text
     priority: 90
-  - skill_id: data_analyzer
+  - plugin_id: data_analyzer
     name: Data Analyzer
     description: Analyze and visualize data
     tags: [data, analysis, visualization]
@@ -33,7 +33,7 @@ skills:
     input_mode: text
     output_mode: text
     priority: 90
-  - skill_id: hello_world
+  - plugin_id: hello_world
     name: Hello World
     description: Simple greeting handler
     tags: [greeting, basic, direct]
@@ -42,7 +42,7 @@ skills:
     keywords: [hello, hi, hey, greetings]
     patterns: ['hello.*', 'hi\\s+.*', 'greet.*']
     priority: 30
-  - skill_id: conversation
+  - plugin_id: conversation
     name: Conversation
     description: Basic conversation handler
     tags: [conversation, chat, direct]
@@ -52,11 +52,11 @@ skills:
     patterns: ['chat.*', 'talk.*', 'conversation.*']
     priority: 40
 
-# Registry skills section - for skills installed from AgentUp Skills Registry
-registry_skills: []
+# Registry plugins section - for plugins installed from AgentUp Plugins Registry
+registry_plugins: []
 
-# Plugin configuration
-plugins: []
+# Additional plugin configuration
+additional_plugins: []
 
 # security configuration
 security:

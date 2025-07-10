@@ -7,9 +7,9 @@ agent:
   description: {{ description }}
   version: 0.1.0
 
-# Core skills configuration
-skills:
-  - skill_id: echo
+# Core plugins configuration
+plugins:
+  - plugin_id: echo
     name: Echo
     description: Echo back the input text
     tags: [echo, basic, simple]
@@ -24,11 +24,11 @@ skills:
 routing:
   default_mode: direct  # Use direct routing by default for minimal template
 
-# Registry skills section - for skills installed from AgentUp Skills Registry
-registry_skills: []
+# Registry plugins section - for plugins installed from AgentUp Plugins Registry
+registry_plugins: []
 
-# Plugin configuration
-plugins: []
+# Additional plugin configuration
+additional_plugins: []
 
 # AI configuration
 {% if ai_provider_config %}

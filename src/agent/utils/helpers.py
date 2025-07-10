@@ -33,8 +33,8 @@ class TaskValidator:
         if not task.id:
             errors.append("Task ID is required")
 
-        if not task.skill_id:
-            errors.append("Skill ID is required")
+        if not task.plugin_id:
+            errors.append("Plugin ID is required")
 
         # Check task metadata structure
         if task.metadata is not None and not isinstance(task.metadata, dict):
