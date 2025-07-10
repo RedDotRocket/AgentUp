@@ -46,7 +46,6 @@ class PluginManager:
         # Track plugin hooks for each capability
         self.capability_hooks: dict[str, Any] = {}
 
-
     def discover_plugins(self) -> None:
         """Discover and load all available plugins."""
         logger.info("Discovering AgentUp plugins...")
@@ -208,8 +207,12 @@ class PluginManager:
                 capability_info = results[-1]  # Fallback to last result
 
             # Check if this is a CapabilityInfo object (handle different import paths)
-            if not (hasattr(capability_info, 'id') and hasattr(capability_info, 'name') and 
-                   hasattr(capability_info, 'capabilities') and type(capability_info).__name__ == 'CapabilityInfo'):
+            if not (
+                hasattr(capability_info, "id")
+                and hasattr(capability_info, "name")
+                and hasattr(capability_info, "capabilities")
+                and type(capability_info).__name__ == "CapabilityInfo"
+            ):
                 logger.error(f"Plugin {plugin_name} returned invalid capability info: {type(capability_info)}")
                 return
 
@@ -237,7 +240,6 @@ class PluginManager:
     def list_capabilities(self) -> list[CapabilityInfo]:
         """List all available capabilities."""
         return list(self.capabilities.values())
-
 
     def list_plugins(self) -> list[PluginInfo]:
         """List all loaded plugins."""
@@ -274,7 +276,6 @@ class PluginManager:
         except Exception as e:
             logger.error(f"Error executing capability {capability_id}: {e}", exc_info=True)
             return CapabilityResult(content=f"Error executing capability: {str(e)}", success=False, error=str(e))
-
 
     def get_ai_functions(self, capability_id: str) -> list[AIFunction]:
         """Get AI functions from a capability."""
@@ -333,7 +334,6 @@ class PluginManager:
         # Sort by confidence (highest first) and priority
         candidates.sort(key=lambda x: (x[1], self.capabilities[x[0]].priority), reverse=True)
         return candidates
-
 
     def reload_plugin(self, plugin_name: str) -> bool:
         """Reload a plugin (useful for development)."""

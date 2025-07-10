@@ -186,9 +186,8 @@ async def _expose_handlers_as_mcp_tools(mcp_server) -> None:
                 schema = registry._functions.get(function_name, {})
 
                 if handler and schema:
-                    logger.info(f"Registering MCP tool: {function_name}")
                     try:
-                        logger.info(f"Attempting to register MCP tool: {function_name}")
+                        logger.debug(f"Attempting to register MCP tool: {function_name}")
                         mcp_server.register_handler_as_tool(function_name, handler, schema)
                         successful_registrations += 1
                         logger.debug(f"Successfully registered MCP tool: {function_name}")

@@ -176,4 +176,3 @@ class CapabilitySpec:
         Returns:
             dict: Health status information
         """
-

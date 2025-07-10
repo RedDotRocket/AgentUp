@@ -138,7 +138,6 @@ class PluginAdapter:
         return self.plugin_manager.get_ai_functions(capability_id)
 
 
-
 def integrate_plugins_with_registry(registry: FunctionRegistry) -> PluginAdapter:
     """
     Integrate the plugin system with an existing function registry.
@@ -158,5 +157,3 @@ def replace_capability_loader() -> PluginAdapter:
     for the current capability loading mechanism.
     """
     return PluginAdapter()
-
-

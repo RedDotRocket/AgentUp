@@ -12,9 +12,17 @@ logger = structlog.get_logger(__name__)
 class MCPHTTPServer:
     """MCP HTTP server that exposes AgentUp AI functions as MCP tools."""
 
-    def __init__(self, agent_name: str, agent_version: str = "1.0.0"):
+    def __init__(
+        self,
+        agent_name: str,
+        agent_version: str = "1.0.0",
+        expose_handlers: bool = True,
+        expose_resources: list[str] | None = None,
+    ):
         self.agent_name = agent_name
         self.agent_version = agent_version
+        self.expose_handlers = expose_handlers
+        self.expose_resources = expose_resources or []
         self._server = None
         self._handlers: dict[str, Callable] = {}
         self._initialized = False
@@ -37,16 +45,18 @@ class MCPHTTPServer:
 
                 registry = get_function_registry()
 
-                for function_name in registry.list_functions():
-                    if not registry.is_mcp_tool(function_name):  # Only expose local functions
-                        schema = registry._functions.get(function_name, {})
-                        if schema:
-                            tool = Tool(
-                                name=function_name,
-                                description=schema.get("description", f"AI function: {function_name}"),
-                                inputSchema=schema.get("parameters", {}),
-                            )
-                            tools.append(tool)
+                # Only expose handlers/tools if configured to do so
+                if self.expose_handlers:
+                    for function_name in registry.list_functions():
+                        if not registry.is_mcp_tool(function_name):  # Only expose local functions
+                            schema = registry._functions.get(function_name, {})
+                            if schema:
+                                tool = Tool(
+                                    name=function_name,
+                                    description=schema.get("description", f"AI function: {function_name}"),
+                                    inputSchema=schema.get("parameters", {}),
+                                )
+                                tools.append(tool)
 
                 logger.info(f"MCP server exposing {len(tools)} AI functions as tools")
 
@@ -137,14 +147,51 @@ class MCPHTTPServer:
 def create_mcp_router(mcp_server: MCPHTTPServer):
     """Create a FastAPI router for MCP HTTP endpoint."""
     import json
+    import secrets
 
-    from fastapi import APIRouter, Request, Response
+    from fastapi import APIRouter, HTTPException, Request, Response
     from fastapi.responses import StreamingResponse
 
     router = APIRouter()
 
+    # Session management
+    _sessions: dict[str, dict] = {}
+
+    def _validate_mcp_headers(request: Request) -> None:
+        """Validate MCP protocol headers."""
+        # Validate MCP protocol version
+        protocol_version = request.headers.get("MCP-Protocol-Version")
+        if protocol_version and protocol_version not in ["1.0", "2025-06-18"]:
+            raise HTTPException(status_code=400, detail=f"Unsupported MCP protocol version: {protocol_version}")
+
+        # Validate Origin header for security
+        origin = request.headers.get("Origin")
+        if origin:
+            # In production, validate against allowed origins
+            # For local development, be permissive
+            if not (origin.startswith("http://localhost") or origin.startswith("http://127.0.0.1")):
+                logger.warning(f"MCP request from non-local origin: {origin}")
+
+    def _create_session() -> str:
+        """Create a cryptographically secure session ID."""
+        session_id = secrets.token_urlsafe(32)
+        _sessions[session_id] = {
+            "created_at": json.dumps({"timestamp": "now"}),  # Placeholder
+            "active": True,
+        }
+        return session_id
+
     @router.post("/mcp")
     async def handle_mcp_request(request: Request) -> Response:
+        """Handle MCP JSON-RPC requests via HTTP POST (Streamable HTTP)."""
+        try:
+            # Validate MCP protocol headers
+            _validate_mcp_headers(request)
+        except HTTPException as e:
+            return Response(
+                content=json.dumps({"error": e.detail}), status_code=e.status_code, media_type="application/json"
+            )
+
         server = await mcp_server.get_server_instance()
         if not server:
             return Response(
@@ -176,17 +223,19 @@ def create_mcp_router(mcp_server: MCPHTTPServer):
                     registry = get_function_registry()
 
                     tools = []
-                    for function_name in registry.list_functions():
-                        if not registry.is_mcp_tool(function_name):  # Only local functions
-                            schema = registry._functions.get(function_name, {})
-                            if schema:
-                                tools.append(
-                                    {
-                                        "name": function_name,
-                                        "description": schema.get("description", f"AI function: {function_name}"),
-                                        "inputSchema": schema.get("parameters", {}),
-                                    }
-                                )
+                    # Only list tools if configured to expose handlers
+                    if mcp_server.expose_handlers:
+                        for function_name in registry.list_functions():
+                            if not registry.is_mcp_tool(function_name):  # Only local functions
+                                schema = registry._functions.get(function_name, {})
+                                if schema:
+                                    tools.append(
+                                        {
+                                            "name": function_name,
+                                            "description": schema.get("description", f"AI function: {function_name}"),
+                                            "inputSchema": schema.get("parameters", {}),
+                                        }
+                                    )
 
                     response_data = {"jsonrpc": "2.0", "id": request_id, "result": {"tools": tools}}
                     logger.info(f"MCP tools/list returned {len(tools)} tools")
@@ -240,16 +289,105 @@ def create_mcp_router(mcp_server: MCPHTTPServer):
                         response_data = {
                             "jsonrpc": "2.0",
                             "id": request_id,
-                            "result": [{"type": "text", "text": str(result)}],
+                            "result": {"content": [{"type": "text", "text": str(result)}]},
                         }
 
                 except Exception as e:
-                    logger.error(f"Error calling MCP tool {params.get('name', 'unknown')}: {e}")
+                    logger.error(f"Error calling MCP tool {tool_name}: {e}")
                     response_data = {
                         "jsonrpc": "2.0",
                         "id": request_id,
                         "error": {"code": -32603, "message": f"Tool execution failed: {str(e)}"},
                     }
+
+            elif method == "resources/list":
+                # List available resources
+                resources = []
+
+                # Add configured resources
+                for resource_name in mcp_server.expose_resources:
+                    if resource_name == "agent_status":
+                        resources.append(
+                            {
+                                "uri": "agentup://agent/status",
+                                "name": "Agent Status",
+                                "description": "Current status and health of the agent",
+                                "mimeType": "application/json",
+                            }
+                        )
+                    elif resource_name == "agent_capabilities":
+                        resources.append(
+                            {
+                                "uri": "agentup://agent/capabilities",
+                                "name": "Agent Capabilities",
+                                "description": "List of agent capabilities and plugins",
+                                "mimeType": "application/json",
+                            }
+                        )
+
+                response_data = {"jsonrpc": "2.0", "id": request_id, "result": {"resources": resources}}
+
+            elif method == "resources/read":
+                # Read a specific resource
+                uri = params.get("uri")
+
+                if uri == "agentup://agent/status":
+                    content = {
+                        "status": "healthy",
+                        "agent_name": mcp_server.agent_name,
+                        "version": mcp_server.agent_version,
+                        "timestamp": datetime.now().isoformat(),
+                    }
+                elif uri == "agentup://agent/capabilities":
+                    try:
+                        from ..core.dispatcher import get_function_registry
+
+                        registry = get_function_registry()
+                        content = {
+                            "functions": list(registry.list_functions()),
+                            "count": len(registry.list_functions()),
+                        }
+                    except Exception as e:
+                        content = {"error": f"Could not load capabilities: {str(e)}"}
+                else:
+                    response_data = {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "error": {"code": -32602, "message": f"Resource not found: {uri}"},
+                    }
+
+                if "content" in locals():
+                    response_data = {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "contents": [
+                                {"uri": uri, "mimeType": "application/json", "text": json.dumps(content, indent=2)}
+                            ]
+                        },
+                    }
+
+            elif method == "initialize":
+                # MCP session initialization
+                session_id = _create_session()
+                capabilities = {}
+
+                if mcp_server.expose_handlers:
+                    capabilities["tools"] = {"listChanged": True}
+
+                if mcp_server.expose_resources:
+                    capabilities["resources"] = {"subscribe": True, "listChanged": True}
+
+                response_data = {
+                    "jsonrpc": "2.0",
+                    "id": request_id,
+                    "result": {
+                        "protocolVersion": "2024-11-05",
+                        "capabilities": capabilities,
+                        "serverInfo": {"name": mcp_server.agent_name, "version": mcp_server.agent_version},
+                        "_debug": "http_server_fixed",
+                    },
+                }
 
             else:
                 # Unknown method
@@ -259,7 +397,14 @@ def create_mcp_router(mcp_server: MCPHTTPServer):
                     "error": {"code": -32601, "message": f"Method not found: {method}"},
                 }
 
-            return Response(content=json.dumps(response_data), media_type="application/json")
+            # For notifications (no id), return 202 Accepted
+            if request_id is None:
+                return Response(status_code=202)
+
+            # Add proper headers for MCP Streamable HTTP
+            headers = {"Content-Type": "application/json", "Transfer-Encoding": "chunked"}
+
+            return Response(content=json.dumps(response_data), media_type="application/json", headers=headers)
 
         except Exception as e:
             logger.error(f"MCP request handling error: {e}")
@@ -273,12 +418,64 @@ def create_mcp_router(mcp_server: MCPHTTPServer):
 
     @router.get("/mcp")
     async def handle_mcp_sse(request: Request) -> StreamingResponse:
-        """Handle MCP Server-Sent Events (SSE) for streaming."""
+        """Handle MCP Server-Sent Events (SSE) for bidirectional streaming."""
+        try:
+            # Validate MCP protocol headers
+            _validate_mcp_headers(request)
+        except HTTPException as e:
+            return Response(
+                content=json.dumps({"error": e.detail}), status_code=e.status_code, media_type="application/json"
+            )
 
-        # Placeholder for SSE implementation
-        async def event_generator():
-            yield f"data: {json.dumps({'type': 'connected', 'agent': mcp_server.agent_name})}\n\n"
+        # Get or create session
+        session_id = request.query_params.get("sessionId")
+        if session_id and session_id not in _sessions:
+            return Response(
+                content=json.dumps({"error": "Session not found"}), status_code=404, media_type="application/json"
+            )
 
-        return StreamingResponse(event_generator(), media_type="text/event-stream")
+        async def mcp_event_generator():
+            """Generate MCP-compliant SSE events."""
+            try:
+                # Send initial connection event
+                connection_event = {
+                    "jsonrpc": "2.0",
+                    "method": "notifications/initialized",
+                    "params": {
+                        "agent": mcp_server.agent_name,
+                        "version": mcp_server.agent_version,
+                        "capabilities": {"tools": True, "resources": True},
+                    },
+                }
+                yield f"data: {json.dumps(connection_event)}\n\n"
+
+                # Keep connection alive and handle incoming messages
+                # In a real implementation, this would handle bidirectional communication
+                # For now, just keep the stream alive
+                import asyncio
+
+                while True:
+                    await asyncio.sleep(30)  # Heartbeat every 30 seconds
+                    heartbeat = {
+                        "jsonrpc": "2.0",
+                        "method": "notifications/heartbeat",
+                        "params": {"timestamp": datetime.now().isoformat()},
+                    }
+                    yield f"data: {json.dumps(heartbeat)}\n\n"
+
+            except Exception as e:
+                logger.error(f"SSE stream error: {e}")
+                error_event = {"jsonrpc": "2.0", "method": "notifications/error", "params": {"error": str(e)}}
+                yield f"data: {json.dumps(error_event)}\n\n"
+
+        headers = {
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+            "Access-Control-Allow-Origin": "*",  # Configure appropriately for production
+            "Access-Control-Allow-Headers": "MCP-Protocol-Version, Origin",
+        }
+
+        return StreamingResponse(mcp_event_generator(), media_type="text/event-stream", headers=headers)
 
     return router

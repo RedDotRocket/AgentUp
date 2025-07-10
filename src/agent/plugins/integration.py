@@ -106,8 +106,6 @@ def list_all_capabilities() -> list[str]:
     return sorted(all_capabilities)
 
 
-
-
 def get_capability_info(capability_id: str) -> dict[str, Any]:
     """
     Get information about a capability from either handlers or plugins.
@@ -130,8 +128,6 @@ def get_capability_info(capability_id: str) -> dict[str, Any]:
         }
 
     return {}
-
-
 
 
 def enable_plugin_system() -> None:

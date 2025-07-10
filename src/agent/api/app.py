@@ -222,9 +222,13 @@ async def lifespan(app: FastAPI):
                 try:
                     from ..mcp_support.mcp_http_server import MCPHTTPServer, create_mcp_router
 
-                    # Create MCP HTTP server
+                    # Create MCP HTTP server with configuration
+                    server_cfg = mcp_cfg.get("server", {})
                     mcp_http_server = MCPHTTPServer(
-                        agent_name=agent_cfg.get("name", "Agent"), agent_version=agent_cfg.get("version", "0.1.0")
+                        agent_name=server_cfg.get("name", agent_cfg.get("name", "Agent")),
+                        agent_version=agent_cfg.get("version", "0.1.0"),
+                        expose_handlers=server_cfg.get("expose_handlers", True),
+                        expose_resources=server_cfg.get("expose_resources", []),
                     )
                     await mcp_http_server.initialize()
 

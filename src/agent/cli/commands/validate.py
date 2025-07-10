@@ -246,7 +246,9 @@ def validate_plugins_section(plugins: list[dict[str, Any]], errors: list[str], w
     click.echo(f"{click.style('✓', fg='green')} Found {len(plugins)} plugin(s)")
 
 
-def validate_middleware_config(middleware: list[dict[str, Any]], plugin_id: str, errors: list[str], warnings: list[str]):
+def validate_middleware_config(
+    middleware: list[dict[str, Any]], plugin_id: str, errors: list[str], warnings: list[str]
+):
     """Validate middleware configuration."""
     if not isinstance(middleware, list):
         errors.append(f"Plugin '{plugin_id}' middleware must be a list")
@@ -453,7 +455,9 @@ def validate_ai_requirements(config: dict[str, Any], errors: list[str], warnings
             errors.append(f"AI configuration references llm_service '{llm_service}' but it's not defined in services")
 
     elif ai_config.get("enabled", False):
-        warnings.append("AI is enabled but no plugins use AI routing. Consider disabling AI or adding AI-routed plugins")
+        warnings.append(
+            "AI is enabled but no plugins use AI routing. Consider disabling AI or adding AI-routed plugins"
+        )
 
     click.echo(f"{click.style('✓', fg='green')} AI requirements validated")
 

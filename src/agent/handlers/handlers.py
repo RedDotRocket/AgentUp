@@ -313,8 +313,6 @@ def list_plugins() -> list[str]:
     return list(_handlers.keys())
 
 
-
-
 def apply_global_middleware() -> None:
     """Apply middleware to all existing registered handlers (for retroactive application)."""
     global _global_middleware_applied
@@ -357,7 +355,9 @@ def apply_global_middleware() -> None:
     _global_middleware_applied = True
 
     if handlers_needing_middleware:
-        logger.info(f"Applied global middleware to {len(handlers_needing_middleware)} handlers: {handlers_needing_middleware}")
+        logger.info(
+            f"Applied global middleware to {len(handlers_needing_middleware)} handlers: {handlers_needing_middleware}"
+        )
     else:
         logger.debug("All handlers already have middleware applied during registration - no additional work needed")
 
@@ -393,12 +393,13 @@ def apply_global_state() -> None:
 
     # Count handlers that actually needed global state management
     handlers_needing_state = [
-        plugin_id for plugin_id, handler in _handlers.items()
-        if not hasattr(handler, "_agentup_state_applied")
+        plugin_id for plugin_id, handler in _handlers.items() if not hasattr(handler, "_agentup_state_applied")
     ]
 
     if handlers_needing_state:
-        logger.info(f"Applied global state management to {len(handlers_needing_state)} handlers: {handlers_needing_state}")
+        logger.info(
+            f"Applied global state management to {len(handlers_needing_state)} handlers: {handlers_needing_state}"
+        )
     else:
         logger.debug("All handlers already have state management applied during registration")
 

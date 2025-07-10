@@ -36,7 +36,7 @@ class TestTestFoundation:
     def test_sample_agent_config_fixture(self, sample_agent_config: dict[str, Any]):
         """Test the sample agent configuration fixture."""
         assert "agent" in sample_agent_config, "Should have agent section"
-        assert "skills" in sample_agent_config, "Should have skills section"
+        assert "plugins" in sample_agent_config, "Should have plugins section"
         assert "ai_provider" in sample_agent_config, "Should have ai_provider section"
         assert "services" in sample_agent_config, "Should have services section"
 
@@ -48,10 +48,10 @@ class TestTestFoundation:
     def test_minimal_agent_config_fixture(self, minimal_agent_config: dict[str, Any]):
         """Test the minimal agent configuration fixture."""
         assert "agent" in minimal_agent_config, "Should have agent section"
-        assert "skills" in minimal_agent_config, "Should have skills section"
+        assert "plugins" in minimal_agent_config, "Should have plugins section"
         assert minimal_agent_config["agent"]["name"] == "minimal-test"
-        assert len(minimal_agent_config["skills"]) == 1
-        assert minimal_agent_config["skills"][0]["skill_id"] == "echo"
+        assert len(minimal_agent_config["plugins"]) == 1
+        assert minimal_agent_config["plugins"][0]["plugin_id"] == "echo"
 
     def test_provider_specific_configs(
         self, ollama_agent_config: dict[str, Any], anthropic_agent_config: dict[str, Any]

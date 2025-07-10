@@ -26,9 +26,9 @@ def sample_agent_config() -> dict[str, Any]:
     """Sample agent configuration for testing."""
     return {
         "agent": {"name": "test-agent", "description": "Test Agent for Unit Testing", "version": "0.1.0"},
-        "skills": [
+        "plugins": [
             {
-                "skill_id": "ai_assistant",
+                "plugin_id": "ai_assistant",
                 "name": "AI Assistant",
                 "description": "General purpose AI assistant",
                 "tags": ["ai", "assistant", "helper"],
@@ -60,9 +60,9 @@ def minimal_agent_config() -> dict[str, Any]:
     """Minimal agent configuration for testing."""
     return {
         "agent": {"name": "minimal-test", "description": "Minimal Test Agent", "version": "0.1.0"},
-        "skills": [
+        "plugins": [
             {
-                "skill_id": "echo",
+                "plugin_id": "echo",
                 "name": "Echo",
                 "description": "Echo back the input text",
                 "tags": ["echo", "basic", "simple"],
@@ -231,7 +231,7 @@ def agent_templates():
         },
         "demo": {
             "features": ["services", "middleware", "mcp"],
-            "description": "Pre-configured demo skills for testing",
+            "description": "Pre-configured demo plugins for testing",
         },
     }
 
