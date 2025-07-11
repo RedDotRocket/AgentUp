@@ -15,7 +15,7 @@ _project_name = config.get("agent", {}).get("name", "Agent")
 
 # Import shared utilities (with fallbacks for testing)
 try:
-    from ..utils.messages import ConversationContext, MessageProcessor
+    from agent.utils.messages import ConversationContext, MessageProcessor
 except ImportError:
 
     class ConversationContext:
@@ -39,7 +39,7 @@ except ImportError:
 
 # Separate import for extract_parameter with fallback
 try:
-    from ..utils.helpers import extract_parameter
+    from agent.utils.helpers import extract_parameter
 except ImportError:
 
     def extract_parameter(text, param):
@@ -48,7 +48,7 @@ except ImportError:
 
 # Optional middleware decorators (no-ops if unavailable)
 try:
-    from ..middleware import rate_limited, retryable, timed, with_middleware
+    from agent.middleware import rate_limited, retryable, timed, with_middleware
 except ImportError:
 
     def rate_limited(requests_per_minute=60):
@@ -78,7 +78,7 @@ except ImportError:
 
 # Optional AI decorator (no-op if unavailable)
 try:
-    from ..core.dispatcher import ai_function
+    from agent.core.dispatcher import ai_function
 except ImportError:
 
     def ai_function(description=None, parameters=None):
@@ -125,7 +125,7 @@ def _load_state_config() -> dict[str, Any]:
         return _state_config
 
     try:
-        from ..config import load_config
+        from agent.config import load_config
 
         config = load_config()
         _state_config = config.get("state_management", {})
@@ -140,7 +140,7 @@ def _load_state_config() -> dict[str, Any]:
 def _get_plugin_config(plugin_id: str) -> dict | None:
     """Get configuration for a specific plugin."""
     try:
-        from ..config import load_config
+        from agent.config import load_config
 
         config = load_config()
         plugins = config.get("plugins", [])
@@ -170,7 +170,7 @@ def _apply_auth_to_handler(handler: Callable, plugin_id: str) -> Callable:
     """Apply authentication context to a handler."""
     from functools import wraps
 
-    from ..security.context import create_capability_context, get_current_auth
+    from agent.security.context import create_capability_context, get_current_auth
 
     @wraps(handler)
     async def auth_wrapped_handler(task):
@@ -204,7 +204,7 @@ def _apply_state_to_handler(handler: Callable, plugin_id: str) -> Callable:
         return handler
 
     try:
-        from ..state.decorators import with_state
+        from agent.state.decorators import with_state
 
         # Mark the original handler as having state applied before wrapping
         handler._agentup_state_applied = True

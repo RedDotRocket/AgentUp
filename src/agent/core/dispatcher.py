@@ -4,10 +4,11 @@ from typing import Any
 import structlog
 from a2a.types import Task
 
-from ..services import get_services
-from ..services.llm.manager import LLMManager
-from ..state.conversation import ConversationManager
-from ..utils.messages import MessageProcessor
+from agent.services import get_services
+from agent.services.llm.manager import LLMManager
+from agent.state.conversation import ConversationManager
+from agent.utils.messages import MessageProcessor
+
 from .function_executor import FunctionExecutor
 
 logger = structlog.get_logger(__name__)
@@ -99,7 +100,7 @@ class FunctionDispatcher:
         self.function_registry = function_registry
         self.conversation_manager = ConversationManager()
         # Import StreamingHandler lazily to avoid circular imports
-        from ..api.streaming import StreamingHandler
+        from agent.api.streaming import StreamingHandler
 
         self.streaming_handler = StreamingHandler(function_registry, self.conversation_manager)
 
@@ -239,8 +240,8 @@ class FunctionDispatcher:
     async def _get_ai_routing_state_context(self, task: Task) -> tuple[Any, str] | tuple[None, None]:
         """Get state context for AI routing if state management is enabled."""
         try:
-            from ..handlers.handlers import _load_state_config
-            from ..state.context import get_context_manager
+            from agent.handlers.handlers import _load_state_config
+            from agent.state.context import get_context_manager
 
             state_config = _load_state_config()
             logger.info(
@@ -428,7 +429,7 @@ def register_ai_functions_from_handlers():
     """Auto-register functions from handlers with @ai_function decorator."""
     # CONDITIONAL_HANDLERS_IMPORT
     try:
-        from ..handlers import handlers
+        from agent.handlers import handlers
 
         # Also try importing individual handler modules
         handler_modules = []
@@ -519,7 +520,7 @@ def register_ai_functions_from_handlers():
 
     # Also register AI functions from plugins
     try:
-        from ..plugins.integration import get_plugin_adapter
+        from agent.plugins.integration import get_plugin_adapter
 
         plugin_adapter = get_plugin_adapter()
         if plugin_adapter:
@@ -530,7 +531,7 @@ def register_ai_functions_from_handlers():
 
             # Get configured plugins from agent config
             try:
-                from ..config import load_config
+                from agent.config import load_config
 
                 config = load_config()
                 configured_plugins = {plugin.get("plugin_id") for plugin in config.get("plugins", [])}
@@ -558,7 +559,7 @@ def register_ai_functions_from_handlers():
                     def create_wrapper(func_handler):
                         async def plugin_function_wrapper(task, **kwargs):
                             # Create plugin context from task
-                            from ..plugins.models import CapabilityContext
+                            from agent.plugins.models import CapabilityContext
 
                             context = CapabilityContext(task=task, metadata={"parameters": kwargs})
                             result = await func_handler(task, context)

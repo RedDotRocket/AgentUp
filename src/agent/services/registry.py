@@ -3,22 +3,22 @@ from typing import Any
 # Fallback stubs if the real modules aren’t installed
 import structlog
 
-from ..config import load_config
-from ..config.models import AgentConfig, ServiceConfig
-from ..llm_providers.anthropic import AnthropicProvider
-from ..llm_providers.ollama import OllamaProvider
-from ..llm_providers.openai import OpenAIProvider
-from ..utils.helpers import load_callable
+from agent.config import load_config
+from agent.config.models import AgentConfig, ServiceConfig
+from agent.llm_providers.anthropic import AnthropicProvider
+from agent.llm_providers.ollama import OllamaProvider
+from agent.llm_providers.openai import OpenAIProvider
+from agent.utils.helpers import load_callable
 
 try:
-    from ..mcp_support.mcp_client import MCPClientService
-    from ..mcp_support.mcp_http_client import MCPHTTPClientService
+    from agent.mcp_support.mcp_client import MCPClientService
+    from agent.mcp_support.mcp_http_client import MCPHTTPClientService
 except ImportError:
     MCPClientService = None
     MCPHTTPClientService = None
 
 try:
-    from ..mcp_support.mcp_server import MCPServerComponent
+    from agent.mcp_support.mcp_server import MCPServerComponent
 except ImportError:
     MCPServerComponent = None
     MCPHTTPServer = None

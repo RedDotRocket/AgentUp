@@ -4,7 +4,7 @@ from typing import Any
 import structlog
 from a2a.types import Task
 
-from ..core.function_executor import FunctionExecutor
+from agent.core.function_executor import FunctionExecutor
 
 logger = structlog.get_logger(__name__)
 
@@ -37,7 +37,7 @@ class StreamingHandler:
                 return
 
             # Get LLM service
-            from ..services import get_services
+            from agent.services import get_services
 
             services = get_services()
             llm = await llm_manager.get_llm_service(services)
@@ -120,7 +120,7 @@ class StreamingHandler:
         except Exception as e:
             logger.error(f"Function streaming error: {e}")
             # Fall back to non-streaming
-            from ..services.llm.manager import LLMManager
+            from agent.services.llm.manager import LLMManager
 
             response = await LLMManager.llm_with_functions(llm, messages, function_schemas, function_executor)
             yield response

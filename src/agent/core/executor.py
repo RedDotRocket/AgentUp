@@ -24,7 +24,7 @@ from a2a.utils import (
 )
 from a2a.utils.errors import ServerError
 
-from ..config.models import BaseAgent
+from agent.config.models import BaseAgent
 
 logger = structlog.get_logger(__name__)
 
@@ -43,7 +43,7 @@ class GenericAgentExecutor(AgentExecutor):
             self.agent_name = agent.agent_name
 
         # Load config for new routing system
-        from ..config import load_config
+        from agent.config import load_config
 
         config = load_config()
 
@@ -233,7 +233,7 @@ class GenericAgentExecutor(AgentExecutor):
         logger.info(f"Routing to plugin: {plugin_id}")
 
         # Get handler for the plugin
-        from ..handlers import get_handler
+        from agent.handlers import get_handler
 
         handler = get_handler(plugin_id)
 

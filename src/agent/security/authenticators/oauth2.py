@@ -6,9 +6,13 @@ from authlib.jose import JsonWebKey, jwt
 from authlib.jose.errors import JoseError
 from fastapi import Request
 
-from ..base import AuthenticationResult, BaseAuthenticator
-from ..exceptions import InvalidCredentialsException, MissingCredentialsException, SecurityConfigurationException
-from ..utils import extract_bearer_token, get_request_info, log_security_event
+from agent.security.base import AuthenticationResult, BaseAuthenticator
+from agent.security.exceptions import (
+    InvalidCredentialsException,
+    MissingCredentialsException,
+    SecurityConfigurationException,
+)
+from agent.security.utils import extract_bearer_token, get_request_info, log_security_event
 
 logger = structlog.get_logger(__name__)
 

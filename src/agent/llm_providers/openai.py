@@ -6,13 +6,14 @@ import httpx
 import structlog
 import yaml
 
-from ..config.constants import (
+from agent.config.constants import (
     DEFAULT_API_ENDPOINTS,
     DEFAULT_HTTP_TIMEOUT,
     DEFAULT_MODELS,
     DEFAULT_USER_AGENT,
     MODEL_CAPABILITIES_FILE,
 )
+
 from .base import (
     BaseLLMService,
     ChatMessage,

@@ -6,8 +6,8 @@ import click
 import questionary
 from questionary import Style
 
-from ...generator import ProjectGenerator
-from ...templates import (
+from agent.generator import ProjectGenerator
+from agent.templates import (
     get_feature_choices,
     get_template_choices,
     get_template_features,

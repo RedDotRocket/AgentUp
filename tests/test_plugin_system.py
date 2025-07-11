@@ -1,7 +1,7 @@
 import pytest
 
-from src.agent.plugins import CapabilityContext, CapabilityInfo, CapabilityResult, PluginManager
-from src.agent.plugins.example_plugin import ExamplePlugin
+from agent.plugins import CapabilityContext, CapabilityInfo, CapabilityResult, PluginManager
+from agent.plugins.example_plugin import ExamplePlugin
 from tests.utils.plugin_testing import MockTask, create_test_plugin
 
 

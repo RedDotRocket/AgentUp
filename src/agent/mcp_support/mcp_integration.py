@@ -28,7 +28,7 @@ async def initialize_mcp_integration(config: dict[str, Any]) -> None:
         return
 
     # Get service registry
-    from ..services import get_services
+    from agent.services import get_services
 
     services = get_services()
 
@@ -70,7 +70,7 @@ async def _initialize_mcp_client(services, client_config: dict[str, Any]) -> Non
 
             # Register HTTP MCP tools with AI orchestrator
             try:
-                from ..core.dispatcher import get_function_registry
+                from agent.core.dispatcher import get_function_registry
 
                 registry = get_function_registry()
 
@@ -105,7 +105,7 @@ async def _initialize_mcp_client(services, client_config: dict[str, Any]) -> Non
             logger.info("Registered MCP stdio client with service registry")
             # Register stdio MCP tools with function dispatcher
             try:
-                from ..core.dispatcher import get_function_registry
+                from agent.core.dispatcher import get_function_registry
 
                 registry = get_function_registry()
 
@@ -174,7 +174,7 @@ async def _expose_handlers_as_mcp_tools(mcp_server) -> None:
 
     try:
         # Get registered handlers from the function registry
-        from ..core.dispatcher import get_function_registry
+        from agent.core.dispatcher import get_function_registry
 
         registry = get_function_registry()
 
@@ -225,7 +225,7 @@ async def shutdown_mcp_integration() -> None:
         logger.warning("MCP SDK not available. Cannot shutdown MCP integration.")
         return
 
-    from ..services import get_services
+    from agent.services import get_services
 
     services = get_services()
 

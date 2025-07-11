@@ -13,7 +13,7 @@ class MultiModalHelper:
     def get_multimodal_service():
         """Get the multi-modal service from the service registry."""
         try:
-            from ..services.registry import get_services
+            from agent.services.registry import get_services
 
             services = get_services()
             return services.get_multimodal()
@@ -33,7 +33,7 @@ class MultiModalHelper:
             return len(image_parts) > 0
 
         # Fallback direct check
-        from ..services.multimodal import MultiModalProcessor
+        from agent.services.multimodal import MultiModalProcessor
 
         image_parts = MultiModalProcessor.extract_image_parts(task.history[0].parts)
         return len(image_parts) > 0
@@ -50,7 +50,7 @@ class MultiModalHelper:
             return len(doc_parts) > 0
 
         # Fallback direct check
-        from ..services.multimodal import MultiModalProcessor
+        from agent.services.multimodal import MultiModalProcessor
 
         doc_parts = MultiModalProcessor.extract_document_parts(task.history[0].parts)
         return len(doc_parts) > 0
@@ -71,7 +71,7 @@ class MultiModalHelper:
             return multimodal.extract_image_parts(task.history[0].parts)
 
         # Fallback direct access
-        from ..services.multimodal import MultiModalProcessor
+        from agent.services.multimodal import MultiModalProcessor
 
         return MultiModalProcessor.extract_image_parts(task.history[0].parts)
 
@@ -86,7 +86,7 @@ class MultiModalHelper:
             return multimodal.extract_document_parts(task.history[0].parts)
 
         # Fallback direct access
-        from ..services.multimodal import MultiModalProcessor
+        from agent.services.multimodal import MultiModalProcessor
 
         return MultiModalProcessor.extract_document_parts(task.history[0].parts)
 
@@ -101,7 +101,7 @@ class MultiModalHelper:
             return multimodal.extract_all_content(task.history[0].parts)
 
         # Fallback direct access
-        from ..services.multimodal import MultiModalProcessor
+        from agent.services.multimodal import MultiModalProcessor
 
         return MultiModalProcessor.extract_all_content(task.history[0].parts)
 
@@ -118,7 +118,7 @@ class MultiModalHelper:
             return multimodal.process_image(first_image.data, first_image.mimeType)
 
         # Fallback direct access
-        from ..services.multimodal import MultiModalProcessor
+        from agent.services.multimodal import MultiModalProcessor
 
         return MultiModalProcessor.process_image(first_image.data, first_image.mimeType)
 
@@ -135,7 +135,7 @@ class MultiModalHelper:
             return multimodal.process_document(first_doc.data, first_doc.mimeType)
 
         # Fallback direct access
-        from ..services.multimodal import MultiModalProcessor
+        from agent.services.multimodal import MultiModalProcessor
 
         return MultiModalProcessor.process_document(first_doc.data, first_doc.mimeType)
 
@@ -152,7 +152,7 @@ class MultiModalHelper:
                 result = multimodal.process_image(image.data, image.mimeType)
             else:
                 # Fallback direct access
-                from ..services.multimodal import MultiModalProcessor
+                from agent.services.multimodal import MultiModalProcessor
 
                 result = MultiModalProcessor.process_image(image.data, image.mimeType)
 
@@ -174,7 +174,7 @@ class MultiModalHelper:
                 result = multimodal.process_document(doc.data, doc.mimeType)
             else:
                 # Fallback direct access
-                from ..services.multimodal import MultiModalProcessor
+                from agent.services.multimodal import MultiModalProcessor
 
                 result = MultiModalProcessor.process_document(doc.data, doc.mimeType)
 

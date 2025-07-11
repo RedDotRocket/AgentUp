@@ -7,9 +7,7 @@ from .authenticators import get_authenticator_class, list_authenticator_types  #
 from .base import AuthenticationResult, BaseAuthenticator, SecurityPolicy
 from .exceptions import (
     AuthenticationFailedException,
-    AuthenticatorNotFound,  # noqa: F401
     AuthorizationFailedException,
-    InvalidAuthenticationTypeException,  # noqa: F401
     SecurityConfigurationException,
 )
 from .utils import get_request_info, log_security_event

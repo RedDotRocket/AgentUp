@@ -92,6 +92,7 @@ async def lifespan(app: FastAPI):
             # Register AI functions from plugins
             try:
                 from agent.core.dispatcher import register_ai_functions_from_handlers
+
                 register_ai_functions_from_handlers()
                 logger.info("AI functions registered from plugins")
             except Exception as e:
@@ -111,7 +112,7 @@ async def lifespan(app: FastAPI):
     state_cfg = config.get("state", {})
     if state_cfg:
         try:
-            from ..state.context import get_context_manager
+            from agent.state.context import get_context_manager
 
             backend = state_cfg.get("backend", "memory")
             backend_config = {}
@@ -145,7 +146,7 @@ async def lifespan(app: FastAPI):
             # Add MCP HTTP endpoint if server is enabled
             if mcp_cfg.get("server", {}).get("enabled", False):
                 try:
-                    from ..mcp_support.mcp_http_server import MCPHTTPServer, create_mcp_router
+                    from agent.mcp_support.mcp_http_server import MCPHTTPServer, create_mcp_router
 
                     # Create MCP HTTP server with configuration
                     server_cfg = mcp_cfg.get("server", {})
@@ -176,7 +177,7 @@ async def lifespan(app: FastAPI):
     push_config = config.get("push_notifications", {})
     if push_config.get("backend") == "valkey" and push_config.get("enabled", True):
         try:
-            from ..services import get_services
+            from agent.services import get_services
 
             services = get_services()
 
@@ -286,7 +287,7 @@ def create_app() -> FastAPI:
             app.add_middleware(CorrelationIdMiddleware)
 
             # Add structured logging middleware (this is the inner middleware)
-            from ..config.logging import LoggingConfig
+            from agent.config.logging import LoggingConfig
 
             try:
                 logging_cfg = LoggingConfig(**logging_config)

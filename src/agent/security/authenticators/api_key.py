@@ -1,9 +1,13 @@
 from fastapi import Request
 
-from ..base import AuthenticationResult, BaseAuthenticator
-from ..exceptions import InvalidCredentialsException, MissingCredentialsException, SecurityConfigurationException
-from ..utils import get_request_info, log_security_event, secure_compare, validate_api_key_format
-from ..validators import InputValidator
+from agent.security.base import AuthenticationResult, BaseAuthenticator
+from agent.security.exceptions import (
+    InvalidCredentialsException,
+    MissingCredentialsException,
+    SecurityConfigurationException,
+)
+from agent.security.utils import get_request_info, log_security_event, secure_compare, validate_api_key_format
+from agent.security.validators import InputValidator
 
 
 class ApiKeyAuthenticator(BaseAuthenticator):

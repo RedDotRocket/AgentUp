@@ -112,8 +112,8 @@ class FunctionExecutor:
             if accepts_context or accepts_context_id:
                 # Get state configuration and apply state management
                 try:
-                    from ..handlers.handlers import _load_state_config
-                    from ..state.decorators import with_state
+                    from agent.handlers.handlers import _load_state_config
+                    from agent.state.decorators import with_state
 
                     state_config = _load_state_config()
                     if state_config.get("enabled", False):

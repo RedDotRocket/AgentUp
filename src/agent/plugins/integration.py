@@ -4,7 +4,8 @@ from typing import Any
 import structlog
 from a2a.types import Task
 
-from ..handlers.handlers import _handlers, register_handler_function
+from agent.handlers.handlers import _handlers, register_handler_function
+
 from .adapter import PluginAdapter, get_plugin_manager
 
 logger = structlog.get_logger(__name__)
@@ -26,7 +27,7 @@ def integrate_plugins_with_handlers() -> None:
 
     # Get configured plugins from the agent config
     try:
-        from ..config import load_config
+        from agent.config import load_config
 
         config = load_config()
         configured_plugins = {plugin.get("plugin_id") for plugin in config.get("plugins", [])}
@@ -170,7 +171,7 @@ def enable_plugin_system() -> None:
             # Store in global space for plugins to access
             import sys
 
-            from ..utils.multimodal import MultiModalHelper
+            from agent.utils.multimodal import MultiModalHelper
 
             if "agentup.multimodal" not in sys.modules:
                 import types

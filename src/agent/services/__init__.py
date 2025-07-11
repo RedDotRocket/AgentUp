@@ -1,7 +1,8 @@
 """External services integration for AgentUp agents."""
 
 # Import for backwards compatibility
-from ..config import load_config
+from agent.config import load_config
+
 from .multimodal import MultiModalProcessor
 from .registry import (
     CacheService,

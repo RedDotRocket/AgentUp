@@ -18,7 +18,7 @@ class ConversationManager:
         """Prepare conversation for LLM with system prompt and history."""
 
         # Get system prompt from config
-        from ..config import load_config
+        from agent.config import load_config
 
         config = load_config()
         ai_config = config.get("ai", {})
@@ -27,7 +27,7 @@ class ConversationManager:
         skill_system_prompt = None
         if skill_id:
             try:
-                from ..plugins.integration import get_skill_info
+                from agent.plugins.integration import get_skill_info
 
                 skill_info = get_skill_info(skill_id)
                 skill_system_prompt = skill_info.get("system_prompt")

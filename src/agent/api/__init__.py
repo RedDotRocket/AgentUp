@@ -1,8 +1,9 @@
 """API layer for AgentUp agents."""
 
 # Import commonly used functions for backwards compatibility
-from ..config import load_config
-from ..security.decorators import protected
+from agent.config import load_config
+from agent.security.decorators import protected
+
 from .app import app, create_app, main
 from .routes import (
     create_agent_card,

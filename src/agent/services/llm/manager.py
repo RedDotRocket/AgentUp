@@ -12,7 +12,7 @@ class LLMManager:
     async def get_llm_service(services=None):
         """Get the configured LLM service from ai_provider configuration."""
         try:
-            from ...config import load_config
+            from agent.config import load_config
 
             config = load_config()
 
@@ -28,7 +28,7 @@ class LLMManager:
                 return None
 
             # Create LLM service directly from ai_provider config
-            from ...llm_providers import create_llm_provider
+            from agent.llm_providers import create_llm_provider
 
             llm = create_llm_provider(provider, f"ai_provider_{provider}", ai_provider_config)
 
@@ -60,7 +60,7 @@ class LLMManager:
     ) -> str:
         """Process with LLM function calling capability using provider-agnostic approach."""
         try:
-            from ...llm_providers.base import (  # type: ignore[import-untyped]
+            from agent.llm_providers.base import (  # type: ignore[import-untyped]
                 ChatMessage,
                 LLMCapability,
             )
@@ -126,7 +126,7 @@ class LLMManager:
         # CONDITIONAL_LLM_PROVIDER_IMPORTS
         # Note: llm_providers module is generated during project creation from templates
         try:
-            from ...llm_providers.base import ChatMessage  # type: ignore[import-untyped]
+            from agent.llm_providers.base import ChatMessage  # type: ignore[import-untyped]
 
             # Convert to ChatMessage objects for consistency
             chat_messages = []

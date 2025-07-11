@@ -94,7 +94,7 @@ The framework applies middleware during startup:
 
 ```python
 # In app.py startup
-from ..handlers.handlers import apply_global_middleware
+from agent.handlers.handlers import apply_global_middleware
 
 apply_global_middleware()
 logger.info("Global middleware applied to existing handlers")

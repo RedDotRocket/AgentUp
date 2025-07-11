@@ -19,8 +19,8 @@ from a2a.types import (
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from ..config import load_config
-from ..config.models import (
+from agent.config import load_config
+from agent.config.models import (
     AgentCapabilities,
     AgentCard,
     AgentExtension,
@@ -29,13 +29,13 @@ from ..config.models import (
     HTTPAuthSecurityScheme,
     JSONRPCError,
 )
-from ..push.types import (
+from agent.push.types import (
     DeleteTaskPushNotificationConfigRequest,
     DeleteTaskPushNotificationConfigResponse,
     listTaskPushNotificationConfigRequest,
     listTaskPushNotificationConfigResponse,
 )
-from ..security import AuthContext, get_auth_result, protected
+from agent.security import AuthContext, get_auth_result, protected
 
 # Setup logger
 logger = structlog.get_logger(__name__)
@@ -216,7 +216,7 @@ async def health_check() -> JSONResponse:
 async def services_health() -> JSONResponse:
     """Check health of all services."""
     try:
-        from ..services import get_services
+        from agent.services import get_services
 
         services = get_services()
         health_results = await services.health_check_all()
@@ -529,7 +529,7 @@ async def handle_delete_push_notification_config(
 
         if not success:
             # Return JSON-RPC error for not found
-            from ..push.types import JSONRPCErrorResponse
+            from agent.push.types import JSONRPCErrorResponse
 
             return JSONRPCErrorResponse(
                 jsonrpc="2.0",

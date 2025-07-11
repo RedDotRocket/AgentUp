@@ -3,7 +3,8 @@ from typing import Any
 import structlog
 from a2a.types import Task
 
-from ..core.dispatcher import FunctionRegistry
+from agent.core.dispatcher import FunctionRegistry
+
 from .manager import PluginManager, get_plugin_manager
 from .models import CapabilityContext, CapabilityResult
 
@@ -78,7 +79,7 @@ class PluginAdapter:
 
         # Get services if available
         try:
-            from ..services import get_services
+            from agent.services import get_services
 
             services = get_services()
         except Exception:
