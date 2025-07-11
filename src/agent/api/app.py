@@ -218,7 +218,8 @@ async def lifespan(app: FastAPI):
                 from .routes import get_request_handler
 
                 handler = get_request_handler()
-                handler._push_notifier = valkey_push_notifier
+                handler._push_config_store = valkey_push_notifier
+                handler._push_sender = valkey_push_notifier
 
                 logger.info("Updated to Valkey-backed push notifier")
             else:
@@ -261,7 +262,8 @@ def create_app() -> FastAPI:
     request_handler = CustomRequestHandler(
         agent_executor=AgentExecutorImpl(agent=create_agent_card()),
         task_store=InMemoryTaskStore(),
-        push_notifier=push_notifier,
+        push_config_store=push_notifier,
+        push_sender=push_notifier,
     )
     set_request_handler_instance(request_handler)
 

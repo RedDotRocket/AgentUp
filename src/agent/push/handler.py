@@ -34,17 +34,20 @@ class CustomRequestHandler(DefaultRequestHandler):
         # If we got a task back and have push notification config, save it
         if (
             isinstance(result, Task)
-            and self._push_notifier
+            and self._push_config_store
+            and self._push_sender
             and params.configuration
             and params.configuration.pushNotificationConfig
         ):
             logger.info(f"Saving push notification config for new task {result.id}")
-            await self._push_notifier.set_info(
+            
+            # Store the configuration
+            await self._push_config_store.set_task_push_notification_config(
                 result.id,
                 params.configuration.pushNotificationConfig,
             )
 
             # Also send the initial notification until upsteam fixes this
-            await self._push_notifier.send_notification(result)
+            await self._push_sender.send_notification(result)
 
         return result
