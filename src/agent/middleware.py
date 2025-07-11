@@ -641,6 +641,69 @@ _registry.register("timed", timed)
 _registry.register("validated", validated)
 
 
+# AI-compatible middleware functions
+def get_ai_compatible_middleware() -> list[dict[str, Any]]:
+    """Get middleware configurations that are compatible with AI routing."""
+    try:
+        # Try relative import first (development context)
+        try:
+            from agent.handlers.handlers import _load_middleware_config
+        except ImportError:
+            try:
+                # Try installed package import (agent context)
+                from agent.handlers.handlers import _load_middleware_config
+            except ImportError:
+                logger.debug("Could not import _load_middleware_config, returning empty list")
+                return []
+
+        middleware_configs = _load_middleware_config()
+
+        # Filter to only AI-compatible middleware (exclude caching and rate limiting)
+        ai_compatible = [
+            m
+            for m in middleware_configs
+            if m.get("name") in ["timed", "validated"]  # Exclude "cached", "rate_limited", "retryable"
+        ]
+
+        return ai_compatible
+    except Exception as e:
+        logger.debug(f"Could not load AI-compatible middleware config: {e}")
+        return []
+
+
+def apply_ai_routing_middleware(func: Callable, func_name: str) -> Callable:
+    """Apply only AI-compatible middleware to functions for AI routing."""
+    ai_middleware = get_ai_compatible_middleware()
+
+    if not ai_middleware:
+        return func
+
+    try:
+        # Apply middleware using existing with_middleware function
+        wrapped_func = with_middleware(ai_middleware)(func)
+        middleware_names = [m.get("name") for m in ai_middleware]
+        logger.debug(f"Applied AI-compatible middleware to '{func_name}': {middleware_names}")
+        return wrapped_func
+    except Exception as e:
+        logger.error(f"Failed to apply AI middleware to '{func_name}': {e}")
+        return func
+
+
+async def execute_ai_function_with_middleware(func_name: str, func: Callable, *args, **kwargs) -> Any:
+    """Execute AI function with selective middleware application."""
+    ai_middleware = get_ai_compatible_middleware()
+
+    if not ai_middleware:
+        # No middleware to apply, execute directly
+        return await func(*args, **kwargs)
+
+    # Apply middleware dynamically
+    wrapped_func = apply_ai_routing_middleware(func, func_name)
+
+    # Execute the wrapped function
+    return await wrapped_func(*args, **kwargs)
+
+
 # Export for external use
 __all__ = [
     "rate_limited",
@@ -661,4 +724,7 @@ __all__ = [
     "MiddlewareError",
     "RateLimitError",
     "ValidationError",
+    "get_ai_compatible_middleware",
+    "apply_ai_routing_middleware",
+    "execute_ai_function_with_middleware",
 ]

@@ -99,10 +99,13 @@ class FunctionExecutor:
         return str(result)
 
     async def _execute_with_state_management(self, handler, task, function_name: str):
-        """Execute handler with state management if applicable."""
+        """Execute handler with state management and AI-compatible middleware if applicable."""
         try:
+            # Apply AI-compatible middleware first
+            wrapped_handler = await self._apply_ai_middleware(handler, function_name)
+
             # Check if the function can accept context parameters
-            sig = inspect.signature(handler)
+            sig = inspect.signature(wrapped_handler)
             accepts_context = "context" in sig.parameters
             accepts_context_id = "context_id" in sig.parameters
 
@@ -116,7 +119,7 @@ class FunctionExecutor:
                     if state_config.get("enabled", False):
                         # Apply state management to this specific call
                         state_configs = [state_config]
-                        wrapped_handler = with_state(state_configs)(handler)
+                        wrapped_handler = with_state(state_configs)(wrapped_handler)
 
                         logger.info(f"AI routing: Applied state management to function '{function_name}'")
                         return await wrapped_handler(task)
@@ -126,9 +129,30 @@ class FunctionExecutor:
                 except Exception as e:
                     logger.error(f"AI routing: Failed to apply state management to '{function_name}': {e}")
 
-            # Execute handler normally (without state or if state failed)
-            return await handler(task)
+            # Execute handler normally (with AI middleware applied, with/without state)
+            return await wrapped_handler(task)
 
         except Exception as e:
             logger.error(f"AI routing: Error executing function '{function_name}': {e}")
             raise
+
+    async def _apply_ai_middleware(self, handler, function_name: str):
+        """Apply AI-compatible middleware to the handler."""
+        try:
+            from agent.middleware import execute_ai_function_with_middleware, get_ai_compatible_middleware
+
+            # Check if there's any AI-compatible middleware to apply
+            ai_middleware = get_ai_compatible_middleware()
+            if not ai_middleware:
+                logger.debug(f"AI routing: No AI-compatible middleware to apply to '{function_name}'")
+                return handler
+
+            # Create a wrapper that applies middleware
+            async def middleware_wrapper(task):
+                return await execute_ai_function_with_middleware(function_name, handler, task)
+
+            return middleware_wrapper
+
+        except Exception as e:
+            logger.error(f"AI routing: Failed to apply AI middleware to '{function_name}': {e}")
+            return handler
