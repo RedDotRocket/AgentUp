@@ -123,10 +123,14 @@ class PluginAdapter:
         if not capability:
             return {}
 
+        # Get the plugin name that provides this capability
+        plugin_name = self.plugin_manager.capability_to_plugin.get(capability_id, "unknown")
+
         return {
             "capability_id": capability.id,
             "name": capability.name,
             "description": capability.description,
+            "plugin_name": plugin_name,
             "input_mode": capability.input_mode,
             "output_mode": capability.output_mode,
             "tags": capability.tags,

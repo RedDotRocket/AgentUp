@@ -47,6 +47,10 @@ def integrate_plugins_with_handlers() -> None:
                 plugin_to_capabilities[plugin_name] = []
             plugin_to_capabilities[plugin_name].append(capability_id)
 
+    logger.debug(
+        f"Discovered {len(plugin_to_capabilities)} plugins with capabilities: {plugin_to_capabilities}"
+    )
+
     # Determine which capabilities to register
     capabilities_to_register = set()
 
@@ -64,9 +68,6 @@ def integrate_plugins_with_handlers() -> None:
             elif plugin_id in adapter.list_available_capabilities():
                 logger.debug(f"Enabling specific capability '{plugin_id}'")
                 capabilities_to_register.add(plugin_id)
-
-            else:
-                logger.warning(f"Plugin/capability '{plugin_id}' not found")
 
     # Register each capability as a handler
     for capability_id in capabilities_to_register:

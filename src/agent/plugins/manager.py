@@ -72,10 +72,11 @@ class PluginManager:
                 # Python 3.9
                 capability_entries = entry_points.get("agentup.capabilities", [])
 
-            logger.debug(f"Found {len(capability_entries)} entry points")
+            logger.debug(f"Found {len(capability_entries)} Plugin entry points")
 
             for entry_point in capability_entries:
                 try:
+                    logger.info(f"Discovered plugin '{entry_point.name}'")
                     logger.debug(f"Loading entry point: {entry_point.name}")
                     plugin_class = entry_point.load()
                     plugin_instance = plugin_class()
@@ -128,6 +129,8 @@ class PluginManager:
         """Load a single installed plugin."""
         plugin_name = f"installed_{plugin_dir.name}"
         plugin_file = plugin_dir / entry_file
+        
+        logger.info(f"Discovering '{plugin_name}' plugin")
 
         # Similar to local plugin loading
         spec = importlib.util.spec_from_file_location(plugin_name, plugin_file)
@@ -297,7 +300,8 @@ class PluginManager:
         plugin = self.capability_hooks[capability_id]
         if hasattr(plugin, "get_ai_functions"):
             try:
-                return plugin.get_ai_functions()
+                # Pass capability_id to get capability-specific functions
+                return plugin.get_ai_functions(capability_id=capability_id)
             except Exception as e:
                 logger.error(f"Error getting AI functions from capability {capability_id}: {e}")
         return []

@@ -537,15 +537,31 @@ def register_ai_functions_from_handlers():
                 configured_plugins = {plugin.get("plugin_id") for plugin in config.get("plugins", [])}
             except Exception as e:
                 logger.warning(f"Could not load agent config for plugin AI functions: {e}")
-                configured_plugins = set(available_plugins)
+                configured_plugins = set()
 
-            # Register AI functions only for configured plugins
-            for plugin_id in available_plugins:
-                if plugin_id not in configured_plugins:
-                    logger.debug(f"Skipping AI functions for unconfigured plugin: {plugin_id}")
+            # Build mapping of plugin names to capabilities
+            plugin_to_capabilities = {}
+            for capability_id in available_plugins:
+                capability_info = plugin_adapter.get_capability_info(capability_id)
+                if capability_info and "plugin_name" in capability_info:
+                    plugin_name = capability_info["plugin_name"]
+                    if plugin_name not in plugin_to_capabilities:
+                        plugin_to_capabilities[plugin_name] = []
+                    plugin_to_capabilities[plugin_name].append(capability_id)
+
+            # Register AI functions only for capabilities from configured plugins
+            for capability_id in available_plugins:
+                capability_info = plugin_adapter.get_capability_info(capability_id)
+                if not capability_info or "plugin_name" not in capability_info:
+                    logger.debug(f"Skipping AI functions for capability without plugin info: {capability_id}")
                     continue
 
-                ai_functions = plugin_adapter.get_ai_functions(plugin_id)
+                plugin_name = capability_info["plugin_name"]
+                if plugin_name not in configured_plugins:
+                    logger.debug(f"Skipping AI functions for capability '{capability_id}' from unconfigured plugin '{plugin_name}'")
+                    continue
+
+                ai_functions = plugin_adapter.get_ai_functions(capability_id)
                 for ai_function in ai_functions:
                     # Convert plugin AIFunction to registry format
                     schema = {
@@ -569,7 +585,7 @@ def register_ai_functions_from_handlers():
 
                     wrapped_handler = create_wrapper(ai_function.handler)
                     registry.register_function(ai_function.name, wrapped_handler, schema)
-                    logger.debug(f"Registered plugin AI function: {ai_function.name} from {plugin_id}")
+                    logger.debug(f"Registered plugin AI function: {ai_function.name} from capability {capability_id}")
                     plugin_functions_count += 1
 
             if plugin_functions_count > 0:
