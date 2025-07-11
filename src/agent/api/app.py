@@ -84,10 +84,19 @@ async def lifespan(app: FastAPI):
     plugin_cfg = config.get("plugins", {})
     if _is_plugin_enabled(plugin_cfg):
         try:
-            from ..plugins.integration import enable_plugin_system
+            from agent.plugins.integration import enable_plugin_system
 
             enable_plugin_system()
             logger.info("Plugin system initialized successfully")
+
+            # Register AI functions from plugins
+            try:
+                from agent.core.dispatcher import register_ai_functions_from_handlers
+                register_ai_functions_from_handlers()
+                logger.info("AI functions registered from plugins")
+            except Exception as e:
+                logger.error(f"Failed to register AI functions from plugins: {e}")
+
         except ImportError:
             logger.debug("Plugin system not available")
         except Exception as e:
