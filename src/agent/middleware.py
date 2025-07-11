@@ -139,7 +139,7 @@ class MemoryCache(CacheBackend):
         if key in self.cache:
             entry = self.cache[key]
             if time.time() < entry["expires_at"]:
-                logger.debug(f"Cache hit for key: {key}")
+                logger.debug(f"Cache hit in memory key: {key}")
                 return entry["value"]
             else:
                 # Expired, remove it
@@ -158,7 +158,7 @@ class MemoryCache(CacheBackend):
             del self.cache[oldest_key]
 
         self.cache[key] = {"value": value, "expires_at": time.time() + effective_ttl}
-        logger.debug(f"Cache set for key: {key}, TTL: {effective_ttl}s")
+        logger.debug(f"Cache set in memory for key: {key}, TTL: {effective_ttl}s")
 
     async def delete(self, key: str) -> None:
         """Delete value from cache."""
@@ -215,7 +215,7 @@ class ValkeyCache(CacheBackend):
             client = await self._get_client()
             value = await client.get(key)
             if value:
-                logger.debug(f"Cache hit for key: {key}")
+                logger.debug(f"Cache hit in Valkey/Redis for key: {key}")
                 # Try to deserialize JSON
                 try:
                     import json
@@ -225,7 +225,7 @@ class ValkeyCache(CacheBackend):
                     return value
             return None
         except Exception as e:
-            logger.error(f"Cache get error for key {key}: {e}")
+            logger.error(f"Cache get error in Valkey for key {key}: {e}")
             return None
 
     async def set(self, key: str, value: Any, ttl: int | None = None) -> None:
@@ -241,7 +241,7 @@ class ValkeyCache(CacheBackend):
 
                 value = json.dumps(value)
             await client.setex(key, effective_ttl, value)
-            logger.debug(f"Cache set for key: {key}, TTL: {effective_ttl}s")
+            logger.debug(f"Cache set in Valkey for key: {key}, TTL: {effective_ttl}s")
         except Exception as e:
             logger.error(f"Cache set error for key {key}: {e}")
 
@@ -250,75 +250,21 @@ class ValkeyCache(CacheBackend):
         try:
             client = await self._get_client()
             await client.delete(key)
-            logger.debug(f"Cache deleted for key: {key}")
+            logger.debug(f"Cache deleted in Valkey for key: {key}")
         except Exception as e:
-            logger.error(f"Cache delete error for key {key}: {e}")
+            logger.error(f"Cache delete error in Valkey for key {key}: {e}")
 
     async def clear(self) -> None:
         """Clear all cache entries."""
         try:
             client = await self._get_client()
             await client.flushdb()
-            logger.debug("Cache cleared")
+            logger.debug("Cache in Valkey cleared")
         except Exception as e:
-            logger.error(f"Cache clear error: {e}")
+            logger.error(f"Cache in Valkey clear error: {e}")
 
 
-# Legacy SimpleCache for backward compatibility
-class SimpleCache:
-    """Legacy simple cache - delegates to memory cache."""
-
-    def __init__(self):
-        self._backend = MemoryCache()
-
-    @property
-    def cache(self) -> dict[str, dict[str, Any]]:
-        """Access underlying cache for backward compatibility."""
-        return self._backend.cache
-
-    def get(self, key: str) -> Any | None:
-        """Get value from cache (sync version)."""
-        import asyncio
-
-        try:
-            return asyncio.run(self._backend.get(key))
-        except RuntimeError:
-            # Already in event loop
-            return None
-
-    def set(self, key: str, value: Any, ttl: int | None = None) -> None:
-        """Set value in cache (sync version)."""
-        import asyncio
-
-        try:
-            asyncio.run(self._backend.set(key, value, ttl))
-        except RuntimeError:
-            # Already in event loop
-            pass
-
-    def delete(self, key: str) -> None:
-        """Delete value from cache (sync version)."""
-        import asyncio
-
-        try:
-            asyncio.run(self._backend.delete(key))
-        except RuntimeError:
-            # Already in event loop
-            pass
-
-    def clear(self) -> None:
-        """Clear all cache entries (sync version)."""
-        import asyncio
-
-        try:
-            asyncio.run(self._backend.clear())
-        except RuntimeError:
-            # Already in event loop
-            pass
-
-
-# Global cache instance - will be configured based on agent config
-_cache = SimpleCache()
+# Global cache backend instance - will be configured based on agent config
 _cache_backend: CacheBackend | None = None
 
 
@@ -463,15 +409,15 @@ def cached(ttl: int | None = None):
             # Try to get from cache
             result = await cache_backend.get(cache_key)
             if result is not None:
-                logger.debug(f"Cache hit for key: {cache_key[:16]}...")
                 return result
 
             # Execute function and cache result
             # If TTL is provided, use it; otherwise cache backend will use its default_ttl
             result = await func(*args, **kwargs)
             await cache_backend.set(cache_key, result, ttl)
-            ttl_info = f"TTL: {ttl}s" if ttl is not None else f"TTL: {cache_backend.default_ttl}s (default)"
-            logger.debug(f"Cache miss, stored result for key: {cache_key[:16]}... {ttl_info}")
+            # Uncomment for debug logging
+            # ttl_info = f"TTL: {ttl}s" if ttl is not None else f"TTL: {cache_backend.default_ttl}s (default)"
+            # logger.debug(f"Cache miss, stored result for key: {cache_key[:16]}... {ttl_info}")
             return result
 
         return wrapper
@@ -592,17 +538,14 @@ def clear_cache() -> None:
     """Clear all cached data (sync version for backward compatibility)."""
     cache_backend = get_cache_backend()
 
-    # Use the legacy SimpleCache clear method for backward compatibility
-    if hasattr(cache_backend, "clear"):
-        import asyncio
+    import asyncio
 
-        try:
-            asyncio.run(cache_backend.clear())
-        except RuntimeError:
-            # Already in event loop - use legacy cache
-            _cache.clear()
-    else:
-        _cache.clear()
+    try:
+        asyncio.run(cache_backend.clear())
+    except RuntimeError:
+        # Already in event loop - create new task
+        loop = asyncio.get_event_loop()
+        loop.create_task(cache_backend.clear())
 
 
 async def clear_cache_async() -> None:

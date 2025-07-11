@@ -4,14 +4,14 @@ from typing import Any
 import structlog
 from a2a.types import Task
 
-from ..config import load_config
+from agent.config import load_config
 
 # Import middleware decorators
-from ..middleware import rate_limited, retryable, timed
+from agent.middleware import rate_limited, retryable, timed
 
 # Load agent config to pull in project name
-_config = load_config()
-_project_name = _config.get("agent", {}).get("name", "Agent")
+config = load_config()
+_project_name = config.get("agent", {}).get("name", "Agent")
 
 # Import shared utilities (with fallbacks for testing)
 try:
@@ -109,9 +109,6 @@ def _load_middleware_config() -> list[dict[str, Any]]:
         return _middleware_config
 
     try:
-        from ..config import load_config
-
-        config = load_config()
         _middleware_config = config.get("middleware", [])
         logger.debug(f"Loaded middleware config: {_middleware_config}")
         return _middleware_config
@@ -289,13 +286,11 @@ def get_handler(plugin_id: str) -> Callable[[Task], str] | None:
     return None
 
 
-@register_handler("status")
 async def handle_status(task: Task) -> str:
     """Get agent status and information."""
     return f"{_project_name} is operational and ready to process tasks. Task ID: {task.id}"
 
 
-@register_handler("capabilities")
 async def handle_capabilities(task: Task) -> str:
     """list agent capabilities and available plugins."""
     plugins = list(_handlers.keys())
@@ -327,6 +322,8 @@ def apply_global_middleware() -> None:
         _global_middleware_applied = True
         return
 
+    logger.info(f"Applying global middleware to {_project_name} handlers: {middleware_configs}")
+
     # Count handlers that already have middleware applied
     handlers_with_middleware = []
     handlers_needing_middleware = []
@@ -340,7 +337,6 @@ def apply_global_middleware() -> None:
             handlers_needing_middleware.append(plugin_id)
 
     logger.debug(f"Handlers with middleware: {handlers_with_middleware}")
-    logger.debug(f"Handlers needing middleware: {handlers_needing_middleware}")
 
     # Only apply middleware to handlers that don't already have it
     for plugin_id in handlers_needing_middleware:

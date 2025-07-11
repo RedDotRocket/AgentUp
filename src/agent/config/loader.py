@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from dotenv import load_dotenv
 
 
 def load_config(config_path: str = "agent_config.yaml", configure_logging: bool = True) -> dict[str, Any]:
@@ -33,6 +34,14 @@ def load_config(config_path: str = "agent_config.yaml", configure_logging: bool 
 
 def _process_env_vars(config: Any) -> Any:
     """Recursively process environment variable substitutions."""
+    env_file = Path.cwd() / ".env"
+    if env_file.exists():
+        load_dotenv(env_file)
+    else:
+        # Check parent directory (for development)
+        parent_env = Path.cwd().parent / ".env"
+        if parent_env.exists():
+            load_dotenv(parent_env)
     if isinstance(config, dict):
         return {k: _process_env_vars(v) for k, v in config.items()}
     elif isinstance(config, list):

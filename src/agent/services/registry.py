@@ -418,54 +418,6 @@ def get_services() -> ServiceRegistry:
     return _registry
 
 
-async def initialize_services_from_config(config: dict[str, Any]) -> None:
-    """Initialize services from configuration."""
-    services_config = config.get("services", {})
-    registry = get_services()
-
-    for service_name, service_config in services_config.items():
-        if not isinstance(service_config, dict):
-            logger.warning(f"Invalid service config for '{service_name}': expected dict, got {type(service_config)}")
-            continue
-
-        service_type = service_config.get("type", "web_api")
-
-        logger.info(f"Attempting to register service '{service_name}' of type '{service_type}'")
-
-        # Special handling for LLM services
-        if service_type == "llm":
-            provider_type = service_config.get("provider")
-            if not provider_type:
-                logger.error(f"LLM service '{service_name}' missing 'provider' configuration")
-                continue
-            logger.info(f"LLM service '{service_name}' using provider '{provider_type}'")
-
-        try:
-            await registry.register_service(service_name, service_type, service_config)
-            logger.info(f"Successfully registered service '{service_name}'")
-        except Exception as e:
-            logger.error(f"Failed to register service '{service_name}' of type '{service_type}': {e}")
-            logger.error(f"Service config for '{service_name}': {service_config}")
-
-            # Provide helpful error messages for common LLM provider issues
-            if service_type == "llm":
-                provider_type = service_config.get("provider", "unknown")
-                if "api_key" in str(e).lower():
-                    logger.error(
-                        f"Hint: Make sure the API key environment variable is set for {provider_type} provider"
-                    )
-                    if provider_type == "openai":
-                        logger.error("Example: export OPENAI_API_KEY=sk-your-key-here")
-                    elif provider_type == "anthropic":
-                        logger.error("Example: export ANTHROPIC_API_KEY=sk-ant-your-key-here")
-
-
-async def initialize_services() -> None:
-    """Initialize services from configuration file."""
-    config = load_config()
-    await initialize_services_from_config(config)
-
-
 async def close_services() -> None:
     """Close all services."""
     global _registry

@@ -1,6 +1,5 @@
 import os
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 import httpx
 import structlog
@@ -8,89 +7,37 @@ import uvicorn
 from a2a.server.tasks import InMemoryTaskStore
 from fastapi import FastAPI
 
-# Load .env file if it exists
-try:
-    from dotenv import load_dotenv
+from agent.config import load_config
+from agent.config.constants import DEFAULT_SERVER_HOST, DEFAULT_SERVER_PORT
+from agent.config.logging import create_structlog_middleware_with_config
+from agent.config.models import JSONRPCError
+from agent.core.executor import GenericAgentExecutor as AgentExecutorImpl
+from agent.handlers.handlers import apply_global_middleware, apply_global_state
+from agent.mcp_support.mcp_integration import initialize_mcp_integration, shutdown_mcp_integration
+from agent.push.handler import CustomRequestHandler
+from agent.push.notifier import EnhancedPushNotifier, ValkeyPushNotifier
+from agent.security import create_security_manager
 
-    # Look for .env file in current directory and parent directories
-    env_file = Path.cwd() / ".env"
-    if env_file.exists():
-        load_dotenv(env_file)
-    else:
-        # Check parent directory (for development)
-        parent_env = Path.cwd().parent / ".env"
-        if parent_env.exists():
-            load_dotenv(parent_env)
-except ImportError:
-    pass  # python-dotenv not available
-
-from ..config import load_config
-from ..config.constants import DEFAULT_SERVER_HOST, DEFAULT_SERVER_PORT
-from ..config.logging import configure_logging_from_config, create_structlog_middleware_with_config
-from ..config.models import JSONRPCError
-from ..core.executor import GenericAgentExecutor as AgentExecutorImpl
-from ..push.handler import CustomRequestHandler
-from ..push.notifier import EnhancedPushNotifier, ValkeyPushNotifier
-from ..security import create_security_manager
+# from agent.services import initialize_services_from_config
 from .routes import create_agent_card, jsonrpc_error_handler, router, set_request_handler_instance
 
-# Optional imports; fall back to None if the module isn't present
-try:
-    from ..services import initialize_services_from_config
-except ImportError:
-    initialize_services_from_config = None
+structlog.contextvars.clear_contextvars()
+logger = structlog.get_logger()
 
-try:
-    from ..core.dispatcher import register_ai_functions_from_handlers
-except ImportError:
-    register_ai_functions_from_handlers = None
+config = load_config(configure_logging=False)
 
-# Configure structured logging at module level (before uvicorn configures its loggers)
-try:
-    # Load config early to configure logging
-    early_config = load_config(configure_logging=False)  # Don't configure yet
-
-    # Configure structured logging early
-    configure_logging_from_config(early_config)
-
-    # Clear context vars and get logger
-    structlog.contextvars.clear_contextvars()
-    logger = structlog.get_logger()
-
-    logger.info("Structured logging configured at module level")
-except Exception as e:
-    # Fallback to basic logging if structlog setup fails
-    import logging
-
-    logging.basicConfig(level=logging.INFO)
-    logger = logging.getLogger(__name__)
-    logger.error(f"Failed to configure structured logging: {e}")
-
-try:
-    from ..mcp_support.mcp_integration import initialize_mcp_integration, shutdown_mcp_integration
-
-    logger.debug("MCP support available")
-    initialize_mcp_integration = initialize_mcp_integration
-    shutdown_mcp_integration = shutdown_mcp_integration
-except ImportError as e:
-    logger.debug(f"MCP import failed: {e}")
-    initialize_mcp_integration = None
-    shutdown_mcp_integration = None
-except Exception as e:
-    logger.warning(f"MCP import failed with unexpected error: {e}")
-    initialize_mcp_integration = None
-    shutdown_mcp_integration = None
+initialize_mcp_integration = initialize_mcp_integration
+shutdown_mcp_integration = shutdown_mcp_integration
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan manager for the FastAPI application."""
     # Load configuration and attach to app.state (logging already configured at module level)
-    config = load_config(configure_logging=False)
+
     app.state.config = config
 
     # Structured logging is now configured at module level, before uvicorn starts
-
     agent_cfg = config.get("agent", {})
     name = agent_cfg.get("name", "Agent")
     version = agent_cfg.get("version", "0.1.0")
@@ -111,22 +58,8 @@ async def lifespan(app: FastAPI):
         # Continue without security for now, but log the error
         app.state.security_manager = None
 
-    # Initialize services if available & enabled
-    svc_cfg = config.get("services", {})
-
-    if initialize_services_from_config and svc_cfg.get("enabled", True):
-        try:
-            await initialize_services_from_config(config)
-            logger.info("Services initialized successfully")
-        except Exception as e:
-            logger.error(f"Failed to initialize services: {e}")
-    else:
-        logger.warning("Services initialization skipped")
-
     # Apply global middleware to existing handlers
     try:
-        from ..handlers.handlers import apply_global_middleware
-
         apply_global_middleware()
         logger.info("Global middleware applied to existing handlers")
     except Exception as e:
@@ -134,8 +67,6 @@ async def lifespan(app: FastAPI):
 
     # Apply global state management to existing handlers
     try:
-        from ..handlers.handlers import apply_global_state
-
         apply_global_state()
         logger.info("Global state management applied to existing handlers")
     except Exception as e:
@@ -166,20 +97,6 @@ async def lifespan(app: FastAPI):
     routing_cfg = config.get("routing", {})
     default_mode = routing_cfg.get("default_mode", "ai")
     logger.info(f"Routing default mode set to: {default_mode}")
-
-    # Register AI functions if any plugins might use AI routing
-    # Note: In mixed routing, plugins can override the default mode
-    plugins = config.get("plugins", [])
-    needs_ai = any(plugin.get("routing_mode", default_mode) == "ai" for plugin in plugins)
-
-    if register_ai_functions_from_handlers and needs_ai and svc_cfg.get("ai_functions", True):
-        try:
-            register_ai_functions_from_handlers()
-            logger.info("AI functions registered successfully")
-        except Exception as e:
-            logger.error(f"Failed to register AI functions: {e}")
-    elif not needs_ai:
-        logger.info("No AI enabled plugins found - skipping AI function registration")
 
     # Initialize state management if configured
     state_cfg = config.get("state", {})

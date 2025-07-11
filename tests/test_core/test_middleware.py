@@ -11,7 +11,6 @@ from agent.middleware import (
     RateLimiter,
     RateLimitError,
     RetryConfig,
-    SimpleCache,
     ValidationError,
     apply_caching,
     apply_rate_limiting,
@@ -145,73 +144,6 @@ class TestRateLimiter:
         # Should not exceed max tokens (60) even with long time passed
         assert limiter.buckets[key]["tokens"] <= 60
 
-
-class TestSimpleCache:
-    """Test the simple cache implementation."""
-
-    def test_cache_initialization(self):
-        """Test cache initialization."""
-        cache = SimpleCache()
-        assert cache.cache == {}
-
-    def test_cache_set_and_get(self):
-        """Test setting and getting cache values."""
-        cache = SimpleCache()
-        key = "test_key"
-        value = "test_value"
-
-        cache.set(key, value, ttl=300)
-        assert cache.get(key) == value
-
-    def test_cache_get_nonexistent(self):
-        """Test getting non-existent key returns None."""
-        cache = SimpleCache()
-        assert cache.get("nonexistent") is None
-
-    def test_cache_expiration(self):
-        """Test cache entries expire after TTL."""
-        cache = SimpleCache()
-        key = "test_key"
-        value = "test_value"
-
-        # Set with very short TTL
-        cache.set(key, value, ttl=0.1)
-
-        # Should exist immediately
-        assert cache.get(key) == value
-
-        # Wait for expiration
-        time.sleep(0.2)
-
-        # Should be expired
-        assert cache.get(key) is None
-
-    def test_cache_delete(self):
-        """Test cache deletion."""
-        cache = SimpleCache()
-        key = "test_key"
-        value = "test_value"
-
-        cache.set(key, value)
-        assert cache.get(key) == value
-
-        cache.delete(key)
-        assert cache.get(key) is None
-
-    def test_cache_clear(self):
-        """Test cache clearing."""
-        cache = SimpleCache()
-
-        cache.set("key1", "value1")
-        cache.set("key2", "value2")
-
-        assert len(cache.cache) == 2
-
-        cache.clear()
-        assert len(cache.cache) == 0
-
-
-class TestRetryConfig:
     """Test retry configuration."""
 
     def test_retry_config_initialization(self):

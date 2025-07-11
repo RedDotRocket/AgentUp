@@ -11,8 +11,6 @@ from .registry import (
     ServiceRegistry,
     WebAPIService,
     get_services,
-    initialize_services,
-    initialize_services_from_config,
 )
 
 __all__ = [
