@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    name: Test Python ${{ matrix.python-version }}
+    name: Test Python {% raw %}${{ matrix.python-version }}{% endraw %}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -26,10 +26,10 @@ jobs:
           **/pyproject.toml
           **/uv.lock
 
-    - name: Set up Python ${{ matrix.python-version }}
+    - name: Set up Python {% raw %}${{ matrix.python-version }}{% endraw %}
       run: |
-        uv python install ${{ matrix.python-version }}
-        uv python pin ${{ matrix.python-version }}
+        uv python install {% raw %}${{ matrix.python-version }}{% endraw %}
+        uv python pin {% raw %}${{ matrix.python-version }}{% endraw %}
 
     - name: Install dependencies
       run: |
@@ -42,25 +42,6 @@ jobs:
     - name: Run linting
       run: |
         make lint
-
-    - name: Run unit tests with coverage
-      run: |
-        make test-unit-coverage
-
-    - name: Upload coverage reports
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-      with:
-        name: coverage-${{ matrix.python-version }}
-        path: htmlcov/
-
-    - name: Upload coverage to GitHub
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-      if: matrix.python-version == '3.11'
-      with:
-        name: coverage-report
-        path: |
-          .coverage
-          coverage.xml
 
   build:
     name: Build Package

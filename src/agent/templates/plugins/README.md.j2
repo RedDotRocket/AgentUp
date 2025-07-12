@@ -1,0 +1,37 @@
+# {{ display_name }}
+
+{{ description }}
+
+## Installation
+
+### For development:
+```bash
+cd {{ plugin_name }}
+pip install -e .
+```
+
+### From PyPI (when published):
+```bash
+pip install {{ plugin_name }}
+```
+
+## Usage
+
+This plugin provides the `{{ capability_id }}` capability to AgentUp agents.
+
+## Development
+
+1. Edit `src/{{ plugin_name_snake }}/plugin.py` to implement your capability logic
+2. Test locally with an AgentUp agent
+3. Publish to PyPI when ready
+
+## Configuration
+
+The capability can be configured in `agent_config.yaml`:
+
+```yaml
+plugins:
+  - plugin_id: {{ capability_id }}
+    config:
+      # Add your configuration options here
+```

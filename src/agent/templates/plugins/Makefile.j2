@@ -1,0 +1,118 @@
+# {{ plugin_name }} Development Makefile
+# Useful commands for testing, template generation, and development of {{ plugin_name }}
+
+.PHONY: help Install install-dev check-deps test lint lint-fix format format-check
+.PHONY: security security-report ci-deps build build-check clean version env-info
+.PHONY: dev-setup dev-test dev-full
+
+# Default target
+help: ## Show this help message
+	@echo "{{ plugin_name }} Development Commands"
+	@echo "=========================="
+	@echo ""
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
+# Environment setup
+install: ## Install dependencies with uv
+	uv sync --all-extras
+	@echo "Dependencies installed"
+
+install-dev: ## Install development dependencies
+	uv sync --all-extras --dev
+	uv pip install -e .
+	@echo "Development environment ready"
+
+check-deps: ## Check for missing dependencies
+	uv pip check
+	@echo "All dependencies satisfied"
+
+# Testing commands
+test: ## Run all tests (unit + integration + e2e)
+	@echo "Running comprehensive test suite..."
+	uv run pytest tests/ -v
+
+# Code quality
+lint: ## Run linting checks
+	uv run ruff check src/ tests/
+
+lint-fix: ## Fix linting issues automatically
+	uv run ruff check --fix src/ tests/
+	uv run ruff format src/ tests/
+
+format: ## Format code with ruff
+	uv run ruff format src/ tests/
+
+format-check: ## Check code formatting
+	uv run ruff format --check src/ tests/
+
+# Security scanning
+security: ## Run bandit security scan
+	uv run bandit -r src/ -ll
+
+security-report: ## Generate bandit security report in JSON
+	uv run bandit -r src/ -f json -o bandit-report.json
+
+security-full: ## Run full security scan with medium severity
+	uv run bandit -r src/ -l
+
+ci-deps: ## Check dependencies for CI
+	uv pip check
+	uv pip freeze > requirements-ci.txt
+
+
+# Build and release
+build: ## Build package
+	uv build
+	@echo "Package built in dist/"
+
+build-check: ## Check package build
+	uv run twine check dist/*
+
+# Cleanup commands
+clean: ## Clean temporary files
+	rm -rf build/
+	rm -rf dist/
+	rm -rf *.egg-info/
+	rm -rf .pytest_cache/
+	rm -rf htmlcov/
+	rm -rf .coverage
+	rm -rf test-render/
+	find . -type d -name __pycache__ -exec rm -rf {} +
+	find . -type f -name "*.pyc" -delete
+	@echo "🧹 Cleaned temporary files"
+
+# Utility commands
+version: ## Show current version
+	@python -c "import toml; print('{{ plugin_name }} version:', toml.load('pyproject.toml')['project']['version'])"
+
+env-info: ## Show environment information
+	@echo "Environment Information"
+	@echo "====================="
+	@echo "Python version: $$(python --version)"
+	@echo "UV version: $$(uv --version)"
+	@echo "Working directory: $$(pwd)"
+	@echo "Git branch: $$(git branch --show-current 2>/dev/null || echo 'Not a git repo')"
+	@echo "Git status: $$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ') files changed"
+
+# Quick development workflows
+dev-setup: install-dev ## Complete development setup
+	@echo "Running complete development setup..."
+	make check-deps
+	make test-fast
+	@echo "{{ plugin_name }} development environment ready!"
+
+dev-test: ## Quick development test cycle
+	@echo "Running development test cycle..."
+	make lint-fix
+	make test-fast
+	make template-test-syntax
+	@echo "{{ plugin_name }} development tests passed!"
+
+dev-full: ## Full development validation
+	@echo "Running full development validation..."
+	make clean
+	make dev-setup
+	make validate-all
+	make agent-create-minimal
+	make agent-test
+	@echo "{{ plugin_name }} development validation completed!"

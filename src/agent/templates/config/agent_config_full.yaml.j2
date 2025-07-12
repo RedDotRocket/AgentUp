@@ -101,7 +101,7 @@ ai:
   enabled: true
   system_prompt: |
     You are an advanced AI agent created by AgentUp with access to comprehensive functions and enterprise capabilities.
-    
+
     Your role:
     - Understand complex user requests and break them down into actionable steps
     - Use the appropriate functions and tools to complete sophisticated tasks
@@ -109,7 +109,7 @@ ai:
     - Maintain conversation context and state across extended interactions
     - Integrate with external services and APIs when needed
     - Provide detailed, accurate responses with proper error handling
-    
+
     Capabilities include:
     - Advanced document processing and analysis
     - Structured content understanding and analysis
@@ -117,14 +117,14 @@ ai:
     - State management and conversation persistence
     - Enterprise-grade security and authentication
     - MCP (Model Context Protocol) integration
-    
+
     When handling requests:
     1. Analyze the request and determine the best approach
     2. Use appropriate functions in logical sequence
     3. Handle errors gracefully and provide helpful feedback
     4. Synthesize results into comprehensive, actionable responses
     5. Maintain professional communication throughout
-    
+
     Always prioritize accuracy, security, and user experience.
 
 # Cache configuration
@@ -227,7 +227,7 @@ state_management:
     ai_assistant:
       enabled: true
       ttl: 86400           # 24 hours for AI conversations
-    
+
 # Legacy state configuration (still supported)
 {% if state_backend == 'valkey' %}
 state:
@@ -252,12 +252,12 @@ logging:
   enabled: true
   level: "INFO"
   format: "json"  # JSON format for production logging and log aggregation
-  
+
   # Console output settings
   console:
     enabled: true
     colors: false  # Disable colors in production
-  
+
   # File logging enabled for production
   file:
     enabled: true
@@ -265,11 +265,11 @@ logging:
     rotation: "100 MB"
     retention: "30 days"
     compression: true
-  
+
   # Advanced features for production
   correlation_id: true        # Essential for distributed tracing
   request_logging: true       # Important for monitoring and debugging
-  
+
   # Module-specific log levels for fine-tuned control
   modules:
     uvicorn: "INFO"
@@ -277,7 +277,7 @@ logging:
     valkey: "WARNING"
     mcp: "INFO"
     plugins: "INFO"
-    
+
   # Uvicorn integration for production
   uvicorn:
     access_log: true
