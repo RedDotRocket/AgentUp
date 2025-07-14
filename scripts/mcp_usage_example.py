@@ -17,7 +17,7 @@ try:
     from mcp.client.streamable_http import streamablehttp_client
     MCP_AVAILABLE = True
 except ImportError as e:
-    print(f"❌ MCP SDK not available: {e}")
+    print(f"✗ MCP SDK not available: {e}")
     print("Install with: pip install mcp")
     MCP_AVAILABLE = False
     exit(1)
@@ -47,11 +47,11 @@ class MCPFileManager:
             tools = await self.session.list_tools()
             self.available_tools = [tool.name for tool in tools]
             
-            print(f"✅ Connected! Available tools: {', '.join(self.available_tools)}")
+            print(f"✓ Connected! Available tools: {', '.join(self.available_tools)}")
             return True
             
         except Exception as e:
-            print(f"❌ Connection failed: {e}")
+            print(f"✗ Connection failed: {e}")
             return False
     
     async def disconnect(self):
@@ -68,14 +68,14 @@ class MCPFileManager:
     async def call_tool(self, tool_name: str, arguments: dict):
         """Call a tool with error handling."""
         if tool_name not in self.available_tools:
-            print(f"❌ Tool '{tool_name}' not available")
+            print(f"✗ Tool '{tool_name}' not available")
             return None
             
         try:
             result = await self.session.call_tool(tool_name, arguments)
             return result
         except Exception as e:
-            print(f"❌ Tool call failed for '{tool_name}': {e}")
+            print(f"✗ Tool call failed for '{tool_name}': {e}")
             return None
     
     async def create_test_environment(self):
@@ -101,27 +101,27 @@ class MCPFileManager:
             })
             
             if result:
-                print(f"✅ Created: {file_info['name']}")
+                print(f"✓ Created: {file_info['name']}")
             else:
-                print(f"❌ Failed to create: {file_info['name']}")
+                print(f"✗ Failed to create: {file_info['name']}")
         
         return temp_dir
     
     async def explore_directory(self, directory_path: str):
         """Explore a directory using MCP tools."""
-        print(f"\n🔍 Exploring directory: {directory_path}")
+        print(f"\nExploring directory: {directory_path}")
         
         # List directory contents
         result = await self.call_tool("list_directory", {"path": directory_path})
         if result:
-            print("📋 Directory contents:")
+            print("Directory contents:")
             for item in result:
                 print(f"  • {item}")
         
         # Get directory info
         result = await self.call_tool("get_file_info", {"path": directory_path})
         if result:
-            print(f"📊 Directory info: {result}")
+            print(f"Directory info: {result}")
     
     async def read_and_analyze_files(self, directory_path: str):
         """Read and analyze files in a directory."""
@@ -130,7 +130,7 @@ class MCPFileManager:
         # List files first
         files_result = await self.call_tool("list_directory", {"path": directory_path})
         if not files_result:
-            print("❌ Could not list directory")
+            print("✗ Could not list directory")
             return
         
         for file_name in files_result:
@@ -144,7 +144,7 @@ class MCPFileManager:
             # Get file info
             info_result = await self.call_tool("get_file_info", {"path": file_path})
             if info_result:
-                print(f"\n📄 File: {file_name}")
+                print(f"\nFile: {file_name}")
                 print(f"   Size: {info_result.get('size', 'unknown')} bytes")
                 print(f"   Modified: {info_result.get('modified', 'unknown')}")
             
@@ -180,7 +180,7 @@ class MCPFileManager:
     
     async def run_file_management_demo(self):
         """Run a complete file management demonstration."""
-        print("🚀 Starting MCP File Management Demo")
+        print(" Starting MCP File Management Demo")
         print("=" * 50)
         
         if not await self.connect():
@@ -211,10 +211,10 @@ class MCPFileManager:
             # Cleanup
             await self.cleanup_test_environment(temp_dir)
             
-            print("\n✅ File management demo completed successfully!")
+            print("\n✓ File management demo completed successfully!")
             
         except Exception as e:
-            print(f"❌ Demo failed: {e}")
+            print(f"✗ Demo failed: {e}")
             import traceback
             traceback.print_exc()
             

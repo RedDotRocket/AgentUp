@@ -10,7 +10,7 @@ cd {{ plugin_name }}
 pip install -e .
 ```
 
-### From PyPI (when published):
+### From AgentUp Registry or PyPi (when published):
 ```bash
 pip install {{ plugin_name }}
 ```
@@ -23,7 +23,9 @@ This plugin provides the `{{ capability_id }}` capability to AgentUp agents.
 
 1. Edit `src/{{ plugin_name_snake }}/plugin.py` to implement your capability logic
 2. Test locally with an AgentUp agent
-3. Publish to PyPI when ready
+3. Replace the static/logo.png with your plugin's logo (image prompt below)
+4. Publish to PyPI when ready
+5. Update the `README.md` with any additional usage instructions
 
 ## Configuration
 
@@ -34,4 +36,24 @@ plugins:
   - plugin_id: {{ capability_id }}
     config:
       # Add your configuration options here
+```
+
+## Image Generation Prompt
+
+I had success generating a logo with most of OpenAI's modes (o4-mini, gpt4o seem to work best).
+I cannot get anything decent out of Anthropics models
+
+
+### Example Prompt
+```
+Create a high-quality 2D digital illustration in a modern rubber hose + retro cartoon style, featuring an anthropomorphic vintage computer (CRT monitor with a keyboard as body and gloved hands/feet).
+The character should have a friendly expression and be interacting with a themed object (e.g., holding a camera, map, wrench, etc.) depending on the topic.
+Use a limited vintage-inspired color palette: muted teal, beige, off-white, faded red, and dark outlines.
+Include bold, distressed sans-serif lettering above and below the character, with the top word(s) indicating the app or brand (e.g., "AGENTUP") and the bottom word(s) indicating the tool name (e.g., "IMAGE", "SYS TOOLS", or “MAPS", “SLACK”).
+The background should be transparent or a light textured paper tone if transparency isn’t possible.
+The overall style should be playful, bold, clean, and ideal for branding, badges, or banners.
+The image dimensions must be 400x400, with an alpha channel to provide a transparent background.
+
+Image Theme:
+A computer riding a bicycle, with the words "AGENTUP" and "$YOUR_PLUGIN_NAME" underneath
 ```

@@ -1,8 +1,5 @@
 """
-Example plugin demonstrating the AgentUp plugin system.
-
-This shows how to create a simple capability plugin that implements
-all the necessary hooks.
+Belongs in tree as used for unit tests
 """
 
 import pluggy

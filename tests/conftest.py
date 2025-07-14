@@ -51,7 +51,7 @@ def sample_agent_config() -> dict[str, Any]:
         "middleware": [{"name": "logged", "params": {"log_level": 20}}, {"name": "timed", "params": {}}],
         "push_notifications": {"enabled": True, "backend": "memory", "validate_urls": True},
         "cache": {"backend": "memory", "default_ttl": 1800, "max_size": 1000, "enabled": True},
-        "state": {"backend": "file", "storage_dir": "./conversation_states", "ttl": 3600},
+        "state_management": {"enabled": True, "backend": "file", "ttl": 3600, "config": {"storage_dir": "./conversation_states"}},
     }
 
 
@@ -226,7 +226,7 @@ def agent_templates():
             "description": "AI-powered agent with MCP integration",
         },
         "full": {
-            "features": ["services", "middleware", "auth", "state", "mcp", "monitoring"],
+            "features": ["services", "middleware", "auth", "state_management", "mcp", "monitoring"],
             "description": "All features enabled including database, cache, monitoring",
         },
         "demo": {

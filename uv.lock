@@ -9,7 +9,7 @@ resolution-markers = [
 
 [[package]]
 name = "a2a-sdk"
-version = "0.2.11"
+version = "0.2.12"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "fastapi" },
@@ -26,9 +26,9 @@ dependencies = [
     { name = "sse-starlette" },
     { name = "starlette" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3b/cf/d33a415d713d92b5ac15585142ce4e230c8d51018a650bf7a6deb8fb8bd4/a2a_sdk-0.2.11.tar.gz", hash = "sha256:8c267112165471e66e43e855c4ff16fbbfa5d84e408dabf2bd522f177013ae42", size = 164516, upload-time = "2025-07-08T03:07:46.228Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1a/e0/002262293c309373b26b9278680aaaaddbfa2eeaa0b890bd75f3518f659a/a2a_sdk-0.2.12.tar.gz", hash = "sha256:a57273f5d23462683ac5437550a09e90a700e7a02f0bb5e5f25c6e4029c67e9e", size = 165979, upload-time = "2025-07-14T16:25:25.59Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f3/72/45d603be8f8853beb5fec5039f74deb64f64359d70e267e728c19231b0a6/a2a_sdk-0.2.11-py3-none-any.whl", hash = "sha256:f3df6e3da8a70c04074efb22863b730061996de10018f83143063f65d9fe0c04", size = 95324, upload-time = "2025-07-08T03:07:44.64Z" },
+    { url = "https://files.pythonhosted.org/packages/9f/f7/5d1f852d2e9a91cfe482a83c2443b3d7786d778319cd5c1f484f49e6f6ab/a2a_sdk-0.2.12-py3-none-any.whl", hash = "sha256:0e83884f94c511302dcb2a5eb50965c203eacb396e4160840245fe9efebeb93d", size = 96737, upload-time = "2025-07-14T16:25:24.076Z" },
 ]
 
 [package.optional-dependencies]
@@ -88,7 +88,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "a2a-sdk", extras = ["sql"], specifier = ">=0.2.11" },
+    { name = "a2a-sdk", extras = ["sql"], specifier = ">=0.2.12" },
     { name = "asgi-correlation-id", specifier = ">=4.3.4" },
     { name = "asyncio", specifier = ">=3.4.3" },
     { name = "authlib", specifier = ">=1.6.0" },

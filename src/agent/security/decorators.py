@@ -17,7 +17,7 @@ def protected(
     """
     Decorator to protect AgentUp endpoints with authentication and authorization.
 
-    This decorator provides a clean, declarative way to add security to endpoints
+    This decorator provides a declarative way to add security to endpoints
     without cluttering the endpoint logic with authentication code. It respects
     the global security configuration while providing override options.
 
@@ -70,6 +70,16 @@ def protected(
 
     Note: This decorator requires a SecurityManager instance when authentication
     is actually needed (global security enabled or force_auth=True).
+
+    @protected() # Default usage with global security setting
+        * required=True - Authentication is required by default
+        * Respects global security setting - If security.enabled = false in config, it will allow
+          access but log a warning.
+        * Uses default auth type - Whatever is configured in your security config (api_key, bearer, oauth2)
+        * No specific scopes required - Any authenticated user can access (scopes passed on to be
+          used later in context middleware)
+        * No anonymous access - allow_anonymous=False
+        * Not force auth - force_auth=False, so global security setting is respected
     """
 
     def decorator(func: Callable) -> Callable:

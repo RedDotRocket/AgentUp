@@ -29,6 +29,10 @@ class FunctionExecutor:
                 try:
                     result = await self._execute_single_function_call(function_call)
                     function_results.append(result)
+                except PermissionError as e:
+                    # Generic error message to prevent scope information leakage
+                    logger.warning(f"Permission denied for function call: {function_call}, error: {e}")
+                    function_results.append("I'm unable to perform that action due to insufficient permissions.")
                 except Exception as e:
                     logger.error(f"Function call failed: {function_call}, error: {e}")
                     function_results.append(f"Error: {str(e)}")
@@ -73,30 +77,41 @@ class FunctionExecutor:
 
     async def execute_function_call(self, function_name: str, arguments: dict[str, Any]) -> str:
         """Execute a single function call (local handler or MCP tool)."""
-        # Check if this is an MCP tool
-        if self.function_registry.is_mcp_tool(function_name):
-            try:
-                result = await self.function_registry.call_mcp_tool(function_name, arguments)
-                return str(result)
-            except Exception as e:
-                logger.error(f"MCP tool call failed: {function_name}, error: {e}")
-                raise
+        try:
+            # Check if this is an MCP tool
+            if self.function_registry.is_mcp_tool(function_name):
+                try:
+                    result = await self.function_registry.call_mcp_tool(function_name, arguments)
+                    return str(result)
+                except PermissionError as e:
+                    # Generic error message to prevent scope information leakage
+                    logger.warning(f"Permission denied for MCP tool '{function_name}': {e}")
+                    return "I'm unable to perform that action due to insufficient permissions."
+                except Exception as e:
+                    logger.error(f"MCP tool call failed: {function_name}, error: {e}")
+                    raise
 
-        # Handle local function
-        handler = self.function_registry.get_handler(function_name)
-        if not handler:
-            raise ValueError(f"Function not found: {function_name}")
+            # Handle local function
+            handler = self.function_registry.get_handler(function_name)
+            logger.info(f"Executing function '{function_name}' with arguments: {arguments}")
+            if not handler:
+                raise ValueError(f"Function not found: {function_name}")
 
-        # Create task with function parameters
-        task_with_params = self.task
-        if hasattr(self.task, "metadata"):
-            if self.task.metadata is None:
-                self.task.metadata = {}
-            self.task.metadata.update(arguments)
+            # Create task with function parameters
+            task_with_params = self.task
+            if hasattr(self.task, "metadata"):
+                if self.task.metadata is None:
+                    self.task.metadata = {}
+                self.task.metadata.update(arguments)
 
-        # Apply state management if handler accepts context parameters
-        result = await self._execute_with_state_management(handler, task_with_params, function_name)
-        return str(result)
+            # Apply state management if handler accepts context parameters
+            result = await self._execute_with_state_management(handler, task_with_params, function_name)
+            return str(result)
+
+        except PermissionError as e:
+            # Generic error message to prevent scope information leakage
+            logger.warning(f"Permission denied for function '{function_name}': {e}")
+            return "I'm unable to perform that action due to insufficient permissions."
 
     async def _execute_with_state_management(self, handler, task, function_name: str):
         """Execute handler with state management and AI-compatible middleware if applicable."""
@@ -112,7 +127,7 @@ class FunctionExecutor:
             if accepts_context or accepts_context_id:
                 # Get state configuration and apply state management
                 try:
-                    from agent.handlers.handlers import _load_state_config
+                    from agent.capabilities.executors import _load_state_config
                     from agent.state.decorators import with_state
 
                     state_config = _load_state_config()

@@ -1,0 +1,136 @@
+# AgentUp Agent Configuration Example
+# Demonstrates plugins, security, scopes, and middleware
+
+# Agent Information
+agent:
+  name: Demo Agent
+  description: Example agent showcasing AgentUp plugin features
+  version: 0.1.0
+
+# Plugins Configuration  
+plugins:
+  - plugin_id: hello
+    name: Hello Plugin
+    description: Simple greeting plugin for testing and examples
+    tags: [hello, basic, example]
+    input_mode: text
+    output_mode: text
+    keywords: [hello, hi, greetings]
+    patterns: ['^hello', '^hi', 'greetings']
+    routing_mode: direct
+    priority: 50
+    capabilities:
+      - capability_id: hello
+        required_scopes: ["api:read"]
+        enabled: true
+
+# Routing Configuration
+routing:
+  default_mode: direct  # Use direct routing for keyword matching
+  fallback_enabled: false
+
+# Security Configuration
+security:
+  enabled: true
+  type: "api_key"
+  api_key:
+    header_name: "X-API-Key"
+    location: "header"  # Options: header, query, cookie
+
+  # API Keys with different permission levels
+  keys:
+    # Basic user key - can access echo and basic demo features
+    - key: "basic_user_key_example_123"
+      scopes: ["api:read"]
+
+    # Advanced user key - can access protected demo features
+    - key: "advanced_user_key_example_456"
+      scopes: ["api:read", "api:write", "system:read"]
+
+    # Admin key - has all permissions
+    - key: "admin_key_example_789"
+      scopes: ["admin"]
+
+  # Scope Hierarchy - defines inheritance relationships
+  scope_hierarchy:
+    # Admin has all permissions
+    admin: ["*"]
+
+    # Write access includes read access
+    api:write: ["api:read"]
+
+    # Base scopes (no inheritance)
+    api:read: []
+    system:read: []
+    files:read: []
+
+# Global Middleware Configuration
+middleware:
+  - name: timed
+    params: {}
+  - name: cached
+    params:
+      ttl: 300  # Default 5 minutes
+      plugin_specific_ttl: {}
+  - name: rate_limited
+    params:
+      requests_per_minute: 60  # Global rate limit
+      plugin_specific_limits: {}
+
+# AI Configuration (optional)
+ai:
+  enabled: true
+  system_prompt: |
+    You are a helpful AI assistant created with AgentUp.
+
+    Available capabilities:
+    - hello: Simple greeting capability
+    
+    Try saying "hello" to test the system!
+
+# Cache Configuration
+cache:
+  type: memory
+  config:
+    max_size: 1000
+    default_ttl: 300
+
+# State Management
+state_management:
+  enabled: true
+  backend: memory
+  ttl: 3600
+
+# Push Notifications
+push_notifications:
+  enabled: true
+  backend: memory
+  validate_urls: false
+
+# Logging Configuration
+logging:
+  enabled: true
+  level: "INFO"
+  format: "text"
+  console:
+    enabled: true
+    colors: true
+  file:
+    enabled: false
+
+# Examples of how to use different API keys:
+#
+# Basic access (api:read scope):
+# curl -H "X-API-Key: basic_user_key_example_123" -X POST http://localhost:8000/ \
+#   -H "Content-Type: application/json" \
+#   -d '{"jsonrpc":"2.0","method":"message/send","params":{"message":{"role":"user","parts":[{"kind":"text","text":"echo hello"}]}},"id":"1"}'
+#
+# Advanced access (api:write + system:read scopes):
+# curl -H "X-API-Key: advanced_user_key_example_456" -X POST http://localhost:8000/ \
+#   -H "Content-Type: application/json" \
+#   -d '{"jsonrpc":"2.0","method":"message/send","params":{"message":{"role":"user","parts":[{"kind":"text","text":"demo protected"}]}},"id":"2"}'
+#
+# Admin access (all scopes):
+# curl -H "X-API-Key: admin_key_example_789" -X POST http://localhost:8000/ \
+#   -H "Content-Type: application/json" \
+#   -d '{"jsonrpc":"2.0","method":"message/send","params":{"message":{"role":"user","parts":[{"kind":"text","text":"demo info"}]}},"id":"3"}'

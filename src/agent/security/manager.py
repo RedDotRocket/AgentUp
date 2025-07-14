@@ -36,12 +36,15 @@ class SecurityManager:
         # Validate configuration
         SecurityConfigValidator.validate_security_config(self.security_config)
 
+        # Determine primary authentication type first
+        self.primary_auth_type = self._determine_primary_auth_type()
+
         # Initialize authenticators
         self.authenticators: dict[str, BaseAuthenticator] = {}
         self._initialize_authenticators()
 
-        # set primary authentication type
-        self.primary_auth_type = self._determine_primary_auth_type()
+        # Initialize unified authentication manager for scope hierarchy
+        self._initialize_unified_auth_manager()
 
         logger.info(
             f"Security manager initialized - enabled: {self.auth_enabled}, primary auth: {self.primary_auth_type}"
@@ -49,32 +52,27 @@ class SecurityManager:
 
     def _determine_primary_auth_type(self) -> str:
         """Determine the primary authentication type from configuration."""
-        # Check for strategies (new format)
-        strategies = self.security_config.get("strategies", [])
-        if strategies:
-            enabled_strategy = next((s for s in strategies if s.get("enabled", True)), None)
-            if enabled_strategy:
-                return enabled_strategy.get("type", "api_key")
-
-        # Fall back to simple type (legacy format)
-        return self.security_config.get("type", "api_key")
+        # Get auth type from auth: structure
+        auth_config = self.security_config.get("auth", {})
+        if not auth_config:
+            raise SecurityConfigurationException("No auth configuration found. Expected 'auth' section with authentication type.")
+        
+        available_types = list(auth_config.keys())
+        if not available_types:
+            raise SecurityConfigurationException("No authentication types configured in 'auth' section.")
+        
+        if len(available_types) > 1:
+            logger.warning(f"Multiple auth types configured: {available_types}. Using {available_types[0]}, ignoring others.")
+        
+        return available_types[0]
 
     def _initialize_authenticators(self) -> None:
         """Initialize available authenticators based on configuration."""
         if not self.auth_enabled:
             return
 
-        # Get all configured authentication types
-        auth_types = set()
-
-        # Check strategies (new format)
-        strategies = self.security_config.get("strategies", [])
-        for strategy in strategies:
-            if strategy.get("enabled", True):
-                auth_types.add(strategy.get("type", "api_key"))
-
-        # Add primary type (legacy format)
-        auth_types.add(self.security_config.get("type", "api_key"))
+        # Get the primary auth type from auth: structure
+        auth_types = {self.primary_auth_type}
 
         # Initialize authenticators for each type
         for auth_type in auth_types:
@@ -86,6 +84,24 @@ class SecurityManager:
             except Exception as e:
                 logger.error(f"Failed to initialize {auth_type} authenticator: {e}")
                 raise SecurityConfigurationException(f"Failed to initialize {auth_type} authenticator: {e}") from e
+
+    def _initialize_unified_auth_manager(self) -> None:
+        """Initialize the unified authentication manager with scope hierarchy."""
+        try:
+            from .unified_auth import create_unified_auth_manager
+
+            # Debug: Check what's in the security config
+            logger.info(f"Security config keys: {list(self.security_config.keys())}")
+            logger.info(f"Security config scope_hierarchy: {self.security_config.get('scope_hierarchy', {})}")
+
+            # Create unified auth manager with security config
+            unified_auth_manager = create_unified_auth_manager(self.security_config)
+            logger.info(
+                f"Unified authentication manager initialized with {len(unified_auth_manager.scope_hierarchy.hierarchy)} scope hierarchy rules"
+            )
+        except Exception as e:
+            logger.warning(f"Failed to initialize unified authentication manager: {e}")
+            # This is not critical, so we don't raise an exception
 
     async def authenticate_request(
         self, request: Request, auth_type: str | None = None, policy: SecurityPolicy | None = None

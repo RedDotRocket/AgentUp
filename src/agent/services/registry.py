@@ -58,50 +58,50 @@ class Service:
         return self._initialized
 
 
-class DatabaseService(Service):
-    """Service for database connections."""
+# class DatabaseService(Service):
+#     """Service for database connections."""
 
-    def __init__(self, name: str, config: dict[str, Any]):
-        super().__init__(name, config)
-        self.connection_url = config.get("url", "sqlite:///./agent.db")
-        self.pool_size = config.get("pool_size", 5)
-        self.pool = None
+#     def __init__(self, name: str, config: dict[str, Any]):
+#         super().__init__(name, config)
+#         self.connection_url = config.get("url", "sqlite:///./agent.db")
+#         self.pool_size = config.get("pool_size", 5)
+#         self.pool = None
 
-    async def initialize(self) -> None:
-        """Initialize database connection pool."""
-        # This is a simplified implementation
-        # In production, you'd use SQLAlchemy, asyncpg, or similar
-        logger.info(f"Database service {self.name} initialized with URL: {self.connection_url}")
-        self._initialized = True
+#     async def initialize(self) -> None:
+#         """Initialize database connection pool."""
+#         # This is a simplified implementation
+#         # In production, you'd use SQLAlchemy, asyncpg, or similar
+#         logger.info(f"Database service {self.name} initialized with URL: {self.connection_url}")
+#         self._initialized = True
 
-    async def close(self) -> None:
-        """Close database connections."""
-        if self.pool:
-            # Close pool
-            pass
-        self._initialized = False
+#     async def close(self) -> None:
+#         """Close database connections."""
+#         if self.pool:
+#             # Close pool
+#             pass
+#         self._initialized = False
 
-    async def health_check(self) -> dict[str, Any]:
-        """Check database health."""
-        try:
-            # Simplified health check
-            return {
-                "status": "healthy",
-                "connection_url": self.connection_url.split("@")[-1]
-                if "@" in self.connection_url
-                else self.connection_url,
-            }
-        except Exception as e:
-            return {"status": "unhealthy", "error": str(e)}
+#     async def health_check(self) -> dict[str, Any]:
+#         """Check database health."""
+#         try:
+#             # Simplified health check
+#             return {
+#                 "status": "healthy",
+#                 "connection_url": self.connection_url.split("@")[-1]
+#                 if "@" in self.connection_url
+#                 else self.connection_url,
+#             }
+#         except Exception as e:
+#             return {"status": "unhealthy", "error": str(e)}
 
-    async def execute(self, query: str, params: dict | None = None) -> Any:
-        """Execute a database query."""
-        if not self._initialized:
-            await self.initialize()
+#     async def execute(self, query: str, params: dict | None = None) -> Any:
+#         """Execute a database query."""
+#         if not self._initialized:
+#             await self.initialize()
 
-        # Simplified implementation
-        logger.info(f"Executing query: {query}")
-        return {"result": "query_executed"}
+#         # Simplified implementation
+#         logger.info(f"Executing query: {query}")
+#         return {"result": "query_executed"}
 
 
 class CacheService(Service):
@@ -223,13 +223,13 @@ class ServiceRegistry:
         # Service type mapping for registration
         self._service_types: dict[str, Any] = {
             "llm": "llm",  # Special case handled in register_service
-            "database": DatabaseService,
+            # "database": DatabaseService,
             "cache": CacheService,
             "web_api": WebAPIService,
         }
         self._factories: dict[str, Any] = {
             "llm": "llm",  # Special case handled in register_service
-            "database": DatabaseService,
+            # "database": DatabaseService,
             "cache": CacheService,
             "web_api": WebAPIService,
         }
@@ -330,12 +330,12 @@ class ServiceRegistry:
             return service
         return None
 
-    def get_database(self, name: str = "database") -> DatabaseService | None:
-        """Get database service."""
-        service = self.get_service(name)
-        if isinstance(service, DatabaseService):
-            return service
-        return None
+    # def get_database(self, name: str = "database") -> DatabaseService | None:
+    #     """Get database service."""
+    #     service = self.get_service(name)
+    #     if isinstance(service, DatabaseService):
+    #         return service
+    #     return None
 
     def get_cache(self, name: str = "cache") -> CacheService | None:
         """Get cache service."""

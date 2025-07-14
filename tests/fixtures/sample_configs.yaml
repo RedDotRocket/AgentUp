@@ -197,10 +197,12 @@ full_config:
     default_ttl: 1800
     max_size: 1000
     enabled: true
-  state:
+  state_management:
+    enabled: true
     backend: file
-    storage_dir: "./conversation_states"
     ttl: 3600
+    config:
+      storage_dir: "./conversation_states"
 
 # Invalid configuration for error testing
 invalid_config:

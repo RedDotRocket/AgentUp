@@ -71,20 +71,48 @@ class RoutingConfig(BaseModel):
     fallback_enabled: bool = True  # Allow AI→Direct fallback
 
 
+class PluginCapability(BaseModel):
+    """Model for plugin capability configuration."""
+
+    capability_id: str
+    # name: str
+    # description: str
+    required_scopes: list[str] = []
+    enabled: bool = True
+
+
 class PluginConfig(BaseModel):
-    """Configuration for a plugin - extends A2A with routing config."""
+    """Model for individual plugin configuration."""
 
     plugin_id: str
     name: str
     description: str
-    input_mode: str = "text"
-    output_mode: str = "text"
-    routing_mode: str | None = None  # "ai", "direct", or None (use default)
-    keywords: list[str] | None = None  # For direct routing
-    patterns: list[str] | None = None  # For direct routing
-    config: dict[str, Any] | None = None
-    middleware: list[dict[str, Any]] | None = None
-    enabled: bool = True  # Allow disabling plugins
+    capabilities: list[PluginCapability] = []
+
+
+class PluginsConfig(BaseModel):
+    """Model for plugins configuration - can be a list of plugins or dict with enabled flag."""
+
+    enabled: bool = True
+    plugins: list[PluginConfig] = []
+
+    @classmethod
+    def from_config_value(cls, config_value) -> "PluginsConfig":
+        """Create PluginsConfig from various config formats."""
+        if isinstance(config_value, dict):
+            if "enabled" in config_value or "plugins" in config_value:
+                # New format: {"enabled": True, "plugins": [...]}
+                return cls(**config_value)
+            else:
+                # Legacy dict format - treat as enabled with empty plugins
+                return cls(enabled=config_value.get("enabled", True), plugins=[])
+        elif isinstance(config_value, list):
+            # List format: [{"plugin_id": "...", ...}, ...]
+            plugins = [PluginConfig(**plugin) for plugin in config_value]
+            return cls(enabled=bool(plugins), plugins=plugins)
+        else:
+            # Other types - default behavior
+            return cls(enabled=bool(config_value), plugins=[])
 
 
 class AgentConfig(BaseModel):
@@ -178,6 +206,61 @@ class BaseAgent(BaseModel, ABC):
     content_types: list[str] = Field(description="Supported content types.")
 
 
+class CapabilityConfig(BaseModel):
+    """Configuration for a single capability within a plugin."""
+
+    capability_id: str
+    name: str | None = None
+    description: str | None = None
+    required_scopes: list[str] = Field(default_factory=list)
+    enabled: bool = True
+    config: dict[str, Any] | None = None
+    middleware_override: list[dict[str, Any]] | None = None
+
+
+class ModernPluginConfig(BaseModel):
+    """New capability-based plugin configuration."""
+
+    plugin_id: str
+    name: str | None = None
+    description: str | None = None
+    enabled: bool = True
+
+    # Capability-based structure
+    capabilities: list[CapabilityConfig] = Field(default_factory=list)
+
+    # Plugin-level defaults (applied to all capabilities if not overridden)
+    default_scopes: list[str] = Field(default_factory=list)
+    middleware: list[dict[str, Any]] | None = None
+    config: dict[str, Any] | None = None
+
+
+class MCPToolScopeConfig(BaseModel):
+    """Configuration for MCP tool scopes."""
+
+    tool_name: str
+    required_scopes: list[str] = Field(default_factory=list)
+
+
+class MCPServerConfig(BaseModel):
+    """Configuration for MCP servers with scope definitions."""
+
+    name: str
+    type: str  # "stdio" or "http"
+    command: str | None = None
+    args: list[str] | None = None
+    url: str | None = None
+    tool_scopes: dict[str, list[str]] = Field(default_factory=dict)  # tool_name -> required_scopes
+
+
+class MCPConfig(BaseModel):
+    """MCP configuration with scope support."""
+
+    client: dict[str, Any] | None = None
+    server: dict[str, Any] | None = None
+    servers: list[MCPServerConfig] = Field(default_factory=list)
+
+
 # Re-export A2A types for convenience
 __all__ = [
     # A2A types
@@ -212,4 +295,13 @@ __all__ = [
     "LoggingConfig",
     "PluginResponse",
     "BaseAgent",
+    # New capability-based models
+    "CapabilityConfig",
+    "ModernPluginConfig",
+    "MCPToolScopeConfig",
+    "MCPServerConfig",
+    "MCPConfig",
+    # Plugins configuration models
+    "PluginCapability",
+    "PluginsConfig",
 ]

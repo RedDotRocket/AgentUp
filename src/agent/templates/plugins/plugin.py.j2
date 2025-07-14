@@ -1,5 +1,5 @@
 """
-{{ display_name }} plugin for AgentUp{% if template == "ai" %} with AI available_capabilities{% endif %}.
+{{ display_name }} plugin for AgentUp{% if template == "ai" %} with AI capabilities{% endif %}.
 
 {{ description }}
 """
@@ -29,7 +29,7 @@ class Plugin:
             name="{{ display_name }}",
             version="0.1.0",
             description="{{ description }}",
-            available_capabilities=[CapabilityType.TEXT{% if template == "advanced" %}, CapabilityType.STATEFUL{% elif template == "ai" %}, CapabilityType.AI_FUNCTION{% endif %}],
+            capabilities=[CapabilityType.TEXT{% if template == "advanced" %}, CapabilityType.STATEFUL{% elif template == "ai" %}, CapabilityType.AI_FUNCTION{% endif %}],
             tags=["{{ plugin_name }}"{% if template == "advanced" %}, "advanced"{% elif template == "ai" %}, "ai", "llm"{% endif %}, "custom"]{% if template == "advanced" %},
             config_schema={
                 "type": "object",
@@ -76,7 +76,7 @@ class Plugin:
             errors=errors,
             warnings=warnings,
         )
-        {% elif template == "ai" %}# AI available_capabilities typically don't need much config
+        {% elif template == "ai" %}# AI capabilities typically don't need much config
         return ValidationResult(valid=True)
         {% else %}# Add your validation logic here
         return ValidationResult(valid=True)

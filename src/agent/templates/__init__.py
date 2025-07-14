@@ -16,10 +16,12 @@ def get_template_choices() -> list[questionary.Choice]:
 def get_feature_choices() -> list[questionary.Choice]:
     """Get available features for custom template."""
     return [
-        questionary.Choice("Middleware System (caching, retry, rate limiting)", value="middleware", checked=True),
-        questionary.Choice("State Management (conversation persistence)", value="state"),
+        questionary.Choice("Authentication Method (API Key, Bearer(JWT), OAuth2)", value="auth", checked=True),
+        questionary.Choice(
+            "Context-Aware Middleware (caching, retry, rate limiting)", value="middleware", checked=True
+        ),
+        questionary.Choice("State Management (conversation persistence)", value="state_management", checked=True),
         questionary.Choice("AI Provider (ollama, openai, anthropic)", value="ai_provider"),
-        questionary.Choice("Authentication (API Key, JWT, OAuth)", value="auth", checked=True),
         questionary.Choice("MCP Integration (Model Context Protocol)", value="mcp", checked=True),
         questionary.Choice("Push Notifications (webhooks)", value="custom"),
     ]
@@ -29,18 +31,18 @@ def get_template_features(template: str = None) -> dict[str, dict[str, Any]]:
     """Get features included in each template."""
     return {
         "minimal": {
-            "features": [],
-            "description": "Barebone agent with text processing only - no AI, no external dependencies",
+            "features": ["auth"],  # Minimal now includes basic AgentUp Security Framework
+            "description": "Secure agent with AgentUp Security Framework - minimal features, maximum security",
         },
         "full": {
             "features": [
-                "middleware",
-                "state",
-                "ai_provider",
                 "auth",
+                "middleware",
+                "state_management",
+                "ai_provider",
                 "mcp",
                 "push_notifications",
             ],
-            "description": "Enterprise-ready agent with all features including multiple MCP servers",
+            "description": "Enterprise-ready agent with AgentUp Security Framework and all advanced features",
         },
     }

@@ -7,12 +7,12 @@ echo
 
 # Check if we're in an agent directory
 if [ ! -f "src/agent/handlers.py" ]; then
-    echo "❌ Error: Not in an agent directory (no src/agent/handlers.py found)"
+    echo "✗ Error: Not in an agent directory (no src/agent/handlers.py found)"
     echo "Please run this from your agent project root directory"
     exit 1
 fi
 
-echo "✅ Found agent project structure"
+echo "✓ Found agent project structure"
 echo
 
 # Add the retry test handler to handlers.py
@@ -42,7 +42,7 @@ async def handle_retry_test(task: Task) -> str:
     return f"RETRY TEST SUCCESS! Request succeeded at {timestamp}. Content: {content}"
 EOF
 
-echo "✅ Added retry_test handler"
+echo "✓ Added retry_test handler"
 
 # Add routing configuration
 echo "📝 Adding routing for retry_test to agent_config.yaml..."
@@ -58,9 +58,9 @@ EOF
 if grep -q "rules:" agent_config.yaml; then
     # Add after existing rules
     sed -i '' '/rules:/r /tmp/retry_routing.yaml' agent_config.yaml
-    echo "✅ Added routing rule to existing rules section"
+    echo "✓ Added routing rule to existing rules section"
 else
-    echo "❌ Could not find 'rules:' section in agent_config.yaml"
+    echo "✗ Could not find 'rules:' section in agent_config.yaml"
     echo "Please manually add this to your routing rules:"
     cat /tmp/retry_routing.yaml
 fi

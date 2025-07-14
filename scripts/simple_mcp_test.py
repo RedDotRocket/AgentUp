@@ -13,9 +13,9 @@ try:
     import httpx
     from mcp import ClientSession
     from mcp.client.streamable_http import streamablehttp_client
-    print("✅ MCP SDK available")
+    print("✓ MCP SDK available")
 except ImportError as e:
-    print(f"❌ MCP SDK not available: {e}")
+    print(f"✗ MCP SDK not available: {e}")
     print("Install with: pip install mcp")
     sys.exit(1)
 
@@ -28,7 +28,7 @@ async def check_server_health(base_url: str) -> bool:
             try:
                 health_response = await client.get(f"{base_url}/health")
                 if health_response.status_code == 200:
-                    print(f"✅ Server health check passed (status: {health_response.status_code})")
+                    print(f"✓ Server health check passed (status: {health_response.status_code})")
                     return True
                 else:
                     print(f"⚠️  Server responded but health check failed (status: {health_response.status_code})")
@@ -38,14 +38,14 @@ async def check_server_health(base_url: str) -> bool:
             # Test root endpoint
             try:
                 root_response = await client.get(base_url)
-                print(f"✅ Server is responding (status: {root_response.status_code})")
+                print(f"✓ Server is responding (status: {root_response.status_code})")
                 return True
             except Exception:
-                print(f"❌ Server not responding at {base_url}")
+                print(f"✗ Server not responding at {base_url}")
                 return False
 
     except Exception as e:
-        print(f"❌ Server connectivity check failed: {e}")
+        print(f"✗ Server connectivity check failed: {e}")
         return False
 
 
@@ -71,18 +71,18 @@ async def check_mcp_endpoint(server_url: str) -> bool:
             )
 
             if response.status_code == 200:
-                print(f"✅ MCP endpoint responding (status: {response.status_code})")
+                print(f"✓ MCP endpoint responding (status: {response.status_code})")
 
                 # Debug: Show the actual response
                 try:
                     response_json = response.json()
-                    print(f"🔍 Response structure: {list(response_json.get('result', {}).keys())}")
+                    print(f"Response structure: {list(response_json.get('result', {}).keys())}")
                     if 'result' in response_json:
                         result = response_json['result']
                         if 'protocolVersion' in result:
-                            print(f"✅ protocolVersion found: {result['protocolVersion']}")
+                            print(f"✓ protocolVersion found: {result['protocolVersion']}")
                         else:
-                            print(f"❌ protocolVersion missing! Response: {result}")
+                            print(f"✗ protocolVersion missing! Response: {result}")
                 except Exception as e:
                     print(f"⚠️  Could not parse response as JSON: {e}")
 
@@ -93,7 +93,7 @@ async def check_mcp_endpoint(server_url: str) -> bool:
                 return True  # Endpoint exists, might just be protocol issue
 
     except Exception as e:
-        print(f"❌ MCP endpoint check failed: {e}")
+        print(f"✗ MCP endpoint check failed: {e}")
         return False
 
 
@@ -105,11 +105,11 @@ async def test_mcp_streamable_http():
     print(f"🔗 Testing MCP Streamable HTTP at: {server_url}")
 
     # Pre-flight checks
-    print("\n🔍 Running pre-flight checks...")
+    print("\nRunning pre-flight checks...")
 
     server_ok = await check_server_health(base_url)
     if not server_ok:
-        print("❌ Server is not responding. Please check:")
+        print("✗ Server is not responding. Please check:")
         print("   1. Is the AgentUp server running?")
         print("   2. Is it running on port 8001?")
         print("   3. Try: agentup agent serve --port 8001")
@@ -117,7 +117,7 @@ async def test_mcp_streamable_http():
 
     mcp_ok = await check_mcp_endpoint(server_url)
     if not mcp_ok:
-        print("❌ MCP endpoint is not available. Please check:")
+        print("✗ MCP endpoint is not available. Please check:")
         print("   1. Is MCP enabled in your agent_config.yaml?")
         print("   2. Is the MCP server configuration correct?")
         return
@@ -129,20 +129,20 @@ async def test_mcp_streamable_http():
         print(" Establishing streamable HTTP connection...")
 
         async with streamablehttp_client(server_url) as (read_stream, write_stream, _):
-            print("✅ Streamable HTTP connection established")
+            print("✓ Streamable HTTP connection established")
 
             # Create client session
             print("🔗 Creating MCP client session...")
             async with ClientSession(read_stream, write_stream) as session:
-                print("✅ Client session created")
+                print("✓ Client session created")
 
                 # Initialize the connection
                 print("🤝 Initializing MCP session...")
                 await session.initialize()
-                print("✅ Session initialized")
+                print("✓ Session initialized")
 
                 # Test 1: List available tools
-                print("\n🔧 Listing available tools...")
+                print("\nListing available tools...")
                 tools_result = await session.list_tools()
                 tools = tools_result.tools if hasattr(tools_result, 'tools') else []
                 print(f"Found {len(tools)} tools:")
@@ -179,10 +179,10 @@ async def test_mcp_streamable_http():
                     result = await session.call_tool("get_system_info", {})
                     print(f"System info: {result}")
 
-                print("\n✅ All tests completed successfully!")
+                print("\n✓ All tests completed successfully!")
 
     except Exception as e:
-        print(f"❌ Test failed: {e}")
+        print(f"✗ Test failed: {e}")
         print("\n Debugging information:")
 
         # Provide specific debugging based on error type

@@ -22,12 +22,12 @@ RETRY_TEST_RESULTS="/tmp/retry_test_results.json"
 check_server_running() {
     echo -e "${BLUE}Checking if server is running...${NC}"
     if ! curl -s --max-time 5 "$SERVER_URL/health" > /dev/null 2>&1; then
-        echo -e "${RED}❌ Server is not running at $SERVER_URL${NC}"
+        echo -e "${RED}✗ Server is not running at $SERVER_URL${NC}"
         echo "Please start your agent server first:"
         echo "  agentup agent serve --port 8000"
         exit 1
     fi
-    echo -e "${GREEN}✅ Server is running${NC}"
+    echo -e "${GREEN}✓ Server is running${NC}"
     echo
 }
 
@@ -43,12 +43,12 @@ check_dependencies() {
     done
     
     if [[ ${#missing_tools[@]} -gt 0 ]]; then
-        echo -e "${RED}❌ Missing required tools: ${missing_tools[*]}${NC}"
+        echo -e "${RED}✗ Missing required tools: ${missing_tools[*]}${NC}"
         echo "Please install missing tools and try again"
         exit 1
     fi
     
-    echo -e "${GREEN}✅ All dependencies available${NC}"
+    echo -e "${GREEN}✓ All dependencies available${NC}"
     echo
 }
 
@@ -88,18 +88,18 @@ test_retry_scenario() {
 
     # Analyze response
     if [[ -z "$response" ]]; then
-        echo -e "${RED}❌ No response received (timeout or connection error)${NC}"
+        echo -e "${RED}✗ No response received (timeout or connection error)${NC}"
         return 1
     fi
 
     if ! echo "$response" | python3 -m json.tool > /dev/null 2>&1; then
-        echo -e "${RED}❌ Invalid JSON response${NC}"
+        echo -e "${RED}✗ Invalid JSON response${NC}"
         echo "Response: $response"
         return 1
     fi
 
     if echo "$response" | grep -q '"error"'; then
-        echo -e "${RED}❌ Failed with error:${NC}"
+        echo -e "${RED}✗ Failed with error:${NC}"
         local error_msg=$(echo "$response" | jq -r '.error.message' 2>/dev/null || echo "Unknown error")
         echo "Error: $error_msg"
         
@@ -108,7 +108,7 @@ test_retry_scenario() {
             echo -e "${BLUE}🔄 This appears to be a retry-related error${NC}"
         fi
     else
-        echo -e "${GREEN}✅ Success:${NC}"
+        echo -e "${GREEN}✓ Success:${NC}"
         local result_content=$(echo "$response" | jq -r '.result.messages[-1].content' 2>/dev/null | head -c 100)
         echo "Result: ${result_content}..."
         
@@ -118,7 +118,7 @@ test_retry_scenario() {
         fi
     fi
     
-    echo -e "${BLUE}💡 Check server logs for detailed retry information${NC}"
+    echo -e "${BLUE}Check server logs for detailed retry information${NC}"
     echo
     return 0
 }
@@ -149,7 +149,7 @@ create_retry_test_handler() {
     
     # Check if retry test handler already exists
     if grep -q "handle_retry_test" "$handler_file"; then
-        echo -e "${GREEN}✅ Retry test handler already exists${NC}"
+        echo -e "${GREEN}✓ Retry test handler already exists${NC}"
         return 0
     fi
     
@@ -198,7 +198,7 @@ async def handle_retry_test(task: Task) -> str:
     return f"RETRY TEST SUCCESS! Completed at {timestamp:.3f}. Content: {content}"
 EOF
 
-    echo -e "${GREEN}✅ Retry test handler added${NC}"
+    echo -e "${GREEN}✓ Retry test handler added${NC}"
     echo -e "${YELLOW}⚠️  Please restart your server to load the new handler${NC}"
     echo
     return 0
@@ -325,7 +325,7 @@ if echo "$response" | grep -q "Method not found\|skill.*not.*found" -i; then
     create_retry_test_handler
     echo -e "${YELLOW}⚠️  Please restart your server and run this script again for full retry testing${NC}"
 else
-    echo -e "${GREEN}✅ Retry test handler is available${NC}"
+    echo -e "${GREEN}✓ Retry test handler is available${NC}"
     
     # Test with different failure rates
     for fail_rate in 0.9 0.5 0.1; do
@@ -362,7 +362,7 @@ echo "- Check server logs for 'Attempt X failed, retrying in Ys' messages"
 echo "- Successful retries will eventually return success response"
 echo "- Failed retries will return the last encountered error"
 echo
-echo -e "${GREEN}✅ Retry middleware tests completed!${NC}"
+echo -e "${GREEN}✓ Retry middleware tests completed!${NC}"
 echo "Results logged to: $RETRY_TEST_RESULTS"
 
 # Cleanup

@@ -43,7 +43,7 @@ class TestCreateAgentCommand:
         ):
             mock_features.return_value = {
                 "minimal": {"features": []},
-                "full": {"features": ["services", "middleware", "auth", "state", "mcp", "monitoring"]},
+                "full": {"features": ["services", "middleware", "auth", "state_management", "mcp", "monitoring"]},
                 "demo": {"features": ["services", "middleware", "mcp"]},
             }
 
@@ -60,7 +60,7 @@ class TestCreateAgentCommand:
                 Choice("External Services", value="services"),
                 Choice("Middleware", value="middleware"),
                 Choice("Authentication", value="auth"),
-                Choice("State Management", value="state"),
+                Choice("State Management", value="state_management"),
                 Choice("MCP Support", value="mcp"),
                 Choice("Monitoring", value="monitoring"),
             ]
@@ -80,7 +80,7 @@ class TestCreateAgentCommand:
             result = runner.invoke(create_agent, ["test-agent", "--quick", "--no-git"])
 
         assert result.exit_code == 0
-        assert "✅ Project created successfully!" in result.output
+        assert "✓ Project created successfully!" in result.output
 
         # Verify generator was called correctly
         mock_generator.assert_called_once()
@@ -110,7 +110,7 @@ class TestCreateAgentCommand:
             result = runner.invoke(create_agent, ["--no-git"])
 
         assert result.exit_code == 0
-        assert "✅ Project created successfully!" in result.output
+        assert "✓ Project created successfully!" in result.output
 
         # Verify project configuration
         call_args = mock_generator.call_args[0]
@@ -130,7 +130,7 @@ class TestCreateAgentCommand:
             result = runner.invoke(create_agent, ["--quick", "quick-agent", "--no-git"])
 
         assert result.exit_code == 0
-        assert "✅ Project created successfully!" in result.output
+        assert "✓ Project created successfully!" in result.output
 
         # Verify quick mode configuration
         call_args = mock_generator.call_args[0]
@@ -144,7 +144,7 @@ class TestCreateAgentCommand:
             result = runner.invoke(create_agent, ["--minimal", "minimal-agent", "--no-git"])
 
         assert result.exit_code == 0
-        assert "✅ Project created successfully!" in result.output
+        assert "✓ Project created successfully!" in result.output
 
         # Verify minimal mode configuration
         call_args = mock_generator.call_args[0]
@@ -221,7 +221,7 @@ class TestCreateAgentCommand:
 
         assert result.exit_code == 0
         assert "Directory" in result.output and "already exists. Continuing in quick mode" in result.output
-        assert "✅ Project created successfully!" in result.output
+        assert "✓ Project created successfully!" in result.output
 
     def test_create_agent_git_initialization(self, runner, mock_generator, temp_dir, mock_template_features):
         """Test agent creation with git initialization."""
@@ -237,7 +237,7 @@ class TestCreateAgentCommand:
             # Note: No --no-git flag
 
         assert result.exit_code == 0
-        assert "✅ Git repository initialized" in result.output
+        assert "✓ Git repository initialized" in result.output
         mock_git.assert_called_once()
 
     def test_create_agent_git_initialization_failure(self, runner, mock_generator, temp_dir, mock_template_features):
@@ -444,7 +444,7 @@ class TestFeatureCustomization:
                 Choice("External Services", value="services", checked=True),
                 Choice("Middleware", value="middleware", checked=True),
                 Choice("Authentication", value="auth", checked=False),
-                Choice("State Management", value="state", checked=False),
+                Choice("State Management", value="state_management", checked=False),
             ]
 
             mock_questionary.text.return_value.ask.side_effect = ["custom-features-test", "Test custom features"]
@@ -456,7 +456,7 @@ class TestFeatureCustomization:
 
             # User selects additional features
             mock_questionary.checkbox.return_value.ask.side_effect = [
-                ["services", "middleware", "auth", "state"],  # Feature selection
+                ["services", "middleware", "auth", "state_management"],  # Feature selection
                 ["openai", "valkey"],  # Service selection
             ]
 
@@ -472,7 +472,7 @@ class TestFeatureCustomization:
                 # Verify feature configuration
                 call_args = mock_generator.call_args[0]
                 config = call_args[1]
-                assert set(config["features"]) == {"services", "middleware", "auth", "state"}
+                assert set(config["features"]) == {"services", "middleware", "auth", "state_management"}
                 assert config["feature_config"]["auth"] == "api_key"
                 assert config["services"] == ["openai", "valkey"]
 
@@ -593,7 +593,7 @@ class TestCliOutput:
         # Check for expected output elements
         assert "Create your AI agent:" in result.output
         assert "📁 Creating project..." in result.output
-        assert "✅ Project created successfully!" in result.output
+        assert "✓ Project created successfully!" in result.output
         assert "Next steps:" in result.output
         assert "cd output-test" in result.output  # Directory name preserves hyphens
         assert "uv sync" in result.output

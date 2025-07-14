@@ -27,13 +27,210 @@ class FunctionRegistry:
         """Register a plugin as an LLM-callable function."""
         self._functions[name] = schema
         self._handlers[name] = handler
-        logger.debug(f"Registered AI function: {name}")
 
     def get_function_schemas(self) -> list[dict[str, Any]]:
         """Get all function schemas for LLM function calling (local + MCP)."""
         all_schemas = list(self._functions.values())
         all_schemas.extend(self._mcp_tools.values())
         return all_schemas
+
+    def get_available_tools_for_ai(self, user_scopes: set[str]) -> list[dict[str, Any]]:
+        """Filter tools based on user scopes - AI sees only what it can use.
+
+        This function implements the scope-based AI tool filtering as specified in SCOPE_DESIGN.md.
+        The AI will only see tools that the user has permission to use, providing transparent
+        security without the AI needing to know about scopes.
+
+        Args:
+            user_scopes: Set of scopes the user has access to
+
+        Returns:
+            list[dict[str, Any]]: List of tool schemas filtered by user permissions
+        """
+        try:
+            from agent.config import load_config
+            from agent.plugins.integration import get_plugin_adapter
+            from agent.security.unified_auth import get_unified_auth_manager
+
+            # If no scopes provided, return empty list for security
+            if not user_scopes:
+                return []
+
+            auth_manager = get_unified_auth_manager()
+            if not auth_manager or not auth_manager.scope_hierarchy:
+                # If no scope hierarchy available, return all tools (fallback behavior)
+                logger.warning("No auth manager or scope hierarchy available - falling back to all tools")
+                return self.get_function_schemas()
+
+            available_tools = []
+            logger.info(
+                f"Scope hierarchy available with {len(auth_manager.scope_hierarchy.hierarchy) if auth_manager.scope_hierarchy else 0} hierarchy rules"
+            )
+
+            # Helper function to check if user has required scopes using hierarchy
+            def user_has_scope_with_hierarchy(required_scope: str) -> bool:
+                logger.info(f"Checking if user has scope '{required_scope}'")
+                logger.debug(f"User scopes: {user_scopes}")
+                result = auth_manager.scope_hierarchy.validate_scope(list(user_scopes), required_scope)
+                logger.debug(f"Scope validation: user {list(user_scopes)} has '{required_scope}'? {result}")
+                return result
+
+            # Check local plugin capabilities
+            try:
+                config = load_config()
+                plugin_adapter = get_plugin_adapter()
+                logger.info(
+                    f"Plugin capability filtering - adapter available: {plugin_adapter is not None}, config available: {config is not None}"
+                )
+
+                if plugin_adapter and config:
+                    configured_plugins = config.get("plugins", [])
+                    logger.info(f"Found {len(configured_plugins)} configured plugins")
+
+                    for plugin_config in configured_plugins:
+                        plugin_id = plugin_config.get("plugin_id")
+                        logger.info(f"Processing plugin: {plugin_id}")
+                        if not plugin_id:
+                            continue
+
+                        # Handle new capability-based config structure
+                        if "capabilities" in plugin_config:
+                            capabilities_list = plugin_config["capabilities"]
+                            logger.info(f"Plugin '{plugin_id}' has {len(capabilities_list)} capabilities defined")
+                            for capability_config in capabilities_list:
+                                capability_id = capability_config.get("capability_id")
+                                required_scopes = capability_config.get("required_scopes", [])
+
+                                # Check if user has all required scopes for this capability
+                                logger.info(
+                                    f"SCOPE CHECK: Checking capability '{capability_id}' with required scopes: {required_scopes}"
+                                )
+                                has_access = all(user_has_scope_with_hierarchy(scope) for scope in required_scopes)
+                                logger.info(f"SCOPE CHECK: User access to '{capability_id}': {has_access}")
+
+                                if has_access:
+                                    # Get AI functions for this capability
+                                    ai_functions = plugin_adapter.get_ai_functions(capability_id)
+                                    logger.info(
+                                        f"Found {len(ai_functions)} AI functions for capability '{capability_id}'"
+                                    )
+                                    for ai_function in ai_functions:
+                                        tool_spec = {
+                                            "name": ai_function.name,
+                                            "description": ai_function.description,
+                                            "parameters": ai_function.parameters,
+                                        }
+                                        available_tools.append(tool_spec)
+                                        logger.info(
+                                            f"GRANTED AI function '{ai_function.name}' for capability '{capability_id}'"
+                                        )
+                                else:
+                                    logger.info(
+                                        f"DENIED access to capability '{capability_id}' - missing required scopes: {required_scopes}"
+                                    )
+                        else:
+                            # Handle legacy config structure - get all capabilities for plugin
+                            logger.warning(f"Plugin '{plugin_id}' using legacy config structure - no scope enforcement")
+                            plugin_capabilities = plugin_adapter.get_plugin_capabilities(plugin_id)
+                            for capability_id in plugin_capabilities:
+                                # For legacy configs, assume no scope requirements (backward compatibility)
+                                ai_functions = plugin_adapter.get_ai_functions(capability_id)
+                                for ai_function in ai_functions:
+                                    tool_spec = {
+                                        "name": ai_function.name,
+                                        "description": ai_function.description,
+                                        "parameters": ai_function.parameters,
+                                    }
+                                    available_tools.append(tool_spec)
+
+            except Exception as e:
+                logger.warning(f"Failed to filter plugin tools by scopes: {e}")
+                # Security: Do NOT fallback to all tools - continue with empty plugin tools list
+
+            # Check MCP tools with scope enforcement
+            try:
+                config = load_config()
+                mcp_config = config.get("mcp", {})
+
+                if mcp_config.get("client", {}).get("enabled", False):
+                    servers = mcp_config.get("client", {}).get("servers", [])
+
+                    # Extract tool scopes from server configuration
+                    tool_scopes = {}
+                    for server_config in servers:
+                        server_tool_scopes = server_config.get("tool_scopes", {})
+                        tool_scopes.update(server_tool_scopes)
+
+                    # Filter MCP tools based on scopes
+                    for tool_name, tool_schema in self._mcp_tools.items():
+                        required_scopes = tool_scopes.get(tool_name, ["mcp:access"])  # Default to mcp:access
+
+                        # Check if user has all required scopes for this MCP tool
+                        if all(user_has_scope_with_hierarchy(scope) for scope in required_scopes):
+                            available_tools.append(tool_schema)
+
+            except Exception as e:
+                logger.warning(f"Failed to filter MCP tools by scopes: {e}")
+                # Fallback to including all MCP tools
+                available_tools.extend(list(self._mcp_tools.values()))
+
+            # Check built-in framework capabilities (core handlers)
+            # These should also be scope-filtered for security consistency
+            try:
+                # Get capability requirements from configuration to enforce scope-based access
+                config = load_config()
+                configured_plugins = config.get("plugins", [])
+
+                # Build a map of capability requirements for registered functions
+                capability_scope_map = {}
+                for plugin_config in configured_plugins:
+                    if "capabilities" in plugin_config:
+                        for capability_config in plugin_config["capabilities"]:
+                            capability_id = capability_config.get("capability_id")
+                            required_scopes = capability_config.get("required_scopes", [])
+                            capability_scope_map[capability_id] = required_scopes
+
+                # Only include built-in functions that the user has scope access to
+                logger.info(
+                    f"Checking {len(self._functions)} built-in functions against scope map with {len(capability_scope_map)} entries"
+                )
+                for function_name, function_schema in self._functions.items():
+                    # TODO: Check if this function has explicit scope configuration
+                    if function_name not in capability_scope_map:
+                        # Function not configured - DENY by default for security (fail closed)
+                        logger.warning(
+                            f"SECURITY: Function '{function_name}' has no scope configuration - denying access (fail closed)"
+                        )
+                        continue
+
+                    required_scopes = capability_scope_map[function_name]
+                    logger.info(f"Built-in function '{function_name}' requires scopes: {required_scopes}")
+
+                    # Check user has all required scopes (empty scopes = public access)
+                    has_access = all(user_has_scope_with_hierarchy(scope) for scope in required_scopes)
+                    if has_access:
+                        available_tools.append(function_schema)
+                        logger.info(f"GRANTED built-in function '{function_name}' (required: {required_scopes})")
+                    else:
+                        logger.info(
+                            f"DENIED built-in function '{function_name}' - user lacks required scopes: {required_scopes}"
+                        )
+
+            except Exception as e:
+                logger.warning(f"Failed to include built-in tools: {e}")
+
+            logger.info(
+                f"AI tool filtering completed: {len(available_tools)} tools available for user with scopes {user_scopes}"
+            )
+            if available_tools:
+                tool_names = [tool.get("name", "unnamed") for tool in available_tools]
+                logger.info(f"Tools granted to user: {tool_names}")
+            return available_tools
+
+        except Exception as e:
+            logger.error(f"Failed to filter tools by user scopes: {e}")
+            # Security fallback: return empty list rather than all tools
+            return []
 
     def get_handler(self, function_name: str) -> Callable | None:
         """Get handler for a function."""
@@ -91,6 +288,16 @@ class FunctionRegistry:
     def is_mcp_tool(self, function_name: str) -> bool:
         """Check if a function is an MCP tool."""
         return function_name in self._mcp_tools
+
+    async def register_mcp_tool(self, tool_name: str, wrapped_tool, tool_schema):
+        """Register an MCP tool with scope enforcement wrapper."""
+        # Add the scope-enforced tool to the function schemas for AI
+        self._mcp_tools[tool_name] = tool_schema
+
+        # Register the wrapped handler for execution
+        self._handlers[tool_name] = wrapped_tool
+
+        logger.debug(f"Registered MCP tool '{tool_name}' with scope enforcement")
 
 
 class FunctionDispatcher:
@@ -174,13 +381,40 @@ class FunctionDispatcher:
                 logger.error(f"Error preparing conversation for LLM: {e}", exc_info=True)
                 return f"I encountered an error preparing your request: {str(e)}"
 
-            # Get available functions
+            # Get available functions filtered by user scopes
             try:
-                function_schemas = self.function_registry.get_function_schemas()
+                # Try to get user scopes from authentication context
+                from agent.security.context import get_current_auth
+
+                auth_result = get_current_auth()
+                logger.info(f"Authentication context: {auth_result is not None}")
+                if auth_result:
+                    logger.info(f"User scopes: {auth_result.scopes}")
+                    logger.info(f"User ID: {getattr(auth_result, 'user_id', 'unknown')}")
+                if auth_result:
+                    # User is authenticated - use scope-filtered tools (even if scopes are empty)
+                    function_schemas = self.function_registry.get_available_tools_for_ai(auth_result.scopes)
+                    if auth_result.scopes:
+                        logger.info(f"Using scope-filtered tools for user with scopes: {auth_result.scopes}")
+                    else:
+                        logger.warning(f"User '{auth_result.user_id}' has no scopes - no tools available")
+                else:
+                    # No authentication at all - fallback to all functions (for development/testing)
+                    function_schemas = self.function_registry.get_function_schemas()
+                    logger.warning("No authentication context found, using all available functions")
             except Exception as e:
                 logger.error(f"Error retrieving function schemas: {e}", exc_info=True)
-                return f"I encountered an error retrieving available functions: {str(e)}"
-            logger.debug(f"Available function schemas: {function_schemas}")
+                # Fallback to all functions on error
+                function_schemas = self.function_registry.get_function_schemas()
+            logger.info(f"Available function schemas for AI: {len(function_schemas)} functions")
+            if len(function_schemas) == 0:
+                logger.warning("No function schemas available for AI - this will prevent tool calling")
+                logger.warning(
+                    "Possible causes: 1) No user scopes, 2) All tools filtered out by scopes, 3) No tools configured"
+                )
+            else:
+                function_names = [schema.get("name", "unnamed") for schema in function_schemas]
+                logger.info(f"Available functions for AI: {function_names}")
 
             # Create function executor for this task
             function_executor = FunctionExecutor(self.function_registry, task)
@@ -240,7 +474,7 @@ class FunctionDispatcher:
     async def _get_ai_routing_state_context(self, task: Task) -> tuple[Any, str] | tuple[None, None]:
         """Get state context for AI routing if state management is enabled."""
         try:
-            from agent.handlers.handlers import _load_state_config
+            from agent.capabilities.executors import _load_state_config
             from agent.state.context import get_context_manager
 
             state_config = _load_state_config()
@@ -425,85 +659,89 @@ def get_dispatcher() -> FunctionDispatcher:
     return get_function_dispatcher()
 
 
-def register_ai_functions_from_handlers():
-    """Auto-register functions from handlers with @ai_function decorator."""
-    # CONDITIONAL_HANDLERS_IMPORT
+def register_ai_functions_from_capabilities():
+    """Auto-register functions from capabilities with @ai_function decorator."""
+    # CONDITIONAL_EXECUTORS_IMPORT
     try:
-        from agent.handlers import handlers
+        from agent.capabilities import executors
 
-        # Also try importing individual handler modules
-        handler_modules = []
+        # Also try importing individual executor modules
+        executor_modules = []
         try:
-            from agent.handlers import handlers as main_handlers
+            from agent.capabilities import executors as main_executors
 
-            handler_modules.append(main_handlers)
+            executor_modules.append(main_executors)
         except ImportError:
             pass
 
-        # Dynamic discovery of handler modules
-        # This will work with any handler modules that were successfully imported
+        # Dynamic discovery of capability modules
+        # This will work with any capability modules that were successfully imported
         try:
             import sys
             from pathlib import Path
 
-            # Get the handlers package
-            handlers_pkg = sys.modules.get("src.agent.handlers") or sys.modules.get(".handlers", None)
-            if handlers_pkg:
-                handlers_dir = Path(handlers_pkg.__file__).parent
+            # Get the capabilities package
+            capabilities_pkg = sys.modules.get("src.agent.capabilities") or sys.modules.get(".capabilities", None)
+            if capabilities_pkg:
+                capabilities_dir = Path(capabilities_pkg.__file__).parent
 
-                # Find all potential handler modules
-                for py_file in handlers_dir.glob("*.py"):
-                    if py_file.name in ["__init__.py", "handlers.py", "handlers_multimodal.py"]:
+                # Find all potential capability modules
+                for py_file in capabilities_dir.glob("*.py"):
+                    if py_file.name in ["__init__.py", "executors.py", "executors_multimodal.py"]:
                         continue
 
                     module_name = py_file.stem
                     module_attr_name = module_name
 
-                    # Try to get the module from the handlers package
-                    if hasattr(handlers_pkg, module_attr_name):
-                        handler_module = getattr(handlers_pkg, module_attr_name)
-                        if handler_module not in handler_modules:
-                            handler_modules.append(handler_module)
-                            logger.debug(f"Added dynamically discovered handler module: {module_name}")
+                    # Try to get the module from the capabilities package
+                    if hasattr(capabilities_pkg, module_attr_name):
+                        executor_module = getattr(capabilities_pkg, module_attr_name)
+                        if executor_module not in executor_modules:
+                            executor_modules.append(executor_module)
+                            logger.debug(f"Added dynamically discovered capability module: {module_name}")
                     else:
                         # Try to import it directly
                         try:
-                            handler_module = __import__(f"src.agent.handlers.{module_name}", fromlist=[module_name])
-                            if handler_module not in handler_modules:
-                                handler_modules.append(handler_module)
-                                logger.debug(f"Dynamically imported handler module: {module_name}")
+                            executor_module = __import__(
+                                f"src.agent.capabilities.{module_name}", fromlist=[module_name]
+                            )
+                            if executor_module not in executor_modules:
+                                executor_modules.append(executor_module)
+                                logger.debug(f"Dynamically imported capability module: {module_name}")
                         except ImportError as e:
                             logger.debug(f"Could not dynamically import {module_name}: {e}")
                         except Exception as e:
                             logger.warning(f"Error dynamically importing {module_name}: {e}")
 
         except Exception as e:
-            logger.debug(f"Dynamic handler discovery failed: {e}")
+            logger.debug(f"Dynamic capability discovery failed: {e}")
 
-        # If no specific modules, scan the main handlers module
-        if not handler_modules:
-            handler_modules = [handlers]
+        # If no specific modules, scan the main executors module
+        if not executor_modules:
+            executor_modules = [executors]
 
     except ImportError:
-        logger.warning("Handlers module not available for AI function registration")
+        logger.warning("Capabilities module not available for AI function registration")
         return
 
     registry = get_function_registry()
     registered_count = 0
 
-    # Scan all handler modules for AI functions
-    for handler_module in handler_modules:
-        logger.info(f"Scanning module {handler_module.__name__} for AI functions")
+    # Scan all capability modules for AI functions
+    for executor_module in executor_modules:
+        logger.debug(f"Scanning capability modules {executor_module.__name__} for AI functions")
         ai_functions_in_module = 0
-        for name in dir(handler_module):
-            obj = getattr(handler_module, name)
+        for name in dir(executor_module):
+            obj = getattr(executor_module, name)
             if callable(obj):
                 has_ai_flag = hasattr(obj, "_is_ai_function")
                 has_schema = hasattr(obj, "_ai_function_schema")
 
                 # Only log functions that might be AI functions (start with handle_ or have AI attributes)
+                # TODO: We can likely drop this, its from a debugging phase (Luke), but will keep for now
+                # and mark down to debug level
                 if name.startswith("handle_") or has_ai_flag or has_schema:
-                    logger.info(
+                    logger.debug(
                         f"Function {name}: callable=True, _is_ai_function={has_ai_flag}, _ai_function_schema={has_schema}"
                     )
 
@@ -514,7 +752,7 @@ def register_ai_functions_from_handlers():
                     registered_count += 1
                     ai_functions_in_module += 1
 
-        logger.info(f"Module {handler_module.__name__}: found {ai_functions_in_module} AI functions")
+        logger.debug(f"Module {executor_module.__name__}: found {ai_functions_in_module} AI functions")
 
     # Also register AI functions from plugins
     try:

@@ -8,6 +8,8 @@ import structlog
 import yaml
 from jinja2 import Environment, FileSystemLoader
 
+from agent.config.models import PluginConfig
+
 from .templates import get_template_features
 
 logger = structlog.get_logger(__name__)
@@ -49,7 +51,7 @@ class ProjectGenerator:
         # Provider configuration mapping
         providers = {
             "ollama": {"provider": "ollama", "service_name": "ollama", "model": "qwen3:0.6b"},
-            "anthropic": {"provider": "anthropic", "service_name": "anthropic", "model": "claude-3-haiku-20240307"},
+            "anthropic": {"provider": "anthropic", "service_name": "anthropic", "model": "claude-3-7-sonnet-20250219"},
             "openai": {"provider": "openai", "service_name": "openai", "model": "gpt-4o-mini"},
         }
 
@@ -177,7 +179,7 @@ class ProjectGenerator:
             "description": self.config.get("description", ""),
             "features": self.features,
             "has_middleware": "middleware" in self.features,
-            "has_state": "state" in self.features,
+            "has_state_management": "state_management" in self.features,
             "has_auth": "auth" in self.features,
             "has_mcp": "mcp" in self.features,
             "template_name": self.template_name,
@@ -224,11 +226,27 @@ class ProjectGenerator:
         else:
             context["feature_config"] = {}
 
+        # Add AgentUp Security Framework variables
+        auth_enabled = "auth" in self.features
+        auth_type = self.config.get("feature_config", {}).get("auth", "api_key")
+        scope_config = self.config.get("feature_config", {}).get("scope_config", {})
+
+        context.update(
+            {
+                "asf_enabled": auth_enabled,  # AgentUp Security Framework enabled
+                "auth_type": auth_type,
+                "scope_hierarchy_enabled": bool(scope_config.get("scope_hierarchy")),
+                "has_enterprise_scopes": self.template_name == "full"
+                or scope_config.get("security_level") == "enterprise",
+                "context_aware_middleware": "middleware" in self.features and auth_enabled,
+            }
+        )
+
         # Add state backend configuration
         state_backend = None
         if "feature_config" in self.config and "state_backend" in self.config["feature_config"]:
             state_backend = self.config["feature_config"]["state_backend"]
-        elif "state" in self.features:
+        elif "state_management" in self.features:
             # Default to appropriate backend based on template
             if self.template_name == "minimal":
                 state_backend = "memory"
@@ -256,36 +274,8 @@ class ProjectGenerator:
             "routing": self._build_routing_config(),
         }
 
-        # Add AgentUp security configuration
-        config["security"] = {
-            "enabled": False,  # Set to True to enable authentication
-            "type": "api_key",  # Options: 'api_key', 'bearer', 'oauth2'
-            "api_key": {
-                "header_name": "X-API-Key",
-                "location": "header",  # Options: 'header', 'query', 'cookie'
-                "keys": [
-                    # Generated API keys - replace with your own
-                    self._generate_api_key(),
-                    self._generate_api_key(),
-                ],
-            },
-            "bearer": {
-                "jwt_secret": self._generate_jwt_secret(),
-                "algorithm": "HS256",
-                "issuer": "your-agent",
-                "audience": "a2a-clients",
-            },
-            "oauth2": {
-                "token_url": "${OAUTH_TOKEN_URL:/oauth/token}",
-                "client_id": "${OAUTH_CLIENT_ID:your-client-id}",
-                "client_secret": self._generate_client_secret(),
-                "scopes": {
-                    "read": "Read access to agent capabilities",
-                    "write": "Write access to send messages",
-                    "admin": "Administrative access",
-                },
-            },
-        }
+        # Add AgentUp Security Framework configuration
+        config["security"] = self._build_asf_config()
 
         # Add routing configuration (for backward compatibility)
         config["routing"] = self._build_routing_config()
@@ -359,58 +349,38 @@ Always be helpful, accurate, and maintain a friendly tone. You are designed to a
         config["push_notifications"] = {"enabled": True}
 
         # Add AgentUp state management
-        config["state"] = {
+        config["state_management"] = {
+            "enabled": True,
             "backend": "memory",
             "ttl": 3600,  # 1 hour
+            "config": {}
         }
 
         return config
 
-    def _build_plugins_config(self) -> list[dict[str, Any]]:
-        """Build plugins configuration based on template."""
-        if self.template_name == "minimal":
-            return [
-                {
-                    "plugin_id": "echo",
-                    "name": "Echo",
-                    "description": "Echo back the input text",
-                    "input_mode": "text",
-                    "output_mode": "text",
-                    "routing_mode": "direct",
-                    "keywords": ["echo", "repeat", "say"],
-                    "patterns": [".*"],
-                }
-            ]
-        elif self.template_name == "full":
-            # Full template gets multiple plugins
-            return [
+    # TODO: Don't need this anymore, we have hello plugin
+    def _build_plugins_config(self) -> list[PluginConfig]:
+        """Build plugins configuration with AgentUp Security Framework classification."""
+        return [
                 {
                     "plugin_id": "ai_assistant",
                     "name": "AI Assistant",
-                    "description": "General purpose AI assistant",
+                    "description": "AI-powered assistant for various tasks",
                     "input_mode": "text",
                     "output_mode": "text",
-                },
-                {
-                    "plugin_id": "data_analyzer",
-                    "name": "Data Analyzer",
-                    "description": "Analyze and visualize data",
-                    "input_mode": "text",
-                    "output_mode": "text",
-                },
-            ]
-        else:
-            # Standard template
-            return [
-                {
-                    "plugin_id": "ai_assistant",
-                    "name": "AI Assistant",
-                    "description": "General purpose AI assistant",
-                    "input_mode": "text",
-                    "output_mode": "text",
-                    "routing_mode": "ai",
+                    "priority": 100,
+                    "middleware_override": [
+                        {
+                            "name": "rate_limited",
+                            "params": {
+                                "requests_per_minute": 20  # Conservative rate for AI operations
+                            },
+                        },
+                        {"name": "timed", "params": {}},
+                        # No caching for AI to ensure fresh responses
+                    ],
                 }
-            ]
+        ]
 
     def _build_services_config(self) -> dict[str, Any]:
         """Build services configuration based on template and selected services."""
@@ -490,7 +460,7 @@ Always be helpful, accurate, and maintain a friendly tone. You are designed to a
         return mcp_config
 
     def _build_middleware_config(self) -> list[dict[str, Any]]:
-        """Build middleware configuration for A2A protocol."""
+        """Build context-aware middleware configuration for AgentUp Security Framework."""
         middleware = []
 
         # Always include basic middleware for A2A
@@ -500,35 +470,103 @@ Always be helpful, accurate, and maintain a friendly tone. You are designed to a
             ]
         )
 
-        # Add feature-specific middleware
+        # Add feature-specific middleware with context-aware configurations
         if "middleware" in self.features:
             feature_config = self.config.get("feature_config", {})
             selected_middleware = feature_config.get("middleware", [])
 
             if "cache" in selected_middleware:
-                middleware.append(
-                    {
-                        "name": "cached",
-                        "params": {
-                            "ttl": 300  # 5 minutes
-                        },
-                    }
-                )
+                cache_config = self._build_context_aware_cache_config()
+                middleware.append(cache_config)
 
             if "rate_limit" in selected_middleware:
-                middleware.append({"name": "rate_limited", "params": {"requests_per_minute": 60}})
+                rate_limit_config = self._build_context_aware_rate_limit_config()
+                middleware.append(rate_limit_config)
 
             if "retry" in selected_middleware:
-                middleware.append({"name": "retryable", "params": {"max_retries": 3, "backoff_factor": 2}})
+                retry_config = self._build_context_aware_retry_config()
+                middleware.append(retry_config)
 
         return middleware
+
+    def _build_context_aware_cache_config(self) -> dict[str, Any]:
+        """Build context-aware cache configuration."""
+        base_ttl = 300 if self.template_name != "full" else 600
+
+        config = {
+            "name": "cached",
+            "params": {
+                "ttl": base_ttl,
+                # Context-aware caching based on plugin types
+                "plugin_specific_ttl": {
+                    "local": base_ttl,
+                    "network": base_ttl * 2,  # Longer cache for network plugins
+                    "hybrid": base_ttl,
+                    "ai_function": 60,  # Shorter cache for AI functions (fresh responses)
+                    "core": base_ttl * 2,
+                },
+            },
+        }
+
+        if self.template_name == "full":
+            # Enterprise-specific cache settings
+            config["params"]["cache_errors"] = False
+            config["params"]["max_cache_size"] = 10000
+
+        return config
+
+    def _build_context_aware_rate_limit_config(self) -> dict[str, Any]:
+        """Build context-aware rate limiting configuration."""
+        base_rpm = 60 if self.template_name == "minimal" else 120 if self.template_name == "full" else 60
+
+        config = {
+            "name": "rate_limited",
+            "params": {
+                "requests_per_minute": base_rpm,
+                # Plugin-specific rate limiting
+                "plugin_specific_limits": {
+                    "local": base_rpm * 2,  # Higher rate for local plugins
+                    "network": base_rpm // 2,  # Lower rate for network plugins
+                    "hybrid": base_rpm,  # Standard rate for hybrid plugins
+                    "ai_function": base_rpm // 3,  # Much lower rate for AI functions
+                    "core": base_rpm * 3,  # Higher rate for core functions
+                },
+            },
+        }
+
+        if self.template_name == "full":
+            # Enterprise rate limiting with burst support
+            config["params"]["burst_size"] = 30
+
+        return config
+
+    def _build_context_aware_retry_config(self) -> dict[str, Any]:
+        """Build context-aware retry configuration."""
+        max_retries = 3 if self.template_name != "full" else 5
+
+        return {
+            "name": "retryable",
+            "params": {
+                "max_retries": max_retries,
+                "backoff_factor": 2.0,
+                "max_delay": 60.0 if self.template_name == "full" else 30.0,
+                # Plugin-specific retry configuration
+                "plugin_compatibility": {
+                    "local": False,  # Local plugins rarely need retries
+                    "network": True,  # Network plugins benefit from retries
+                    "hybrid": True,  # Hybrid plugins may need retries
+                    "ai_function": False,  # AI functions need specialized retry logic
+                    "core": False,  # Core functions should be reliable
+                },
+            },
+        }
 
     def _build_routing_config(self) -> dict[str, Any]:
         """Build routing configuration based on template."""
         # Determine routing mode and fallback capability based on template
         if self.template_name == "minimal":
             default_mode = "direct"
-            fallback_capability = "echo"
+            fallback_capability = "ai_assistant"
         else:
             default_mode = "ai"
             fallback_capability = "ai_assistant"
@@ -553,6 +591,110 @@ Always be helpful, accurate, and maintain a friendly tone. You are designed to a
                 "client_secret": "${OAUTH_CLIENT_SECRET}",
             }
         return {}
+
+    def _build_asf_config(self) -> dict[str, Any]:
+        """Build AgentUp Security Framework configuration with scope hierarchy support."""
+        # Determine auth type from feature config or default
+        auth_type = self.config.get("feature_config", {}).get("auth", "api_key")
+
+        # Check if auth feature is enabled
+        auth_enabled = "auth" in self.features
+
+        base_config = {
+            "enabled": auth_enabled,
+            "type": auth_type,
+        }
+
+        if not auth_enabled:
+            return base_config
+
+        # Build scope hierarchy based on auth type and template
+        scope_hierarchy = self._build_scope_hierarchy(auth_type)
+
+        if auth_type == "api_key":
+            base_config["api_key"] = {
+                "header_name": "X-API-Key",
+                "location": "header",
+                "scope_hierarchy": scope_hierarchy,
+                "keys": [
+                    {"key": self._generate_api_key(), "scopes": ["api:read", "files:read"]},
+                    {
+                        "key": self._generate_api_key(),
+                        "scopes": ["admin"],  # Admin key
+                    },
+                ],
+            }
+        elif auth_type == "bearer" or auth_type == "jwt":
+            base_config["bearer"] = {
+                "jwt_secret": self._generate_jwt_secret(),
+                "algorithm": "HS256",
+                "issuer": self._to_snake_case(self.project_name),
+                "audience": "a2a-clients",
+                "scope_hierarchy": scope_hierarchy,
+            }
+        elif auth_type == "oauth2":
+            base_config["oauth2"] = {
+                "validation_strategy": "jwt",
+                "jwks_url": "${JWKS_URL:https://your-provider.com/.well-known/jwks.json}",
+                "jwt_algorithm": "RS256",
+                "jwt_issuer": "${JWT_ISSUER:https://your-provider.com}",
+                "jwt_audience": f"${{JWT_AUDIENCE:{self._to_snake_case(self.project_name)}}}",
+                "scope_hierarchy": scope_hierarchy,
+            }
+
+        return base_config
+
+    def _build_scope_hierarchy(self, auth_type: str) -> dict[str, list[str]]:
+        """Build scope hierarchy based on CLI configuration, auth type and template."""
+        # Check if CLI provided scope configuration
+        feature_config = self.config.get("feature_config", {})
+        scope_config = feature_config.get("scope_config", {})
+
+        if scope_config and "scope_hierarchy" in scope_config:
+            # Use CLI-configured scope hierarchy
+            return scope_config["scope_hierarchy"]
+
+        # Fall back to template-based defaults
+        if self.template_name == "minimal":
+            # Basic scope hierarchy for minimal template
+            return {"admin": ["*"], "api:read": [], "files:read": []}
+        elif self.template_name == "full":
+            # Enterprise scope hierarchy for full template
+            return {
+                # Administrative scopes
+                "admin": ["*"],
+                "system:admin": ["system:write", "system:read", "files:admin"],
+                "api:admin": ["api:write", "api:read", "network:admin"],
+                # Functional scopes
+                "files:admin": ["files:write", "files:read", "files:sensitive"],
+                "files:write": ["files:read"],
+                "files:sensitive": ["files:read"],
+                # API access scopes
+                "api:write": ["api:read"],
+                "api:external": ["api:read"],
+                # AI-specific scopes
+                "ai:admin": ["ai:execute", "ai:train", "ai:model:admin"],
+                "ai:execute": ["ai:model:read"],
+                "ai:train": ["ai:execute", "ai:model:write"],
+                # Enterprise scopes
+                "enterprise:admin": ["enterprise:write", "enterprise:read", "api:admin"],
+                "enterprise:write": ["enterprise:read", "api:write"],
+                "enterprise:read": ["api:read"],
+                # Base scopes
+                "api:read": [],
+                "files:read": [],
+                "system:read": [],
+            }
+        else:
+            # Standard scope hierarchy for default template
+            return {
+                "admin": ["*"],
+                "api:write": ["api:read"],
+                "api:read": [],
+                "files:write": ["files:read"],
+                "files:read": [],
+                "system:read": [],
+            }
 
     def _to_snake_case(self, text: str) -> str:
         """Convert text to snake_case."""

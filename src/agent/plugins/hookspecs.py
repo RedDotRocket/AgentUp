@@ -1,9 +1,3 @@
-"""
-Hook specifications for AgentUp plugin system.
-
-All capability plugins must implement these hooks to integrate with AgentUp.
-"""
-
 import pluggy
 
 from .models import (
@@ -55,7 +49,7 @@ class CapabilitySpec:
         """
         Check if this capability can handle the given task.
 
-        This hook is used for intelligent routing. Capabilities can return:
+        This hook is used for  routing. Capabilities can return:
         - True/False for simple binary routing
         - Float (0.0-1.0) for confidence-based routing
 

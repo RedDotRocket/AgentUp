@@ -232,20 +232,20 @@ class GenericAgentExecutor(AgentExecutor):
         plugin_id = target_plugin or self.fallback_plugin
         logger.info(f"Routing to plugin: {plugin_id}")
 
-        # Get handler for the plugin
-        from agent.handlers import get_handler
+        # Get capability executor for the plugin
+        from agent.capabilities import get_capability_executor
 
-        handler = get_handler(plugin_id)
+        executor = get_capability_executor(plugin_id)
 
-        if not handler:
-            return f"No handler found for plugin: {plugin_id}"
+        if not executor:
+            return f"No capability executor found for plugin: {plugin_id}"
 
-        # Call handler directly
+        # Call capability executor directly
         try:
-            result = await handler(task)
+            result = await executor(task)
             return result if isinstance(result, str) else str(result)
         except Exception as e:
-            logger.error(f"Error in handler {plugin_id}: {e}")
+            logger.error(f"Error in capability executor {plugin_id}: {e}")
             return f"Error processing request: {str(e)}"
 
     def _extract_user_message(self, task: Task) -> str:

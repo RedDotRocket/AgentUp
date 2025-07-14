@@ -10,19 +10,19 @@ agent:
 # Routing configuration
 routing:
   default_mode: direct
-  fallback_plugin: echo
-  fallback_enabled: true
+  fallback_enabled: false
 
-# Core plugins configuration
+# Core plugins configuration with capability-based structure
 plugins:
-  - plugin_id: echo
-    name: Echo
-    description: Echo back the input text
-    input_mode: text
-    output_mode: text
-    routing_mode: direct
-    keywords: [echo, repeat, say]
-    patterns: ['.echo']  # Catch-all for minimal template
+  - plugin_id: hello
+    name: Hello Plugin
+    description: Simple greeting plugin for testing and examples
+    capabilities:
+      - capability_id: hello
+        name: Hello Capability
+        description: Simple greeting capability
+        required_scopes: ["api:read"]
+        enabled: true
 
 # Security configuration
 security:
@@ -33,6 +33,28 @@ security:
     location: "header"
     keys:
       - "some_rnadomly_generated_key_sdr3w33s"
+  
+  # Scope hierarchy for capability access control
+  scope_hierarchy:
+    # Universal admin
+    admin: ["*"]
+    
+    # File system scopes
+    files:admin: ["files:write", "files:read", "files:sensitive"]
+    files:write: ["files:read"]
+    
+    # System scopes
+    system:admin: ["system:write", "system:read"]
+    system:write: ["system:read"]
+    
+    # Data scopes
+    data:admin: ["data:write", "data:read", "data:export"]
+    data:write: ["data:read"]
+    
+    # MCP scopes
+    mcp:admin: ["mcp:server", "mcp:client", "mcp:access"]
+    mcp:server: ["mcp:access"]
+    mcp:client: ["mcp:access"]
 
 # Middleware configuration
 middleware:
@@ -49,6 +71,51 @@ push_notifications:
   validate_urls: false
 
 # State management
-state:
+state_management:
+  enabled: true
   backend: memory           # Simple memory state for minimal template
   ttl: 3600  # 1 hour
+  config: {}
+
+# Rate limiting configuration for testing
+rate_limiting:
+  enabled: true
+  endpoint_limits:
+    "/": 
+      rpm: 10  # Very low limit for testing
+      burst: 12
+    "/health":
+      rpm: 200
+      burst: 240
+    "default":
+      rpm: 10
+      burst: 12
+
+# MCP (Model Context Protocol) configuration
+mcp:
+  client:
+    enabled: false
+    servers:
+      - name: "filesystem-server"
+        type: "stdio"
+        command: "uvx"
+        args: ["mcp-server-filesystem", "/tmp"]
+        tool_scopes:
+          read_file: ["files:read"]
+          write_file: ["files:write"]
+          delete_file: ["files:admin"]
+          list_directory: ["files:read"]
+          
+      - name: "database-server"
+        type: "http"
+        url: "http://localhost:3001/mcp"
+        tool_scopes:
+          query_database: ["data:read"]
+          update_database: ["data:write"]
+          backup_database: ["data:admin"]
+
+# Logging configuration for debugging
+logging:
+  level: DEBUG
+  format: pretty
+  correlation_id: true

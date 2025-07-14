@@ -65,6 +65,7 @@ pytest_cache/
 .ruff_cache/
 bandit-report.json
 requirements-ci.txt
+monkeytype.sqlite3
 
 # Test agents and renders
 test-agents/

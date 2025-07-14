@@ -131,7 +131,7 @@ def validate_required_fields(config: dict[str, Any], errors: list[str], warnings
         "observability",
         "development",
         "push_notifications",
-        "state",
+        "state_management",
         "cache",
     }
     unknown_fields = set(config.keys()) - known_fields
@@ -362,7 +362,7 @@ def check_environment_variables(config: dict[str, Any], errors: list[str], warni
     check_value(config)
 
     if missing_vars:
-        click.echo(f"\n{click.style('🔍 Environment Variables:', fg='yellow')}")
+        click.echo(f"\n{click.style('Environment Variables:', fg='yellow')}")
         for var_name, path in missing_vars:
             warnings.append(f"Missing environment variable '{var_name}' referenced in {path}")
     else:
@@ -381,7 +381,7 @@ def check_handler_implementations(plugins: list[dict[str, Any]], errors: list[st
         with open(handlers_path) as f:
             handlers_content = f.read()
 
-        click.echo(f"\n{click.style('🔍 Handler Implementations:', fg='yellow')}")
+        click.echo(f"\n{click.style('Handler Implementations:', fg='yellow')}")
 
         for plugin in plugins:
             plugin_id = plugin.get("plugin_id")
@@ -581,7 +581,7 @@ def display_results(errors: list[str], warnings: list[str], strict: bool = False
     click.echo(f"\n{click.style('Validation Results:', fg='bright_blue', bold=True)}")
 
     if errors:
-        click.echo(f"\n{click.style('❌ Errors:', fg='red', bold=True)}")
+        click.echo(f"\n{click.style('✗ Errors:', fg='red', bold=True)}")
         for error in errors:
             click.echo(f"  • {error}")
 
@@ -591,14 +591,14 @@ def display_results(errors: list[str], warnings: list[str], strict: bool = False
             click.echo(f"  • {warning}")
 
     if not errors and not warnings:
-        click.echo(f"\n{click.style('✅ Configuration is valid!', fg='green', bold=True)}")
+        click.echo(f"\n{click.style('✓ Configuration is valid!', fg='green', bold=True)}")
         click.echo("Your agent configuration passed all validation checks.")
     elif not errors:
-        click.echo(f"\n{click.style('✅ Configuration is valid with warnings', fg='green')}")
+        click.echo(f"\n{click.style('✓ Configuration is valid with warnings', fg='green')}")
         if strict:
-            click.echo(f"{click.style('❌ Failed strict validation due to warnings', fg='red')}")
+            click.echo(f"{click.style('✗ Failed strict validation due to warnings', fg='red')}")
             exit(1)
     else:
-        click.echo(f"\n{click.style('❌ Configuration is invalid', fg='red', bold=True)}")
+        click.echo(f"\n{click.style('✗ Configuration is invalid', fg='red', bold=True)}")
         click.echo(f"Found {len(errors)} error(s) and {len(warnings)} warning(s)")
         exit(1)

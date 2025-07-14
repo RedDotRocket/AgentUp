@@ -61,6 +61,17 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             # Log request if enabled
             if self.log_requests:
                 try:
+                    # Get authentication info if available
+                    auth_user = None
+                    auth_type = None
+                    if (
+                        hasattr(request, "state")
+                        and hasattr(request.state, "auth_result")
+                        and request.state.auth_result
+                    ):
+                        auth_user = request.state.auth_result.user_id
+                        auth_type = request.state.auth_result.auth_type
+
                     logger.info(
                         "Request started",
                         method=request.method,
@@ -68,6 +79,9 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                         query_params=str(request.query_params) if request.query_params else None,
                         client_host=request.client.host if request.client else None,
                         user_agent=request.headers.get("user-agent"),
+                        authenticated_user=auth_user,
+                        auth_type=auth_type,
+                        forwarded_for=request.headers.get("X-Forwarded-For"),
                     )
                 except Exception:
                     # Fallback logging

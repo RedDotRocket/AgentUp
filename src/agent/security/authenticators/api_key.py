@@ -15,19 +15,10 @@ class ApiKeyAuthenticator(BaseAuthenticator):
 
     def _validate_config(self) -> None:
         """Validate API key authenticator configuration."""
-        # Check for API key in various config locations
-        api_key_config = self.config.get("api_key")
+        # Get API key configuration from auth structure
+        api_key_config = self.config.get("auth", {}).get("api_key")
 
-        # Simple string format
-        if isinstance(api_key_config, str):
-            if not validate_api_key_format(api_key_config):
-                raise SecurityConfigurationException("API key format is invalid")
-            self.api_keys = [api_key_config]
-            self.header_name = "X-API-Key"
-            self.location = "header"
-            return
-
-        # Complex object format
+        # Only support object format
         if isinstance(api_key_config, dict):
             self.header_name = api_key_config.get("header_name", "X-API-Key")
             self.location = api_key_config.get("location", "header")
@@ -42,32 +33,31 @@ class ApiKeyAuthenticator(BaseAuthenticator):
             if not keys:
                 raise SecurityConfigurationException("No API keys configured")
 
-            # Validate each key
+            # Validate each key (only object format supported)
             valid_keys = []
+            api_key_scopes = {}
             for key in keys:
-                if isinstance(key, str):
-                    # Skip validation for environment variable placeholders
-                    if key.startswith("${") and key.endswith("}"):
-                        valid_keys.append(key)
-                    elif validate_api_key_format(key):
-                        valid_keys.append(key)
+                if isinstance(key, dict) and "key" in key:
+                    # Object format with key and scopes
+                    key_value = key["key"]
+                    scope_value = key.get("scopes", [])
+                    # TODO: Are we able to gather from the environment ok?
+                    if key_value.startswith("${") and key_value.endswith("}"):
+                        valid_keys.append(key_value)
+                        api_key_scopes[key_value] = scope_value
+                    elif validate_api_key_format(key_value):
+                        valid_keys.append(key_value)
+                        api_key_scopes[key_value] = scope_value
                     else:
-                        raise SecurityConfigurationException(f"Invalid API key format: {key[:8]}...")
+                        raise SecurityConfigurationException(f"Invalid API key format: {key_value[:8]}...")
+                else:
+                    raise SecurityConfigurationException("API keys must be objects with 'key' and 'scopes' fields")
 
             self.api_keys = valid_keys
+            self.api_key_scopes = api_key_scopes
             return
 
-        # Check for top-level api_key config
-        global_api_key = self.config.get("api_key")
-        if isinstance(global_api_key, str):
-            if not validate_api_key_format(global_api_key):
-                raise SecurityConfigurationException("Global API key format is invalid")
-            self.api_keys = [global_api_key]
-            self.header_name = "X-API-Key"
-            self.location = "header"
-            return
-
-        raise SecurityConfigurationException("No valid API key configuration found")
+        raise SecurityConfigurationException("No valid API key configuration found in auth.api_key")
 
     async def authenticate(self, request: Request) -> AuthenticationResult:
         """Authenticate request using API key.
@@ -112,14 +102,20 @@ class ApiKeyAuthenticator(BaseAuthenticator):
                     if secure_compare(api_key, default_value):
                         log_security_event("authentication", request_info, True, "API key authenticated")
                         return AuthenticationResult(
-                            success=True, user_id=f"api_key_user_{hash(api_key) % 10000}", credentials=api_key
+                            success=True,
+                            user_id=f"api_key_user_{hash(api_key) % 10000}",
+                            credentials=api_key,
+                            scopes=self.api_key_scopes.get(configured_key, set()),
                         )
                 continue
 
             if secure_compare(api_key, configured_key):
                 log_security_event("authentication", request_info, True, "API key authenticated")
                 return AuthenticationResult(
-                    success=True, user_id=f"api_key_user_{hash(api_key) % 10000}", credentials=api_key
+                    success=True,
+                    user_id=f"api_key_user_{hash(api_key) % 10000}",
+                    credentials=api_key,
+                    scopes=self.api_key_scopes.get(configured_key, set()),
                 )
 
         log_security_event("authentication", request_info, False, "API key does not match any configured keys")

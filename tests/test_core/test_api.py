@@ -24,7 +24,7 @@ from agent.api import (
     set_request_handler_instance,
     sse_generator,
 )
-from agent.models import (
+from agent.config.models import (
     AgentCapabilities,
     AgentCard,
     JSONRPCError,

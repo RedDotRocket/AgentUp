@@ -78,7 +78,10 @@ async def _initialize_mcp_client(services, client_config: dict[str, Any]) -> Non
                 logger.info(f"HTTP MCP tools available: {len(available_tools)}")
 
                 if available_tools:
-                    await registry.register_mcp_client(http_client)
+                    # Register MCP tools with scope enforcement using new design pattern
+                    await _register_mcp_tools_as_capabilities(http_client, available_tools, http_servers)
+                    # Also register with function registry for AI integration
+                    await _register_mcp_tools_with_scopes(registry, http_client, available_tools, http_servers)
                     tool_names = [tool.get("name", "unknown") for tool in available_tools]
                     logger.info(f"HTTP MCP tool names: {', '.join(tool_names)}")
 
@@ -113,7 +116,10 @@ async def _initialize_mcp_client(services, client_config: dict[str, Any]) -> Non
                 logger.info(f"Stdio MCP tools available: {len(available_tools)}")
 
                 if available_tools:
-                    await registry.register_mcp_client(stdio_client)
+                    # Register MCP tools with scope enforcement using new design pattern
+                    await _register_mcp_tools_as_capabilities(stdio_client, available_tools, stdio_servers)
+                    # Also register with function registry for AI integration
+                    await _register_mcp_tools_with_scopes(registry, stdio_client, available_tools, stdio_servers)
                     tool_names = [tool.get("name", "unknown") for tool in available_tools]
                     logger.info(f"Stdio MCP tool names: {', '.join(tool_names)}")
 
@@ -205,6 +211,99 @@ async def _expose_handlers_as_mcp_tools(mcp_server) -> None:
 
     except Exception as e:
         logger.error(f"Failed to expose handlers as MCP tools: {e}")
+
+
+async def _register_mcp_tools_as_capabilities(mcp_client, available_tools, servers_config):
+    """Register MCP tools as capabilities using the new design pattern."""
+    try:
+        from agent.capabilities.executors import register_mcp_tool_as_capability
+
+        # Extract tool scopes from server configuration
+        tool_scopes = {}
+        for server_config in servers_config:
+            server_tool_scopes = server_config.get("tool_scopes", {})
+            tool_scopes.update(server_tool_scopes)
+
+        # Register each tool as a capability with scope enforcement
+        for tool in available_tools:
+            tool_name = tool.get("name", "unknown")
+            required_scopes = tool_scopes.get(tool_name)
+
+            # SECURITY: Require explicit scope configuration
+            if required_scopes is None:
+                logger.error(f"MCP tool '{tool_name}' requires explicit scope configuration in agent_config.yaml")
+                raise ValueError(
+                    f"MCP tool '{tool_name}' requires explicit scope configuration. "
+                    f"Add 'tool_scopes' configuration with required scopes for this tool."
+                )
+
+            # Register using the design pattern
+            register_mcp_tool_as_capability(tool_name, mcp_client, required_scopes)
+            logger.debug(f"Registered MCP tool as capability: '{tool_name}' with scopes: {required_scopes}")
+
+    except Exception as e:
+        logger.error(f"Failed to register MCP tools as capabilities: {e}")
+
+
+async def _register_mcp_tools_with_scopes(registry, mcp_client, available_tools, servers_config):
+    """Register MCP tools with scope enforcement based on server configuration."""
+    try:
+        # Extract tool scopes from server configuration
+        tool_scopes = {}
+        for server_config in servers_config:
+            server_tool_scopes = server_config.get("tool_scopes", {})
+            tool_scopes.update(server_tool_scopes)
+
+        # Register each tool with scope enforcement
+        for tool in available_tools:
+            tool_name = tool.get("name", "unknown")
+            required_scopes = tool_scopes.get(tool_name)
+
+            # SECURITY: Require explicit scope configuration - no automatic assignment
+            if required_scopes is None:
+                logger.error(f"MCP tool '{tool_name}' requires explicit scope configuration in agent_config.yaml")
+                raise ValueError(
+                    f"MCP tool '{tool_name}' requires explicit scope configuration. "
+                    f"Add 'tool_scopes' configuration with required scopes for this tool."
+                )
+
+            # Create scope-enforced wrapper for the MCP tool
+            def create_mcp_tool_wrapper(client, tool_name, scopes):
+                async def scope_enforced_mcp_tool(*args, **kwargs):
+                    # Get current authentication context
+                    from agent.security.context import create_capability_context, get_current_auth
+
+                    auth_result = get_current_auth()
+                    if auth_result:
+                        # Create a mock task for context creation
+                        from types import SimpleNamespace
+
+                        mock_task = SimpleNamespace()
+                        mock_task.id = f"mcp-{tool_name}"
+
+                        context = create_capability_context(mock_task, auth_result)
+
+                        # Check required scopes
+                        for scope in scopes:
+                            if not context.has_scope(scope):
+                                raise PermissionError(f"MCP tool {tool_name} requires scope: {scope}")
+
+                    # All scopes passed, call the MCP tool
+                    return await client.call_tool(tool_name, *args, **kwargs)
+
+                return scope_enforced_mcp_tool
+
+            # Wrap the tool with scope enforcement
+            wrapped_tool = create_mcp_tool_wrapper(mcp_client, tool_name, required_scopes)
+
+            # Register the wrapped tool with the registry
+            await registry.register_mcp_tool(tool_name, wrapped_tool, tool)
+            logger.debug(f"Registered MCP tool '{tool_name}' with scope enforcement: {required_scopes}")
+
+    except Exception as e:
+        logger.error(f"Failed to register MCP tools with scope enforcement: {e}")
+        # Fallback to standard registration without scope enforcement
+        await registry.register_mcp_client(mcp_client)
 
 
 async def _start_mcp_server_background(mcp_server, port: int) -> None:

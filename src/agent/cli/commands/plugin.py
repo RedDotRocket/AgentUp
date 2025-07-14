@@ -381,6 +381,14 @@ def create(plugin_name: str | None, template: str, output_dir: str | None, no_gi
         gitignore_content = _render_plugin_template(".gitignore.j2", context)
         (output_dir / ".gitignore").write_text(gitignore_content)
 
+        # Copy static folder to plugin root
+        templates_dir = Path(__file__).parent.parent.parent / "templates" / "plugins"
+        static_source = templates_dir / "static"
+        static_dest = output_dir / "static"
+
+        if static_source.exists():
+            shutil.copytree(static_source, static_dest)
+
         # Create coding agent memory files based on selection
         if coding_agent == "Claude Code":
             claude_md_content = _render_plugin_template("CLAUDE.md.j2", context)
@@ -421,7 +429,7 @@ def create(plugin_name: str | None, template: str, output_dir: str | None, no_gi
             )  # nosec
 
         # Success message
-        console.print("\n[green]✅ Plugin created successfully![/green]")
+        console.print("\n[green]✓ Plugin created successfully![/green]")
         console.print(f"\nLocation: [cyan]{output_dir}[/cyan]")
         console.print("\n[bold]Next steps:[/bold]")
         console.print(f"1. cd {output_dir}")
@@ -473,12 +481,12 @@ def install(plugin_name: str, source: str, url: str | None, force: bool):
         result = subprocess.run(cmd, capture_output=True, text=True)  # nosec
 
         if result.returncode == 0:
-            console.print(f"[green]✅ Successfully installed {plugin_name}[/green]")
+            console.print(f"[green]✓ Successfully installed {plugin_name}[/green]")
             console.print("\n[bold]Next steps:[/bold]")
             console.print("1. Restart your agent to load the new plugin")
             console.print("2. Run [cyan]agentup plugin list[/cyan] to verify installation")
         else:
-            console.print(f"[red]❌ Failed to install {plugin_name}[/red]")
+            console.print(f"[red]✗ Failed to install {plugin_name}[/red]")
             console.print(f"[red]{result.stderr}[/red]")
 
     except Exception as e:
@@ -502,9 +510,9 @@ def uninstall(plugin_name: str):
         result = subprocess.run(cmd, capture_output=True, text=True)  # nosec
 
         if result.returncode == 0:
-            console.print(f"[green]✅ Successfully uninstalled {plugin_name}[/green]")
+            console.print(f"[green]✓ Successfully uninstalled {plugin_name}[/green]")
         else:
-            console.print(f"[red]❌ Failed to uninstall {plugin_name}[/red]")
+            console.print(f"[red]✗ Failed to uninstall {plugin_name}[/red]")
             console.print(f"[red]{result.stderr}[/red]")
 
     except Exception as e:
@@ -527,9 +535,9 @@ def reload(plugin_name: str):
         console.print(f"[cyan]Reloading plugin '{plugin_name}'...[/cyan]")
 
         if manager.reload_plugin(plugin_name):
-            console.print(f"[green]✅ Successfully reloaded {plugin_name}[/green]")
+            console.print(f"[green]✓ Successfully reloaded {plugin_name}[/green]")
         else:
-            console.print(f"[red]❌ Failed to reload {plugin_name}[/red]")
+            console.print(f"[red]✗ Failed to reload {plugin_name}[/red]")
             console.print("[dim]Note: Entry point plugins cannot be reloaded[/dim]")
 
     except ImportError:
@@ -691,9 +699,9 @@ def validate():
         console.print(table)
 
         if all_valid:
-            console.print("\n[green]✅ All plugins validated successfully![/green]")
+            console.print("\n[green]✓ All plugins validated successfully![/green]")
         else:
-            console.print("\n[red]❌ Some plugins have validation errors.[/red]")
+            console.print("\n[red]✗ Some plugins have validation errors.[/red]")
             console.print("Please check your agent_config.yaml and fix the issues.")
 
     except ImportError:

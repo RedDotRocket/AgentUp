@@ -44,6 +44,7 @@ class PluginAdapter:
                 handler = self._create_ai_function_handler(capability_id, ai_func)
 
                 # Register with the function registry
+                # TODO: [CURRENT] If its not in the config, we should not register it!
                 registry.register_function(ai_func.name, handler, schema)
                 logger.info(f"Registered AI function '{ai_func.name}' from capability '{capability_id}'")
 
@@ -98,15 +99,41 @@ class PluginAdapter:
         # For now, we'll just log that we could do this
         logger.info(f"Could register {len(handlers)} legacy handlers as plugins")
 
-    def get_handler_for_capability(self, capability_id: str):
-        """Get a handler function for a capability that's compatible with the old system."""
+    def get_capability_executor_for_capability(self, capability_id: str):
+        """Get a capability executor function for a capability that's compatible with the system."""
 
-        async def handler(task: Task) -> str:
+        # Check if this is a built-in capability first
+        builtin_executor = self._get_builtin_capability_executor(capability_id)
+        if builtin_executor:
+            return builtin_executor
+
+        async def executor(task: Task) -> str:
             context = self._create_capability_context(task)
             result = self.plugin_manager.execute_capability(capability_id, context)
             return result.content
 
-        return handler
+        return executor
+
+    def _get_builtin_capability_executor(self, capability_id: str):
+        """Get built-in capability executor if available."""
+        try:
+            from .builtin import get_builtin_registry
+
+            builtin_registry = get_builtin_registry()
+
+            # Find which built-in plugin provides this capability
+            for plugin_id in builtin_registry.list_plugins():
+                plugin = builtin_registry.get_plugin(plugin_id)
+                if plugin and capability_id in plugin.get_capabilities():
+                    handler = plugin.get_capability_handler(capability_id)
+                    if handler:
+                        # Return the handler directly - it's already an async function
+                        return handler
+
+            return None
+
+        except ImportError:
+            return None
 
     def find_capabilities_for_task(self, task: Task) -> list[tuple[str, float]]:
         """Find capabilities that can handle a task, compatible with old routing."""
@@ -143,15 +170,16 @@ class PluginAdapter:
         return self.plugin_manager.get_ai_functions(capability_id)
 
 
-def integrate_plugins_with_registry(registry: FunctionRegistry) -> PluginAdapter:
-    """
-    Integrate the plugin system with an existing function registry.
+# TODO: I think this is dead code, but commenting for noew
+# def integrate_plugins_with_registry(registry: FunctionRegistry) -> PluginAdapter:
+#     """
+#     Integrate the plugin system with an existing function registry.
 
-    This is the main entry point for adding plugin support to AgentUp.
-    """
-    adapter = PluginAdapter()
-    adapter.integrate_with_function_registry(registry)
-    return adapter
+#     This is the main entry point for adding plugin support to AgentUp.
+#     """
+#     adapter = PluginAdapter()
+#     adapter.integrate_with_function_registry(registry)
+#     return adapter
 
 
 def replace_capability_loader() -> PluginAdapter:

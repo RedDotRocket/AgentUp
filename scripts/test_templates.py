@@ -46,7 +46,7 @@ def test_templates(keep, verbose, template, quick):
     result = subprocess.run(cmd, capture_output=True, text=True)
 
     if result.returncode != 0:
-        click.echo("❌ Template rendering failed!", err=True)
+        click.echo("✗ Template rendering failed!", err=True)
         click.echo(result.stderr, err=True)
         return 1
 
@@ -67,20 +67,20 @@ def test_templates(keep, verbose, template, quick):
     result = subprocess.run(pytest_cmd, capture_output=True, text=True)
 
     if result.returncode != 0:
-        click.echo("❌ Tests failed!", err=True)
+        click.echo("✗ Tests failed!", err=True)
         click.echo(result.stderr, err=True)
         if verbose:
             click.echo(result.stdout)
         return 1
 
-    click.echo("✅ All template tests passed!")
+    click.echo("✓ All template tests passed!")
 
     if verbose:
         click.echo(result.stdout)
 
     # Step 3: Additional validation
     if not quick:
-        click.echo("\n🔍 Running additional validation...")
+        click.echo("\nRunning additional validation...")
 
         # Check imports
         click.echo("  - Checking imports...")
@@ -98,11 +98,11 @@ def test_templates(keep, verbose, template, quick):
                 import_errors.append((py_file, e))
 
         if import_errors:
-            click.echo(f"  ❌ {len(import_errors)} files have import errors", err=True)
+            click.echo(f"  ✗ {len(import_errors)} files have import errors", err=True)
             for file, error in import_errors[:5]:  # Show first 5
                 click.echo(f"    - {file.name}: {error.stderr.decode('utf-8').strip()}", err=True)
         else:
-            click.echo(f"  ✅ All {len(py_files)} Python files compile successfully")
+            click.echo(f"  ✓ All {len(py_files)} Python files compile successfully")
 
     # Step 4: Test with different contexts
     if not quick:
@@ -127,7 +127,7 @@ def test_templates(keep, verbose, template, quick):
                     "has_middleware": True,
                     "has_multimodal": True,
                     "has_services": True,
-                    "has_state": True,
+                    "has_state_management": True,
                     "has_ai_orchestrator": True
                 }
             }
@@ -161,9 +161,9 @@ def test_templates(keep, verbose, template, quick):
                 shutil.rmtree(test_output)
 
             if result.returncode == 0:
-                click.echo(f"    ✅ {ctx['name']} context passed")
+                click.echo(f"    ✓ {ctx['name']} context passed")
             else:
-                click.echo(f"    ❌ {ctx['name']} context failed", err=True)
+                click.echo(f"    ✗ {ctx['name']} context failed", err=True)
                 if verbose:
                     click.echo(result.stderr, err=True)
 
@@ -174,7 +174,7 @@ def test_templates(keep, verbose, template, quick):
     elif keep:
         click.echo(f"\n📁 Rendered files kept in: {output_dir}")
 
-    click.echo("\n✅ All template tests completed successfully!")
+    click.echo("\n✓ All template tests completed successfully!")
     return 0
 
 

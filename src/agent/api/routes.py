@@ -65,25 +65,39 @@ def get_request_handler() -> DefaultRequestHandler:
     return _request_handler
 
 
-def create_agent_card() -> AgentCard:
-    """Create agent card with current configuration."""
+def create_agent_card(extended: bool = False) -> AgentCard:
+    """Create agent card with current configuration.
+
+    Args:
+        extended: If True, include plugins with visibility="extended" in addition to public plugins
+    """
 
     config = load_config(configure_logging=False)  # Don't reconfigure logging
     agent_info = config.get("agent", {})
     plugins = config.get("plugins", [])
 
-    # Convert plugins to A2A Skill format
+    # Convert plugins to A2A Skill format based on visibility
     agent_skills = []
+    has_extended_plugins = False
+
     for plugin in plugins:
-        agent_skill = AgentSkill(
-            id=plugin.get("plugin_id"),
-            name=plugin.get("name"),
-            description=plugin.get("description"),
-            inputModes=[plugin.get("input_mode", "text")],
-            outputModes=[plugin.get("output_mode", "text")],
-            tags=plugin.get("tags", ["general"]),
-        )
-        agent_skills.append(agent_skill)
+        plugin_visibility = plugin.get("visibility", "public")
+
+        # Track if any extended plugins exist
+        if plugin_visibility == "extended":
+            has_extended_plugins = True
+
+        # Include plugin in card based on visibility and card type
+        if plugin_visibility == "public" or (extended and plugin_visibility == "extended"):
+            agent_skill = AgentSkill(
+                id=plugin.get("plugin_id"),
+                name=plugin.get("name"),
+                description=plugin.get("description"),
+                inputModes=[plugin.get("input_mode", "text")],
+                outputModes=[plugin.get("output_mode", "text")],
+                tags=plugin.get("tags", ["general"]),
+            )
+            agent_skills.append(agent_skill)
 
     # Create capabilities object with extensions
     extensions = []
@@ -167,6 +181,7 @@ def create_agent_card() -> AgentCard:
         defaultOutputModes=["text"],
         securitySchemes=security_schemes if security_schemes else None,
         security=security_requirements if security_requirements else None,
+        supportsAuthenticatedExtendedCard=has_extended_plugins,
     )
 
     return agent_card
@@ -240,6 +255,14 @@ async def services_health() -> JSONResponse:
 async def get_agent_discovery() -> AgentCard:
     """A2A agent discovery endpoint."""
     return create_agent_card()
+
+
+# A2A Authenticated Extended AgentCard
+@router.get("/agent/authenticatedExtendedCard", response_model=AgentCard)
+@protected()
+async def get_authenticated_extended_card(request: Request) -> AgentCard:
+    """A2A authenticated extended agent card endpoint."""
+    return create_agent_card(extended=True)
 
 
 async def sse_generator(async_iterator: AsyncGenerator) -> AsyncGenerator[str, None]:
@@ -360,7 +383,7 @@ async def jsonrpc_endpoint(
             rpc_request = SetTaskPushNotificationConfigRequest(
                 jsonrpc="2.0", id=request_id, method=method, params=params
             )
-            response = await jsonrpc_handler.set_push_notification(rpc_request)
+            response = await jsonrpc_handler.set_push_notification_config(rpc_request)
             return JSONResponse(status_code=200, content=response.model_dump(by_alias=True))
 
         elif method == "tasks/pushNotificationConfig/get":

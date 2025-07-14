@@ -111,7 +111,7 @@ agent-test: ## Test a generated agent
 		uv run python -m pytest tests/ -v 2>/dev/null || echo "⚠️ Tests not available"; \
 		echo "Agent test completed"; \
 	else \
-		echo "❌ No test agent found. Run 'make agent-create-minimal' first"; \
+		echo "✗ No test agent found. Run 'make agent-create-minimal' first"; \
 	fi
 
 # Development server commands
@@ -124,21 +124,21 @@ dev-server-test: ## Start test agent server
 		cd ./test-agents/minimal && \
 		uv run uvicorn agentup.api.app:app --reload --port 8001; \
 	else \
-		echo "❌ No test agent found. Run 'make agent-create-minimal' first"; \
+		echo "✗ No test agent found. Run 'make agent-create-minimal' first"; \
 	fi
 
 
 # Testing with curl
 test-ping: ## Test server health endpoint
 	@echo "Testing health endpoint..."
-	curl -s http://localhost:8000/health | python -m json.tool || echo "❌ Server not running"
+	curl -s http://localhost:8000/health | python -m json.tool || echo "✗ Server not running"
 
 test-hello: ## Test hello endpoint with curl
 	@echo "Testing hello endpoint..."
 	curl -X POST http://localhost:8000/ \
 		-H 'Content-Type: application/json' \
 		-d '{"jsonrpc": "2.0", "method": "send_message", "params": {"messages": [{"role": "user", "content": "Hello!"}]}, "id": "1"}' \
-		| python -m json.tool || echo "❌ Server not running"
+		| python -m json.tool || echo "✗ Server not running"
 
 docs-serve: ## Serve documentation locally
 	@if command -v mkdocs >/dev/null 2>&1; then \
@@ -171,7 +171,7 @@ docker-run: ## Run Docker container
 
 docker-test: ## Test Docker build
 	docker build -t agentup:test . && \
-	docker run --rm agentup:test python -c "import agentup; print('✅ Package works in Docker')"
+	docker run --rm agentup:test python -c "import agentup; print('✓ Package works in Docker')"
 
 # Cleanup commands
 clean: ## Clean temporary files
@@ -195,7 +195,7 @@ clean-all: clean clean-agents ## Clean everything
 
 # Validation and CI commands
 validate-all: lint test template-test ## Run all validation checks
-	@echo "✅ All validation checks passed"
+	@echo "✓ All validation checks passed"
 
 ci-test: ## Run CI test suite
 	uv run pytest --cov=src --cov-report=xml --cov-report=term

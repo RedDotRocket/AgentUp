@@ -164,6 +164,9 @@ def create_mcp_router(mcp_server: MCPHTTPServer):
     from fastapi import APIRouter, HTTPException, Request, Response
     from fastapi.responses import StreamingResponse
 
+    # Import security decorator
+    from agent.security.decorators import protected
+
     router = APIRouter()
 
     # Session management
@@ -194,6 +197,7 @@ def create_mcp_router(mcp_server: MCPHTTPServer):
         return session_id
 
     @router.post("/mcp")  # This handler is registered with FastAPI
+    @protected(scopes={"mcp:access"})  # Require MCP access scope
     async def handle_mcp_request(request: Request) -> Response:
         """Handle MCP JSON-RPC requests via HTTP POST using the MCP SDK."""
         try:
@@ -267,6 +271,7 @@ def create_mcp_router(mcp_server: MCPHTTPServer):
             )
 
     @router.get("/mcp")  # This handler is registered with FastAPI
+    @protected(scopes={"mcp:access"})  # Require MCP access scope for SSE streaming
     async def handle_mcp_sse(request: Request) -> StreamingResponse:
         """Handle MCP Server-Sent Events (SSE) for bidirectional streaming."""
         try:

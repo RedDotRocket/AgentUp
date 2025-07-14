@@ -46,7 +46,7 @@ def dev(config: Path, host: str, port: int, reload: bool):
 
     # Resolve project root: ensure config exists at given path
     if not config.exists():
-        click.secho(f"❌ Config file not found: {config}", fg="red", err=True)
+        click.secho(f"✗ Config file not found: {config}", fg="red", err=True)
         sys.exit(1)
 
     # Always use framework mode - agents run from installed AgentUp package
@@ -100,7 +100,7 @@ def dev(config: Path, host: str, port: int, reload: bool):
             click.echo(f"Server exited with non-zero status: {returncode}")
             sys.exit(returncode)
     except KeyboardInterrupt:
-        click.echo("👋 Shutting down gracefully...")
+        click.echo("Shutting down gracefully...")
         signal_handler(signal.SIGINT, None)
     except Exception as e:
         click.echo(f"Unexpected error: {e}")

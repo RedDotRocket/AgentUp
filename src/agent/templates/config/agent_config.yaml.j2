@@ -1,4 +1,11 @@
-# AgentUp Configuration
+# AgentUp Configuration with Unified Security Architecture
+#
+# This configuration includes the AgentUp Security Framework with:
+# - Comprehensive endpoint protection (JSON-RPC, MCP, push notifications)
+# - Context-aware middleware selection based on plugin classification
+# - Scope-based authorization with hierarchical permission inheritance
+# - Enhanced security context through EnhancedCapabilityContext
+# - Plugin classification integration (LOCAL, NETWORK, HYBRID, AI_FUNCTION, CORE)
 
 # Agent Information
 agent:
@@ -6,21 +13,26 @@ agent:
   description: {{ description }}
   version: 0.1.0
 
-# Core plugins configuration
+# Core plugins configuration with AgentUp Security Framework integration
 plugins:
-{% for plugin in selected_plugins %}
-{% if plugin == 'echo' %}
-  - plugin_id: echo
-    name: Echo
-    description: Echo back the input text
-    tags: [echo, basic, simple]
+  # Hello plugin - basic example (can be removed)
+  - plugin_id: hello
+    name: Hello Plugin
+    description: Simple greeting plugin for testing and examples
+    tags: [hello, basic, example]
     input_mode: text
     output_mode: text
-    keywords: [echo, repeat, say]
-    patterns: ['^echo ', '^repeat ', '^say ']
+    keywords: [hello, hi, greetings]
+    patterns: ['^hello', '^hi', 'greetings']
     routing_mode: direct
     priority: 50
-{% elif plugin == 'ai_assistant' %}
+    capabilities:
+      - capability_id: hello
+        required_scopes: ["api:read"]
+        enabled: true
+
+{% for plugin in selected_plugins %}
+{% if plugin == 'ai_assistant' %}
   - plugin_id: ai_assistant
     name: AI Assistant
     description: AI-powered assistant for various tasks
@@ -28,6 +40,12 @@ plugins:
     input_mode: text
     output_mode: text
     priority: 100
+    middleware_override:
+      - name: "rate_limited"
+        params:
+          requests_per_minute: 20  # Lower rate for AI operations
+      - name: "timed"
+        params: {}
 {% elif plugin == 'document_processor' %}
   - plugin_id: document_processor
     name: Document Processor
@@ -36,6 +54,10 @@ plugins:
     input_mode: text
     output_mode: text
     priority: 90
+    middleware_override:
+      - name: "cached"
+        params:
+          ttl: 600  # Cache document processing results longer
 {% elif plugin == 'data_analyzer' %}
   - plugin_id: data_analyzer
     name: Data Analyzer
@@ -44,6 +66,13 @@ plugins:
     input_mode: text
     output_mode: text
     priority: 90
+    middleware_override:
+      - name: "cached"
+        params:
+          ttl: 300  # Standard cache for analysis
+      - name: "rate_limited"
+        params:
+          requests_per_minute: 30
 {% elif plugin == 'hello_world' %}
   - plugin_id: hello_world
     name: Hello World
@@ -67,35 +96,56 @@ plugins:
 {% endif %}
 {% endfor %}
 
-# Security configuration
+# Unified Security Configuration
 security:
   enabled: {{ security_enabled | default(false) }}
 {% if security_enabled %}
-  type: {{ auth_type | default('api_key') }}
-{% if auth_type == 'api_key' %}
-  api_key:
-    header_name: {{ auth_header_name | default('X-API-Key') }}
-    location: {{ auth_location | default('header') }}
-    keys:
-      - "{{ generate_api_key() }}"
+  auth:
+{% if auth_type == 'api_key' or not auth_type %}
+    api_key:
+      header_name: {{ auth_header_name | default('X-API-Key') }}
+      location: {{ auth_location | default('header') }}
+      keys:
+        - key: "{{ generate_api_key() }}"
+          scopes: ["api:read", "files:read"]
 {% if generate_multiple_keys %}
-      - "{{ generate_api_key() }}"
+        - key: "{{ generate_api_key() }}"
+          scopes: ["api:read", "files:read"]
 {% endif %}
-{% elif auth_type == 'bearer' %}
-  bearer:
-    jwt_secret: '{{ generate_jwt_secret() }}'
-    algorithm: HS256
-    issuer: {{ project_name_snake }}
-    audience: a2a-clients
+{% elif auth_type == 'jwt' %}
+    jwt:
+      secret_key: '{{ generate_jwt_secret() }}'
+      algorithm: HS256
+      issuer: {{ project_name_snake }}
+      audience: a2a-clients
 {% elif auth_type == 'oauth2' %}
-  oauth2:
-    token_url: '${OAUTH_TOKEN_URL:/oauth/token}'
-    client_id: '${OAUTH_CLIENT_ID:your-client-id}'
-    client_secret: '{{ generate_client_secret() }}'
-    scopes:
-      read: Read access to agent capabilities
-      write: Write access to send messages
-      admin: Administrative access
+    oauth2:
+      validation_strategy: "jwt"
+      jwks_url: "${JWKS_URL:https://your-provider.com/.well-known/jwks.json}"
+      jwt_algorithm: "RS256"
+      jwt_issuer: "${JWT_ISSUER:https://your-provider.com}"
+      jwt_audience: "${JWT_AUDIENCE:{{ project_name_snake }}}"
+{% endif %}
+  # Scope hierarchy for fine-grained authorization
+  scope_hierarchy:
+{% if auth_type == 'oauth2' %}
+    admin: ["*"]
+    api:admin: ["api:write", "api:read"]
+    api:write: ["api:read"]
+    api:read: []
+    files:admin: ["files:write", "files:read", "files:sensitive"]
+    files:write: ["files:read"]
+    files:sensitive: ["files:read"]
+    system:admin: ["system:write", "system:read"]
+    system:write: ["system:read"]
+    system:read: []
+{% else %}
+    admin: ["*"]  # Admin has all permissions
+    api:write: ["api:read"]
+    api:read: []
+    files:write: ["files:read"]
+    files:read: []
+    system:read: []
 {% endif %}
 {% endif %}
 
@@ -127,13 +177,13 @@ ai:
 {% else %}
   system_prompt: |
     You are {{ project_name }}, an AI agent created with AgentUp.
-    
+
     Your role:
     - Understand user requests naturally and conversationally
     - Use the appropriate functions when needed to help users
     - Provide helpful, accurate, and friendly responses
     - Maintain context across conversations
-    
+
     Always be helpful, accurate, and maintain a friendly tone.
 {% endif %}
 
@@ -194,7 +244,8 @@ mcp:
     port: {{ mcp_server_port | default(8001) }}
 {% endif %}
 
-# Middleware configuration
+# Context-aware middleware configuration
+# Middleware is automatically selected based on plugin classification
 middleware:
   - name: timed
     params: {}
@@ -203,17 +254,35 @@ middleware:
   - name: cached
     params:
       ttl: {{ middleware_cache_ttl | default(300) }}
+      # Context-aware caching based on plugin types
+      plugin_specific_ttl:
+        local: {{ middleware_cache_ttl | default(300) }}      # Standard cache for local plugins
+        network: {{ (middleware_cache_ttl | default(300)) * 2 }}  # Longer cache for network plugins
+        hybrid: {{ middleware_cache_ttl | default(300) }}     # Standard cache for hybrid plugins
+        ai_function: 60  # Shorter cache for AI functions (fresh responses)
 {% endif %}
 {% if 'rate_limit' in feature_config.get('middleware', []) %}
   - name: rate_limited
     params:
       requests_per_minute: {{ rate_limit_rpm | default(60) }}
+      # Plugin-specific rate limiting
+      plugin_specific_limits:
+        local: {{ rate_limit_rpm | default(60) }}           # Standard rate for local plugins
+        network: {{ (rate_limit_rpm | default(60)) // 2 }}  # Lower rate for network plugins
+        hybrid: {{ rate_limit_rpm | default(60) }}          # Standard rate for hybrid plugins
+        ai_function: {{ (rate_limit_rpm | default(60)) // 3 }}  # Much lower rate for AI functions
 {% endif %}
 {% if 'retry' in feature_config.get('middleware', []) %}
   - name: retryable
     params:
       max_retries: {{ retry_max_attempts | default(3) }}
       backoff_factor: {{ retry_backoff | default(2) }}
+      # Plugin-specific retry configuration
+      plugin_compatibility:
+        local: false    # Local plugins rarely need retries
+        network: true   # Network plugins benefit from retries
+        hybrid: true    # Hybrid plugins may need retries for network portions
+        ai_function: false  # AI functions need specialized retry logic
 {% endif %}
 {% endif %}
 
@@ -228,7 +297,7 @@ push_notifications:
   retry_attempts: {{ push_retry_attempts | default(3) }}
   timeout: {{ push_timeout | default(30) }}
 
-{% if has_state %}
+{% if has_state_management %}
 # State management configuration
 state_management:
   enabled: true
@@ -263,12 +332,12 @@ logging:
   enabled: {{ logging_enabled | default(true) }}
   level: "{{ log_level | default('INFO') }}"
   format: "{{ log_format | default('text') }}"
-  
+
   # Console output settings
   console:
     enabled: {{ console_logging | default(true) }}
     colors: {{ console_colors | default(true) }}
-  
+
   # File logging
   file:
     enabled: {{ file_logging | default(false) }}
@@ -278,11 +347,11 @@ logging:
     retention: "{{ log_retention | default('7 days') }}"
     compression: {{ log_compression | default(false) }}
 {% endif %}
-  
+
   # Advanced features
   correlation_id: {{ correlation_id | default(false) }}
   request_logging: {{ request_logging | default(false) }}
-  
+
 {% if log_modules %}
   # Module-specific log levels
   modules:
@@ -290,7 +359,7 @@ logging:
     {{ module }}: "{{ level }}"
 {% endfor %}
 {% endif %}
-  
+
   # Uvicorn integration
   uvicorn:
     access_log: {{ uvicorn_access_log | default(false) }}

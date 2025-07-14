@@ -22,8 +22,8 @@ class OAuth2Authenticator(BaseAuthenticator):
 
     def _validate_config(self) -> None:
         """Validate OAuth2 authenticator configuration."""
-        # Get OAuth2 configuration
-        oauth2_config = self.config.get("oauth2", {})
+        # Get OAuth2 configuration from auth structure
+        oauth2_config = self.config.get("auth", {}).get("oauth2", {})
 
         if not oauth2_config:
             raise SecurityConfigurationException("OAuth2 configuration is required for oauth2 authentication")
@@ -55,9 +55,8 @@ class OAuth2Authenticator(BaseAuthenticator):
             if not (self.client_id and self.client_secret):
                 raise SecurityConfigurationException("Token introspection requires client_id and client_secret")
 
-        # Optional: Allowed scopes
+        # Optional: Required scopes
         self.required_scopes = set(oauth2_config.get("required_scopes", []))
-        self.allowed_scopes = set(oauth2_config.get("allowed_scopes", []))
 
         # Cache JWKS keys if URL provided
         self._jwks_cache: dict[str, Any] | None = None

@@ -23,7 +23,7 @@ def deploy(type: str, output: str | None, port: int, replicas: int, image_name: 
     """
     # Check if we're in an agent project
     if not Path("agent_config.yaml").exists():
-        click.echo(click.style("❌ Error: No agent_config.yaml found!", fg="red"))
+        click.echo(click.style("✗ Error: No agent_config.yaml found!", fg="red"))
         click.echo("Are you in an agent project directory?")
         return
 
@@ -34,7 +34,7 @@ def deploy(type: str, output: str | None, port: int, replicas: int, image_name: 
             agent_name = config.get("agent", {}).get("name", "agent")
             agent_name_clean = agent_name.lower().replace(" ", "-").replace("_", "-")
     except (yaml.YAMLError, OSError, ValueError) as e:
-        click.echo(click.style(f"❌ Error loading agent_config.yaml: {str(e)}", fg="red"))
+        click.echo(click.style(f"✗ Error loading agent_config.yaml: {str(e)}", fg="red"))
         agent_name = "agent"
         agent_name_clean = "agent"
 
@@ -55,7 +55,7 @@ def deploy(type: str, output: str | None, port: int, replicas: int, image_name: 
         elif type == "helm":
             generate_helm_files(output_dir, agent_name_clean, image_name, port)
 
-        click.echo(f"\n{click.style('✅ Deployment files generated successfully!', fg='green', bold=True)}")
+        click.echo(f"\n{click.style('✓ Deployment files generated successfully!', fg='green', bold=True)}")
 
         # Show next steps
         click.echo("\nNext steps:")
@@ -75,7 +75,7 @@ def deploy(type: str, output: str | None, port: int, replicas: int, image_name: 
             click.echo(f"3. Upgrade: helm upgrade {agent_name_clean} {helm_dir}/")
 
     except Exception as e:
-        click.echo(f"{click.style('❌ Error generating files:', fg='red')} {str(e)}")
+        click.echo(f"{click.style('✗ Error generating files:', fg='red')} {str(e)}")
 
 
 def generate_docker_files(output_dir: Path, agent_name: str, image_name: str, port: int):

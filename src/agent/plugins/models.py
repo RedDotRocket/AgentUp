@@ -60,6 +60,7 @@ class CapabilityInfo:
     config_schema: dict[str, Any] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
     system_prompt: str | None = None
+    required_scopes: list[str] = field(default_factory=list)
 
 
 @dataclass

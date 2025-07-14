@@ -1,5 +1,14 @@
-# AgentUp Agent Configuration - Minimal Template
+# AgentUp Agent Configuration - Minimal Template with Unified Security
 # Barebone agent with text processing only - no AI, no external dependencies
+#
+# This minimal configuration includes essential AgentUp Security Framework features:
+# - API key authentication with basic scope hierarchy
+# - Plugin classification for LOCAL plugins
+# - Simple context-aware middleware configuration
+# - Comprehensive endpoint protection including MCP endpoints
+# - Basic scope-based authorization (api:read, files:read, admin)
+#
+# Provides security improvements from the unified architecture while maintaining simplicity.
 
 #  Agent Information
 agent:
@@ -7,18 +16,22 @@ agent:
   description: {{ description }}
   version: 0.1.0
 
-# Core plugins configuration
+# Plugins configuration
 plugins:
-  - plugin_id: echo
-    name: Echo
-    description: Echo back the input text
-    tags: [echo, basic, simple]
+  - plugin_id: hello
+    name: Hello Plugin
+    description: Simple greeting plugin for testing and examples
+    tags: [hello, basic, example]
     input_mode: text
     output_mode: text
-    keywords: [echo, repeat, say]
-    patterns: ['.echo']  # Catch-all for minimal template
-    routing_mode: direct  # Use direct routing for keyword-based matching
+    keywords: [hello, hi, greetings]
+    patterns: ['^hello', '^hi', 'greetings']
+    routing_mode: direct
     priority: 50
+    capabilities:
+      - capability_id: hello
+        required_scopes: ["api:read"]
+        enabled: true
 
 # Routing configuration
 routing:
@@ -48,26 +61,33 @@ ai:
   enabled: true
   system_prompt: |
     You are a helpful AI assistant created by AgentUp.
-    
+
     Your role:
     - Understand user requests naturally
     - Provide helpful, accurate responses
     - Maintain a friendly and professional tone
     - Use available functions when appropriate
     - Keep responses concise and relevant
-    
+
     Always be helpful, accurate, and maintain context in conversations.
 
-# Security configuration
+# Unified security configuration for minimal template
 security:
   enabled: true
-  type: "api_key"
-  api_key:
-    header_name: "X-API-Key"
-    location: "header"  # Options: header, query, cookie
-    # The below is randomly generated, and not hardcoded, please change if relevant
-    keys:
-      - "{{ generate_api_key() }}"
+  auth:
+    api_key:
+      header_name: "X-API-Key"
+      location: "header"  # Options: header, query, cookie
+      keys:
+        - key: "{{ generate_api_key() }}"
+          scopes: ["api:read", "api:write", "system:read"]  # Permissions for demo plugin
+  # Basic scope hierarchy for minimal template
+  scope_hierarchy:
+    admin: ["*"]        # Admin has all permissions
+    api:write: ["api:read"]   # Write access includes read
+    api:read: []        # Basic read access
+    system:read: []     # System information access
+    files:read: []      # File read access
 
 # Cache configuration
 {% if has_middleware and 'cache' in feature_config.get('middleware', []) %}
@@ -87,7 +107,7 @@ cache:
 {% endif %}
 {% endif %}
 
-# Middleware configuration
+# Simple context-aware middleware for minimal template
 middleware:
   - name: timed
     params: {}
@@ -95,6 +115,10 @@ middleware:
   - name: cached
     params:
       ttl: 300  # 5 minutes
+      # Simple plugin-aware caching for minimal template
+      plugin_specific_ttl:
+        local: 300      # Standard cache for local plugins
+        ai_function: 60 # Shorter cache for AI functions
 {% endif %}
 
 # Push notifications configuration
@@ -105,7 +129,7 @@ push_notifications:
 
 
 # State management configuration
-{% if has_state %}
+{% if has_state_management %}
 state_management:
   enabled: true
 {% if state_backend == 'valkey' %}
@@ -125,32 +149,11 @@ state_management:
     storage_dir: "./conversation_states"
 {% endif %}
 
-# Legacy state configuration (still supported)
-{% if state_backend == 'valkey' %}
-state:
-  backend: valkey
-  ttl: 3600  # 1 hour expiration
-  url: "valkey://localhost:6379"
-  key_prefix: "agentup:state:"
-{% elif state_backend == 'memory' %}
-state:
-  backend: memory
-  ttl: 3600  # 1 hour expiration
-{% elif state_backend == 'file' %}
-state:
-  backend: file
-  storage_dir: "./conversation_states"
-  ttl: 3600  # 1 hour expiration
-{% endif %}
 {% else %}
 # State management disabled for minimal template
 state_management:
   enabled: false
 
-# Legacy state configuration (still supported)
-state:
-  backend: memory
-  ttl: 3600  # 1 hour
 {% endif %}
 
 # Logging configuration
@@ -158,20 +161,20 @@ logging:
   enabled: true
   level: "INFO"
   format: "text"  # Simple text format for minimal template
-  
+
   # Console output settings
   console:
     enabled: true
     colors: true
-  
+
   # File logging disabled for minimal template
   file:
     enabled: false
-  
+
   # Basic features for minimal template
   correlation_id: false       # Disabled for simplicity
   request_logging: false      # Disabled for simplicity
-  
+
   # Uvicorn integration
   uvicorn:
     access_log: false         # Minimal logging

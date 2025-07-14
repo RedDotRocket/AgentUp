@@ -221,10 +221,28 @@ class EnhancedPushNotifier:
                 logger.warning(f"Webhook URL points to localhost: {url}")
                 # Allow for development but log warning
 
-            # Check for private IP ranges (simplified check)
-            if hostname.startswith(("10.", "172.", "192.168.")):
-                logger.warning(f"Webhook URL points to private IP: {url}")
+            # Check for private IP ranges and cloud metadata endpoints
+            private_ranges = [
+                "10.",
+                "172.",
+                "192.168.",  # Private networks
+                "169.254.",  # Link-local (AWS metadata)
+                "fe80:",  # IPv6 link-local
+            ]
+
+            # Block cloud metadata endpoints (additional security)
+            metadata_endpoints = [
+                "169.254.169.254",  # AWS/Azure metadata
+                "metadata.google.internal",  # GCP metadata
+            ]
+
+            if any(hostname.startswith(prefix) for prefix in private_ranges):
+                logger.warning(f"Webhook URL points to private network: {url}")
                 # Allow for development but log warning
+
+            if hostname in metadata_endpoints:
+                logger.error(f"Webhook URL points to cloud metadata endpoint: {url}")
+                raise ValueError(f"Access to cloud metadata endpoints is blocked: {hostname}")
 
         except Exception as e:
             raise ValueError(f"Invalid webhook URL: {e}") from e

@@ -1,10 +1,3 @@
-"""
-Provides context management for passing authentication information
-from FastAPI requests through to capability handlers and plugins. The idea being
-plugin authors may want to access the authentication information such as
-scopes, user ID, etc. without having to pass it explicitly through every function call.
-"""
-
 import contextvars
 from typing import Any
 
@@ -21,8 +14,6 @@ _auth_context: contextvars.ContextVar[AuthenticationResult | None] = contextvars
 
 
 class AuthContext:
-    """Context manager for authentication information."""
-
     def __init__(self, auth_result: AuthenticationResult | None):
         self.auth_result = auth_result
         self.token = None
@@ -66,6 +57,7 @@ def get_current_scopes() -> set[str]:
         set[str]: Set of scopes, empty if not authenticated
     """
     auth_result = get_current_auth()
+    logger.debug(f"User scopes: {list(auth_result.scopes)}" if auth_result else "No user authenticated")
     return auth_result.scopes or set() if auth_result else set()
 
 
@@ -146,12 +138,41 @@ class CapabilityContext:
         return self.auth_result is not None
 
     def has_scope(self, scope: str) -> bool:
-        """Check if user has a specific scope."""
-        return scope in self.user_scopes
+        """Check if user has a specific scope, including scope hierarchy expansion."""
+        try:
+            # Try to use the unified auth manager's scope hierarchy
+            from agent.security.unified_auth import get_unified_auth_manager
+
+            auth_manager = get_unified_auth_manager()
+            if auth_manager and auth_manager.scope_hierarchy:
+                logger.info(f"Checking if user has scope '{scope}'")
+                logger.debug(f"User scopes: {list(self.user_scopes)}")
+                return auth_manager.scope_hierarchy.validate_scope(list(self.user_scopes), scope)
+            else:
+                # Fallback to simple scope checking if no hierarchy available
+                return scope in self.user_scopes
+        except ImportError:
+            # Fallback if unified auth not available
+            return scope in self.user_scopes
 
     def requires_scopes(self, required_scopes: set[str]) -> bool:
-        """Check if user has all required scopes."""
-        return required_scopes.issubset(self.user_scopes)
+        """Check if user has all required scopes, including scope hierarchy expansion."""
+        try:
+            # Try to use the unified auth manager's scope hierarchy
+            from agent.security.unified_auth import get_unified_auth_manager
+
+            auth_manager = get_unified_auth_manager()
+            if auth_manager and auth_manager.scope_hierarchy:
+                return all(
+                    auth_manager.scope_hierarchy.validate_scope(list(self.user_scopes), scope)
+                    for scope in required_scopes
+                )
+            else:
+                # Fallback to simple scope checking if no hierarchy available
+                return required_scopes.issubset(self.user_scopes)
+        except ImportError:
+            # Fallback if unified auth not available
+            return required_scopes.issubset(self.user_scopes)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert context to dictionary for logging/debugging."""
@@ -205,3 +226,44 @@ def log_auth_event(event_type: str, capability_id: str, success: bool, details: 
         logger.info(f"Auth event: {event_type} for capability '{capability_id}' - {log_data}")
     else:
         logger.warning(f"Auth failure: {event_type} for capability '{capability_id}' - {log_data}")
+
+
+def log_capability_access(
+    capability_id: str,
+    user_id: str,
+    user_scopes: set[str],
+    required_scopes: list[str],
+    success: bool,
+    execution_time_ms: int = None,
+):
+    """
+    Comprehensive audit logging for capability access.
+
+    This implements the audit trail requirement from SCOPE_DESIGN.md to log
+    all capability access with user context for security monitoring.
+
+    Args:
+        capability_id: ID of the capability being accessed
+        user_id: ID of the user making the request
+        user_scopes: Set of scopes the user possesses
+        required_scopes: List of scopes required for the capability
+        success: Whether the access was successful
+        execution_time_ms: Optional execution time in milliseconds
+    """
+    import time
+
+    audit_data = {
+        "timestamp": time.time(),
+        "capability_id": capability_id,
+        "user_id": user_id,
+        "user_scopes": sorted(list(user_scopes)),
+        "required_scopes": required_scopes,
+        "access_granted": success,
+        "scope_check_passed": all(scope in user_scopes for scope in required_scopes),
+        "execution_time_ms": execution_time_ms,
+    }
+
+    if success:
+        logger.info(f"AUDIT: Capability access granted - {audit_data}")
+    else:
+        logger.warning(f"AUDIT: Capability access denied - {audit_data}")

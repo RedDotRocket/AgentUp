@@ -1,9 +1,3 @@
-"""
-Plugin manager for AgentUp capability plugins.
-
-Handles plugin discovery, loading, and lifecycle management.
-"""
-
 import importlib
 import importlib.metadata
 import importlib.util
@@ -27,12 +21,12 @@ from .models import (
 
 logger = structlog.get_logger(__name__)
 
-# Hook implementation marker
-hookimpl = pluggy.HookimplMarker("agentup")
-
 
 class PluginManager:
     """Manages capability plugins for AgentUp."""
+
+    # Hook implementation marker - shared across all plugin instances
+    hookimpl = pluggy.HookimplMarker("agentup")
 
     def __init__(self):
         """Initialize the plugin manager."""
@@ -48,7 +42,7 @@ class PluginManager:
 
     def discover_plugins(self) -> None:
         """Discover and load all available plugins."""
-        logger.info("Discovering AgentUp plugins...")
+        logger.debug("Plugin discovery started")
 
         # Load from entry points
         self._load_entry_point_plugins()
@@ -56,7 +50,7 @@ class PluginManager:
         # Load from installed plugins directory
         self._load_installed_plugins()
 
-        logger.info(f"Discovered {len(self.plugins)} plugins providing {len(self.capabilities)} capabilities")
+        # Individual plugin discovery logs already show capability counts
 
     def _load_entry_point_plugins(self) -> None:
         """Load plugins from Python entry points."""
@@ -72,12 +66,11 @@ class PluginManager:
                 # Python 3.9
                 capability_entries = entry_points.get("agentup.capabilities", [])
 
-            logger.debug(f"Found {len(capability_entries)} Plugin entry points")
+            logger.debug(f"Discovered {len(capability_entries)} Plugins")
 
             for entry_point in capability_entries:
                 try:
-                    logger.info(f"Discovered plugin '{entry_point.name}'")
-                    logger.debug(f"Loading entry point: {entry_point.name}")
+                    logger.debug(f"Querying: {entry_point.name}")
                     plugin_class = entry_point.load()
                     plugin_instance = plugin_class()
 
@@ -97,7 +90,12 @@ class PluginManager:
                     self.plugins[entry_point.name] = plugin_info
 
                     # Register the capability
+                    capabilities_before = len(self.capabilities)
                     self._register_plugin_capability(entry_point.name, plugin_instance)
+                    capabilities_after = len(self.capabilities)
+                    capability_count = capabilities_after - capabilities_before
+
+                    logger.info(f"Discovered plugin '{entry_point.name}' with {capability_count} capabilities")
 
                 except Exception as e:
                     logger.error(f"Failed to load entry point {entry_point.name}: {e}")
@@ -108,6 +106,7 @@ class PluginManager:
             logger.error(f"Error loading entry point plugins: {e}")
 
     def _load_installed_plugins(self) -> None:
+        # TODO: Document this method
         """Load plugins from installed plugins directory."""
         installed_dir = Path.home() / ".agentup" / "plugins"
         if not installed_dir.exists():
@@ -130,7 +129,7 @@ class PluginManager:
         plugin_name = f"installed_{plugin_dir.name}"
         plugin_file = plugin_dir / entry_file
 
-        logger.info(f"Discovering '{plugin_name}' plugin")
+        # We'll log with capability count after registering
 
         # Similar to local plugin loading
         spec = importlib.util.spec_from_file_location(plugin_name, plugin_file)
@@ -185,12 +184,17 @@ class PluginManager:
         self.plugins[plugin_name] = plugin_info
 
         # Register the capability
+        capabilities_before = len(self.capabilities)
         self._register_plugin_capability(plugin_name, plugin_instance)
+        capabilities_after = len(self.capabilities)
+        capability_count = capabilities_after - capabilities_before
+
+        logger.info(f"Discovered plugin '{plugin_name}' with {capability_count} capabilities")
 
     def _register_plugin_capability(self, plugin_name: str, plugin_instance: Any) -> None:
         """Register capability or capabilities from a plugin."""
         try:
-            # Get capability info from the plugin
+            # Get capability info from entry points care of pluggy hooks
             results = self.pm.hook.register_capability()
             if not results:
                 logger.warning(f"Plugin {plugin_name} did not return capability info")
@@ -233,7 +237,7 @@ class PluginManager:
                 self.capability_to_plugin[capability_info.id] = plugin_name
                 self.capability_hooks[capability_info.id] = plugin_instance
 
-                logger.info(f"Discovered capability '{capability_info.id}' from plugin '{plugin_name}'")
+                logger.debug(f"Discovered capability '{capability_info.id}' from plugin '{plugin_name}'")
 
         except Exception as e:
             logger.error(f"Failed to register capabilities from plugin {plugin_name}: {e}")
@@ -399,3 +403,13 @@ def get_plugin_manager() -> PluginManager:
         _plugin_manager = PluginManager()
         _plugin_manager.discover_plugins()
     return _plugin_manager
+
+
+# Export the hookimpl for use by plugins
+def get_hookimpl():
+    """Get the hook implementation marker for AgentUp plugins."""
+    return PluginManager.hookimpl
+
+
+# Backward compatibility
+hookimpl = PluginManager.hookimpl

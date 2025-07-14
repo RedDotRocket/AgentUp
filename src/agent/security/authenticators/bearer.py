@@ -1,3 +1,4 @@
+import hashlib
 import os
 from typing import Any
 
@@ -47,9 +48,9 @@ class BearerTokenAuthenticator(BaseAuthenticator):
 
     def _validate_config(self) -> None:
         """Validate Bearer token authenticator configuration."""
-        # Check for bearer token in config
-        bearer_config = self.config.get("bearer", {})
-        bearer_token = bearer_config.get("bearer_token") or self.config.get("bearer_token")
+        # Get bearer configuration from auth structure
+        bearer_config = self.config.get("auth", {}).get("bearer", {})
+        bearer_token = bearer_config.get("bearer_token")
 
         # JWT-specific configuration
         jwt_secret_raw = bearer_config.get("jwt_secret")
@@ -177,7 +178,11 @@ class BearerTokenAuthenticator(BaseAuthenticator):
 
         if secure_compare(token, configured_token):
             log_security_event("authentication", request_info, True, "Bearer token authenticated")
-            return AuthenticationResult(success=True, user_id=f"bearer_user_{hash(token) % 10000}", credentials=token)
+            return AuthenticationResult(
+                success=True,
+                user_id=f"bearer_user_{hashlib.sha256(token.encode()).hexdigest()[:16]}",
+                credentials=token,
+            )
 
         log_security_event("authentication", request_info, False, "Bearer token does not match configured token")
         raise InvalidCredentialsException("Unauthorized")
@@ -215,15 +220,32 @@ class BearerTokenAuthenticator(BaseAuthenticator):
                 options={
                     "verify_signature": True,
                     "verify_exp": True,
+                    "verify_nbf": True,
                     "verify_iat": True,
                     "verify_aud": self.jwt_audience is not None,
                     "verify_iss": self.jwt_issuer is not None,
+                    "require_exp": True,
+                    "require_iat": True,
                 },
             )
 
             # Extract user information from payload
             user_id = payload.get("sub") or payload.get("user_id") or "jwt_user"
-            scopes = payload.get("scope", "").split() if payload.get("scope") else []
+
+            # Support both "scope" (string) and "scopes" (array) formats
+            scopes = []
+            if payload.get("scopes"):
+                # Handle array format: "scopes": ["admin", "read"]
+                scopes_value = payload.get("scopes")
+                if isinstance(scopes_value, list):
+                    scopes = scopes_value
+                else:
+                    scopes = [str(scopes_value)]
+            elif payload.get("scope"):
+                # Handle string format: "scope": "admin read write"
+                scopes = payload.get("scope", "").split()
+            else:
+                scopes = []
 
             log_security_event("authentication", request_info, True, f"JWT token authenticated for user: {user_id}")
 

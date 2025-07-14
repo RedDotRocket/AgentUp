@@ -135,7 +135,7 @@ def create_agent(
 
         # Set default state backend for quick mode based on template
         feature_config = {}
-        if "state" in project_config["features"]:
+        if "state_management" in project_config["features"]:
             if selected_template == "minimal":
                 feature_config["state_backend"] = "memory"
             elif selected_template == "full":
@@ -249,7 +249,7 @@ def create_agent(
                     f"{click.style('⚠️  Warning: Could not initialize git repository (git not found or failed)', fg='yellow')}"
                 )
 
-        click.echo(f"\n{click.style('✅ Project created successfully!', fg='green', bold=True)}")
+        click.echo(f"\n{click.style('✓ Project created successfully!', fg='green', bold=True)}")
         click.echo(f"\nLocation: {output_dir}")
         click.echo("\nNext steps:")
         click.echo(f"  1. cd {output_dir.name}")
@@ -257,7 +257,7 @@ def create_agent(
         click.echo("  3. agentup agent serve                # Start development server")
 
     except Exception as e:
-        click.echo(f"{click.style('❌ Error:', fg='red')} {str(e)}")
+        click.echo(f"{click.style('✗ Error:', fg='red')} {str(e)}")
         return
 
 
@@ -291,7 +291,7 @@ def configure_features(features: list) -> dict[str, Any]:
 
             config["cache_backend"] = cache_backend_choice
 
-    if "state" in features:
+    if "state_management" in features:
         state_backend_choice = questionary.select(
             "Select state management backend:",
             choices=[
@@ -308,9 +308,9 @@ def configure_features(features: list) -> dict[str, Any]:
         auth_choice = questionary.select(
             "Select authentication method:",
             choices=[
-                questionary.Choice("API Key", value="api_key"),
-                questionary.Choice("JWT", value="jwt"),
-                questionary.Choice("OAuth2", value="oauth2"),
+                questionary.Choice("API Key (simple, good for development)", value="api_key"),
+                questionary.Choice("JWT Bearer (production-ready with scopes)", value="jwt"),
+                questionary.Choice("OAuth2 (enterprise-grade with provider integration)", value="oauth2"),
             ],
             style=custom_style,
         ).ask()

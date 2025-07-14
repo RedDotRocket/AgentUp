@@ -135,7 +135,7 @@ class TestProjectGenerationFlow:
             mock_features.return_value = {
                 "minimal": {"features": []},
                 "standard": {"features": ["services", "middleware", "mcp"]},
-                "full": {"features": ["services", "middleware", "auth", "state", "multimodal", "mcp", "monitoring"]},
+                "full": {"features": ["services", "middleware", "auth", "state_management", "multimodal", "mcp", "monitoring"]},
                 "demo": {"features": ["services", "middleware", "mcp"]},
             }
             yield mock_features

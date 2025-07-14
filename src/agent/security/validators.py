@@ -69,22 +69,78 @@ class SecurityConfigValidator:
         if not enabled:
             return  # No further validation needed if security is disabled
 
-        # Validate auth type
-        auth_type = config.get("type", "api_key")
-        if not isinstance(auth_type, str):
-            raise SecurityConfigurationException("Security 'type' must be a string")
+        # Validate auth: structure
+        auth_config = config.get("auth", {})
+        if not auth_config:
+            raise SecurityConfigurationException("Security configuration must contain 'auth' section")
 
-        valid_auth_types = {"api_key", "bearer", "oauth2"}
-        if auth_type not in valid_auth_types:
-            raise SecurityConfigurationException(f"Invalid auth type '{auth_type}'. Must be one of: {valid_auth_types}")
+        if not isinstance(auth_config, dict):
+            raise SecurityConfigurationException("Security 'auth' must be a dictionary")
 
-        # Validate specific auth type configurations
-        if auth_type == "api_key":
-            SecurityConfigValidator._validate_api_key_config(config)
-        elif auth_type == "bearer":
-            SecurityConfigValidator._validate_bearer_config(config)
-        elif auth_type == "oauth2":
-            SecurityConfigValidator._validate_oauth2_config(config)
+        available_types = list(auth_config.keys())
+        if not available_types:
+            raise SecurityConfigurationException("Security 'auth' must contain at least one authentication type")
+
+        # Validate each auth type
+        valid_auth_types = {"api_key", "bearer", "oauth2", "jwt"}
+        for auth_type in available_types:
+            if auth_type not in valid_auth_types:
+                raise SecurityConfigurationException(f"Invalid auth type '{auth_type}'. Must be one of: {valid_auth_types}")
+
+        # Validate the first (primary) auth type configuration
+        primary_auth_type = available_types[0]
+        primary_config = auth_config[primary_auth_type]
+
+        if primary_auth_type == "api_key":
+            SecurityConfigValidator._validate_api_key_config_new(primary_config)
+        elif primary_auth_type == "bearer":
+            SecurityConfigValidator._validate_bearer_config(primary_config)
+        elif primary_auth_type == "oauth2":
+            SecurityConfigValidator._validate_oauth2_config(primary_config)
+        elif primary_auth_type == "jwt":
+            SecurityConfigValidator._validate_jwt_config(primary_config)
+
+    @staticmethod
+    def _validate_api_key_config_new(config: dict[str, Any]) -> None:
+        """Validate API key configuration in new auth: structure."""
+        # Config should contain the api_key configuration directly
+        header_name = config.get("header_name", "X-API-Key")
+        if not isinstance(header_name, str) or not header_name.strip():
+            raise SecurityConfigurationException("API key header_name must be a non-empty string")
+
+        location = config.get("location", "header")
+        if location not in {"header", "query", "cookie"}:
+            raise SecurityConfigurationException("API key location must be 'header', 'query', or 'cookie'")
+
+        keys = config.get("keys", [])
+        if not isinstance(keys, list) or not keys:
+            raise SecurityConfigurationException("API key 'keys' must be a non-empty list")
+
+        for key in keys:
+            if isinstance(key, str):
+                # Simple string format
+                SecurityConfigValidator._validate_api_key_value(key)
+            elif isinstance(key, dict):
+                # Complex object format with key and scopes
+                if "key" not in key:
+                    raise SecurityConfigurationException("API key object must contain 'key' field")
+
+                key_value = key["key"]
+                if not isinstance(key_value, str):
+                    raise SecurityConfigurationException("API key 'key' field must be a string")
+
+                SecurityConfigValidator._validate_api_key_value(key_value)
+
+                # Validate scopes if provided
+                scopes = key.get("scopes", [])
+                if not isinstance(scopes, list):
+                    raise SecurityConfigurationException("API key 'scopes' must be a list")
+
+                for scope in scopes:
+                    if not isinstance(scope, str):
+                        raise SecurityConfigurationException("All scopes must be strings")
+            else:
+                raise SecurityConfigurationException("API keys must be strings or objects with 'key' field")
 
     @staticmethod
     def _validate_api_key_config(config: dict[str, Any]) -> None:
@@ -112,9 +168,29 @@ class SecurityConfigValidator:
 
             for key in keys:
                 if isinstance(key, str):
+                    # Simple string format
                     SecurityConfigValidator._validate_api_key_value(key)
+                elif isinstance(key, dict):
+                    # Complex object format with key and scopes
+                    if "key" not in key:
+                        raise SecurityConfigurationException("API key object must contain 'key' field")
+
+                    key_value = key["key"]
+                    if not isinstance(key_value, str):
+                        raise SecurityConfigurationException("API key 'key' field must be a string")
+
+                    SecurityConfigValidator._validate_api_key_value(key_value)
+
+                    # Validate scopes if provided
+                    scopes = key.get("scopes", [])
+                    if not isinstance(scopes, list):
+                        raise SecurityConfigurationException("API key 'scopes' must be a list")
+
+                    for scope in scopes:
+                        if not isinstance(scope, str):
+                            raise SecurityConfigurationException("All scopes must be strings")
                 else:
-                    raise SecurityConfigurationException("All API keys must be strings")
+                    raise SecurityConfigurationException("API keys must be strings or objects with 'key' field")
             return
 
         # Check for top-level api_key
@@ -149,21 +225,19 @@ class SecurityConfigValidator:
     @staticmethod
     def _validate_bearer_config(config: dict[str, Any]) -> None:
         """Validate Bearer token configuration."""
-        bearer_config = config.get("bearer", {})
 
-        if not isinstance(bearer_config, dict):
+        if not isinstance(config, dict):
             raise SecurityConfigurationException("Bearer config must be a dictionary")
 
         # Check for JWT configuration first
-        jwt_secret = bearer_config.get("jwt_secret")
+        jwt_secret = config.get("jwt_secret")
         if jwt_secret:
             # JWT mode - validate JWT config
             if not isinstance(jwt_secret, str):
                 raise SecurityConfigurationException("JWT secret must be a string")
             return
-
         # Check for required bearer token (non-JWT mode)
-        bearer_token = bearer_config.get("bearer_token") or config.get("bearer_token")
+        bearer_token = config.get("bearer_token") or config.get("bearer_token")
         if not bearer_token:
             raise SecurityConfigurationException("Bearer token or JWT secret is required when using bearer auth type")
 
@@ -174,8 +248,24 @@ class SecurityConfigValidator:
         if not isinstance(bearer_token, str):
             raise SecurityConfigurationException("Bearer token must be a string")
 
-        if len(bearer_token) < 16:
-            raise SecurityConfigurationException("Bearer token must be at least 16 characters long")
+    @staticmethod
+    def _validate_jwt_config(config: dict[str, Any]) -> None:
+        """Validate JWT configuration."""
+        secret_key = config.get("secret_key")
+        if not secret_key:
+            raise SecurityConfigurationException("JWT secret_key is required")
+
+        if not isinstance(secret_key, str):
+            raise SecurityConfigurationException("JWT secret_key must be a string")
+
+        # Validate algorithm if provided
+        algorithm = config.get("algorithm", "HS256")
+        if not isinstance(algorithm, str):
+            raise SecurityConfigurationException("JWT algorithm must be a string")
+
+        valid_algorithms = {"HS256", "HS384", "HS512", "RS256", "RS384", "RS512"}
+        if algorithm not in valid_algorithms:
+            raise SecurityConfigurationException(f"Invalid JWT algorithm '{algorithm}'. Must be one of: {valid_algorithms}")
 
     @staticmethod
     def _validate_oauth2_config(config: dict[str, Any]) -> None:
@@ -243,16 +333,6 @@ class SecurityConfigValidator:
         for scope in required_scopes:
             if not isinstance(scope, str):
                 raise SecurityConfigurationException("All OAuth2 required_scopes must be strings")
-            if not InputValidator.validate_scope_format(scope):
-                raise SecurityConfigurationException(f"Invalid OAuth2 scope format: {scope}")
-
-        allowed_scopes = oauth2_config.get("allowed_scopes", [])
-        if not isinstance(allowed_scopes, list):
-            raise SecurityConfigurationException("OAuth2 allowed_scopes must be a list")
-
-        for scope in allowed_scopes:
-            if not isinstance(scope, str):
-                raise SecurityConfigurationException("All OAuth2 allowed_scopes must be strings")
             if not InputValidator.validate_scope_format(scope):
                 raise SecurityConfigurationException(f"Invalid OAuth2 scope format: {scope}")
 

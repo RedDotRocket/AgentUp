@@ -22,14 +22,14 @@ TEST_RESULTS_FILE="/tmp/rate_limit_test_results.json"
 check_server_running() {
     echo -e "${BLUE}Checking if server is running...${NC}"
     if ! curl -s --max-time 5 "$SERVER_URL/health" > /dev/null 2>&1; then
-        echo -e "${RED}❌ Server is not running at $SERVER_URL${NC}"
+        echo -e "${RED}✗ Server is not running at $SERVER_URL${NC}"
         echo "Please start your agent server first:"
         echo "  agentup agent serve --port 8000"
         echo "  OR"
         echo "  uvicorn src.agent.api.app:app --reload --port 8000"
         exit 1
     fi
-    echo -e "${GREEN}✅ Server is running${NC}"
+    echo -e "${GREEN}✓ Server is running${NC}"
     echo
 }
 
@@ -152,9 +152,9 @@ test_rate_limit() {
     esac
 
     if (( $(echo "$success_rate >= $expected_success_rate" | bc -l 2>/dev/null || echo "0") )); then
-        echo -e "${GREEN}✅ Test passed (success rate >= ${expected_success_rate}%)${NC}"
+        echo -e "${GREEN}✓ Test passed (success rate >= ${expected_success_rate}%)${NC}"
     else
-        echo -e "${RED}❌ Test may have issues (success rate < ${expected_success_rate}%)${NC}"
+        echo -e "${RED}✗ Test may have issues (success rate < ${expected_success_rate}%)${NC}"
     fi
 
     # Cleanup
@@ -284,7 +284,7 @@ echo "- If all requests fail: Check if server is running and accessible"
 echo "- If no rate limiting occurs: Check middleware configuration in agent_config.yaml"
 echo "- If unexpected errors: Check server logs for detailed error information"
 echo
-echo -e "${GREEN}✅ Rate limiting tests completed successfully!${NC}"
+echo -e "${GREEN}✓ Rate limiting tests completed successfully!${NC}"
 echo "Results logged to: $TEST_RESULTS_FILE"
 
 # Cleanup

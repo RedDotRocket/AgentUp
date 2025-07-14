@@ -1,5 +1,12 @@
-# AgentUp Configuration - Full Template
+# AgentUp Configuration - Full Template with Unified Security Architecture
 # Enterprise-ready agent with all features including multiple MCP servers
+#
+# This enterprise configuration showcases the AgentUp Security Framework with:
+# - OAuth2 authentication with comprehensive scope hierarchy
+# - Advanced plugin classification with enterprise-specific configurations
+# - Context-aware middleware with plugin-specific optimizations
+# - Enterprise-grade scope-based authorization patterns
+# - Performance optimization through  middleware selection
 
 # Agent Information
 agent:
@@ -7,8 +14,21 @@ agent:
   description: {{ description }}
   version: 0.1.0
 
-# Core plugins configuration
+# Enterprise plugins configuration with AgentUp Security Framework
 plugins:
+  - plugin_id: echo
+    name: Echo
+    description: Echo back user input with optional formatting
+    tags: [echo, basic, simple]
+    input_mode: text
+    output_mode: text
+    keywords: [echo, repeat, say]
+    patterns: ['^echo ', '^repeat ', '^say ']
+    routing_mode: direct
+    priority: 50
+    capabilities:
+      - capability_id: echo_response
+        required_scopes: ["api:read"]  # Basic read access for text processing
   - plugin_id: ai_assistant
     name: AI Assistant
     description: AI-powered assistant for various tasks
@@ -17,36 +37,55 @@ plugins:
     input_mode: text
     output_mode: text
     priority: 100
-  - plugin_id: document_processor
-    name: Document Processor
-    description: Process and analyze documents
-    tags: [document, processing, analysis]
-    # No keywords or patterns defined, only available via AI routing
-    input_mode: text
-    output_mode: text
-    priority: 90
-  - plugin_id: conversation
-    name: Conversation
-    description: Basic conversation handler
-    tags: [conversation, chat, direct]
-    input_mode: text
-    output_mode: text
-    keywords: [chat, talk, conversation]
-    patterns: ['chat.*', 'talk.*', 'conversation.*']
-    priority: 40
+    middleware_override:
+      - name: "rate_limited"
+        params:
+          requests_per_minute: 20  # Conservative rate for AI operations
+      - name: "timed"
+        params: {}
+      # No caching for AI to ensure fresh responses
 
-# security configuration
+
+# Enterprise AgentUp Security Framework configuration
 security:
   enabled: true   # Authentication enabled for full template
-  type: oauth2   # Options: 'api_key', 'bearer', 'oauth2'
-  oauth2:
-    token_url: '${OAUTH_TOKEN_URL:/oauth/token}'
-    client_id: '${OAUTH_CLIENT_ID:your-client-id}'
-    client_secret: '{{ generate_client_secret() }}'
-    scopes:
-      read: Read access to agent capabilities
-      write: Write access to send messages
-      admin: Administrative access
+  auth:
+    oauth2:   # Enterprise-grade OAuth2 authentication
+      validation_strategy: "jwt"
+      jwks_url: "${JWKS_URL:https://your-provider.com/.well-known/jwks.json}"
+      jwt_algorithm: "RS256"
+      jwt_issuer: "${JWT_ISSUER:https://your-provider.com}"
+      jwt_audience: "${JWT_AUDIENCE:{{ project_name }}}"
+  # Example scope hierarchy with fine-grained permissions
+  scope_hierarchy:
+    # Administrative scopes
+    admin: ["*"]
+    system:admin: ["system:write", "system:read", "files:admin"]
+    api:admin: ["api:write", "api:read", "network:admin"]
+
+    # Functional scopes
+    files:admin: ["files:write", "files:read", "files:sensitive"]
+    files:write: ["files:read"]
+    files:sensitive: ["files:read"]
+
+    # API access scopes
+    api:write: ["api:read"]
+    api:external: ["api:read"]
+
+    # AI-specific scopes
+    ai:admin: ["ai:execute", "ai:train", "ai:model:admin"]
+    ai:execute: ["ai:model:read"]
+    ai:train: ["ai:execute", "ai:model:write"]
+
+    # Enterprise scopes
+    enterprise:admin: ["enterprise:write", "enterprise:read", "api:admin"]
+    enterprise:write: ["enterprise:read", "api:write"]
+    enterprise:read: ["api:read"]
+
+    # Base scopes
+    api:read: []
+    files:read: []
+    system:read: []
 
 # AI configuration
 {% if ai_provider_config %}
@@ -75,7 +114,7 @@ ai:
 
     Your role:
     - Understand complex user requests and break them down into actionable steps
-    - Use the appropriate functions and tools to complete sophisticated tasks
+    - Use the appropriate functions and tools to complete  tasks
     - Handle structured data and various content types
     - Maintain conversation context and state across extended interactions
     - Integrate with external services and APIs when needed
@@ -136,25 +175,49 @@ mcp:
     expose_resources: [agent_status, agent_capabilities]
     port: 8001
 
-# middleware configuration - Full enterprise setup
+# Enterprise context-aware middleware configuration
 middleware:
   - name: timed
     params: {}
 {% if has_middleware and 'cache' in feature_config.get('middleware', []) %}
   - name: cached
     params:
-      ttl: 300  # 5 minutes
+      ttl: 600  # 10 minutes for enterprise
+      cache_errors: false  # Don't cache errors in production
+      # Enterprise context-aware caching
+      plugin_specific_ttl:
+        local: 300        # 5 minutes for local plugins
+        network: 1800     # 30 minutes for network plugins (longer for enterprise)
+        hybrid: 600       # 10 minutes for hybrid plugins
+        ai_function: 120  # 2 minutes for AI functions (fresher responses)
+        core: 3600        # 1 hour for core functions
 {% endif %}
 {% if has_middleware and 'rate_limit' in feature_config.get('middleware', []) %}
   - name: rate_limited
     params:
-      requests_per_minute: 60
+      requests_per_minute: 120  # Higher rate for enterprise
+      burst_size: 30           # Allow burst traffic
+      # Enterprise plugin-specific rate limiting
+      plugin_specific_limits:
+        local: 200             # High rate for local plugins
+        network: 60            # Moderate rate for network plugins
+        hybrid: 120            # Standard enterprise rate
+        ai_function: 30        # Conservative rate for AI operations
+        core: 500              # Very high rate for core functions
 {% endif %}
 {% if has_middleware and 'retry' in feature_config.get('middleware', []) %}
   - name: retryable
     params:
-      max_retries: 3
-      backoff_factor: 2
+      max_retries: 5         # More retries for enterprise reliability
+      backoff_factor: 2.0    # Exponential backoff
+      max_delay: 60.0        # Max 60 seconds between retries
+      # Enterprise plugin-specific retry configuration
+      plugin_compatibility:
+        local: false           # Local plugins rarely need retries
+        network: true          # Network plugins benefit from retries
+        hybrid: true           # Hybrid plugins may need retries
+        ai_function: false     # AI functions need specialized retry logic
+        core: false            # Core functions should be reliable
 {% endif %}
 
 # Push notifications configuration
@@ -168,7 +231,7 @@ push_notifications:
 
 
 # State management configuration
-{% if has_state %}
+{% if has_state_management %}
 state_management:
   enabled: true
 {% if state_backend == 'valkey' %}
@@ -193,23 +256,6 @@ state_management:
       enabled: true
       ttl: 86400           # 24 hours for AI conversations
 
-# Legacy state configuration (still supported)
-{% if state_backend == 'valkey' %}
-state:
-  backend: valkey
-  url: '${VALKEY_STATE_URL:valkey://localhost:6379}'
-  key_prefix: "agentup:state:"
-  ttl: 7200  # 2 hours
-{% elif state_backend == 'memory' %}
-state:
-  backend: memory
-  ttl: 3600  # 1 hour
-{% elif state_backend == 'file' %}
-state:
-  backend: file
-  storage_dir: "./conversation_states"
-  ttl: 7200  # 2 hours
-{% endif %}
 {% endif %}
 
 # Logging configuration - Full enterprise setup

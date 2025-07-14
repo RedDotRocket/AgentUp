@@ -618,11 +618,11 @@ def get_ai_compatible_middleware() -> list[dict[str, Any]]:
     try:
         # Try relative import first (development context)
         try:
-            from agent.handlers.handlers import _load_middleware_config
+            from agent.capabilities.executors import _load_middleware_config
         except ImportError:
             try:
                 # Try installed package import (agent context)
-                from agent.handlers.handlers import _load_middleware_config
+                from agent.capabilities.executors import _load_middleware_config
             except ImportError:
                 logger.debug("Could not import _load_middleware_config, returning empty list")
                 return []
