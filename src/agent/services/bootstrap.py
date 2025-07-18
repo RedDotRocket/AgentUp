@@ -66,6 +66,15 @@ class AgentBootstrapper:
             app.state.services = self._service_map
             app.state.config = self.config
 
+            # Expose security manager directly on app state for @protected decorator compatibility
+            security_service = self._service_map.get("securityservice")
+            if security_service and hasattr(security_service, "security_manager"):
+                app.state.security_manager = security_service.security_manager
+                self.logger.debug("Security manager attached to app.state.security_manager")
+            else:
+                app.state.security_manager = None
+                self.logger.debug("No security manager available")
+
             # Log summary
             self._log_initialization_summary()
 
