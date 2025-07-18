@@ -1,7 +1,5 @@
 """Security service for AgentUp framework."""
 
-
-
 from .base import Service
 from .config import ConfigurationManager
 

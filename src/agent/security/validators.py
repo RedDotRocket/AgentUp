@@ -85,7 +85,9 @@ class SecurityConfigValidator:
         valid_auth_types = {"api_key", "bearer", "oauth2", "jwt"}
         for auth_type in available_types:
             if auth_type not in valid_auth_types:
-                raise SecurityConfigurationException(f"Invalid auth type '{auth_type}'. Must be one of: {valid_auth_types}")
+                raise SecurityConfigurationException(
+                    f"Invalid auth type '{auth_type}'. Must be one of: {valid_auth_types}"
+                )
 
         # Validate the first (primary) auth type configuration
         primary_auth_type = available_types[0]
@@ -265,7 +267,9 @@ class SecurityConfigValidator:
 
         valid_algorithms = {"HS256", "HS384", "HS512", "RS256", "RS384", "RS512"}
         if algorithm not in valid_algorithms:
-            raise SecurityConfigurationException(f"Invalid JWT algorithm '{algorithm}'. Must be one of: {valid_algorithms}")
+            raise SecurityConfigurationException(
+                f"Invalid JWT algorithm '{algorithm}'. Must be one of: {valid_algorithms}"
+            )
 
     @staticmethod
     def _validate_oauth2_config(config: dict[str, Any]) -> None:

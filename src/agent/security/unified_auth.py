@@ -303,7 +303,9 @@ class UnifiedAuthenticationManager:
         # Use the first auth type found, warn about others
         available_types = list(auth_config.keys())
         if len(available_types) > 1:
-            logger.warning(f"Multiple auth types configured: {available_types}. Using {available_types[0]}, ignoring others.")
+            logger.warning(
+                f"Multiple auth types configured: {available_types}. Using {available_types[0]}, ignoring others."
+            )
 
         if not available_types:
             logger.warning("No authentication types configured")
@@ -350,13 +352,13 @@ class UnifiedAuthenticationManager:
                         if isinstance(key, str):
                             valid_keys[key] = {
                                 "user_id": "api_user",
-                                "scopes": ["api:read", "api:write"]  # Default scopes
+                                "scopes": ["api:read", "api:write"],  # Default scopes
                             }
                         elif isinstance(key, dict) and "key" in key:
                             # Handle {key: "...", scopes: [...]} format
                             valid_keys[key["key"]] = {
                                 "user_id": key.get("user_id", "api_user"),
-                                "scopes": key.get("scopes", ["api:read"])
+                                "scopes": key.get("scopes", ["api:read"]),
                             }
 
             provider = APIKeyAuthProvider(

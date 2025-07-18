@@ -55,15 +55,19 @@ class SecurityManager:
         # Get auth type from auth: structure
         auth_config = self.security_config.get("auth", {})
         if not auth_config:
-            raise SecurityConfigurationException("No auth configuration found. Expected 'auth' section with authentication type.")
-        
+            raise SecurityConfigurationException(
+                "No auth configuration found. Expected 'auth' section with authentication type."
+            )
+
         available_types = list(auth_config.keys())
         if not available_types:
             raise SecurityConfigurationException("No authentication types configured in 'auth' section.")
-        
+
         if len(available_types) > 1:
-            logger.warning(f"Multiple auth types configured: {available_types}. Using {available_types[0]}, ignoring others.")
-        
+            logger.warning(
+                f"Multiple auth types configured: {available_types}. Using {available_types[0]}, ignoring others."
+            )
+
         return available_types[0]
 
     def _initialize_authenticators(self) -> None:

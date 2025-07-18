@@ -42,6 +42,7 @@ class ServiceAgentExecutor(AgentExecutor):
         """Get the agent card."""
         # Import here to avoid circular imports
         from agent.api.routes import create_agent_card
+
         return create_agent_card()
 
     async def execute_task(self, task: Task) -> str:
@@ -66,6 +67,7 @@ class ServiceAgentExecutor(AgentExecutor):
             auth_result = None
             try:
                 from agent.security.context import get_current_auth
+
                 auth_result = get_current_auth()
             except ImportError:
                 self.logger.debug("Security module not available")
@@ -92,11 +94,11 @@ class ServiceAgentExecutor(AgentExecutor):
         try:
             self.logger.info(f"DEBUG: Task type: {type(task)}")
             self.logger.info(f"DEBUG: Task hasattr history: {hasattr(task, 'history')}")
-            
+
             if hasattr(task, "history"):
                 self.logger.info(f"DEBUG: Task history length: {len(task.history) if task.history else 0}")
                 self.logger.info(f"DEBUG: Task history: {task.history}")
-            
+
             if not (hasattr(task, "history") and task.history):
                 self.logger.debug("No task history available")
                 return ""
@@ -107,19 +109,19 @@ class ServiceAgentExecutor(AgentExecutor):
                 self.logger.info(f"DEBUG: Message {i} hasattr role: {hasattr(message, 'role')}")
                 if hasattr(message, "role"):
                     self.logger.info(f"DEBUG: Message {i} role: {message.role}")
-                
+
                 if hasattr(message, "role") and message.role == "user":
                     self.logger.info(f"DEBUG: Found user message, hasattr parts: {hasattr(message, 'parts')}")
                     if hasattr(message, "parts"):
                         self.logger.info(f"DEBUG: Parts length: {len(message.parts) if message.parts else 0}")
                         self.logger.info(f"DEBUG: Parts: {message.parts}")
-                    
+
                     if hasattr(message, "parts") and message.parts:
                         for j, part in enumerate(message.parts):
                             self.logger.info(f"DEBUG: Part {j} type: {type(part)}")
                             self.logger.info(f"DEBUG: Part {j} hasattr kind: {hasattr(part, 'kind')}")
                             self.logger.info(f"DEBUG: Part {j} hasattr root: {hasattr(part, 'root')}")
-                            
+
                             # Handle A2A Part structure
                             if hasattr(part, "kind"):
                                 self.logger.info(f"DEBUG: Part {j} kind: {part.kind}")
@@ -141,6 +143,7 @@ class ServiceAgentExecutor(AgentExecutor):
         except Exception as e:
             self.logger.error(f"Error extracting user message: {e}")
             import traceback
+
             self.logger.error(f"Traceback: {traceback.format_exc()}")
             return ""
 
@@ -154,7 +157,7 @@ class ServiceAgentExecutor(AgentExecutor):
             Capability ID to invoke
         """
         self.logger.info(f"DEBUG: Routing message: '{user_message}'")
-        
+
         if not user_message:
             self.logger.info("DEBUG: Empty message, routing to echo")
             return "echo"  # Default fallback

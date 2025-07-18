@@ -1,7 +1,5 @@
 """MCP (Model Context Protocol) service for AgentUp framework."""
 
-
-
 from .base import Service
 from .capabilities import CapabilityRegistry
 from .config import ConfigurationManager

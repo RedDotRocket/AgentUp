@@ -4,7 +4,6 @@ This module handles the orchestration of all service initialization
 in the correct dependency order.
 """
 
-
 import structlog
 from fastapi import FastAPI
 

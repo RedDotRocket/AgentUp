@@ -353,7 +353,7 @@ Always be helpful, accurate, and maintain a friendly tone. You are designed to a
             "enabled": True,
             "backend": "memory",
             "ttl": 3600,  # 1 hour
-            "config": {}
+            "config": {},
         }
 
         return config
@@ -362,24 +362,24 @@ Always be helpful, accurate, and maintain a friendly tone. You are designed to a
     def _build_plugins_config(self) -> list[PluginConfig]:
         """Build plugins configuration with AgentUp Security Framework classification."""
         return [
-                {
-                    "plugin_id": "ai_assistant",
-                    "name": "AI Assistant",
-                    "description": "AI-powered assistant for various tasks",
-                    "input_mode": "text",
-                    "output_mode": "text",
-                    "priority": 100,
-                    "middleware_override": [
-                        {
-                            "name": "rate_limited",
-                            "params": {
-                                "requests_per_minute": 20  # Conservative rate for AI operations
-                            },
+            {
+                "plugin_id": "ai_assistant",
+                "name": "AI Assistant",
+                "description": "AI-powered assistant for various tasks",
+                "input_mode": "text",
+                "output_mode": "text",
+                "priority": 100,
+                "middleware_override": [
+                    {
+                        "name": "rate_limited",
+                        "params": {
+                            "requests_per_minute": 20  # Conservative rate for AI operations
                         },
-                        {"name": "timed", "params": {}},
-                        # No caching for AI to ensure fresh responses
-                    ],
-                }
+                    },
+                    {"name": "timed", "params": {}},
+                    # No caching for AI to ensure fresh responses
+                ],
+            }
         ]
 
     def _build_services_config(self) -> dict[str, Any]:

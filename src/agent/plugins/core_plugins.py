@@ -22,14 +22,14 @@ async def hello_capability(task: Task, context=None) -> str:
     user_message = "world"
 
     # Try to extract user input from task
-    if hasattr(task, 'history') and task.history:
+    if hasattr(task, "history") and task.history:
         for message in task.history:
-            if hasattr(message, 'parts') and message.parts:
+            if hasattr(message, "parts") and message.parts:
                 for part in message.parts:
-                    if hasattr(part, 'text'):
+                    if hasattr(part, "text"):
                         # Extract name after "hello" if present
                         text = part.text.lower().strip()
-                        if text.startswith('hello '):
+                        if text.startswith("hello "):
                             user_message = text[6:].strip() or "world"
                         break
 

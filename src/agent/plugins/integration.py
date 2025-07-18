@@ -11,7 +11,7 @@ from .adapter import PluginAdapter, get_plugin_manager
 logger = structlog.get_logger(__name__)
 
 
-def integrate_plugins_with_capabilities() -> None:
+def integrate_plugins_with_capabilities() -> dict[str, list[str]]:
     """
     Integrate the plugin system with the existing capability registry.
 
@@ -19,6 +19,9 @@ def integrate_plugins_with_capabilities() -> None:
     1. Discovers and loads all plugins
     2. Registers only configured plugin capabilities as capability executors
     3. Makes them available through the existing get_capability_executor() mechanism
+
+    Returns:
+        Dict mapping capability_id to required_scopes for enabled capabilities.
     """
 
     # Get the plugin manager and adapter
@@ -122,6 +125,9 @@ def integrate_plugins_with_capabilities() -> None:
     logger.info(
         f"Configuration loaded {registered_count} plugin capabilities (out of {len(adapter.list_available_capabilities())} discovered)"
     )
+
+    # Return the enabled capabilities for use in AI function registration
+    return capabilities_to_register
 
 
 # Store the adapter instance
@@ -229,8 +235,8 @@ def enable_plugin_system() -> None:
         # First, register built-in plugins
         _register_builtin_plugins()
 
-        # Then integrate external plugins
-        integrate_plugins_with_capabilities()
+        # Then integrate external plugins and get enabled capabilities
+        enabled_capabilities = integrate_plugins_with_capabilities()
 
         # Integrate plugins with the function registry for AI function calling
         try:
@@ -244,7 +250,8 @@ def enable_plugin_system() -> None:
 
             if adapter:
                 # Integrate the plugin adapter with the function registry
-                adapter.integrate_with_function_registry(function_registry)
+                # Pass the enabled capabilities to ensure only enabled AI functions are registered
+                adapter.integrate_with_function_registry(function_registry, enabled_capabilities)
                 logger.info("Plugin adapter integrated with function registry for AI function calling")
             else:
                 logger.warning("No plugin adapter available for function registry integration")

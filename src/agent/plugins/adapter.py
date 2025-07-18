@@ -19,12 +19,30 @@ class PluginAdapter:
         self.plugin_manager = plugin_manager or get_plugin_manager()
         self._function_registry: FunctionRegistry | None = None
 
-    def integrate_with_function_registry(self, registry: FunctionRegistry) -> None:
-        """Integrate plugins with the function registry."""
+    def integrate_with_function_registry(
+        self, registry: FunctionRegistry, enabled_capabilities: dict[str, list[str]] | None = None
+    ) -> None:
+        """Integrate plugins with the function registry.
+
+        Args:
+            registry: The function registry to integrate with
+            enabled_capabilities: Optional dict mapping capability_id to required_scopes.
+                                If provided, only AI functions for these capabilities will be registered.
+                                If None, will load config to determine enabled capabilities.
+        """
         self._function_registry = registry
 
-        # Register all AI functions from plugins
+        # Determine which capabilities are enabled
+        if enabled_capabilities is None:
+            enabled_capabilities = self._load_enabled_capabilities()
+
+        # Register AI functions only for enabled capabilities
         for capability_id, capability_info in self.plugin_manager.capabilities.items():
+            # Skip if capability is not enabled in configuration
+            if capability_id not in enabled_capabilities:
+                logger.debug(f"Skipping AI function registration for disabled capability '{capability_id}'")
+                continue
+
             # Skip if capability doesn't support AI functions
             if "ai_function" not in capability_info.capabilities:
                 continue
@@ -44,9 +62,40 @@ class PluginAdapter:
                 handler = self._create_ai_function_handler(capability_id, ai_func)
 
                 # Register with the function registry
-                # TODO: [CURRENT] If its not in the config, we should not register it!
                 registry.register_function(ai_func.name, handler, schema)
                 logger.info(f"Registered AI function '{ai_func.name}' from capability '{capability_id}'")
+
+    def _load_enabled_capabilities(self) -> dict[str, list[str]]:
+        """Load enabled capabilities from agent configuration.
+
+        Returns:
+            Dict mapping capability_id to required_scopes for enabled capabilities.
+        """
+        try:
+            from agent.config import load_config
+
+            config = load_config()
+            configured_plugins = config.get("plugins", [])
+
+            enabled_capabilities = {}
+
+            for plugin_config in configured_plugins:
+                # Check if this uses the new capability-based structure
+                if "capabilities" in plugin_config:
+                    for capability_config in plugin_config["capabilities"]:
+                        capability_id = capability_config["capability_id"]
+                        required_scopes = capability_config.get("required_scopes", [])
+                        enabled = capability_config.get("enabled", True)
+
+                        if enabled:
+                            enabled_capabilities[capability_id] = required_scopes
+
+            logger.debug(f"Loaded {len(enabled_capabilities)} enabled capabilities from config")
+            return enabled_capabilities
+
+        except Exception as e:
+            logger.warning(f"Could not load enabled capabilities from config: {e}")
+            return {}
 
     def _create_ai_function_handler(self, capability_id: str, ai_func):
         """Create a handler that adapts AI function calls to plugin execution."""

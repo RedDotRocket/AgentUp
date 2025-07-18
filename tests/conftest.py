@@ -51,7 +51,12 @@ def sample_agent_config() -> dict[str, Any]:
         "middleware": [{"name": "logged", "params": {"log_level": 20}}, {"name": "timed", "params": {}}],
         "push_notifications": {"enabled": True, "backend": "memory", "validate_urls": True},
         "cache": {"backend": "memory", "default_ttl": 1800, "max_size": 1000, "enabled": True},
-        "state_management": {"enabled": True, "backend": "file", "ttl": 3600, "config": {"storage_dir": "./conversation_states"}},
+        "state_management": {
+            "enabled": True,
+            "backend": "file",
+            "ttl": 3600,
+            "config": {"storage_dir": "./conversation_states"},
+        },
     }
 
 
