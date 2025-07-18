@@ -190,17 +190,30 @@ class OAuth2Authenticator(BaseAuthenticator):
             InvalidCredentialsException: If token is invalid or introspection fails
         """
         try:
-            async with AsyncOAuth2Client(client_id=self.client_id, client_secret=self.client_secret) as client:
-                # Call introspection endpoint
+            # GitHub expects JSON payload with "access_token" field, not form data
+            # Use basic auth with httpx directly instead of AsyncOAuth2Client
+            import httpx
+            import base64
+            
+            auth = base64.b64encode(f"{self.client_id}:{self.client_secret}".encode()).decode()
+            
+            async with httpx.AsyncClient() as client:
                 response = await client.post(
-                    self.introspection_endpoint, data={"token": token, "token_type_hint": "access_token"}
+                    self.introspection_endpoint,
+                    headers={
+                        "Authorization": f"Basic {auth}",
+                        "Content-Type": "application/json"
+                    },
+                    json={"access_token": token}
                 )
                 response.raise_for_status()
 
                 introspection_data = response.json()
 
                 # Check if token is active
-                if not introspection_data.get("active", False):
+                # GitHub doesn't return 'active' field, but returns 200 status for valid tokens
+                # For standard OAuth2 introspection, check 'active' field
+                if "active" in introspection_data and not introspection_data.get("active", False):
                     raise InvalidCredentialsException("Unauthorized")
 
                 # Extract user information
@@ -208,6 +221,7 @@ class OAuth2Authenticator(BaseAuthenticator):
                     introspection_data.get("sub")
                     or introspection_data.get("user_id")
                     or introspection_data.get("username")
+                    or (introspection_data.get("user", {}).get("login") if introspection_data.get("user") else None)
                     or "unknown"
                 )
 
@@ -219,6 +233,13 @@ class OAuth2Authenticator(BaseAuthenticator):
                         scopes = set(scope_value.split())
                     elif isinstance(scope_value, list):
                         scopes = set(scope_value)
+                elif "scopes" in introspection_data:
+                    # GitHub returns scopes as "scopes" field
+                    scope_value = introspection_data["scopes"]
+                    if isinstance(scope_value, list):
+                        scopes = set(scope_value)
+                    elif isinstance(scope_value, str):
+                        scopes = set(scope_value.split())
 
                 return AuthenticationResult(
                     success=True,

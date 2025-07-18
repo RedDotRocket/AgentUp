@@ -274,7 +274,7 @@ class SecurityConfigValidator:
     @staticmethod
     def _validate_oauth2_config(config: dict[str, Any]) -> None:
         """Validate OAuth2 configuration."""
-        oauth2_config = config.get("oauth2", {})
+        oauth2_config = config
 
         if not isinstance(oauth2_config, dict):
             raise SecurityConfigurationException("OAuth2 config must be a dictionary")
