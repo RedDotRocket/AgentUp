@@ -40,7 +40,7 @@ class PluginAdapter:
         for capability_id, capability_info in self.plugin_manager.capabilities.items():
             # Skip if capability is not enabled in configuration
             if capability_id not in enabled_capabilities:
-                logger.debug(f"Skipping AI function registration for disabled capability '{capability_id}'")
+                logger.debug(f"Skipping capability '{capability_id}' as it is not enabled in configuration")
                 continue
 
             # Skip if capability doesn't support AI functions
@@ -141,12 +141,6 @@ class PluginAdapter:
             services=services,
             metadata=metadata,
         )
-
-    def register_legacy_handlers(self, handlers: dict[str, Any]) -> None:
-        """Register legacy handlers as plugins for backward compatibility."""
-        # This would wrap existing handlers in a plugin interface
-        # For now, we'll just log that we could do this
-        logger.info(f"Could register {len(handlers)} legacy handlers as plugins")
 
     def get_capability_executor_for_capability(self, capability_id: str):
         """Get a capability executor function for a capability that's compatible with the system."""

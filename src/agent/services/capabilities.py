@@ -151,7 +151,19 @@ class CapabilityRegistry(Service):
 
     def list_capabilities(self) -> list[str]:
         """List all registered capability IDs."""
-        return list(self._capabilities.keys())
+        # Get capabilities from this registry
+        local_capabilities = list(self._capabilities.keys())
+
+        # Also include capabilities from the executors registry
+        try:
+            from agent.capabilities.executors import _capabilities as executor_capabilities
+
+            all_capabilities = set(local_capabilities)
+            all_capabilities.update(executor_capabilities.keys())
+            return sorted(list(all_capabilities))
+        except ImportError:
+            # If executors module not available, just return local capabilities
+            return sorted(local_capabilities)
 
     def list_capabilities_with_metadata(self) -> dict[str, dict[str, Any]]:
         """List all capabilities with their metadata.
@@ -160,6 +172,8 @@ class CapabilityRegistry(Service):
             Dictionary mapping capability IDs to metadata dictionaries
         """
         result = {}
+
+        # Add capabilities from this registry with metadata
         for cap_id, metadata in self._metadata.items():
             result[cap_id] = {
                 "plugin_id": metadata.plugin_id,
@@ -168,6 +182,23 @@ class CapabilityRegistry(Service):
                 "tags": metadata.tags,
                 "is_core": cap_id in self._core_capabilities,
             }
+
+        # Add capabilities from executors registry (without detailed metadata)
+        try:
+            from agent.capabilities.executors import _capabilities as executor_capabilities
+
+            for cap_id in executor_capabilities:
+                if cap_id not in result:
+                    result[cap_id] = {
+                        "plugin_id": None,
+                        "required_scopes": [],
+                        "description": f"Plugin capability: {cap_id}",
+                        "tags": [],
+                        "is_core": False,
+                    }
+        except ImportError:
+            pass
+
         return result
 
     async def execute(self, capability_id: str, task: Task) -> str:

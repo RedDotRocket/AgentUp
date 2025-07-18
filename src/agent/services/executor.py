@@ -1,7 +1,5 @@
-"""Service-oriented agent executor for AgentUp framework.
-
-This module provides a clean executor that uses the new service layer
-instead of the legacy capability system.
+"""
+Service-oriented agent executor for AgentUp framework.
 """
 
 from typing import Any
@@ -17,14 +15,9 @@ logger = structlog.get_logger(__name__)
 
 
 class ServiceAgentExecutor(AgentExecutor):
-    """Service-oriented agent executor.
-
-    This executor uses the new service layer to handle task execution,
-    replacing the legacy executor system completely.
-    """
-
     def __init__(self, services: dict[str, Any]):
-        """Initialize the service executor.
+        """
+        Initialize the service executor.
 
         Args:
             services: Dictionary of initialized services
