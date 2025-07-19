@@ -22,7 +22,7 @@ def discover_and_import_capabilities():
     discovered_modules = []
     failed_imports = []
 
-    logger.debug(f"Starting dynamic capability discovery in {capabilities_dir}")
+    logger.debug("Starting dynamic capability discovery")
 
     # TODO: I expect there is a better way to do this,
     # this will dynamically import all Python files in the capabilities directory

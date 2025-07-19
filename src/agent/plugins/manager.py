@@ -28,8 +28,13 @@ class PluginManager:
     # Hook implementation marker - shared across all plugin instances
     hookimpl = pluggy.HookimplMarker("agentup")
 
-    def __init__(self):
-        """Initialize the plugin manager."""
+    def __init__(self, config: dict[str, Any] | None = None):
+        """Initialize the plugin manager.
+
+        Args:
+            config: Optional configuration dictionary. If not provided,
+                   will be loaded when needed.
+        """
         self.pm = pluggy.PluginManager("agentup")
         self.pm.add_hookspecs(CapabilitySpec)
 
@@ -39,6 +44,21 @@ class PluginManager:
 
         # Track plugin hooks for each capability
         self.capability_hooks: dict[str, Any] = {}
+
+        # Store configuration
+        self._config = config
+
+    @property
+    def config(self) -> dict[str, Any]:
+        """Get configuration, loading if necessary."""
+        if self._config is None:
+            try:
+                from agent.config import load_config
+                self._config = load_config(configure_logging=False)
+            except ImportError:
+                logger.warning("Could not load configuration, using empty config")
+                self._config = {}
+        return self._config
 
     def discover_plugins(self) -> None:
         """Discover and load all available plugins."""
@@ -134,7 +154,7 @@ class PluginManager:
         """Load plugins from installed plugins directory only if explicitly enabled in config."""
         # Check if filesystem plugin loading is enabled
         if not self._should_load_filesystem_plugins():
-            logger.debug("Filesystem plugin loading disabled (secure default)")
+            logger.debug("Filesystem based plugin loading disabled (secure default)")
             return
 
         # Get allowed directories from config
@@ -172,7 +192,6 @@ class PluginManager:
         plugin_name = f"installed_{plugin_dir.name}"
         plugin_file = plugin_dir / entry_file
 
-        # We'll log with capability count after registering
 
         # Similar to local plugin loading
         spec = importlib.util.spec_from_file_location(plugin_name, plugin_file)
@@ -443,7 +462,15 @@ def get_plugin_manager() -> PluginManager:
     """Get the global plugin manager instance."""
     global _plugin_manager
     if _plugin_manager is None:
-        _plugin_manager = PluginManager()
+        # Try to load configuration for the plugin manager
+        config = None
+        try:
+            from agent.config import load_config
+            config = load_config(configure_logging=False)
+        except ImportError:
+            logger.debug("Could not load configuration for plugin manager")
+
+        _plugin_manager = PluginManager(config)
         _plugin_manager.discover_plugins()
     return _plugin_manager
 
