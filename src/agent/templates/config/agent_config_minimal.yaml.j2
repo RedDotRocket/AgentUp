@@ -179,3 +179,13 @@ logging:
   uvicorn:
     access_log: false         # Minimal logging
     disable_default_handlers: true
+
+# Development configuration (disabled by default)
+development:
+  enabled: false  # Keep all development features disabled in minimal template
+  
+  # Filesystem plugins remain disabled for security
+  filesystem_plugins:
+    enabled: false
+    allowed_directories:
+      - ~/.agentup/plugins

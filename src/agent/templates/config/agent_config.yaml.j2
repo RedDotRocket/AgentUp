@@ -365,3 +365,25 @@ logging:
     access_log: {{ uvicorn_access_log | default(false) }}
     disable_default_handlers: true
     use_colors: {{ uvicorn_colors | default(console_colors | default(true)) }}
+
+# Development configuration
+# WARNING: These features can be security risks and should NEVER be enabled in production
+development:
+  enabled: false  # Master switch for ALL development features
+  
+  # Filesystem plugin loading -
+  # This allows loading arbitrary Python code from the filesystem, NEVER enable in production
+  filesystem_plugins:
+    enabled: false  # Default: disabled for security
+    allowed_directories:
+      - ~/.agentup/plugins  # Directories to scan for plugins
+    # Future security enhancements:
+    # require_signature: true  # Require cryptographic signatures
+    # allowed_plugins: []      # Whitelist specific plugin files
+    
+  # Other development features can be added here
+  # debug_mode: false
+  # hot_reload: false
+  # unsafe_features:
+  #   allow_eval: false
+  #   allow_exec: false
