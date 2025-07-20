@@ -7,7 +7,6 @@ import structlog
 from .base import (
     BaseLLMService,
     ChatMessage,
-    LLMCapability,
     LLMProviderAPIError,
     LLMProviderError,
     LLMResponse,
@@ -24,47 +23,6 @@ class OllamaProvider(BaseLLMService):
         self.base_url = config.get("base_url", "http://localhost:11434")
         self.timeout = config.get("timeout", 120.0)  # Longer timeout for local models
 
-        # Ollama model capabilities (most models support basic chat)
-
-        self._model_capabilities = {
-            "llama2": [
-                LLMCapability.TEXT_COMPLETION,
-                LLMCapability.CHAT_COMPLETION,
-                LLMCapability.STREAMING,
-                LLMCapability.SYSTEM_MESSAGES,
-            ],
-            "llama3": [
-                LLMCapability.TEXT_COMPLETION,
-                LLMCapability.CHAT_COMPLETION,
-                LLMCapability.STREAMING,
-                LLMCapability.SYSTEM_MESSAGES,
-            ],
-            "mistral": [
-                LLMCapability.TEXT_COMPLETION,
-                LLMCapability.CHAT_COMPLETION,
-                LLMCapability.STREAMING,
-                LLMCapability.SYSTEM_MESSAGES,
-            ],
-            "codellama": [
-                LLMCapability.TEXT_COMPLETION,
-                LLMCapability.CHAT_COMPLETION,
-                LLMCapability.STREAMING,
-                LLMCapability.SYSTEM_MESSAGES,
-            ],
-            "neural-chat": [
-                LLMCapability.TEXT_COMPLETION,
-                LLMCapability.CHAT_COMPLETION,
-                LLMCapability.STREAMING,
-                LLMCapability.SYSTEM_MESSAGES,
-            ],
-            "dolphin": [
-                LLMCapability.TEXT_COMPLETION,
-                LLMCapability.CHAT_COMPLETION,
-                LLMCapability.STREAMING,
-                LLMCapability.SYSTEM_MESSAGES,
-            ],
-        }
-
     async def initialize(self) -> None:
         logger.info(f"Initializing Ollama service '{self.name}' with model '{self.model}'")
 
@@ -72,47 +30,16 @@ class OllamaProvider(BaseLLMService):
 
         self.client = httpx.AsyncClient(base_url=self.base_url, headers=headers, timeout=self.timeout)
 
-        # Set capabilities based on model
-        self._detect_capabilities()
-
         # Test connection and model availability
         try:
             await self._ensure_model_available()
             await self.health_check()
             self._initialized = True
             logger.info(f"Ollama service {self.name} initialized successfully")
-            logger.info(f"Capabilities: {[cap.value for cap in self.get_capabilities()]}")
         except Exception as e:
             logger.error(f"Ollama service {self.name} initialization failed: {e}")
             raise LLMProviderError(f"Failed to initialize Ollama service: {e}") from e
 
-    def _detect_capabilities(self):
-        """Detect capabilities based on model."""
-        model_key = self.model.lower()
-
-        # Find matching capabilities
-        capabilities = []
-        for model_pattern, caps in self._model_capabilities.items():
-            if model_pattern in model_key:
-                capabilities = caps
-                break
-
-        # Default capabilities for unknown models
-        if not capabilities:
-            capabilities = [
-                LLMCapability.TEXT_COMPLETION,
-                LLMCapability.CHAT_COMPLETION,
-                LLMCapability.STREAMING,
-                LLMCapability.SYSTEM_MESSAGES,
-            ]
-
-            # Add vision capability for vision models
-            if self._is_vision_model():
-                capabilities.append(LLMCapability.IMAGE_UNDERSTANDING)
-
-        # Set capabilities (Ollama typically doesn't support function calling natively)
-        for cap in capabilities:
-            self._set_capability(cap, True)
 
     async def _ensure_model_available(self):
         """Ensure the model is available, pull if necessary."""
@@ -165,7 +92,6 @@ class OllamaProvider(BaseLLMService):
                 "response_time_ms": response.elapsed.total_seconds() * 1000 if response.elapsed else 0,
                 "status_code": response.status_code,
                 "model": self.model,
-                "capabilities": [cap.value for cap in self.get_capabilities()],
             }
         except Exception as e:
             return {"status": "unhealthy", "error": str(e), "model": self.model}
@@ -315,8 +241,6 @@ class OllamaProvider(BaseLLMService):
 
     async def stream_chat_complete(self, messages: list[ChatMessage], **kwargs):
         """Stream chat completion."""
-        if not self.has_capability(LLMCapability.STREAMING):
-            raise LLMProviderError(f"Provider {self.name} does not support streaming")
 
         if not self._initialized:
             await self.initialize()

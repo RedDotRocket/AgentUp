@@ -192,8 +192,9 @@ class OAuth2Authenticator(BaseAuthenticator):
         try:
             # GitHub expects JSON payload with "access_token" field, not form data
             # Use basic auth with httpx directly instead of AsyncOAuth2Client
-            import httpx
             import base64
+
+            import httpx
 
             auth = base64.b64encode(f"{self.client_id}:{self.client_secret}".encode()).decode()
 

@@ -11,7 +11,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 from agent.llm_providers.base import (
     ChatMessage,
     FunctionCall,
-    LLMCapability,
     LLMProviderAPIError,
     LLMProviderConfigError,
     LLMProviderError,
@@ -65,67 +64,6 @@ class TestOpenAIProviderInitialization:
         assert provider.timeout == 60.0
 
 
-class TestOpenAIProviderCapabilities:
-    """Test capability detection and management."""
-
-    def test_detect_capabilities_gpt4(self):
-        """Test capability detection for GPT-4 models."""
-        config = {"api_key": "test", "model": "gpt-4"}
-        provider = OpenAIProvider("test", config)
-        provider._detect_capabilities()
-
-        expected_caps = [
-            LLMCapability.TEXT_COMPLETION,
-            LLMCapability.CHAT_COMPLETION,
-            LLMCapability.FUNCTION_CALLING,
-            LLMCapability.STREAMING,
-            LLMCapability.JSON_MODE,
-            LLMCapability.SYSTEM_MESSAGES,
-            LLMCapability.IMAGE_UNDERSTANDING,
-        ]
-
-        for cap in expected_caps:
-            assert provider.has_capability(cap), f"Missing capability: {cap}"
-
-    def test_detect_capabilities_gpt35_turbo(self):
-        """Test capability detection for GPT-3.5 Turbo."""
-        config = {"api_key": "test", "model": "gpt-3.5-turbo"}
-        provider = OpenAIProvider("test", config)
-        provider._detect_capabilities()
-
-        assert provider.has_capability(LLMCapability.FUNCTION_CALLING)
-        assert provider.has_capability(LLMCapability.JSON_MODE)
-        assert not provider.has_capability(LLMCapability.IMAGE_UNDERSTANDING)
-
-    def test_detect_capabilities_embedding_model(self):
-        """Test capability detection for embedding models."""
-        config = {"api_key": "test", "model": "text-embedding-3-small"}
-        provider = OpenAIProvider("test", config)
-        provider._detect_capabilities()
-
-        assert provider.has_capability(LLMCapability.EMBEDDINGS)
-        assert not provider.has_capability(LLMCapability.CHAT_COMPLETION)
-        assert not provider.has_capability(LLMCapability.FUNCTION_CALLING)
-
-    def test_detect_capabilities_unknown_model(self):
-        """Test capability detection for unknown models."""
-        config = {"api_key": "test", "model": "unknown-model"}
-        provider = OpenAIProvider("test", config)
-        provider._detect_capabilities()
-
-        assert provider.has_capability(LLMCapability.TEXT_COMPLETION)
-        assert provider.has_capability(LLMCapability.CHAT_COMPLETION)
-        assert provider.has_capability(LLMCapability.SYSTEM_MESSAGES)
-        assert not provider.has_capability(LLMCapability.FUNCTION_CALLING)
-
-    def test_detect_capabilities_unknown_embedding_model(self):
-        """Test capability detection for unknown embedding models."""
-        config = {"api_key": "test", "model": "custom-embed-model"}
-        provider = OpenAIProvider("test", config)
-        provider._detect_capabilities()
-
-        assert provider.has_capability(LLMCapability.EMBEDDINGS)
-        assert not provider.has_capability(LLMCapability.CHAT_COMPLETION)
 
 
 class TestOpenAIProviderServiceManagement:
@@ -221,7 +159,6 @@ class TestOpenAIProviderHealthCheck:
 
         provider.client = AsyncMock()
         provider.client.get.return_value = mock_response
-        provider._detect_capabilities()  # Set capabilities
 
         result = await provider.health_check()
 
@@ -229,7 +166,6 @@ class TestOpenAIProviderHealthCheck:
         assert result["response_time_ms"] == 500
         assert result["status_code"] == 200
         assert result["model"] == "gpt-4"
-        assert "capabilities" in result
         provider.client.get.assert_called_once_with("/models")
 
     @pytest.mark.asyncio
@@ -276,7 +212,6 @@ class TestOpenAIProviderChatCompletion:
         self.provider = OpenAIProvider("test", self.config)
         self.provider._initialized = True
         self.provider.client = AsyncMock()
-        self.provider._detect_capabilities()
 
     @pytest.mark.asyncio
     async def test_complete_basic(self):
@@ -423,7 +358,6 @@ class TestOpenAIProviderFunctionCalling:
         self.provider = OpenAIProvider("test", self.config)
         self.provider._initialized = True
         self.provider.client = AsyncMock()
-        self.provider._detect_capabilities()
 
         self.functions = [
             {
@@ -566,7 +500,6 @@ class TestOpenAIProviderEmbeddings:
         self.provider = OpenAIProvider("test", self.config)
         self.provider._initialized = True
         self.provider.client = AsyncMock()
-        self.provider._detect_capabilities()
 
     @pytest.mark.asyncio
     async def test_embed_success(self):
@@ -593,7 +526,6 @@ class TestOpenAIProviderEmbeddings:
         provider = OpenAIProvider("test", config)
         provider._initialized = True
         provider.client = AsyncMock()
-        provider._detect_capabilities()
 
         mock_response = Mock()
         mock_response.status_code = 200
@@ -627,7 +559,6 @@ class TestOpenAIProviderStreaming:
         self.provider = OpenAIProvider("test", self.config)
         self.provider._initialized = True
         self.provider.client = AsyncMock()
-        self.provider._detect_capabilities()
 
     @pytest.mark.asyncio
     async def test_stream_chat_complete_success(self):
@@ -662,19 +593,6 @@ class TestOpenAIProviderStreaming:
             assert chunks == ["Once", " upon", " a time"]
             mock_stream.assert_called_once_with(messages)
 
-    @pytest.mark.asyncio
-    async def test_stream_chat_complete_no_streaming_capability(self):
-        """Test streaming when provider doesn't support it."""
-        # Create provider without streaming capability
-        config = {"api_key": "test-key", "model": "gpt-4"}
-        provider = OpenAIProvider("test", config)
-        provider._set_capability(LLMCapability.STREAMING, False)
-
-        messages = [ChatMessage(role="user", content="Test")]
-
-        with pytest.raises(LLMProviderError, match="does not support streaming"):
-            async for _ in provider.stream_chat_complete(messages):
-                pass
 
     @pytest.mark.asyncio
     async def test_stream_chat_complete_api_error(self):

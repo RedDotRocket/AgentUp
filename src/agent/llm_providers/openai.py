@@ -1,24 +1,20 @@
 import json
-from pathlib import Path
 from typing import Any
 
 import httpx
 import structlog
-import yaml
 
 from agent.config.constants import (
     DEFAULT_API_ENDPOINTS,
     DEFAULT_HTTP_TIMEOUT,
     DEFAULT_MODELS,
     DEFAULT_USER_AGENT,
-    MODEL_CAPABILITIES_FILE,
 )
 
 from .base import (
     BaseLLMService,
     ChatMessage,
     FunctionCall,
-    LLMCapability,
     LLMProviderAPIError,
     LLMProviderConfigError,
     LLMProviderError,
@@ -40,44 +36,6 @@ class OpenAIProvider(BaseLLMService):
         self.organization = config.get("organization")
         self.timeout = config.get("timeout", DEFAULT_HTTP_TIMEOUT)
 
-        # Load model capabilities from configuration file
-        self._model_capabilities = self._load_model_capabilities()
-
-    def _load_model_capabilities(self) -> dict[str, list[LLMCapability]]:
-        """Load model capabilities from external configuration file."""
-        try:
-            if Path(MODEL_CAPABILITIES_FILE).exists():
-                with open(MODEL_CAPABILITIES_FILE) as f:
-                    capabilities_config = yaml.safe_load(f)
-
-                openai_config = capabilities_config.get("openai", {})
-                models_config = openai_config.get("models", {})
-
-                # Convert string capabilities to LLMCapability enums
-                capabilities_map = {}
-                for model, caps in models_config.items():
-                    model_caps = []
-                    for cap in caps:
-                        try:
-                            # Try to get the capability by name
-                            model_caps.append(LLMCapability(cap.lower()))
-                        except ValueError:
-                            logger.warning(f"Unknown capability '{cap}' for model {model}")
-                    capabilities_map[model] = model_caps
-
-                return capabilities_map
-        except Exception as e:
-            logger.warning(f"Failed to load model capabilities from {MODEL_CAPABILITIES_FILE}: {e}")
-
-        # Fallback to basic capabilities
-        return {
-            "gpt-4": [LLMCapability.TEXT_COMPLETION, LLMCapability.CHAT_COMPLETION, LLMCapability.FUNCTION_CALLING],
-            "gpt-3.5-turbo": [
-                LLMCapability.TEXT_COMPLETION,
-                LLMCapability.CHAT_COMPLETION,
-                LLMCapability.FUNCTION_CALLING,
-            ],
-        }
 
     async def initialize(self) -> None:
         """Initialize the OpenAI service."""
@@ -100,44 +58,15 @@ class OpenAIProvider(BaseLLMService):
 
         self.client = httpx.AsyncClient(base_url=self.base_url, headers=headers, timeout=self.timeout)
 
-        # Set capabilities based on model
-        self._detect_capabilities()
-
         # Test connection
         try:
             await self.health_check()
             self._initialized = True
             logger.info(f"OpenAI service {self.name} initialized successfully")
-            logger.info(f"Capabilities: {[cap.value for cap in self.get_capabilities()]}")
         except Exception as e:
             logger.error(f"OpenAI service {self.name} initialization failed: {e}")
             raise LLMProviderError(f"Failed to initialize OpenAI service: {e}") from e
 
-    def _detect_capabilities(self):
-        """Detect capabilities based on model."""
-        model_key = self.model.lower()
-
-        # Find matching capabilities
-        capabilities = []
-        for model_pattern, caps in self._model_capabilities.items():
-            if model_pattern in model_key:
-                capabilities = caps
-                break
-
-        # Default capabilities for unknown models
-        if not capabilities:
-            if "embed" in model_key:
-                capabilities = [LLMCapability.EMBEDDINGS]
-            else:
-                capabilities = [
-                    LLMCapability.TEXT_COMPLETION,
-                    LLMCapability.CHAT_COMPLETION,
-                    LLMCapability.SYSTEM_MESSAGES,
-                ]
-
-        # Set capabilities
-        for cap in capabilities:
-            self._set_capability(cap, True)
 
     async def close(self) -> None:
         """Close the OpenAI service."""
@@ -154,7 +83,6 @@ class OpenAIProvider(BaseLLMService):
                 "response_time_ms": response.elapsed.total_seconds() * 1000 if response.elapsed else 0,
                 "status_code": response.status_code,
                 "model": self.model,
-                "capabilities": [cap.value for cap in self.get_capabilities()],
             }
         except Exception as e:
             return {"status": "unhealthy", "error": str(e), "model": self.model}
@@ -184,8 +112,8 @@ class OpenAIProvider(BaseLLMService):
             "presence_penalty": kwargs.get("presence_penalty", 0),
         }
 
-        # Add JSON mode if requested and supported
-        if kwargs.get("response_format") == "json" and self.has_capability(LLMCapability.JSON_MODE):
+        # Add JSON mode if requested
+        if kwargs.get("response_format") == "json":
             payload["response_format"] = {"type": "json_object"}
 
         try:
@@ -291,9 +219,9 @@ class OpenAIProvider(BaseLLMService):
         if not self._initialized:
             await self.initialize()
 
-        # Use embedding model if current model doesn't support embeddings
+        # Use embedding model if current model doesn't look like an embedding model
         embed_model = self.model
-        if not self.has_capability(LLMCapability.EMBEDDINGS):
+        if "embed" not in self.model.lower():
             embed_model = "text-embedding-3-small"
 
         payload = {"model": embed_model, "input": text, "encoding_format": "float"}
@@ -335,9 +263,7 @@ class OpenAIProvider(BaseLLMService):
         return msg_dict
 
     async def stream_chat_complete(self, messages: list[ChatMessage], **kwargs):
-        """Stream chat completion (if streaming is enabled)."""
-        if not self.has_capability(LLMCapability.STREAMING):
-            raise LLMProviderError(f"Provider {self.name} does not support streaming")
+        """Stream chat completion."""
 
         if not self._initialized:
             await self.initialize()

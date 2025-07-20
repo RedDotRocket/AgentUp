@@ -2,11 +2,10 @@
 
 import asyncio
 import json
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
-from httpx import AsyncClient, Response
+from httpx import AsyncClient
 
 from agent.api.routes import sse_generator
 

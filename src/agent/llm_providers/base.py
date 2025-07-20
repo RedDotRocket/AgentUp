@@ -59,7 +59,6 @@ class BaseLLMService(ABC):
     def __init__(self, name: str, config: dict[str, Any]):
         self.name = name
         self.config = config
-        self._capabilities: dict[LLMCapability, bool] = {}
         self._initialized = False
 
     @abstractmethod
@@ -89,36 +88,42 @@ class BaseLLMService(ABC):
 
     async def embed(self, text: str) -> list[float]:
         """Generate embeddings (optional)."""
-        if not self.has_capability(LLMCapability.EMBEDDINGS):
-            raise NotImplementedError(f"Provider {self.name} does not support embeddings")
-        return await self._embed_impl(text)
+        try:
+            return await self._embed_impl(text)
+        except NotImplementedError:
+            raise NotImplementedError(f"Provider {self.name} does not support embeddings") from None
 
     async def _embed_impl(self, text: str) -> list[float]:
         """Implementation of embeddings (override in subclasses that support it)."""
         raise NotImplementedError("Embeddings not implemented for this provider")
 
-    # Capability management
+    # Capability management (deprecated - kept for compatibility)
     def has_capability(self, capability: LLMCapability) -> bool:
         """Check if provider has a specific capability."""
-        return self._capabilities.get(capability, False)
+        # Always return True - let operations fail gracefully if not supported
+        return True
 
     def get_capabilities(self) -> list[LLMCapability]:
         """Get list of supported capabilities."""
-        return [cap for cap, supported in self._capabilities.items() if supported]
+        # Return all capabilities - actual support determined at runtime
+        return list(LLMCapability)
 
     def _set_capability(self, capability: LLMCapability, supported: bool = True):
-        """Set capability support status."""
-        self._capabilities[capability] = supported
+        """Set capability support status (deprecated)."""
+        # No-op for backward compatibility
+        pass  # noqa: B027
 
     # Function calling support
     async def chat_complete_with_functions(
         self, messages: list[ChatMessage], functions: list[dict[str, Any]], **kwargs
     ) -> LLMResponse:
         """Chat completion with function calling support."""
-        if self.has_capability(LLMCapability.FUNCTION_CALLING):
+        try:
+            # Try native function calling first
             return await self._chat_complete_with_functions_native(messages, functions, **kwargs)
-        else:
+        except (NotImplementedError, Exception) as e:
             # Fallback to prompt-based function calling
+            logger.debug(f"Native function calling failed, using prompt-based fallback: {e}")
             return await self._chat_complete_with_functions_prompt(messages, functions, **kwargs)
 
     async def _chat_complete_with_functions_native(
@@ -281,7 +286,6 @@ After function calls, provide a natural response based on the results."""
             "name": self.name,
             "provider": self.__class__.__name__,
             "model": self.config.get("model", "unknown"),
-            "capabilities": [cap.value for cap in self.get_capabilities()],
             "initialized": self.is_initialized,
         }
 

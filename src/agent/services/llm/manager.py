@@ -60,10 +60,7 @@ class LLMManager:
     ) -> str:
         """Process with LLM function calling capability using provider-agnostic approach."""
         try:
-            from agent.llm_providers.base import (  # type: ignore[import-untyped]
-                ChatMessage,
-                LLMCapability,
-            )
+            from agent.llm_providers.base import ChatMessage  # type: ignore[import-untyped]
         except ImportError:
             # Fallback when LLM providers not available
             logger.warning("LLM provider modules not available, using basic chat completion")
@@ -75,60 +72,34 @@ class LLMManager:
             content = LLMManager._extract_message_content(msg)
             chat_messages.append(ChatMessage(role=msg.get("role", "user"), content=content))
 
-        # Check if provider supports native function calling
-        if hasattr(llm, "has_capability") and llm.has_capability(LLMCapability.FUNCTION_CALLING):
-            logger.debug("Using native function calling")
-            response = await llm.chat_complete_with_functions(chat_messages, function_schemas)
+        # Always try function calling - provider will handle fallback if needed
+        logger.debug("Calling LLM with functions")
+        response = await llm.chat_complete_with_functions(chat_messages, function_schemas)
 
-            # Handle function calls if present
-            if response.function_calls:
-                # Log which functions the LLM selected
-                selected_functions = [func_call.name for func_call in response.function_calls]
-                logger.info(f"LLM selected function(s): {', '.join(selected_functions)}")
+        # Handle function calls if present
+        if response.function_calls:
+            # Log which functions the LLM selected
+            selected_functions = [func_call.name for func_call in response.function_calls]
+            logger.info(f"LLM selected function(s): {', '.join(selected_functions)}")
 
-                function_results = []
-                for func_call in response.function_calls:
-                    try:
-                        logger.debug(f"Executing function: {func_call.name} with arguments: {func_call.arguments}")
-                        result = await function_executor.execute_function_call(func_call.name, func_call.arguments)
-                        function_results.append(result)
-                    except Exception as e:
-                        logger.error(f"Function call failed: {func_call.name}, error: {e}")
-                        function_results.append(f"Error: {str(e)}")
+            function_results = []
+            for func_call in response.function_calls:
+                try:
+                    logger.debug(f"Executing function: {func_call.name} with arguments: {func_call.arguments}")
+                    result = await function_executor.execute_function_call(func_call.name, func_call.arguments)
+                    function_results.append(result)
+                except Exception as e:
+                    logger.error(f"Function call failed: {func_call.name}, error: {e}")
+                    function_results.append(f"Error: {str(e)}")
 
-                # Combine function results with LLM response
-                if function_results:
-                    if response.content:
-                        return f"{response.content}\n\nResults: {'; '.join(function_results)}"
-                    else:
-                        return "; ".join(function_results)
-
-            return response.content
-        else:
-            logger.debug("Using prompt-based function calling fallback")
-            # Use the enhanced prompt-based approach from the provider
-            response = await llm.chat_complete_with_functions(chat_messages, function_schemas)
-
-            # Parse and execute function calls if present
-            if response.function_calls:
-                # Log which functions the LLM selected
-                selected_functions = [func_call.name for func_call in response.function_calls]
-                logger.info(f"LLM selected function(s): {', '.join(selected_functions)}")
-
-                function_results = []
-                for func_call in response.function_calls:
-                    try:
-                        logger.debug(f"Executing function: {func_call.name} with arguments: {func_call.arguments}")
-                        result = await function_executor.execute_function_call(func_call.name, func_call.arguments)
-                        function_results.append(result)
-                    except Exception as e:
-                        logger.error(f"Function call failed: {func_call.name}, error: {e}")
-                        function_results.append(f"Error: {str(e)}")
-
-                if function_results:
+            # Combine function results with LLM response
+            if function_results:
+                if response.content:
+                    return f"{response.content}\n\nResults: {'; '.join(function_results)}"
+                else:
                     return "; ".join(function_results)
 
-            return response.content
+        return response.content
 
     @staticmethod
     async def llm_direct_response(llm, messages: list[dict[str, str]]) -> str:

@@ -7,7 +7,6 @@ import structlog
 from .base import (
     BaseLLMService,
     ChatMessage,
-    LLMCapability,
     LLMProviderAPIError,
     LLMProviderConfigError,
     LLMProviderError,
@@ -26,37 +25,6 @@ class AnthropicProvider(BaseLLMService):
         self.base_url = config.get("base_url", "https://api.anthropic.com")
         self.timeout = config.get("timeout", 60.0)
         self.anthropic_version = config.get("anthropic_version", "2023-06-01")
-
-        # Claude model capabilities
-        self._model_capabilities = {
-            "claude-3-opus": [
-                LLMCapability.TEXT_COMPLETION,
-                LLMCapability.CHAT_COMPLETION,
-                LLMCapability.STREAMING,
-                LLMCapability.SYSTEM_MESSAGES,
-                LLMCapability.IMAGE_UNDERSTANDING,
-            ],
-            "claude-3-sonnet": [
-                LLMCapability.TEXT_COMPLETION,
-                LLMCapability.CHAT_COMPLETION,
-                LLMCapability.STREAMING,
-                LLMCapability.SYSTEM_MESSAGES,
-                LLMCapability.IMAGE_UNDERSTANDING,
-            ],
-            "claude-3-haiku": [
-                LLMCapability.TEXT_COMPLETION,
-                LLMCapability.CHAT_COMPLETION,
-                LLMCapability.STREAMING,
-                LLMCapability.SYSTEM_MESSAGES,
-                LLMCapability.IMAGE_UNDERSTANDING,
-            ],
-            "claude-2": [
-                LLMCapability.TEXT_COMPLETION,
-                LLMCapability.CHAT_COMPLETION,
-                LLMCapability.STREAMING,
-                LLMCapability.SYSTEM_MESSAGES,
-            ],
-        }
 
     async def initialize(self) -> None:
         """Initialize the Anthropic service."""
@@ -77,42 +45,15 @@ class AnthropicProvider(BaseLLMService):
 
         self.client = httpx.AsyncClient(base_url=self.base_url, headers=headers, timeout=self.timeout)
 
-        # Set capabilities based on model
-        self._detect_capabilities()
-
         # Test connection
         try:
             await self.health_check()
             self._initialized = True
             logger.info(f"Anthropic service {self.name} initialized successfully")
-            logger.info(f"Capabilities: {[cap.value for cap in self.get_capabilities()]}")
         except Exception as e:
             logger.error(f"Anthropic service {self.name} initialization failed: {e}")
             raise LLMProviderError(f"Failed to initialize Anthropic service: {e}") from e
 
-    def _detect_capabilities(self):
-        """Detect capabilities based on model."""
-        model_key = self.model.lower()
-
-        # Find matching capabilities
-        capabilities = []
-        for model_pattern, caps in self._model_capabilities.items():
-            if model_pattern in model_key:
-                capabilities = caps
-                break
-
-        # Default capabilities for unknown models
-        if not capabilities:
-            capabilities = [
-                LLMCapability.TEXT_COMPLETION,
-                LLMCapability.CHAT_COMPLETION,
-                LLMCapability.STREAMING,
-                LLMCapability.SYSTEM_MESSAGES,
-            ]
-
-        # Set capabilities
-        for cap in capabilities:
-            self._set_capability(cap, True)
 
     async def close(self) -> None:
         """Close the Anthropic service."""
@@ -132,7 +73,6 @@ class AnthropicProvider(BaseLLMService):
                 "response_time_ms": response.elapsed.total_seconds() * 1000 if response.elapsed else 0,
                 "status_code": response.status_code,
                 "model": self.model,
-                "capabilities": [cap.value for cap in self.get_capabilities()],
             }
         except Exception as e:
             return {"status": "unhealthy", "error": str(e), "model": self.model}
@@ -205,8 +145,6 @@ class AnthropicProvider(BaseLLMService):
 
     async def stream_chat_complete(self, messages: list[ChatMessage], **kwargs):
         """Stream chat completion."""
-        if not self.has_capability(LLMCapability.STREAMING):
-            raise LLMProviderError(f"Provider {self.name} does not support streaming")
 
         if not self._initialized:
             await self.initialize()
