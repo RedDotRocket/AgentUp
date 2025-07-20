@@ -133,6 +133,7 @@ def validate_required_fields(config: dict[str, Any], errors: list[str], warnings
         "push_notifications",
         "state_management",
         "cache",
+        "logging",
     }
     unknown_fields = set(config.keys()) - known_fields
 
@@ -321,23 +322,98 @@ def validate_security_section(security: dict[str, Any], errors: list[str], warni
         errors.append("Security must be a dictionary")
         return
 
-    if "type" not in security:
-        errors.append("Security configuration missing 'type' field")
+    # Check if security is enabled
+    if not security.get("enabled", False):
+        click.echo(f"{click.style('✓', fg='green')} Security disabled")
         return
 
-    security_type = security["type"]
-    valid_types = {"api_key", "jwt", "oauth2", "basic", "custom"}
+    # Validate auth configuration
+    if "auth" not in security:
+        errors.append("Security configuration missing 'auth' field when enabled")
+        return
 
-    if security_type not in valid_types:
-        warnings.append(f"Unknown security type: '{security_type}'")
+    auth = security["auth"]
+    if not isinstance(auth, dict):
+        errors.append("Security auth must be a dictionary")
+        return
 
-    # Validate specific security configurations
-    if security_type == "jwt" and "config" in security:
-        jwt_config = security["config"]
-        if "secret" not in jwt_config and "secret_key" not in jwt_config:
-            errors.append("JWT security missing secret key configuration")
+    # Check which auth types are configured
+    auth_types = []
+    if "api_key" in auth:
+        auth_types.append("api_key")
+        validate_api_key_auth(auth["api_key"], errors, warnings)
+    if "jwt" in auth:
+        auth_types.append("jwt")
+        validate_jwt_auth(auth["jwt"], errors, warnings)
+    if "oauth2" in auth:
+        auth_types.append("oauth2")
+        validate_oauth2_auth(auth["oauth2"], errors, warnings)
+
+    if not auth_types:
+        errors.append("No authentication method configured in security.auth")
+    elif len(auth_types) > 1:
+        warnings.append(f"Multiple auth methods configured: {', '.join(auth_types)}. Only one will be active.")
+
+    # Validate scope hierarchy if present
+    if "scope_hierarchy" in security:
+        validate_scope_hierarchy(security["scope_hierarchy"], errors, warnings)
 
     click.echo(f"{click.style('✓', fg='green')} Security configuration valid")
+
+
+def validate_api_key_auth(api_key_config: dict[str, Any], errors: list[str], warnings: list[str]):
+    """Validate API key authentication configuration."""
+    if "keys" not in api_key_config:
+        errors.append("API key auth missing 'keys' field")
+        return
+
+    keys = api_key_config.get("keys", [])
+    if not isinstance(keys, list) or not keys:
+        errors.append("API key auth 'keys' must be a non-empty list")
+        return
+
+    for i, key_config in enumerate(keys):
+        if not isinstance(key_config, dict):
+            errors.append(f"API key {i} must be a dictionary")
+            continue
+        if "key" not in key_config:
+            errors.append(f"API key {i} missing 'key' field")
+        if "scopes" in key_config and not isinstance(key_config["scopes"], list):
+            errors.append(f"API key {i} 'scopes' must be a list")
+
+
+def validate_jwt_auth(jwt_config: dict[str, Any], errors: list[str], warnings: list[str]):
+    """Validate JWT authentication configuration."""
+    if "secret_key" not in jwt_config:
+        errors.append("JWT auth missing 'secret_key' field")
+    
+    if "algorithm" in jwt_config:
+        valid_algorithms = {"HS256", "HS384", "HS512", "RS256", "RS384", "RS512", "ES256", "ES384", "ES512"}
+        if jwt_config["algorithm"] not in valid_algorithms:
+            warnings.append(f"Unknown JWT algorithm: {jwt_config['algorithm']}")
+
+
+def validate_oauth2_auth(oauth2_config: dict[str, Any], errors: list[str], warnings: list[str]):
+    """Validate OAuth2 authentication configuration."""
+    if "validation_strategy" not in oauth2_config:
+        errors.append("OAuth2 auth missing 'validation_strategy' field")
+    
+    if oauth2_config.get("validation_strategy") == "jwt":
+        required_fields = ["jwks_url", "jwt_algorithm", "jwt_issuer"]
+        for field in required_fields:
+            if field not in oauth2_config:
+                errors.append(f"OAuth2 JWT validation missing '{field}' field")
+
+
+def validate_scope_hierarchy(scope_hierarchy: dict[str, Any], errors: list[str], warnings: list[str]):
+    """Validate scope hierarchy configuration."""
+    if not isinstance(scope_hierarchy, dict):
+        errors.append("Scope hierarchy must be a dictionary")
+        return
+
+    for scope, children in scope_hierarchy.items():
+        if not isinstance(children, list):
+            errors.append(f"Scope '{scope}' children must be a list")
 
 
 def check_environment_variables(config: dict[str, Any], errors: list[str], warnings: list[str]):
@@ -421,7 +497,7 @@ def validate_ai_requirements(config: dict[str, Any], errors: list[str], warnings
     plugins = config.get("plugins", [])
     routing = config.get("routing", {})
     ai_config = config.get("ai", {})
-    services = config.get("services", {})
+    ai_provider = config.get("ai_provider", {})
 
     # Check if any plugin requires AI routing
     default_mode = routing.get("default_mode", "ai")
@@ -439,19 +515,32 @@ def validate_ai_requirements(config: dict[str, Any], errors: list[str], warnings
         if not ai_config.get("enabled", True):
             errors.append("AI routing is required by plugins but ai.enabled is false")
 
-        # Check that at least one LLM service is configured
-        llm_services = []
-        for service_name, service_config in services.items():
-            if service_config.get("type") == "llm":
-                llm_services.append(service_name)
+        # Check that AI provider is configured
+        if not ai_provider:
+            errors.append("AI routing is required but no ai_provider configuration found")
+        else:
+            # Validate AI provider configuration
+            if "provider" not in ai_provider:
+                errors.append("AI provider configuration missing 'provider' field")
+            else:
+                provider = ai_provider["provider"]
+                
+                # Validate provider-specific requirements
+                if provider == "openai":
+                    if "api_key" not in ai_provider:
+                        errors.append("OpenAI provider requires 'api_key' field")
+                elif provider == "anthropic":
+                    if "api_key" not in ai_provider:
+                        errors.append("Anthropic provider requires 'api_key' field")
+                elif provider == "ollama":
+                    # Ollama doesn't require API key but might need base_url
+                    pass
+                else:
+                    warnings.append(f"Unknown AI provider: '{provider}'")
 
-        if not llm_services:
-            errors.append("AI routing is required but no LLM services are configured in services section")
-
-        # Check that ai.llm_service points to a valid service
-        llm_service = ai_config.get("llm_service")
-        if llm_service and llm_service not in llm_services:
-            errors.append(f"AI configuration references llm_service '{llm_service}' but it's not defined in services")
+                # Validate common AI provider fields
+                if "model" not in ai_provider:
+                    warnings.append("AI provider configuration missing 'model' field - will use provider default")
 
     elif ai_config.get("enabled", False):
         warnings.append(
