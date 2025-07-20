@@ -1,0 +1,212 @@
+# agentup create agent findings
+
+
+1. Select AI Provider (any, for example Ollama)
+
+Validation fails as AI routing not enabled:
+
+agentup agent validate --config agent_config.yaml
+Validating agent_config.yaml...
+
+✓ Valid YAML syntax
+✓ Agent configuration valid
+✓ Found 1 plugin(s)
+✓ Routing configuration valid
+✓ AI requirements validated
+✓ Security configuration valid
+✓ Middleware configuration validated (1 middleware items)
+✓ System prompt validated
+✓ No plugin system prompts found
+
+Validation Results:
+
+  Warnings:
+  • AI is enabled but no plugins use AI routing. Consider disabling AI or adding AI-routed plugins
+
+✓ Configuration is valid with warnings
+
+agentup_config.yaml:
+
+# Routing configuration
+routing:
+  default_mode: direct  # Use direct routing by default for minimal template
+
+# AI configuration
+ai_provider:
+    provider: openai
+    api_key: ${OPENAI_API_KEY}
+    model: gpt-4o-mini
+    temperature: 0.7
+    max_tokens: 1000
+    top_p: 1.0
+
+# AI system prompt and configuration
+ai:
+  enabled: true
+  system_prompt: |
+    You are a helpful AI assistant created by AgentUp.
+
+    Your role:
+    - Understand user requests naturally
+    - Provide helpful, accurate responses
+    - Maintain a friendly and professional tone
+    - Use available functions when appropriate
+    - Keep responses concise and relevant
+
+    Always be helpful, accurate, and maintain context in conversations.
+
+2. Test API KEY
+
+agentup agent create
+----------------------------------------
+Create your AI agent:
+----------------------------------------
+? Agent name: Test API KEY
+? Description: AI Agent Test API KEY Project.
+? Would you like to customize the features? Yes
+? Select features to include: [Authentication Method (API Key, Bearer(JWT), OAuth2)]
+? Select authentication method: API Key (simple, good for development)
+
+2. Test Validation
+
+agentup agent validate --config agent_config.yaml
+Validating agent_config.yaml...
+
+✓ Valid YAML syntax
+✓ Agent configuration valid
+✓ Found 1 plugin(s)
+✓ Routing configuration valid
+✓ AI requirements validated
+✓ Security configuration valid
+✓ Middleware configuration validated (1 middleware items)
+✓ System prompt validated
+✓ No plugin system prompts found
+
+Validation Results:
+
+  Warnings:
+  • AI is enabled but no plugins use AI routing. Consider disabling AI or adding AI-routed plugins
+
+✓ Configuration is valid with warnings
+
+agentup_config.yaml:
+
+# Routing configuration
+routing:
+  default_mode: direct  # Use direct routing by default for minimal template
+
+# AI configuration
+
+# AI system prompt and configuration
+ai:
+  enabled: true
+  system_prompt: |
+    You are a helpful AI assistant created by AgentUp.
+
+    Your role:
+    - Understand user requests naturally
+    - Provide helpful, accurate responses
+    - Maintain a friendly and professional tone
+    - Use available functions when appropriate
+    - Keep responses concise and relevant
+
+    Always be helpful, accurate, and maintain context in conversations.
+
+
+3. Test OAuth2
+
+agentup agent create
+----------------------------------------
+Create your AI agent:
+----------------------------------------
+? Agent name: Test OAuth2
+? Description: AI Agent Test OAuth2 Project.
+? Would you like to customize the features? Yes
+? Select features to include: [Authentication Method (API Key, Bearer(JWT), OAuth2)]
+? Select authentication method: OAuth2 (enterprise-grade with provider integration)
+
+Same as before (Warnings: AI is enabled but no plugins use AI routing. Consider disabling AI or adding AI-routed plugins)
+
+Issue!
+
+It uses X-API-Key, not OAuth2
+
+security:
+  enabled: true
+  auth:
+    api_key:
+      header_name: "X-API-Key"
+      location: "header"  # Options: header, query, cookie
+      keys:
+        - key: "tNYdw0xfGcF8CScbw_-RWbWDzq5yQyZL"
+          scopes: ["api:read", "api:write", "system:read"]  # Permissions for demo plugin
+  # Basic scope hierarchy for minimal template
+  scope_hierarchy:
+    admin: ["*"]        # Admin has all permissions
+    api:write: ["api:read"]   # Write access includes read
+    api:read: []        # Basic read access
+    system:read: []     # System information access
+    files:read: []      # File read access
+
+3. Step 3 - Test JWT Key
+
+Both the same issues as previous steps:
+
+Warnings: AI is enabled but no plugins use AI routing. Consider disabling AI or adding AI-routed plugins
+
+It uses X-API-Key, not JWT
+
+
+4. Context (select all three):
+
+Select middleware to include: done (3 selections)
+
+only shows two (no retry)
+
+middleware:
+  - name: timed
+    params: {}
+  - name: cached
+    params:
+      ttl: 300  # 5 minutes
+      # Simple plugin-aware caching for minimal template
+      plugin_specific_ttl:
+        local: 300      # Standard cache for local plugins
+        ai_function: 60 # Shorter cache for AI functions
+
+
+5. Selected MCP
+
+No MCP in config
+
+Also noted, MCP if selected should also include AI , as AI is needed (I think)?
+
+6. Push Notifications:
+
+Even if you don't select, or you do, you always get the same:
+
+# Push notifications configuration
+push_notifications:
+  enabled: true
+  backend: memory             # Simple memory backend for minimal template
+  validate_urls: false        # Disable validation for minimal setup
+
+I believe these should be giving as options with sub questions)
+
+
+7. Extra
+
+I think we should ask if local development environment required? If Yes:
+
+development:
+  enabled: true  # mark as true
+  
+  filesystem_plugins:
+    enabled: true # mark as true
+    allowed_directories:
+      - ~/.agentup/plugins
+
+Also ask for location of allowed_directories (and offer the default of ~/.agentup/plugins)
+
+
+

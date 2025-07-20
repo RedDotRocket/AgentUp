@@ -386,7 +386,7 @@ def validate_jwt_auth(jwt_config: dict[str, Any], errors: list[str], warnings: l
     """Validate JWT authentication configuration."""
     if "secret_key" not in jwt_config:
         errors.append("JWT auth missing 'secret_key' field")
-    
+
     if "algorithm" in jwt_config:
         valid_algorithms = {"HS256", "HS384", "HS512", "RS256", "RS384", "RS512", "ES256", "ES384", "ES512"}
         if jwt_config["algorithm"] not in valid_algorithms:
@@ -397,7 +397,7 @@ def validate_oauth2_auth(oauth2_config: dict[str, Any], errors: list[str], warni
     """Validate OAuth2 authentication configuration."""
     if "validation_strategy" not in oauth2_config:
         errors.append("OAuth2 auth missing 'validation_strategy' field")
-    
+
     if oauth2_config.get("validation_strategy") == "jwt":
         required_fields = ["jwks_url", "jwt_algorithm", "jwt_issuer"]
         for field in required_fields:
@@ -524,7 +524,7 @@ def validate_ai_requirements(config: dict[str, Any], errors: list[str], warnings
                 errors.append("AI provider configuration missing 'provider' field")
             else:
                 provider = ai_provider["provider"]
-                
+
                 # Validate provider-specific requirements
                 if provider == "openai":
                     if "api_key" not in ai_provider:
