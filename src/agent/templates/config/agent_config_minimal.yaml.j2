@@ -23,7 +23,11 @@ plugins:
 
 # Routing configuration
 routing:
+{% if ai_provider_config %}
+  default_mode: ai  # Use AI routing when AI provider is configured
+{% else %}
   default_mode: direct  # Use direct routing by default for minimal template
+{% endif %}
 
 # AI configuration
 {% if ai_provider_config %}
@@ -59,16 +63,91 @@ ai:
 
     Always be helpful, accurate, and maintain context in conversations.
 
+# Model Context Protocol configuration
+{% if has_mcp %}
+mcp:
+  enabled: true
+  client:
+    enabled: true
+    servers: []  # Add MCP servers as needed for minimal template
+  # Expose as an MCP server for external access
+  server:
+    enabled: true
+    name: "{{ project_name_snake }}-mcp-server"
+    expose_handlers: true
+    expose_resources: ["agent_status", "agent_capabilities"]
+    port: 8001
+{% endif %}
+
 # Unified security configuration for minimal template
 security:
+{% if has_auth %}
   enabled: true
+  type: {{ feature_config.get('auth', 'api_key') }}
   auth:
+{% if feature_config.get('auth') == 'api_key' %}
     api_key:
       header_name: "X-API-Key"
       location: "header"  # Options: header, query, cookie
       keys:
         - key: "{{ generate_api_key() }}"
           scopes: ["api:read", "api:write", "system:read"]  # Permissions for demo plugin
+{% elif feature_config.get('auth') == 'jwt' %}
+    bearer:
+      jwt_secret: "{{ generate_jwt_secret() }}"
+      algorithm: "HS256"
+      issuer: "{{ project_name_snake }}"
+      audience: "a2a-clients"
+{% elif feature_config.get('auth') == 'oauth2' %}
+    oauth2:
+{% if feature_config.get('oauth2_provider') == 'github' %}
+      # GitHub OAuth2 configuration (introspection-based)
+      validation_strategy: "introspection"
+      
+      # GitHub token introspection endpoint
+      introspection_endpoint: "https://api.github.com/applications/{CLIENT_ID}/token"
+      
+      # Your GitHub OAuth app credentials
+      client_id: "${GITHUB_CLIENT_ID}"
+      client_secret: "${GITHUB_CLIENT_SECRET}"
+      
+      # Required GitHub scopes
+      required_scopes: ["user", "user:email"]
+{% elif feature_config.get('oauth2_provider') == 'google' %}
+      # Google OAuth2 configuration (JWT-based)
+      validation_strategy: "jwt"
+      jwks_url: "https://www.googleapis.com/oauth2/v3/certs"
+      jwt_algorithm: "RS256"
+      jwt_issuer: "https://accounts.google.com"
+      jwt_audience: "${GOOGLE_CLIENT_ID}"
+      required_scopes: ["openid", "email", "profile"]
+{% elif feature_config.get('oauth2_provider') == 'keycloak' %}
+      # Keycloak OAuth2 configuration (JWT-based)
+      validation_strategy: "jwt"
+      jwks_url: "${KEYCLOAK_JWKS_URL:https://your-keycloak.com/auth/realms/your-realm/protocol/openid_connect/certs}"
+      jwt_algorithm: "RS256"
+      jwt_issuer: "${KEYCLOAK_ISSUER:https://your-keycloak.com/auth/realms/your-realm}"
+      jwt_audience: "${KEYCLOAK_CLIENT_ID}"
+      required_scopes: ["openid", "profile"]
+{% else %}
+      # Generic OAuth2 configuration (configurable)
+      validation_strategy: "${OAUTH2_VALIDATION_STRATEGY:jwt}"
+      
+      # For JWT validation
+      jwks_url: "${OAUTH2_JWKS_URL:https://your-provider.com/.well-known/jwks.json}"
+      jwt_algorithm: "${OAUTH2_JWT_ALGORITHM:RS256}"
+      jwt_issuer: "${OAUTH2_JWT_ISSUER:https://your-provider.com}"
+      jwt_audience: "${OAUTH2_JWT_AUDIENCE:{{ project_name_snake }}}"
+      
+      # For introspection validation (alternative)
+      introspection_endpoint: "${OAUTH2_INTROSPECTION_ENDPOINT}"
+      client_id: "${OAUTH2_CLIENT_ID}"
+      client_secret: "${OAUTH2_CLIENT_SECRET}"
+      
+      # Required scopes
+      required_scopes: ["openid", "profile"]
+{% endif %}
+{% endif %}
   # Basic scope hierarchy for minimal template
   scope_hierarchy:
     admin: ["*"]        # Admin has all permissions
@@ -76,6 +155,9 @@ security:
     api:read: []        # Basic read access
     system:read: []     # System information access
     files:read: []      # File read access
+{% else %}
+  enabled: false
+{% endif %}
 
 # Cache configuration
 {% if has_middleware and 'cache' in feature_config.get('middleware', []) %}
@@ -108,12 +190,51 @@ middleware:
         local: 300      # Standard cache for local plugins
         ai_function: 60 # Shorter cache for AI functions
 {% endif %}
+{% if has_middleware and 'rate_limit' in feature_config.get('middleware', []) %}
+  - name: rate_limited
+    params:
+      requests_per_minute: 60  # Standard rate for minimal template
+      # Plugin-specific rate limiting
+      plugin_specific_limits:
+        local: 120             # Higher rate for local plugins
+        network: 30            # Lower rate for network plugins
+        hybrid: 60             # Standard rate for hybrid plugins
+        ai_function: 20        # Lower rate for AI functions
+        core: 180              # Higher rate for core functions
+{% endif %}
+{% if has_middleware and 'retry' in feature_config.get('middleware', []) %}
+  - name: retryable
+    params:
+      max_retries: 3         # Basic retry for minimal template
+      backoff_factor: 2.0    # Exponential backoff
+      max_delay: 30.0        # Max 30 seconds between retries
+      # Plugin-specific retry configuration
+      plugin_compatibility:
+        local: false           # Local plugins rarely need retries
+        network: true          # Network plugins benefit from retries
+        hybrid: true           # Hybrid plugins may need retries
+        ai_function: false     # AI functions need specialized retry logic
+        core: false            # Core functions should be reliable
+{% endif %}
 
 # Push notifications configuration
+{% if has_push_notifications %}
 push_notifications:
   enabled: true
+{% if feature_config.get('push_backend') == 'valkey' %}
+  backend: valkey              # Options: memory, valkey
+  key_prefix: "agentup:push:" # Valkey key prefix for push configs
+  validate_urls: {{ feature_config.get('push_validate_urls', true) }}
+  retry_attempts: 3           # Number of retry attempts for failed webhooks
+  timeout: 30                 # Webhook request timeout in seconds
+{% else %}
   backend: memory             # Simple memory backend for minimal template
-  validate_urls: false        # Disable validation for minimal setup
+  validate_urls: {{ feature_config.get('push_validate_urls', false) }}        # Disable validation for minimal setup
+{% endif %}
+{% else %}
+push_notifications:
+  enabled: false
+{% endif %}
 
 
 # State management configuration
@@ -168,12 +289,27 @@ logging:
     access_log: false         # Minimal logging
     disable_default_handlers: true
 
-# Development configuration (disabled by default)
+# Development configuration
 development:
-  enabled: false  # Keep all development features disabled in minimal template
+{% if feature_config.get('development_enabled') %}
+  enabled: true  # Development features enabled
+  
+  # Filesystem plugins configuration
+  filesystem_plugins:
+    enabled: {{ feature_config.get('filesystem_plugins_enabled', false) }}
+{% if feature_config.get('filesystem_plugins_enabled') %}
+    allowed_directories:
+      - {{ feature_config.get('plugin_directory', '~/.agentup/plugins') }}
+{% else %}
+    allowed_directories:
+      - ~/.agentup/plugins
+{% endif %}
+{% else %}
+  enabled: false  # Keep all development features disabled by default
   
   # Filesystem plugins remain disabled for security
   filesystem_plugins:
     enabled: false
     allowed_directories:
       - ~/.agentup/plugins
+{% endif %}

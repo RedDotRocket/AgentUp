@@ -42,17 +42,9 @@ without the guesswork. Its middleware handles rate limiting, caching, authentica
 - Build AgentUp's plugin architecture:
   - Create custom capabilities without modifying core code
   - Leverage community plugins from the open ecosystem (system tools, image processing, etc.)
-  - Install plugins with `pip install / uv add <name>` (pin versions if needed!)
-  - Version plugins independently from the core framework
-  - All plugins are gated by capabilities scopes, ensuring secure access control
+  - Manage plugins with your existing package manager (pip, uv, poetry, etc.)
+  - All plugins are gated by capabilities scopes, ensuring secure access control using domain-specific permissions
   - No more back port hell , version migration, or breaking change nightmares!
-
-**State Management**
-- Track conversations persistently with configurable TTL and history
-- Choose your storage backend to match your infrastructure:
-  - File system for simple deployments
-  - Database for structured queries
-  - Redis or Valkey for high-performance caching
 
 **Security & Access Control**
 - Built-in authentication, authorization, and secure communication patterns
@@ -60,6 +52,13 @@ without the guesswork. Its middleware handles rate limiting, caching, authentica
   - Control exactly what each plugin can access
   - Seamless integration with OAuth2 and bearer token systems
   - Fine-tune capabilities at every level
+
+**State Management**
+- Track conversations persistently with configurable TTL and history
+- Choose your storage backend to match your infrastructure:
+  - File system for simple deployments
+  - Database for structured queries
+  - Redis or Valkey for high-performance caching
 
 **Asynchronous Operations**
 - Manage long-running tasks with built-in state tracking
@@ -89,11 +88,11 @@ without the guesswork. Its middleware handles rate limiting, caching, authentica
   - `agentup agent serve` - Start a local development server
   - `agentup plugin` - Generate, install, and cookiecutter new plugin projects
 
+And lots more!
+
 ## Project Status
 
-AgentUp is in active development and not yet ready for production use. There will be lots of bugs,
-Types need 'tightening up', and the API is still evolving. Lot's of help is appreciated, and I welcome
-...
+AgentUp is in active development and not yet ready for production use. There will be lots of bugs, Type based coverage needs improvement, and the API is still evolving. Lot's of help is appreciated, and I welcome...
 
 ## Contributions
 

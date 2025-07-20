@@ -318,4 +318,60 @@ def configure_features(features: list) -> dict[str, Any]:
 
         config["auth"] = auth_choice
 
+        # If OAuth2 is selected, ask for provider
+        if auth_choice == "oauth2":
+            oauth2_provider = questionary.select(
+                "Select OAuth2 provider:",
+                choices=[
+                    questionary.Choice("GitHub (introspection-based)", value="github"),
+                    questionary.Choice("Google (JWT-based)", value="google"),
+                    questionary.Choice("Keycloak (JWT-based)", value="keycloak"),
+                    questionary.Choice("Generic (configurable)", value="generic"),
+                ],
+                style=custom_style,
+            ).ask()
+
+            config["oauth2_provider"] = oauth2_provider
+
+    if "push_notifications" in features:
+        push_backend_choice = questionary.select(
+            "Select push notifications backend:",
+            choices=[
+                questionary.Choice("Memory (development, non-persistent)", value="memory"),
+                questionary.Choice("Valkey/Redis (production, persistent)", value="valkey"),
+            ],
+            style=custom_style,
+        ).ask()
+
+        config["push_backend"] = push_backend_choice
+
+        validate_urls = questionary.confirm(
+            "Enable webhook URL validation?", default=push_backend_choice == "valkey", style=custom_style
+        ).ask()
+
+        config["push_validate_urls"] = validate_urls
+
+    if "development" in features:
+        dev_enabled = questionary.confirm(
+            "Enable development features? (filesystem plugins, debug mode)", default=False, style=custom_style
+        ).ask()
+
+        config["development_enabled"] = dev_enabled
+
+        if dev_enabled:
+            filesystem_plugins = questionary.confirm(
+                "Enable filesystem plugin loading? (allows loading plugins from directories)",
+                default=True,
+                style=custom_style,
+            ).ask()
+
+            config["filesystem_plugins_enabled"] = filesystem_plugins
+
+            if filesystem_plugins:
+                plugin_dir = questionary.text(
+                    "Plugin directory path:", default="~/.agentup/plugins", style=custom_style
+                ).ask()
+
+                config["plugin_directory"] = plugin_dir
+
     return config

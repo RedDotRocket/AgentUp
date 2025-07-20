@@ -141,6 +141,29 @@ class ProjectGenerator:
 
 # Valkey/Redis URL (if using Valkey services)
 # VALKEY_URL=valkey://localhost:6379
+
+# OAuth2 Authentication (if using OAuth2)
+# GitHub OAuth2
+# GITHUB_CLIENT_ID=your_github_client_id
+# GITHUB_CLIENT_SECRET=your_github_client_secret
+
+# Google OAuth2
+# GOOGLE_CLIENT_ID=your_google_client_id
+
+# Keycloak OAuth2
+# KEYCLOAK_JWKS_URL=https://your-keycloak.com/auth/realms/your-realm/protocol/openid_connect/certs
+# KEYCLOAK_ISSUER=https://your-keycloak.com/auth/realms/your-realm
+# KEYCLOAK_CLIENT_ID=your_keycloak_client_id
+
+# Generic OAuth2
+# OAUTH2_VALIDATION_STRATEGY=jwt
+# OAUTH2_JWKS_URL=https://your-provider.com/.well-known/jwks.json
+# OAUTH2_JWT_ALGORITHM=RS256
+# OAUTH2_JWT_ISSUER=https://your-provider.com
+# OAUTH2_JWT_AUDIENCE=your_audience
+# OAUTH2_INTROSPECTION_ENDPOINT=https://your-provider.com/oauth/introspect
+# OAUTH2_CLIENT_ID=your_client_id
+# OAUTH2_CLIENT_SECRET=your_client_secret
 """
             env_file.write_text(env_content)
 
@@ -182,6 +205,8 @@ class ProjectGenerator:
             "has_state_management": "state_management" in self.features,
             "has_auth": "auth" in self.features,
             "has_mcp": "mcp" in self.features,
+            "has_push_notifications": "push_notifications" in self.features,
+            "has_development": "development" in self.features,
             "template_name": self.template_name,
         }
 
@@ -577,12 +602,21 @@ Always be helpful, accurate, and maintain a friendly tone. You are designed to a
 
     def _build_routing_config(self) -> dict[str, Any]:
         """Build routing configuration based on template."""
-        # Determine routing mode and fallback capability based on template
-        if self.template_name == "minimal":
+        # Check if AI provider is selected
+        has_ai_provider = "ai_provider" in self.features
+
+        # Determine routing mode based on features
+        if has_ai_provider:
+            default_mode = "ai"
+        elif self.template_name == "minimal":
             default_mode = "direct"
-            fallback_capability = "echo"
         else:
             default_mode = "ai"
+
+        # Determine fallback capability based on template
+        if self.template_name == "minimal":
+            fallback_capability = "echo"
+        else:
             fallback_capability = "ai_assistant"
 
         return {"default_mode": default_mode, "fallback_capability": fallback_capability, "fallback_enabled": True}

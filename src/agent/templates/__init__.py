@@ -23,7 +23,8 @@ def get_feature_choices() -> list[questionary.Choice]:
         questionary.Choice("State Management (conversation persistence)", value="state_management", checked=True),
         questionary.Choice("AI Provider (ollama, openai, anthropic)", value="ai_provider"),
         questionary.Choice("MCP Integration (Model Context Protocol)", value="mcp", checked=True),
-        questionary.Choice("Push Notifications (webhooks)", value="custom"),
+        questionary.Choice("Push Notifications (webhooks)", value="push_notifications"),
+        questionary.Choice("Development Features (filesystem plugins, debug mode)", value="development"),
     ]
 
 

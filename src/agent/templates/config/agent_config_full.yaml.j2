@@ -38,14 +38,75 @@ plugins:
 
 # Enterprise AgentUp Security Framework configuration
 security:
+{% if has_auth %}
   enabled: true   # Authentication enabled for full template
+  type: {{ feature_config.get('auth', 'api_key') }}
   auth:
+{% if feature_config.get('auth') == 'api_key' %}
+    api_key:
+      header_name: "X-API-Key"
+      location: "header"
+      keys:
+        - key: "{{ generate_api_key() }}"
+          scopes: ["api:read", "api:write", "system:read", "files:read"]
+        - key: "{{ generate_api_key() }}"
+          scopes: ["admin"]  # Admin key
+{% elif feature_config.get('auth') == 'jwt' %}
+    bearer:
+      jwt_secret: "{{ generate_jwt_secret() }}"
+      algorithm: "HS256"
+      issuer: "{{ project_name_snake }}"
+      audience: "a2a-clients"
+{% elif feature_config.get('auth') == 'oauth2' %}
     oauth2:   # Enterprise-grade OAuth2 authentication
+{% if feature_config.get('oauth2_provider') == 'github' %}
+      # GitHub OAuth2 configuration (introspection-based)
+      validation_strategy: "introspection"
+      
+      # GitHub token introspection endpoint
+      introspection_endpoint: "https://api.github.com/applications/{CLIENT_ID}/token"
+      
+      # Your GitHub OAuth app credentials
+      client_id: "${GITHUB_CLIENT_ID}"
+      client_secret: "${GITHUB_CLIENT_SECRET}"
+      
+      # Required GitHub scopes
+      required_scopes: ["user", "user:email", "read:org"]
+{% elif feature_config.get('oauth2_provider') == 'google' %}
+      # Google OAuth2 configuration (JWT-based)
       validation_strategy: "jwt"
-      jwks_url: "${JWKS_URL:https://your-provider.com/.well-known/jwks.json}"
+      jwks_url: "https://www.googleapis.com/oauth2/v3/certs"
       jwt_algorithm: "RS256"
-      jwt_issuer: "${JWT_ISSUER:https://your-provider.com}"
-      jwt_audience: "${JWT_AUDIENCE:{{ project_name }}}"
+      jwt_issuer: "https://accounts.google.com"
+      jwt_audience: "${GOOGLE_CLIENT_ID}"
+      required_scopes: ["openid", "email", "profile"]
+{% elif feature_config.get('oauth2_provider') == 'keycloak' %}
+      # Keycloak OAuth2 configuration (JWT-based)
+      validation_strategy: "jwt"
+      jwks_url: "${KEYCLOAK_JWKS_URL:https://your-keycloak.com/auth/realms/your-realm/protocol/openid_connect/certs}"
+      jwt_algorithm: "RS256"
+      jwt_issuer: "${KEYCLOAK_ISSUER:https://your-keycloak.com/auth/realms/your-realm}"
+      jwt_audience: "${KEYCLOAK_CLIENT_ID}"
+      required_scopes: ["openid", "profile", "groups"]
+{% else %}
+      # Generic OAuth2 configuration (configurable)
+      validation_strategy: "${OAUTH2_VALIDATION_STRATEGY:jwt}"
+      
+      # For JWT validation
+      jwks_url: "${OAUTH2_JWKS_URL:https://your-provider.com/.well-known/jwks.json}"
+      jwt_algorithm: "${OAUTH2_JWT_ALGORITHM:RS256}"
+      jwt_issuer: "${OAUTH2_JWT_ISSUER:https://your-provider.com}"
+      jwt_audience: "${OAUTH2_JWT_AUDIENCE:{{ project_name }}}"
+      
+      # For introspection validation (alternative)
+      introspection_endpoint: "${OAUTH2_INTROSPECTION_ENDPOINT}"
+      client_id: "${OAUTH2_CLIENT_ID}"
+      client_secret: "${OAUTH2_CLIENT_SECRET}"
+      
+      # Required scopes
+      required_scopes: ["openid", "profile"]
+{% endif %}
+{% endif %}
   # Example scope hierarchy with fine-grained permissions
   scope_hierarchy:
     # Administrative scopes
@@ -76,6 +137,9 @@ security:
     api:read: []
     files:read: []
     system:read: []
+{% else %}
+  enabled: false
+{% endif %}
 
 # AI configuration
 {% if ai_provider_config %}
@@ -165,6 +229,16 @@ mcp:
     expose_resources: [agent_status, agent_capabilities]
     port: 8001
 
+# Routing configuration
+routing:
+{% if ai_provider_config %}
+  default_mode: ai  # Use AI routing when AI provider is configured
+{% else %}
+  default_mode: ai  # Use AI routing for full template by default
+{% endif %}
+  fallback_capability: ai_assistant
+  fallback_enabled: true
+
 # Enterprise context-aware middleware configuration
 middleware:
   - name: timed
@@ -211,13 +285,23 @@ middleware:
 {% endif %}
 
 # Push notifications configuration
+{% if has_push_notifications %}
 push_notifications:
   enabled: true
+{% if feature_config.get('push_backend') == 'valkey' %}
   backend: valkey              # Options: memory, valkey
   key_prefix: "agentup:push:" # Valkey key prefix for push configs
-  validate_urls: true         # Enable webhook URL validation for security
+  validate_urls: {{ feature_config.get('push_validate_urls', true) }}         # Enable webhook URL validation for security
   retry_attempts: 3           # Number of retry attempts for failed webhooks
   timeout: 30                 # Webhook request timeout in seconds
+{% else %}
+  backend: memory             # Simple memory backend
+  validate_urls: {{ feature_config.get('push_validate_urls', false) }}
+{% endif %}
+{% else %}
+push_notifications:
+  enabled: false
+{% endif %}
 
 
 # State management configuration
@@ -288,6 +372,35 @@ logging:
 # Development configuration
 # WARNING: These features can be security risks and should NEVER be enabled in production
 development:
+{% if feature_config.get('development_enabled') %}
+  enabled: true  # Development features enabled
+  
+  # Filesystem plugin loading
+  # This allows loading arbitrary Python code from the filesystem
+  filesystem_plugins:
+    enabled: {{ feature_config.get('filesystem_plugins_enabled', false) }}
+{% if feature_config.get('filesystem_plugins_enabled') %}
+    allowed_directories:
+      - {{ feature_config.get('plugin_directory', '~/.agentup/plugins') }}  # User-specified directory
+{% else %}
+    allowed_directories:
+      - ~/.agentup/plugins  # Default directory
+{% endif %}
+    # Security enhancements:
+    # require_signature: true  # Require cryptographic signatures
+    # allowed_plugins: []      # Whitelist specific plugin files
+    # watch_for_changes: true  # Auto-reload on file changes
+    # log_level: DEBUG        # Extra logging for plugin loading
+    
+  # Other development features
+  debug_mode: true          # Enable debug endpoints and verbose logging
+  hot_reload: false         # Auto-reload on code changes
+  profiling: false          # Enable performance profiling
+  unsafe_features:
+    allow_eval: false       # Allow eval() in plugins
+    allow_exec: false       # Allow exec() in plugins
+    allow_shell: false      # Allow shell command execution
+{% else %}
   enabled: false  # Master switch for ALL development features
   
   # Filesystem plugin loading
@@ -310,3 +423,4 @@ development:
     allow_eval: false       # Allow eval() in plugins
     allow_exec: false       # Allow exec() in plugins
     allow_shell: false      # Allow shell command execution
+{% endif %}
