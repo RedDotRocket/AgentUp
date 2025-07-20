@@ -237,7 +237,7 @@ class TestCreateAgentCommand:
             # Note: No --no-git flag
 
         assert result.exit_code == 0
-        assert "✓ Git repository initialized" in result.output
+        assert "Git repository initialized" in result.output
         mock_git.assert_called_once()
 
     def test_create_agent_git_initialization_failure(self, runner, mock_generator, temp_dir, mock_template_features):
@@ -592,8 +592,8 @@ class TestCliOutput:
 
         # Check for expected output elements
         assert "Create your AI agent:" in result.output
-        assert "📁 Creating project..." in result.output
-        assert "✓ Project created successfully!" in result.output
+        assert "Creating project..." in result.output
+        assert "Project created successfully!" in result.output
         assert "Next steps:" in result.output
         assert "cd output-test" in result.output  # Directory name preserves hyphens
         assert "uv sync" in result.output

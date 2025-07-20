@@ -7,4 +7,3 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 class TestOllamaProviderInitialization:
     """Test Ollama provider initialization."""
-

@@ -64,8 +64,6 @@ class TestOpenAIProviderInitialization:
         assert provider.timeout == 60.0
 
 
-
-
 class TestOpenAIProviderServiceManagement:
     """Test service lifecycle management."""
 
@@ -592,7 +590,6 @@ class TestOpenAIProviderStreaming:
 
             assert chunks == ["Once", " upon", " a time"]
             mock_stream.assert_called_once_with(messages)
-
 
     @pytest.mark.asyncio
     async def test_stream_chat_complete_api_error(self):

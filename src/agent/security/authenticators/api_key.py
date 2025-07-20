@@ -115,7 +115,7 @@ class ApiKeyAuthenticator(BaseAuthenticator):
                 log_security_event("authentication", request_info, True, "API key authenticated")
                 return AuthenticationResult(
                     success=True,
-                    user_id = f"api_key_user_{hashlib.sha256(api_key.encode()).hexdigest()}",
+                    user_id=f"api_key_user_{hashlib.sha256(api_key.encode()).hexdigest()}",
                     credentials=api_key,
                     scopes=self.api_key_scopes.get(configured_key, set()),
                 )

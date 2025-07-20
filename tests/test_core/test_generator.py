@@ -66,7 +66,7 @@ class TestProjectGenerator:
         provider, service_name, model = generator._get_llm_provider_info(["anthropic"])
         assert provider == "anthropic"
         assert service_name == "anthropic"
-        assert model == "claude-3-haiku-20240307"
+        assert model == "claude-3-7-sonnet-20250219"
 
         # Test OpenAI provider
         provider, service_name, model = generator._get_llm_provider_info(["openai"])
@@ -104,7 +104,7 @@ class TestProjectGenerator:
         assert anthropic_config["type"] == "llm"
         assert anthropic_config["provider"] == "anthropic"
         assert anthropic_config["api_key"] == "${ANTHROPIC_API_KEY}"
-        assert anthropic_config["model"] == "claude-3-haiku-20240307"
+        assert anthropic_config["model"] == "claude-3-7-sonnet-20250219"
 
     def test_replace_template_vars(self, temp_dir: Path):
         """Test the _replace_template_vars method."""
@@ -212,12 +212,12 @@ class TestProjectGenerationFlow:
         provider, service_name, model = generator._get_llm_provider_info(["anthropic"])
         assert provider == "anthropic"
         assert service_name == "anthropic"
-        assert model == "claude-3-haiku-20240307"
+        assert model == "claude-3-7-sonnet-20250219"
 
         # Test service config building
         service_config = generator._build_llm_service_config("anthropic")
         assert service_config["provider"] == "anthropic"
-        assert service_config["model"] == "claude-3-haiku-20240307"
+        assert service_config["model"] == "claude-3-7-sonnet-20250219"
 
 
 class TestTemplateRendering:
@@ -459,7 +459,7 @@ class TestServiceNameConsistency:
     def test_ai_service_name_matches_services_section_anthropic(self, temp_dir: Path):
         """Test that AI provider configuration is correct for Anthropic."""
         config = create_test_config("anthropic-consistency", "standard", ["ai_provider"], ["anthropic"])
-        config["ai_provider_config"] = {"provider": "anthropic", "model": "claude-3-haiku-20240307"}
+        config["ai_provider_config"] = {"provider": "anthropic", "model": "claude-3-7-sonnet-20250219"}
         generator = ProjectGenerator(temp_dir, config)
 
         # Build the configuration

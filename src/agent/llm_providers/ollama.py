@@ -40,7 +40,6 @@ class OllamaProvider(BaseLLMService):
             logger.error(f"Ollama service {self.name} initialization failed: {e}")
             raise LLMProviderError(f"Failed to initialize Ollama service: {e}") from e
 
-
     async def _ensure_model_available(self):
         """Ensure the model is available, pull if necessary."""
         try:

@@ -54,7 +54,6 @@ class AnthropicProvider(BaseLLMService):
             logger.error(f"Anthropic service {self.name} initialization failed: {e}")
             raise LLMProviderError(f"Failed to initialize Anthropic service: {e}") from e
 
-
     async def close(self) -> None:
         """Close the Anthropic service."""
         if self.client:

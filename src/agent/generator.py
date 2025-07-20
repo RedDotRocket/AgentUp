@@ -71,7 +71,7 @@ class ProjectGenerator:
                 "type": "llm",
                 "provider": "anthropic",
                 "api_key": "${ANTHROPIC_API_KEY}",
-                "model": "claude-3-haiku-20240307",
+                "model": "claude-3-7-sonnet-20250219",
             },
             "ollama": {
                 "type": "llm",
@@ -361,26 +361,40 @@ Always be helpful, accurate, and maintain a friendly tone. You are designed to a
     # TODO: Don't need this anymore, we have hello plugin
     def _build_plugins_config(self) -> list[PluginConfig]:
         """Build plugins configuration with AgentUp Security Framework classification."""
-        return [
-            {
-                "plugin_id": "ai_assistant",
-                "name": "AI Assistant",
-                "description": "AI-powered assistant for various tasks",
-                "input_mode": "text",
-                "output_mode": "text",
-                "priority": 100,
-                "middleware_override": [
-                    {
-                        "name": "rate_limited",
-                        "params": {
-                            "requests_per_minute": 20  # Conservative rate for AI operations
+        if self.template_name == "minimal":
+            return [
+                {
+                    "plugin_id": "echo",
+                    "name": "Echo Service",
+                    "description": "Simple echo service for testing",
+                    "routing_mode": "direct",
+                    "keywords": ["echo", "test", "ping"],
+                    "input_mode": "text",
+                    "output_mode": "text",
+                    "priority": 100,
+                }
+            ]
+        else:
+            return [
+                {
+                    "plugin_id": "ai_assistant",
+                    "name": "AI Assistant",
+                    "description": "AI-powered assistant for various tasks",
+                    "input_mode": "text",
+                    "output_mode": "text",
+                    "priority": 100,
+                    "middleware_override": [
+                        {
+                            "name": "rate_limited",
+                            "params": {
+                                "requests_per_minute": 20  # Conservative rate for AI operations
+                            },
                         },
-                    },
-                    {"name": "timed", "params": {}},
-                    # No caching for AI to ensure fresh responses
-                ],
-            }
-        ]
+                        {"name": "timed", "params": {}},
+                        # No caching for AI to ensure fresh responses
+                    ],
+                }
+            ]
 
     def _build_services_config(self) -> dict[str, Any]:
         """Build services configuration based on template and selected services."""
@@ -566,7 +580,7 @@ Always be helpful, accurate, and maintain a friendly tone. You are designed to a
         # Determine routing mode and fallback capability based on template
         if self.template_name == "minimal":
             default_mode = "direct"
-            fallback_capability = "ai_assistant"
+            fallback_capability = "echo"
         else:
             default_mode = "ai"
             fallback_capability = "ai_assistant"

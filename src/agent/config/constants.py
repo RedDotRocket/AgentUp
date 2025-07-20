@@ -1,4 +1,3 @@
-
 # General dumping ground for stuff that is going to stay constant across the project.
 
 # Default model configurations

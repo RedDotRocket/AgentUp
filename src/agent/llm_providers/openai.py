@@ -36,7 +36,6 @@ class OpenAIProvider(BaseLLMService):
         self.organization = config.get("organization")
         self.timeout = config.get("timeout", DEFAULT_HTTP_TIMEOUT)
 
-
     async def initialize(self) -> None:
         """Initialize the OpenAI service."""
         if not self.api_key:
@@ -66,7 +65,6 @@ class OpenAIProvider(BaseLLMService):
         except Exception as e:
             logger.error(f"OpenAI service {self.name} initialization failed: {e}")
             raise LLMProviderError(f"Failed to initialize OpenAI service: {e}") from e
-
 
     async def close(self) -> None:
         """Close the OpenAI service."""

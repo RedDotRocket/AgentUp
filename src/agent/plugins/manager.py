@@ -54,6 +54,7 @@ class PluginManager:
         if self._config is None:
             try:
                 from agent.config import load_config
+
                 self._config = load_config(configure_logging=False)
             except ImportError:
                 logger.warning("Could not load configuration, using empty config")
@@ -191,7 +192,6 @@ class PluginManager:
         """Load a single installed plugin."""
         plugin_name = f"installed_{plugin_dir.name}"
         plugin_file = plugin_dir / entry_file
-
 
         # Similar to local plugin loading
         spec = importlib.util.spec_from_file_location(plugin_name, plugin_file)
@@ -466,6 +466,7 @@ def get_plugin_manager() -> PluginManager:
         config = None
         try:
             from agent.config import load_config
+
             config = load_config(configure_logging=False)
         except ImportError:
             logger.debug("Could not load configuration for plugin manager")
