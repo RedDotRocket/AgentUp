@@ -232,7 +232,7 @@ logging:
    ```
 
 ### 3. Check System Requirements
-- Python 3.10+
+- Python 3.11+
 - Required packages: `authlib`, `httpx`
 - Network access to api.github.com
 
