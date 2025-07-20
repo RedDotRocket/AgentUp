@@ -3,7 +3,7 @@ from typing import Any
 import structlog
 
 from .anthropic import AnthropicProvider
-from .base import BaseLLMService, ChatMessage, FunctionCall, LLMCapability, LLMResponse
+from .base import BaseLLMService, ChatMessage, FunctionCall, LLMResponse
 from .ollama import OllamaProvider
 from .openai import OpenAIProvider
 
@@ -64,7 +64,6 @@ def register_provider(provider_type: str, provider_class: type[BaseLLMService]):
 # Export all public components
 __all__ = [
     "BaseLLMService",
-    "LLMCapability",
     "LLMResponse",
     "ChatMessage",
     "FunctionCall",

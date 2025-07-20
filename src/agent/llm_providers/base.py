@@ -1,25 +1,11 @@
 import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from enum import Enum
 from typing import Any
 
 import structlog
 
 logger = structlog.get_logger(__name__)
-
-
-class LLMCapability(Enum):
-    """Supported LLM capabilities."""
-
-    TEXT_COMPLETION = "text_completion"
-    CHAT_COMPLETION = "chat_completion"
-    FUNCTION_CALLING = "function_calling"
-    STREAMING = "streaming"
-    EMBEDDINGS = "embeddings"
-    IMAGE_UNDERSTANDING = "image_understanding"
-    JSON_MODE = "json_mode"
-    SYSTEM_MESSAGES = "system_messages"
 
 
 @dataclass
@@ -96,22 +82,6 @@ class BaseLLMService(ABC):
     async def _embed_impl(self, text: str) -> list[float]:
         """Implementation of embeddings (override in subclasses that support it)."""
         raise NotImplementedError("Embeddings not implemented for this provider")
-
-    # Capability management (deprecated - kept for compatibility)
-    def has_capability(self, capability: LLMCapability) -> bool:
-        """Check if provider has a specific capability."""
-        # Always return True - let operations fail gracefully if not supported
-        return True
-
-    def get_capabilities(self) -> list[LLMCapability]:
-        """Get list of supported capabilities."""
-        # Return all capabilities - actual support determined at runtime
-        return list(LLMCapability)
-
-    def _set_capability(self, capability: LLMCapability, supported: bool = True):
-        """Set capability support status (deprecated)."""
-        # No-op for backward compatibility
-        pass  # noqa: B027
 
     # Function calling support
     async def chat_complete_with_functions(
