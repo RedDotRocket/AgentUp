@@ -3,7 +3,7 @@ name = "agentup"
 version = "0.1.0"
 description = "Create AI agents with all the trappings, out of the box."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [
     { name = "Luke Hinds", email = "luke@rdrocket.com" }
 ]
