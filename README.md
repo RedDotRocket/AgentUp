@@ -150,5 +150,5 @@ Report bugs and request features through [GitHub issues](https://github.com/RedD
 Join the discussion on [Discord](https://discord.gg/pPcjYzGvbS).
 
 
-[badge-discord-img]: https://img.shields.io/discord/1384081906773131274?label=Join%20the%20Discord%20server!&logo=discord
+[badge-discord-img]: https://img.shields.io/discord/1384081906773131274?label=Discord&logo=discord
 [badge-discord-url]: https://discord.gg/pPcjYzGvbS
