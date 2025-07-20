@@ -260,23 +260,6 @@ class CapabilityRegistry(Service):
         )
         self.register("echo", echo_executor, CapabilityMetadata("echo", description="Echo test capability"))
 
-    # async def _migrate_existing_capabilities(self) -> None:
-    #     """Migrate capabilities from the old executor system."""
-    #     try:
-    #         # Import existing capabilities if available
-    #         from agent.capabilities.executors import get_all_capabilities
-
-    #         existing_capabilities = get_all_capabilities()
-    #         for cap_id, executor in existing_capabilities.items():
-    #             if cap_id not in self._core_capabilities:  # Don't duplicate core capabilities
-    #                 self.register(cap_id, executor)
-    #                 self.logger.debug(f"Migrated capability from old system: {cap_id}")
-
-    #         self.logger.info(f"Migrated {len(existing_capabilities)} capabilities from old system")
-    #     except ImportError:
-    #         self.logger.debug("No existing capabilities to migrate")
-    #     except Exception as e:
-    #         self.logger.warning(f"Failed to migrate existing capabilities: {e}")
 
     def _wrap_with_auth(self, executor: Callable, metadata: CapabilityMetadata) -> Callable:
         """Wrap executor with authentication/authorization checks."""

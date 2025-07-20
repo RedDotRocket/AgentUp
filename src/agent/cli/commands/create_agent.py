@@ -15,7 +15,8 @@ from agent.templates import (
 
 
 def initialize_git_repo(project_path: Path) -> bool:
-    """Initialize a git repository in the project directory.
+    """
+    Initialize a git repository in the project directory.
 
     Returns:
         bool: True if git initialization was successful, False otherwise.

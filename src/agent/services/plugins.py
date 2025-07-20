@@ -1,9 +1,3 @@
-"""Plugin management service for AgentUp framework.
-
-This module consolidates plugin management functionality from
-plugins/manager.py and plugins/integration.py into a single service.
-"""
-
 from typing import Any
 
 from .base import Service
@@ -12,7 +6,8 @@ from .config import ConfigurationManager
 
 
 class PluginService(Service):
-    """Unified plugin management service.
+    """
+    Plugin management service.
 
     This service handles:
     - Plugin discovery and loading
@@ -81,7 +76,15 @@ class PluginService(Service):
         self._plugin_adapter = None
 
     def _is_enabled(self, plugin_config: Any) -> bool:
-        """Check if plugin system is enabled based on configuration."""
+        """
+        Check if plugin system is enabled based on configuration.
+        e.g.
+        plugins:
+          - plugin_id: my_plugin
+            enabled: true
+          - plugin_id: another_plugin
+            enabled: false
+        """
         if isinstance(plugin_config, dict):
             return plugin_config.get("enabled", True)
         elif isinstance(plugin_config, list):

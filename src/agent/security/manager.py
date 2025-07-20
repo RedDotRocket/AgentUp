@@ -17,10 +17,8 @@ logger = structlog.get_logger(__name__)
 
 
 class SecurityManager:
-    """Main security manager that orchestrates authentication and authorization.
-
-    This class replaces the previous A2ASecurityHandler with a more robust,
-    modular design that supports multiple authentication types and security policies.
+    """
+    Main security manager that manages authentication and authorization.
     """
 
     def __init__(self, config: dict[str, Any]):
@@ -36,7 +34,7 @@ class SecurityManager:
         # Validate configuration
         SecurityConfigValidator.validate_security_config(self.security_config)
 
-        # Determine primary authentication type first
+        # Determine primary authentication type first!
         self.primary_auth_type = self._determine_primary_auth_type()
 
         # Initialize authenticators
@@ -71,7 +69,6 @@ class SecurityManager:
         return available_types[0]
 
     def _initialize_authenticators(self) -> None:
-        """Initialize available authenticators based on configuration."""
         if not self.auth_enabled:
             return
 
@@ -90,22 +87,21 @@ class SecurityManager:
                 raise SecurityConfigurationException(f"Failed to initialize {auth_type} authenticator: {e}") from e
 
     def _initialize_unified_auth_manager(self) -> None:
-        """Initialize the unified authentication manager with scope hierarchy."""
         try:
             from .unified_auth import create_unified_auth_manager
 
             # Debug: Check what's in the security config
-            logger.info(f"Security config keys: {list(self.security_config.keys())}")
-            logger.info(f"Security config scope_hierarchy: {self.security_config.get('scope_hierarchy', {})}")
+            logger.debug(f"Security config keys: {list(self.security_config.keys())}")
+            logger.debug(f"Security config scope_hierarchy: {self.security_config.get('scope_hierarchy', {})}")
 
             # Create unified auth manager with security config
             unified_auth_manager = create_unified_auth_manager(self.security_config)
-            logger.info(
+            logger.debug(
                 f"Unified authentication manager initialized with {len(unified_auth_manager.scope_hierarchy.hierarchy)} scope hierarchy rules"
             )
         except Exception as e:
+            # TODO: Maybe raise a specific exception here?
             logger.warning(f"Failed to initialize unified authentication manager: {e}")
-            # This is not critical, so we don't raise an exception
 
     async def authenticate_request(
         self, request: Request, auth_type: str | None = None, policy: SecurityPolicy | None = None
@@ -141,7 +137,8 @@ class SecurityManager:
         # Allow anonymous access if policy permits
         if policy.allow_anonymous:
             try:
-                # Try to authenticate, but don't fail if it doesn't work
+                # Try to authenticate, but don't fail if it doesn't work (as we need to return a code
+                # or auth maybe disabled)
                 return await self._perform_authentication(request, auth_type, policy)
             except (AuthenticationFailedException, HTTPException):
                 return None  # Anonymous access allowed

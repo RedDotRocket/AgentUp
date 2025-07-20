@@ -48,7 +48,8 @@ def sanitize_header_value(value: str) -> str:
 
 
 def mask_credential(credential: str, visible_chars: int = 4) -> str:
-    """Mask credential for safe logging.
+    """
+    Mask credential for safe logging.
 
     Args:
         credential: The credential to mask

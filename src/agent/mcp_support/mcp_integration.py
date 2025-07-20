@@ -1,25 +1,15 @@
 from typing import Any
 
 import structlog
+from mcp import ClientSession, StdioServerParameters  # noqa: F401
+from mcp.client.stdio import stdio_client  # noqa: F401
 
 logger = structlog.get_logger(__name__)
 
-try:
-    import mcp  # noqa: F401
-    from mcp import ClientSession, StdioServerParameters  # noqa: F401
-    from mcp.client.stdio import stdio_client  # noqa: F401
 
-    MCP_AVAILABLE = True
-except ImportError:
-    MCP_AVAILABLE = False
-    logger.warning("MCP SDK not available. Install with: pip install mcp")
 
 
 async def initialize_mcp_integration(config: dict[str, Any]) -> None:
-    """Initialize MCP client and server integration."""
-    if not MCP_AVAILABLE:
-        logger.warning("MCP SDK not available. MCP integration disabled.")
-        return
 
     mcp_config = config.get("mcp", {})
 
@@ -46,10 +36,7 @@ async def initialize_mcp_integration(config: dict[str, Any]) -> None:
 
 
 async def _initialize_mcp_client(services, client_config: dict[str, Any]) -> None:
-    """Initialize MCP client service."""
-    if not MCP_AVAILABLE:
-        logger.warning("MCP SDK not available. Cannot initialize MCP client.")
-        return
+
 
     # Check if we have HTTP servers configured
     servers = client_config.get("servers", [])
@@ -134,10 +121,6 @@ async def _initialize_mcp_client(services, client_config: dict[str, Any]) -> Non
 
 
 async def _initialize_mcp_server(services, server_config: dict[str, Any]) -> None:
-    """Initialize MCP server component."""
-    if not MCP_AVAILABLE:
-        logger.warning("MCP SDK not available. Cannot initialize MCP server.")
-        return
 
     try:
         from .mcp_server import MCPServerComponent
@@ -174,10 +157,6 @@ async def _initialize_mcp_server(services, server_config: dict[str, Any]) -> Non
 
 async def _expose_handlers_as_mcp_tools(mcp_server) -> None:
     """Expose AgentUp handlers as MCP tools."""
-    if not MCP_AVAILABLE:
-        logger.warning("MCP SDK not available. Cannot expose handlers as MCP tools.")
-        return
-
     try:
         # Get registered handlers from the function registry
         from agent.core.dispatcher import get_function_registry
@@ -325,12 +304,9 @@ async def _register_mcp_tools_with_scopes(registry, mcp_client, available_tools,
         # Instead, register with dispatcher only (which uses sanitized names)
         await registry.register_mcp_client(mcp_client)
 
-
 async def _start_mcp_server_background(mcp_server, port: int) -> None:
     """Start MCP server in background task."""
-    if not MCP_AVAILABLE:
-        logger.warning("MCP SDK not available. Cannot start MCP server.")
-        return
+
 
     try:
         await mcp_server.start_server(port=port)
@@ -339,10 +315,6 @@ async def _start_mcp_server_background(mcp_server, port: int) -> None:
 
 
 async def shutdown_mcp_integration() -> None:
-    """Shutdown MCP client and server."""
-    if not MCP_AVAILABLE:
-        logger.warning("MCP SDK not available. Cannot shutdown MCP integration.")
-        return
 
     from agent.services import get_services
 

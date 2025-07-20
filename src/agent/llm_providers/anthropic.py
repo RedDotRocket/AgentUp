@@ -27,7 +27,6 @@ class AnthropicProvider(BaseLLMService):
         self.anthropic_version = config.get("anthropic_version", "2023-06-01")
 
     async def initialize(self) -> None:
-        """Initialize the Anthropic service."""
         if not self.api_key:
             logger.error(
                 f"Anthropic service '{self.name}' initialization failed: API key not found. Check that 'api_key' is set in configuration and ANTHROPIC_API_KEY environment variable is available."

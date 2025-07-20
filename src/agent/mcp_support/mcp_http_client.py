@@ -240,7 +240,6 @@ class MCPHTTPClientService:
         self._initialized = False
 
     async def initialize(self) -> None:
-        """Initialize MCP clients based on configuration."""
         servers_config = self.config.get("servers", [])
 
         for server_config in servers_config:

@@ -418,7 +418,6 @@ class UnifiedAuthenticationManager:
         raise HTTPException(status_code=401, detail="Authentication required")
 
     def validate_scope_access(self, user_scopes: list[str], required_scope: str) -> bool:
-        """Validate if user has access to required scope."""
         logger.info(f"Validating scope access for user. Required scope: {required_scope}")
         return self.scope_hierarchy.validate_scope(user_scopes, required_scope)
 
@@ -436,12 +435,10 @@ _unified_auth_manager: UnifiedAuthenticationManager | None = None
 
 
 def get_unified_auth_manager() -> UnifiedAuthenticationManager | None:
-    """Get the global unified authentication manager instance."""
     return _unified_auth_manager
 
 
 def create_unified_auth_manager(config: dict[str, Any]) -> UnifiedAuthenticationManager:
-    """Create and set the global unified authentication manager."""
     global _unified_auth_manager
     _unified_auth_manager = UnifiedAuthenticationManager(config)
     return _unified_auth_manager

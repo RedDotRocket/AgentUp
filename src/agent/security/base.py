@@ -5,7 +5,9 @@ from fastapi import Request
 
 
 class AuthenticationResult:
-    """Result of an authentication attempt."""
+    """
+    Result of an authentication attempt. Allow the result to be used by various components.
+    """
 
     def __init__(
         self,

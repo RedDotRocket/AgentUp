@@ -1,5 +1,3 @@
-"""Middleware management service for AgentUp framework."""
-
 from collections.abc import Callable
 from typing import Any
 

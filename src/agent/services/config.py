@@ -1,5 +1,3 @@
-"""Configuration management service with singleton pattern and caching."""
-
 from typing import Any, Optional
 
 import structlog

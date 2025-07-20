@@ -49,17 +49,14 @@ class BaseLLMService(ABC):
 
     @abstractmethod
     async def initialize(self) -> None:
-        """Initialize the LLM service and detect capabilities."""
         pass
 
     @abstractmethod
     async def close(self) -> None:
-        """Close the service and clean up resources."""
         pass
 
     @abstractmethod
     async def health_check(self) -> dict[str, Any]:
-        """Check service health."""
         pass
 
     @abstractmethod

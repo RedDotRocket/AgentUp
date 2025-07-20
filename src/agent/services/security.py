@@ -1,5 +1,3 @@
-"""Security service for AgentUp framework."""
-
 from .base import Service
 from .config import ConfigurationManager
 
@@ -12,12 +10,10 @@ class SecurityService(Service):
     """
 
     def __init__(self, config_manager: ConfigurationManager):
-        """Initialize the security service."""
         super().__init__(config_manager)
         self._security_manager = None
 
     async def initialize(self) -> None:
-        """Initialize the security service."""
         self.logger.info("Initializing security service")
 
         try:
@@ -40,15 +36,12 @@ class SecurityService(Service):
             raise
 
     async def shutdown(self) -> None:
-        """Cleanup security resources."""
         self.logger.debug("Shutting down security service")
         self._security_manager = None
 
     @property
     def security_manager(self):
-        """Get the underlying security manager."""
         return self._security_manager
 
     def is_enabled(self) -> bool:
-        """Check if security is enabled."""
         return self._security_manager is not None and self._security_manager.is_auth_enabled()

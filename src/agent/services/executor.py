@@ -1,7 +1,3 @@
-"""
-Service-oriented agent executor for AgentUp framework.
-"""
-
 from typing import Any
 
 import structlog
@@ -39,7 +35,7 @@ class ServiceAgentExecutor(AgentExecutor):
         return create_agent_card()
 
     async def execute_task(self, task: Task) -> str:
-        """Execute a task using the service layer following A2A protocol.
+        """Execute a task using the service layer following A2A spec.
 
         Args:
             task: A2A Task object with message history

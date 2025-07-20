@@ -17,7 +17,6 @@ class MCPClientService:
         self._initialized = False
 
     async def initialize(self) -> None:
-        """Initialize MCP client and connect to configured servers."""
 
         servers_config = self.config.get("servers", [])
 

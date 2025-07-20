@@ -39,18 +39,17 @@ class MCPServerComponent:
         self._server_task = None  # Track background server task
 
     async def initialize(self) -> None:
-        """Initialize the MCP server."""
-        logger.info("Initializing MCP server")
+        logger.debug("Initializing MCP server")
         if not MCP_AVAILABLE:
             logger.warning("FastMCP not available. Install with: pip install fastmcp")
             return
 
         # Create FastMCP server
-        logger.info("Creating FastMCP server")
+        logger.debug("Creating FastMCP server")
         self._server = _FastMCP(self.config.get("name", "{{ project_name_snake }}-server"))
 
         # Register default resources
-        logger.info("Registering default MCP resources")
+        logger.debug("Registering default MCP resources")
         await self._register_default_resources()
 
         self._initialized = True

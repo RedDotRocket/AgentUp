@@ -1,7 +1,6 @@
 """Bootstrap service for AgentUp application initialization.
 
-This module handles the orchestration of all service initialization
-in the correct dependency order.
+This module handles all service initialization.
 """
 
 import structlog

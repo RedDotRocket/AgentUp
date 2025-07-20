@@ -35,7 +35,6 @@ class MCPHTTPServer:
         self._initialized = False
 
     async def initialize(self) -> None:
-        """Initialize the MCP server."""
 
         # Create MCP server with agent info
         self._server = Server(self.agent_name, version=self.agent_version)

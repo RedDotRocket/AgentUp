@@ -19,7 +19,8 @@ class NetworkRateLimitMiddleware(BaseHTTPMiddleware):
     """
 
     def __init__(self, app, endpoint_limits: dict[str, dict[str, Any]] = None):
-        """Initialize rate limiting middleware.
+        """
+        Initialize rate limiting middleware.
 
         Args:
             app: FastAPI application instance

@@ -1,5 +1,3 @@
-"""Push notification service for AgentUp framework."""
-
 from typing import Any
 
 from .base import Service
