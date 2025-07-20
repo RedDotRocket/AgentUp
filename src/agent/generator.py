@@ -300,7 +300,7 @@ class ProjectGenerator:
             "agent": {
                 "name": self.project_name,
                 "description": self.config.get("description", ""),
-                "version": "0.1.0",
+                "version": "0.2.0",
             },
             "plugins": self._build_plugins_config(),
             "routing": self._build_routing_config(),
