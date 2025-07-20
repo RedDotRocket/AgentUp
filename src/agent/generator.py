@@ -223,7 +223,7 @@ class ProjectGenerator:
         else:
             context.update(
                 {
-                    "ai_provider_config": None, 
+                    "ai_provider_config": None,
                     "llm_provider_config": False,
                     "ai_enabled": False,  # Disable AI when no provider configured
                 }
