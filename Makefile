@@ -50,7 +50,7 @@ test-integration: ## Run bash integration tests only
 	./tests/integration/int.sh
 
 template-test-syntax: ## Test template syntax only (quick)
-	uv run python -c "from jinja2 import Environment, FileSystemLoader; env = Environment(loader=FileSystemLoader('src/agent/templates')); [env.get_template(t) for t in ['config/agent_config_minimal.yaml.j2', 'config/agent_config_full.yaml.j2']]"
+	uv run python -c "from jinja2 import Environment, FileSystemLoader; env = Environment(loader=FileSystemLoader('src/agent/templates')); [env.get_template(t) for t in ['config/agentup_minimal.yml.j2', 'config/agentup_full.yml.j2']]"
 	@echo "Template syntax validated"
 
 # Code quality

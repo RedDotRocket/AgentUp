@@ -353,7 +353,7 @@ class FunctionDispatcher:
             logger.debug(f"Selected LLM service: {llm.name if llm else 'None'}")
             if not llm:
                 logger.warning("No LLM service available. Check that:")
-                logger.warning("1. At least one LLM service is enabled in agent_config.yaml")
+                logger.warning("1. At least one LLM service is enabled in agentup.yml")
                 logger.warning("2. Required API keys are set in environment variables")
                 logger.warning("3. Service initialization completed successfully")
                 logger.warning("Falling back to basic response")

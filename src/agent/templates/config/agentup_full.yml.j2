@@ -162,6 +162,7 @@ ai_provider:
 {% endif %}
 
 # AI system prompt and configuration
+{% if ai_provider_config %}
 ai:
   enabled: true
   system_prompt: |
@@ -191,6 +192,10 @@ ai:
     5. Maintain professional communication throughout
 
     Always prioritize accuracy, security, and user experience.
+{% else %}
+ai:
+  enabled: false
+{% endif %}
 
 # Cache configuration
 {% if has_middleware and 'cache' in feature_config.get('middleware', []) %}

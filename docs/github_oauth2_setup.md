@@ -35,7 +35,7 @@ Fill in the following details:
 ## Step 2: Configure AgentUp Agent
 
 ### 2.1 Create Agent Configuration
-Create a new file `agent_config.yaml` in your agent directory with the following content:
+Create a new file `agentup.yml` in your agent directory with the following content:
 
 ```yaml
 # Agent Configuration with GitHub OAuth2

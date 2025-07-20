@@ -18,7 +18,7 @@ def agent():
 )
 @click.option("--quick", "-q", is_flag=True, help="Quick setup with minimal features (non-interactive)")
 @click.option("--output-dir", "-o", type=click.Path(), help="Output directory")
-@click.option("--config", "-c", type=click.Path(exists=True), help="Use existing agent_config.yaml as template")
+@click.option("--config", "-c", type=click.Path(exists=True), help="Use existing agentup.yml as template")
 @click.option("--no-git", is_flag=True, help="Skip git repository initialization")
 def create(name, template, quick, output_dir, config, no_git):
     """Create a new agent project.
@@ -42,9 +42,7 @@ def create(name, template, quick, output_dir, config, no_git):
 
 
 @agent.command()
-@click.option(
-    "--config", "-c", type=click.Path(exists=True), default="agent_config.yaml", help="Path to agent config file"
-)
+@click.option("--config", "-c", type=click.Path(exists=True), default="agentup.yml", help="Path to agent config file")
 @click.option("--host", default="127.0.0.1", help="Host to bind to")
 @click.option("--port", "-p", type=click.IntRange(1, 65535), default=8000, help="Port to bind to")
 @click.option("--reload/--no-reload", default=True, help="Enable auto-reload")
@@ -66,7 +64,7 @@ def serve(config, host, port, reload):
 
 @agent.command()
 @click.option(
-    "--config", "-c", type=click.Path(exists=True), default="agent_config.yaml", help="Configuration file to validate"
+    "--config", "-c", type=click.Path(exists=True), default="agentup.yml", help="Configuration file to validate"
 )
 @click.option("--check-env", "-e", is_flag=True, help="Check environment variables")
 @click.option("--check-handlers", "-h", is_flag=True, help="Check handler implementations")

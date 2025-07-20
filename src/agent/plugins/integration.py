@@ -55,9 +55,9 @@ def integrate_plugins_with_capabilities() -> dict[str, list[str]]:
 
     if not configured_plugins:
         # SECURITY: No automatic capability registration - explicit configuration required
-        logger.error("No plugin configuration found in agent_config.yaml - explicit configuration required")
+        logger.error("No plugin configuration found in agentup.yml - explicit configuration required")
         raise ValueError(
-            "Plugin configuration is required in agent_config.yaml. "
+            "Plugin configuration is required in agentup.yml. "
             "Automatic capability registration has been removed for security."
         )
     else:

@@ -44,7 +44,7 @@
 ### 2. Configuration Issues
 
 #### Issue: "OAuth2 configuration is required"
-**Cause:** Missing or incorrect OAuth2 configuration in `agent_config.yaml`
+**Cause:** Missing or incorrect OAuth2 configuration in `agentup.yml`
 
 **Solution:**
 ```yaml
@@ -203,7 +203,7 @@ GitHub uses opaque tokens, not JWTs, so always use introspection strategy.
 
 ### 1. Enable Debug Logging
 ```yaml
-# In agent_config.yaml
+# In agentup.yml
 logging:
   level: "DEBUG"
   format: "structured"
@@ -271,7 +271,7 @@ For testing purposes, you can create a minimal setup:
 mkdir oauth2_test && cd oauth2_test
 
 # 2. Copy example configuration
-cp ../examples/oauth2_github_agent/agent_config.yaml .
+cp ../examples/oauth2_github_agent/agentup.yml .
 
 # 3. Set environment variables
 export GITHUB_CLIENT_ID="your_id"

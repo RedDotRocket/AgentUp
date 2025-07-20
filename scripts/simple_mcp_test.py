@@ -118,7 +118,7 @@ async def test_mcp_streamable_http():
     mcp_ok = await check_mcp_endpoint(server_url)
     if not mcp_ok:
         print("✗ MCP endpoint is not available. Please check:")
-        print("   1. Is MCP enabled in your agent_config.yaml?")
+        print("   1. Is MCP enabled in your agentup.yml?")
         print("   2. Is the MCP server configuration correct?")
         return
 

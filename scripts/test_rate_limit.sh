@@ -281,7 +281,7 @@ echo "- Rate limits reset over time using token bucket algorithm"
 echo
 echo -e "${BLUE}Troubleshooting:${NC}"
 echo "- If all requests fail: Check if server is running and accessible"
-echo "- If no rate limiting occurs: Check middleware configuration in agent_config.yaml"
+echo "- If no rate limiting occurs: Check middleware configuration in agentup.yml"
 echo "- If unexpected errors: Check server logs for detailed error information"
 echo
 echo -e "${GREEN}✓ Rate limiting tests completed successfully!${NC}"

@@ -10,7 +10,7 @@
    ```
 
 2. Configure your agent:
-   - Edit `agent_config.yaml` to customize skills, providers, and features
+   - Edit `agentup.yml` to customize skills, providers, and features
    - Set environment variables in `.env` file
 
 3. Start the development server:
@@ -62,7 +62,7 @@ agentup plugin create my-skill --output-dir plugins/
 # Install in development mode
 pip install -e plugins/my-skill
 
-# Add to agent_config.yaml
+# Add to agentup.yml
 ```
 
 **Use Existing Plugins:**
@@ -76,7 +76,7 @@ pip install git+https://github.com/user/agentup-plugin-name
 
 #### 2. Configuration-Based Customization
 
-**Modify Agent Behavior** (`agent_config.yaml`):
+**Modify Agent Behavior** (`agentup.yml`):
 ```yaml
 skills:
   - skill_id: my_plugin_skill  # From installed plugin
@@ -137,7 +137,7 @@ curl http://localhost:8000/.well-known/agent.json
 
 ```
 {{ project_name_snake }}/
-├── agent_config.yaml     # Main configuration
+├── agentup.yml     # Main configuration
 ├── .env                  # Environment variables  
 ├── README.md            # This file
 └── pyproject.toml       # Dependencies (just agentup)

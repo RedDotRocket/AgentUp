@@ -702,7 +702,7 @@ def validate():
             console.print("\n[green]✓ All plugins validated successfully![/green]")
         else:
             console.print("\n[red]✗ Some plugins have validation errors.[/red]")
-            console.print("Please check your agent_config.yaml and fix the issues.")
+            console.print("Please check your agentup.yml and fix the issues.")
 
     except ImportError:
         console.print("[red]Plugin system not available.[/red]")

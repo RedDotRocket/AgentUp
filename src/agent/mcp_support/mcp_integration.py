@@ -204,9 +204,7 @@ async def _register_mcp_tools_as_capabilities(mcp_client, available_tools, serve
 
             # SECURITY: Require explicit scope configuration
             if required_scopes is None:
-                logger.error(
-                    f"MCP tool '{original_tool_name}' requires explicit scope configuration in agent_config.yaml"
-                )
+                logger.error(f"MCP tool '{original_tool_name}' requires explicit scope configuration in agentup.yml")
                 raise ValueError(
                     f"MCP tool '{original_tool_name}' requires explicit scope configuration. "
                     f"Add 'tool_scopes' configuration with required scopes for this tool."
@@ -241,9 +239,7 @@ async def _register_mcp_tools_with_scopes(registry, mcp_client, available_tools,
 
             # SECURITY: Require explicit scope configuration - no automatic assignment
             if required_scopes is None:
-                logger.error(
-                    f"MCP tool '{original_tool_name}' requires explicit scope configuration in agent_config.yaml"
-                )
+                logger.error(f"MCP tool '{original_tool_name}' requires explicit scope configuration in agentup.yml")
                 raise ValueError(
                     f"MCP tool '{original_tool_name}' requires explicit scope configuration. "
                     f"Add 'tool_scopes' configuration with required scopes for this tool."

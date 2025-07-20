@@ -175,7 +175,7 @@ def mock_ollama_client():
 @pytest.fixture
 def config_file(temp_dir: Path, sample_agent_config: dict[str, Any]) -> Path:
     """Create a temporary config file."""
-    config_file = temp_dir / "agent_config.yaml"
+    config_file = temp_dir / "agentup.yml"
     with open(config_file, "w") as f:
         yaml.dump(sample_agent_config, f, default_flow_style=False)
     return config_file

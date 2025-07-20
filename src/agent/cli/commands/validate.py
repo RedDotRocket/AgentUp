@@ -9,7 +9,7 @@ import yaml
 
 @click.command()
 @click.option(
-    "--config", "-c", type=click.Path(exists=True), default="agent_config.yaml", help="Path to agent configuration file"
+    "--config", "-c", type=click.Path(exists=True), default="agentup.yml", help="Path to agent configuration file"
 )
 @click.option("--check-env", "-e", is_flag=True, help="Check environment variables")
 @click.option("--check-handlers", "-h", is_flag=True, help="Check handler implementations")

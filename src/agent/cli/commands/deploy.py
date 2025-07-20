@@ -22,19 +22,19 @@ def deploy(type: str, output: str | None, port: int, replicas: int, image_name: 
     - helm: Helm chart
     """
     # Check if we're in an agent project
-    if not Path("agent_config.yaml").exists():
-        click.echo(click.style("✗ Error: No agent_config.yaml found!", fg="red"))
+    if not Path("agentup.yml").exists():
+        click.echo(click.style("✗ Error: No agentup.yml found!", fg="red"))
         click.echo("Are you in an agent project directory?")
         return
 
     # Load agent config to get name
     try:
-        with open("agent_config.yaml") as f:
+        with open("agentup.yml") as f:
             config = yaml.safe_load(f)
             agent_name = config.get("agent", {}).get("name", "agent")
             agent_name_clean = agent_name.lower().replace(" ", "-").replace("_", "-")
     except (yaml.YAMLError, OSError, ValueError) as e:
-        click.echo(click.style(f"✗ Error loading agent_config.yaml: {str(e)}", fg="red"))
+        click.echo(click.style(f"✗ Error loading agentup.yml: {str(e)}", fg="red"))
         agent_name = "agent"
         agent_name_clean = "agent"
 
@@ -138,7 +138,7 @@ services:
       - API_KEY=${{API_KEY:-your-api-key}}
       - DEBUG=${{DEBUG:-false}}
     volumes:
-      - ./agent_config.yaml:/app/agent_config.yaml:ro
+      - ./agentup.yml:/app/agentup.yml:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:{port}/health"]
@@ -268,8 +268,8 @@ spec:
           periodSeconds: 10
         volumeMounts:
         - name: config
-          mountPath: /app/agent_config.yaml
-          subPath: agent_config.yaml
+          mountPath: /app/agentup.yml
+          subPath: agentup.yml
       volumes:
       - name: config
         configMap:
@@ -310,10 +310,10 @@ kind: ConfigMap
 metadata:
   name: {agent_name}-config
 data:
-  agent_config.yaml: |
-    # This is a placeholder - replace with your actual agent_config.yaml content
+  agentup.yml: |
+    # This is a placeholder - replace with your actual agentup.yml content
     # You can also use kubectl create configmap to create this from your file:
-    # kubectl create configmap {agent_name}-config --from-file=agent_config.yaml
+    # kubectl create configmap {agent_name}-config --from-file=agentup.yml
 
     api_key: ${{API_KEY}}
     agent:
@@ -467,7 +467,7 @@ services:
     host: valkey
     port: 6379
 
-# Agent configuration (will be mounted as agent_config.yaml)
+# Agent configuration (will be mounted as agentup.yml)
 agentConfig: |
   api_key: ${{API_KEY}}
   agent:
@@ -627,8 +627,8 @@ spec:
           {{{{- toYaml .Values.resources | nindent 12 }}}}
         volumeMounts:
         - name: config
-          mountPath: /app/agent_config.yaml
-          subPath: agent_config.yaml
+          mountPath: /app/agentup.yml
+          subPath: agentup.yml
       volumes:
       - name: config
         configMap:
@@ -686,7 +686,7 @@ metadata:
   labels:
     {{{{- include "{agent_name}.labels" . | nindent 4 }}}}
 data:
-  agent_config.yaml: |
+  agentup.yml: |
 {{{{- .Values.agentConfig | nindent 4 }}}}
 """
 

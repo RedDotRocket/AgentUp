@@ -19,7 +19,7 @@ class LLMManager:
             # Get the new ai_provider configuration
             ai_provider_config = config.get("ai_provider", {})
             if not ai_provider_config:
-                logger.warning("ai_provider not configured in agent_config.yaml")
+                logger.warning("ai_provider not configured in agentup.yml")
                 return None
 
             provider = ai_provider_config.get("provider")

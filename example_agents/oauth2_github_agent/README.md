@@ -22,7 +22,7 @@ This directory contains a complete example of setting up GitHub OAuth2 authentic
 
 ## Files
 
-- `agent_config.yaml` - Complete agent configuration with GitHub OAuth2
+- `agentup.yml` - Complete agent configuration with GitHub OAuth2
 - `test_oauth2.sh` - Interactive test script for OAuth2 flow
 - `README.md` - This file
 

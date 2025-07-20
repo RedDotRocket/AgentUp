@@ -11,7 +11,7 @@
 
 2. Configure your agent:
    - Copy `.env.example` to `.env` (if using services)
-   - Edit `agent_config.yaml` to customize skills
+   - Edit `agentup.yml` to customize skills
 
 3. Start the development server:
    ```bash
@@ -99,7 +99,7 @@ agentup add-skill --skill-id my_skill --template conversational
 
 **Manual A2A-Compliant Skill Development:**
 
-1. **Define Skill in Configuration** (`agent_config.yaml`):
+1. **Define Skill in Configuration** (`agentup.yml`):
 ```yaml
 skills:
   - skill_id: my_new_skill

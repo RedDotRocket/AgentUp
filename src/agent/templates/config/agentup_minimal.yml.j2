@@ -49,6 +49,7 @@ ai_provider:
 {% endif %}
 
 # AI system prompt and configuration
+{% if ai_provider_config %}
 ai:
   enabled: true
   system_prompt: |
@@ -62,6 +63,10 @@ ai:
     - Keep responses concise and relevant
 
     Always be helpful, accurate, and maintain context in conversations.
+{% else %}
+ai:
+  enabled: false
+{% endif %}
 
 # Model Context Protocol configuration
 {% if has_mcp %}

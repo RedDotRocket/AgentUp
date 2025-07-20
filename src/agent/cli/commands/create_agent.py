@@ -65,7 +65,7 @@ custom_style = Style(
 @click.option("--quick", "-q", is_flag=True, help="Quick setup with minimal features (basic handlers only)")
 @click.option("--minimal", is_flag=True, help="Create with minimal features (basic handlers only)")
 @click.option("--output-dir", "-o", type=click.Path(), help="Output directory")
-@click.option("--config", "-c", type=click.Path(exists=True), help="Use existing agent_config.yaml as template")
+@click.option("--config", "-c", type=click.Path(exists=True), help="Use existing agentup.yml as template")
 @click.option("--no-git", is_flag=True, help="Skip git repository initialization")
 def create_agent(
     name: str | None,

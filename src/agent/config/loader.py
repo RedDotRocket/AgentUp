@@ -6,7 +6,7 @@ import yaml
 from dotenv import load_dotenv
 
 
-def load_config(config_path: str = "agent_config.yaml", configure_logging: bool = True) -> dict[str, Any]:
+def load_config(config_path: str = "agentup.yml", configure_logging: bool = True) -> dict[str, Any]:
     """Load agent configuration from YAML file."""
     # Check for config path from environment variable first
     env_config_path = os.getenv("AGENT_CONFIG_PATH")

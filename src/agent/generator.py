@@ -169,11 +169,11 @@ class ProjectGenerator:
 
     def _generate_config_files(self):
         """Generate configuration files."""
-        config_path = self.output_dir / "agent_config.yaml"
+        config_path = self.output_dir / "agentup.yml"
 
         # Use Jinja2 templates for config generation
         try:
-            template_name = f"config/agent_config_{self.template_name}.yaml"
+            template_name = f"config/agentup_{self.template_name}.yml"
             config_content = self._render_template(template_name)
             config_path.write_text(config_content)
         except Exception as e:
@@ -217,10 +217,17 @@ class ProjectGenerator:
                 {
                     "ai_provider_config": ai_provider_config,
                     "llm_provider_config": True,  # For backward compatibility with existing templates
+                    "ai_enabled": True,  # Enable AI when provider is configured
                 }
             )
         else:
-            context.update({"ai_provider_config": None, "llm_provider_config": False})
+            context.update(
+                {
+                    "ai_provider_config": None, 
+                    "llm_provider_config": False,
+                    "ai_enabled": False,  # Disable AI when no provider configured
+                }
+            )
 
         # Legacy LLM provider context for old templates (if still needed)
         if "services" in self.features:
@@ -287,7 +294,7 @@ class ProjectGenerator:
         return template.render(context)
 
     def _build_agent_config(self) -> dict[str, Any]:
-        """Build agent_config.yaml content."""
+        """Build agentup.yml content."""
         config = {
             # Agent Information
             "agent": {

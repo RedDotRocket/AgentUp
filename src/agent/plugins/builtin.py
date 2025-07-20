@@ -72,7 +72,7 @@ class BuiltinPluginRegistry:
         Integrate built-in plugins with the capability system based on agent config.
 
         Args:
-            plugin_configs: List of plugin configurations from agent_config.yaml
+            plugin_configs: List of plugin configurations from agentup.yml
         """
         builtin_configs = [config for config in plugin_configs if config.get("plugin_id") in self._plugins]
 

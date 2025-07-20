@@ -14,7 +14,7 @@ logger = structlog.get_logger(__name__)
     "--config",
     "-c",
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
-    default=Path("agent_config.yaml"),
+    default=Path("agentup.yml"),
     show_default=True,
     help="Path to your agent config file.",
 )
