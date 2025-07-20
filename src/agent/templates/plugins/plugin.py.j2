@@ -27,7 +27,7 @@ class Plugin:
         return CapabilityInfo(
             id="{{ capability_id }}",
             name="{{ display_name }}",
-            version="0.1.0",
+            version="0.2.0",
             description="{{ description }}",
             capabilities=[CapabilityType.TEXT{% if template == "advanced" %}, CapabilityType.STATEFUL{% elif template == "ai" %}, CapabilityType.AI_FUNCTION{% endif %}],
             tags=["{{ plugin_name }}"{% if template == "advanced" %}, "advanced"{% elif template == "ai" %}, "ai", "llm"{% endif %}, "custom"]{% if template == "advanced" %},
@@ -205,7 +205,7 @@ class Plugin:
         """Report health status of the plugin."""
         return {
             "status": "healthy",
-            "version": "0.1.0",
+            "version": "0.2.0",
             "services_available": list(self.services.keys()),
             "config_loaded": bool(self.config),
         }

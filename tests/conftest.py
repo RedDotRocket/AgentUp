@@ -25,7 +25,7 @@ def temp_dir() -> Generator[Path, None, None]:
 def sample_agent_config() -> dict[str, Any]:
     """Sample agent configuration for testing."""
     return {
-        "agent": {"name": "test-agent", "description": "Test Agent for Unit Testing", "version": "0.1.0"},
+        "agent": {"name": "test-agent", "description": "Test Agent for Unit Testing", "version": "0.2.0"},
         "plugins": [
             {
                 "plugin_id": "ai_assistant",
@@ -64,7 +64,7 @@ def sample_agent_config() -> dict[str, Any]:
 def minimal_agent_config() -> dict[str, Any]:
     """Minimal agent configuration for testing."""
     return {
-        "agent": {"name": "minimal-test", "description": "Minimal Test Agent", "version": "0.1.0"},
+        "agent": {"name": "minimal-test", "description": "Minimal Test Agent", "version": "0.2.0"},
         "plugins": [
             {
                 "plugin_id": "echo",
@@ -85,7 +85,7 @@ def minimal_agent_config() -> dict[str, Any]:
 def ollama_agent_config() -> dict[str, Any]:
     """Ollama-specific agent configuration for testing."""
     return {
-        "agent": {"name": "ollama-test", "description": "Ollama Test Agent", "version": "0.1.0"},
+        "agent": {"name": "ollama-test", "description": "Ollama Test Agent", "version": "0.2.0"},
         "ai_provider": {
             "provider": "ollama",
             "model": "qwen3:0.6b",
@@ -102,7 +102,7 @@ def ollama_agent_config() -> dict[str, Any]:
 def anthropic_agent_config() -> dict[str, Any]:
     """Anthropic-specific agent configuration for testing."""
     return {
-        "agent": {"name": "anthropic-test", "description": "Anthropic Test Agent", "version": "0.1.0"},
+        "agent": {"name": "anthropic-test", "description": "Anthropic Test Agent", "version": "0.2.0"},
         "ai_provider": {
             "provider": "anthropic",
             "api_key": "${ANTHROPIC_API_KEY}",
