@@ -42,18 +42,9 @@ security:
   enabled: true   # Authentication enabled for full template
   type: {{ feature_config.get('auth', 'api_key') }}
   auth:
-{% if feature_config.get('auth') == 'api_key' %}
-    api_key:
-      header_name: "X-API-Key"
-      location: "header"
-      keys:
-        - key: "{{ generate_api_key() }}"
-          scopes: ["api:read", "api:write", "system:read", "files:read"]
-        - key: "{{ generate_api_key() }}"
-          scopes: ["admin"]  # Admin key
-{% elif feature_config.get('auth') == 'jwt' %}
-    bearer:
-      jwt_secret: "{{ generate_jwt_secret() }}"
+{% if feature_config.get('auth') == 'jwt' %}
+    jwt:
+      secret_key: "{{ generate_jwt_secret() }}"
       algorithm: "HS256"
       issuer: "{{ project_name_snake }}"
       audience: "a2a-clients"
@@ -106,6 +97,16 @@ security:
       # Required scopes
       required_scopes: ["openid", "profile"]
 {% endif %}
+{% else %}
+    # Default to API key authentication for enterprise
+    api_key:
+      header_name: "X-API-Key"
+      location: "header"
+      keys:
+        - key: "{{ generate_api_key() }}"
+          scopes: ["api:read", "api:write", "system:read", "files:read"]
+        - key: "{{ generate_api_key() }}"
+          scopes: ["admin"]  # Admin key
 {% endif %}
   # Example scope hierarchy with fine-grained permissions
   scope_hierarchy:

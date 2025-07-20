@@ -88,7 +88,10 @@ without the guesswork. Its middleware handles rate limiting, caching, authentica
   - `agentup agent serve` - Start a local development server
   - `agentup plugin` - Generate, install, and cookiecutter new plugin projects
 
-And lots more!
+**Open Standards**
+- AgentUp is built inline with the A2A (Agent-to-Agent) specification.
+- Follows the MCP (Model Context Protocol) standard for MCP server and client protocols.
+- Apache 2.0 licensed, so you can use it in your projects without restrictions.
 
 ## Project Status
 
