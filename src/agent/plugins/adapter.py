@@ -101,8 +101,8 @@ class PluginAdapter:
         """Create a handler that adapts AI function calls to plugin execution."""
 
         async def handler(task: Task) -> str:
-            # Create capability context from task
-            context = self._create_capability_context(task)
+            # Create capability context from task with specific capability config
+            context = self._create_capability_context_for_capability(task, capability_id)
 
             # If the AI function has its own handler, use it
             if ai_func.handler:
@@ -135,12 +135,112 @@ class PluginAdapter:
         except Exception:
             services = {}
 
+        # Get plugin configuration from agent config
+        plugin_config = self._get_plugin_config_for_task(task)
+
         return CapabilityContext(
             task=task,
-            config=metadata.get("config", {}),
+            config=plugin_config,
             services=services,
             metadata=metadata,
         )
+
+    def _get_plugin_config_for_task(self, task: Task) -> dict[str, Any]:
+        """Get plugin configuration from agent config for a task.
+        
+        This method tries to determine which plugin is handling the task
+        and returns its configuration from agentup.yml.
+        """
+        try:
+            from agent.config import load_config
+            
+            config = load_config()
+            configured_plugins = config.get("plugins", [])
+            
+            # For AI function calls, we need to determine which plugin is being used
+            # Check if we can determine the plugin from the function call context
+            function_name = getattr(task, 'function_name', None) or getattr(task, 'name', None)
+            
+            if function_name:
+                # Try to find which plugin provides this function
+                for plugin_config in configured_plugins:
+                    plugin_id = plugin_config.get("plugin_id")
+                    if plugin_id:
+                        # Check if this plugin provides the function being called
+                        plugin_functions = self._get_plugin_function_names(plugin_id)
+                        if function_name in plugin_functions:
+                            return plugin_config.get("config", {})
+            
+            # Fallback: if we can't determine specific plugin, try RAG plugin as that's most common
+            for plugin_config in configured_plugins:
+                if plugin_config.get("plugin_id") == "rag":
+                    return plugin_config.get("config", {})
+                    
+            return {}
+            
+        except Exception as e:
+            logger.warning(f"Could not load plugin config for task: {e}")
+            return {}
+    
+    def _get_plugin_function_names(self, plugin_id: str) -> list[str]:
+        """Get list of function names provided by a plugin."""
+        try:
+            # Get all capabilities provided by this plugin
+            function_names = []
+            for capability_id, capability_info in self.plugin_manager.capabilities.items():
+                # Check if this capability belongs to the plugin
+                if self.plugin_manager.capability_to_plugin.get(capability_id) == plugin_id:
+                    # Get AI functions for this capability
+                    ai_functions = self.plugin_manager.get_ai_functions(capability_id)
+                    function_names.extend([func.name for func in ai_functions])
+            return function_names
+        except Exception:
+            return []
+
+    def _create_capability_context_for_capability(self, task: Task, capability_id: str) -> CapabilityContext:
+        """Create a capability context for a specific capability ID."""
+        # Extract metadata
+        metadata = getattr(task, "metadata", {}) or {}
+
+        # Get services if available
+        try:
+            from agent.services import get_services
+            services = get_services()
+        except Exception:
+            services = {}
+
+        # Get plugin configuration for the specific capability
+        plugin_config = self._get_plugin_config_for_capability(capability_id)
+
+        return CapabilityContext(
+            task=task,
+            config=plugin_config,
+            services=services,
+            metadata=metadata,
+        )
+    
+    def _get_plugin_config_for_capability(self, capability_id: str) -> dict[str, Any]:
+        """Get plugin configuration for a specific capability."""
+        try:
+            from agent.config import load_config
+            
+            config = load_config()
+            configured_plugins = config.get("plugins", [])
+            
+            # Find which plugin provides this capability
+            plugin_id = self.plugin_manager.capability_to_plugin.get(capability_id)
+            
+            if plugin_id:
+                # Find the plugin configuration
+                for plugin_config in configured_plugins:
+                    if plugin_config.get("plugin_id") == plugin_id:
+                        return plugin_config.get("config", {})
+            
+            return {}
+            
+        except Exception as e:
+            logger.warning(f"Could not load plugin config for capability {capability_id}: {e}")
+            return {}
 
     def get_capability_executor_for_capability(self, capability_id: str):
         """Get a capability executor function for a capability that's compatible with the system."""
@@ -151,7 +251,7 @@ class PluginAdapter:
             return builtin_executor
 
         async def executor(task: Task) -> str:
-            context = self._create_capability_context(task)
+            context = self._create_capability_context_for_capability(task, capability_id)
             result = self.plugin_manager.execute_capability(capability_id, context)
             return result.content
 

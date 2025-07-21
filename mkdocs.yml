@@ -1,0 +1,91 @@
+site_name: AgentUp Documentation
+site_description: Documentation for AgentUp, a framework for building AI agents.
+site_url: https://github.com/RedDotRocket/agentup
+repo_url: https://github.com/RedDotRocket/agentup
+repo_name: RedDotRocket/agentup
+theme:
+  name: material
+  font:
+    text: Nunito
+    code: Fira Code
+  logo: images/icon.png
+  favicon: images/favicon.ico
+  features:
+    - navigation.top
+    - navigation.footer
+    - navigation.indexes
+    - navigation.instant
+    - navigation.prune
+    - navigation.sections
+    - navigation.integrate
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.integrate
+    - content.code.copy
+    - content.code.annotate
+    - content.tooltips
+    - content.tabs.link
+  palette:
+    # Light Mode (Retro Comic Theme)
+    - scheme: default
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+      primary: custom
+      accent: custom
+
+    # Dark Mode (Retro Comic Dark)
+    - scheme: slate
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+      primary: custom
+      accent: custom
+
+extra_css:
+  - stylesheets/extra.css
+
+markdown_extensions:
+  - attr_list
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonition
+  - pymdownx.details
+
+
+nav:
+  - Home: index.md
+  - Getting Started: 
+    - getting-started/index.md
+    - Installation: getting-started/installation.md
+    - Quick Start: getting-started/quickstart.md
+    - First Agent: getting-started/first-agent.md
+    - AI Agent: getting-started/ai-agent.md
+    - Core Concepts: getting-started/core-concepts.md
+  - User Guide:
+    - Creating Agents: user-guide/creating-agents.md
+    - Package Management: user-guide/packages.md
+    - Security: user-guide/security.md
+  - API Reference:
+    - Core API: api/core.md
+    - Registry API: api/registry.md
+  - About:
+    - License: license.md
+    - Contributing: contributing.md
+
+copyright: Copyright &copy; 2025 Red Dot Rocket
