@@ -143,7 +143,7 @@ class FunctionRegistry:
                 scope_service.clear_request_cache()
             except Exception:
                 # Security fallback: return empty list rather than all tools
-                pass # nosec
+                pass  # nosec
             return []
 
     def _get_plugin_tools(self, scope_service, user_scopes: set[str]) -> list[dict[str, Any]]:
@@ -166,12 +166,13 @@ class FunctionRegistry:
             if auth_result:
                 user_id = getattr(auth_result, "user_id", None)
         except Exception:
-            pass # nosec
+            pass  # nosec
 
         # Generate unique session ID for unauthenticated users
         if not user_id:
             import hashlib
             import uuid
+
             user_id = f"session_{hashlib.sha256(uuid.uuid4().bytes).hexdigest()}"
 
         logger.debug(
