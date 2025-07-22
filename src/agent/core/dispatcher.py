@@ -142,8 +142,8 @@ class FunctionRegistry:
             try:
                 scope_service.clear_request_cache()
             except Exception:
-                pass
-            # Security fallback: return empty list rather than all tools
+                # Security fallback: return empty list rather than all tools
+                pass # nosec
             return []
 
     def _get_plugin_tools(self, scope_service, user_scopes: set[str]) -> list[dict[str, Any]]:
@@ -158,15 +158,21 @@ class FunctionRegistry:
         audit_logger = get_security_audit_logger()
 
         # Get current user ID for audit logging
-        user_id = "unknown"
+        user_id = None
         try:
             from agent.security.context import get_current_auth
 
             auth_result = get_current_auth()
             if auth_result:
-                user_id = getattr(auth_result, "user_id", "unknown")
+                user_id = getattr(auth_result, "user_id", None)
         except Exception:
-            pass
+            pass # nosec
+
+        # Generate unique session ID for unauthenticated users
+        if not user_id:
+            import hashlib
+            import uuid
+            user_id = f"session_{hashlib.sha256(uuid.uuid4().bytes).hexdigest()}"
 
         logger.debug(
             f"Plugin capability filtering - adapter: {plugin_adapter is not None}, config: {config is not None}"
