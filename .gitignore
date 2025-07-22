@@ -78,3 +78,6 @@ examples/chatbot/
 *.bak
 *.orig
 *~
+
+# mkdocs
+site/
