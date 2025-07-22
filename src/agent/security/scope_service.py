@@ -166,7 +166,15 @@ class ScopeService:
             logger.warning("No scope hierarchy available - returning original scopes")
             return frozenset(user_scopes)
 
-        user_scopes_frozen = frozenset(user_scopes)
+        # Sanitize user-provided scopes
+        sanitized_scopes = []
+        for scope in user_scopes:
+            if "*" in scope or not scope.replace(":", "").replace("_", "").replace("-", "").isalnum():
+                logger.warning(f"Rejecting invalid scope format")
+                continue
+            sanitized_scopes.append(scope)
+
+        user_scopes_frozen = frozenset(sanitized_scopes)
 
         # Try cache first
         cache = _request_scope_cache.get() if self._cache_enabled else None
@@ -182,7 +190,7 @@ class ScopeService:
         if cache:
             cache.set_expanded_scopes(user_scopes_frozen, expanded)
 
-        logger.debug(f"Expanded {len(user_scopes)} user scopes to {len(expanded)} scopes")
+        logger.debug(f"Expanded {len(sanitized_scopes)} user scopes to {len(expanded)} scopes")
         return expanded
 
     def validate_scope_access(self, user_scopes: list[str] | set[str], required_scope: str) -> ScopeCheckResult:

@@ -34,7 +34,13 @@ class AuthContext:
 
     def has_scope(self, scope: str) -> bool:
         """Check if this context has a specific scope."""
-        return scope in self.scopes or "admin" in self.scopes
+        from .scope_service import get_scope_service
+        scope_service = get_scope_service()
+        if scope_service._hierarchy:
+            result = scope_service.validate_scope_access(self.scopes, scope)
+            return result.has_access
+        else:
+            return scope in self.scopes
 
     def require_scope(self, scope: str) -> None:
         """Require a specific scope, raising exception if not present."""
@@ -427,14 +433,14 @@ class UnifiedAuthenticationManager:
                 # Re-raise HTTP exceptions (like permission denied)
                 raise
             except Exception as e:
-                auth_failures.append(f"{provider.get_auth_type().value}: {str(e)}")
-                logger.debug(f"Provider {provider.get_auth_type().value} failed: {e}")
+                auth_failures.append(f"{provider.get_auth_type().value}: authentication failed")
+                logger.debug(f"Provider {provider.get_auth_type().value} failed", exc_info=True)
                 continue
 
         # No provider could authenticate the request - log failure
         audit_logger.log_authentication_failure(
             client_ip,
-            f"All providers failed: {', '.join(auth_failures)}"
+            "Authentication failed for all configured providers"
         )
 
         logger.warning("Authentication failed for request", path=request.url.path)
