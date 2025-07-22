@@ -28,13 +28,14 @@ class FunctionRegistry:
         if name in self._functions:
             # Check if this is the same function being registered again
             existing_schema = self._functions[name]
-            if (existing_schema.get("description") == schema.get("description") and 
-                existing_schema.get("parameters") == schema.get("parameters")):
+            if existing_schema.get("description") == schema.get("description") and existing_schema.get(
+                "parameters"
+            ) == schema.get("parameters"):
                 logger.debug(f"Function '{name}' already registered with same schema - skipping duplicate")
                 return
             else:
                 logger.warning(f"Function '{name}' being re-registered with different schema - overriding")
-        
+
         self._functions[name] = schema
         self._handlers[name] = handler
         logger.debug(f"Registered function '{name}' in registry")
@@ -43,13 +44,13 @@ class FunctionRegistry:
         """Get all function schemas for LLM function calling (local + MCP) with deduplication."""
         # Use a dict to deduplicate by function name
         schema_dict = {}
-        
+
         # Add local functions
         for schema in self._functions.values():
             name = schema.get("name")
             if name:
                 schema_dict[name] = schema
-        
+
         # Add MCP tools (may override local functions with same name)
         for schema in self._mcp_tools.values():
             name = schema.get("name")
@@ -57,7 +58,7 @@ class FunctionRegistry:
                 if name in schema_dict:
                     logger.debug(f"MCP tool '{name}' overrides local function with same name")
                 schema_dict[name] = schema
-        
+
         return list(schema_dict.values())
 
     def get_available_tools_for_ai(self, user_scopes: set[str]) -> list[dict[str, Any]]:
@@ -74,8 +75,6 @@ class FunctionRegistry:
             list[dict[str, Any]]: List of tool schemas filtered by user permissions
         """
         try:
-            from agent.config import load_config
-            from agent.plugins.integration import get_plugin_adapter
             from agent.security.scope_service import get_scope_service
 
             # If no scopes provided, return empty list for security
@@ -89,10 +88,10 @@ class FunctionRegistry:
                 return self.get_function_schemas()
 
             available_tools = []
-            logger.debug(f"Using optimized scope service for tool filtering")
+            logger.debug("Using optimized scope service for tool filtering")
 
             # Start request-scoped cache
-            cache = scope_service.start_request_cache()
+            _cache = scope_service.start_request_cache()
 
             # Check local plugin capabilities
             try:
@@ -122,19 +121,19 @@ class FunctionRegistry:
                     if name in deduplicated_tools:
                         logger.debug(f"Removing duplicate tool: {name}")
                     deduplicated_tools[name] = tool
-            
+
             final_tools = list(deduplicated_tools.values())
-            
+
             logger.info(
                 f"AI tool filtering completed: {len(final_tools)} tools available for user (removed {len(available_tools) - len(final_tools)} duplicates)"
             )
             if final_tools:
                 tool_names = [tool.get("name", "unnamed") for tool in final_tools]
                 logger.debug(f"Tools granted to user: {tool_names}")
-            
+
             # Clean up request cache
             scope_service.clear_request_cache()
-            
+
             return final_tools
 
         except Exception as e:
@@ -142,7 +141,7 @@ class FunctionRegistry:
             # Clean up cache on error
             try:
                 scope_service.clear_request_cache()
-            except:
+            except Exception:
                 pass
             # Security fallback: return empty list rather than all tools
             return []
@@ -152,27 +151,30 @@ class FunctionRegistry:
         from agent.config import load_config
         from agent.plugins.integration import get_plugin_adapter
         from agent.security.audit_logger import get_security_audit_logger
-        
+
         tools = []
         config = load_config()
         plugin_adapter = get_plugin_adapter()
         audit_logger = get_security_audit_logger()
-        
+
         # Get current user ID for audit logging
         user_id = "unknown"
         try:
             from agent.security.context import get_current_auth
+
             auth_result = get_current_auth()
             if auth_result:
-                user_id = getattr(auth_result, 'user_id', 'unknown')
-        except:
+                user_id = getattr(auth_result, "user_id", "unknown")
+        except Exception:
             pass
-        
-        logger.debug(f"Plugin capability filtering - adapter: {plugin_adapter is not None}, config: {config is not None}")
-        
+
+        logger.debug(
+            f"Plugin capability filtering - adapter: {plugin_adapter is not None}, config: {config is not None}"
+        )
+
         if not (plugin_adapter and config):
             return tools
-            
+
         configured_plugins = config.get("plugins", [])
         logger.debug(f"Found {len(configured_plugins)} configured plugins")
 
@@ -180,14 +182,14 @@ class FunctionRegistry:
             plugin_id = plugin_config.get("plugin_id")
             if not plugin_id:
                 continue
-            
+
             logger.debug(f"Processing plugin: {plugin_id}")
 
             # Handle new capability-based config structure
             if "capabilities" in plugin_config:
                 capabilities_list = plugin_config["capabilities"]
                 logger.debug(f"Plugin '{plugin_id}' has {len(capabilities_list)} capabilities defined")
-                
+
                 for capability_config in capabilities_list:
                     capability_id = capability_config.get("capability_id")
                     required_scopes = capability_config.get("required_scopes", [])
@@ -211,18 +213,12 @@ class FunctionRegistry:
                         # Log function access denied for security audit
                         ai_functions = plugin_adapter.get_ai_functions(capability_id)
                         for ai_function in ai_functions:
-                            audit_logger.log_function_access_denied(
-                                user_id,
-                                ai_function.name,
-                                len(required_scopes)
-                            )
+                            audit_logger.log_function_access_denied(user_id, ai_function.name, len(required_scopes))
             else:
                 # Handle legacy config structure
                 logger.warning(f"Plugin '{plugin_id}' using legacy config structure - no scope enforcement")
                 audit_logger.log_configuration_error(
-                    f"plugin_{plugin_id}",
-                    "legacy_config_no_scope_enforcement",
-                    {"plugin_id": plugin_id}
+                    f"plugin_{plugin_id}", "legacy_config_no_scope_enforcement", {"plugin_id": plugin_id}
                 )
                 plugin_capabilities = plugin_adapter.get_plugin_capabilities(plugin_id)
                 for capability_id in plugin_capabilities:
@@ -234,13 +230,13 @@ class FunctionRegistry:
                             "parameters": ai_function.parameters,
                         }
                         tools.append(tool_spec)
-        
+
         return tools
-    
+
     def _get_mcp_tools(self, scope_service, user_scopes: set[str]) -> list[dict[str, Any]]:
         """Get MCP tools filtered by user scopes."""
         from agent.config import load_config
-        
+
         tools = []
         config = load_config()
         mcp_config = config.get("mcp", {})
@@ -267,13 +263,13 @@ class FunctionRegistry:
             if result.has_access:
                 tools.append(tool_schema)
                 logger.debug(f"Granted MCP tool '{tool_name}' (original: '{original_name}')")
-        
+
         return tools
-    
+
     def _get_builtin_tools(self, scope_service, user_scopes: set[str]) -> list[dict[str, Any]]:
         """Get built-in tools filtered by user scopes."""
         from agent.config import load_config
-        
+
         tools = []
         config = load_config()
         configured_plugins = config.get("plugins", [])
@@ -287,8 +283,10 @@ class FunctionRegistry:
                     required_scopes = capability_config.get("required_scopes", [])
                     capability_scope_map[capability_id] = required_scopes
 
-        logger.debug(f"Checking {len(self._functions)} built-in functions against scope map with {len(capability_scope_map)} entries")
-        
+        logger.debug(
+            f"Checking {len(self._functions)} built-in functions against scope map with {len(capability_scope_map)} entries"
+        )
+
         for function_name, function_schema in self._functions.items():
             # Check if this function has explicit scope configuration
             if function_name not in capability_scope_map:
@@ -297,7 +295,7 @@ class FunctionRegistry:
                 continue
 
             required_scopes = capability_scope_map[function_name]
-            
+
             # Use centralized scope validation
             result = scope_service.validate_multiple_scopes(user_scopes, required_scopes)
             if result.has_access:
@@ -305,7 +303,7 @@ class FunctionRegistry:
                 logger.debug(f"Granted built-in function '{function_name}' (required: {required_scopes})")
             else:
                 logger.debug(f"Denied built-in function '{function_name}' - missing scopes: {result.missing_scopes}")
-        
+
         return tools
 
     def get_handler(self, function_name: str) -> Callable | None:
@@ -473,7 +471,9 @@ class FunctionDispatcher:
                     if auth_result.scopes:
                         logger.debug(f"Using scope-filtered tools for user with {len(auth_result.scopes)} scopes")
                     else:
-                        logger.warning(f"User '{getattr(auth_result, 'user_id', 'unknown')}' has no scopes - no tools available")
+                        logger.warning(
+                            f"User '{getattr(auth_result, 'user_id', 'unknown')}' has no scopes - no tools available"
+                        )
                 else:
                     # No authentication at all - fallback to all functions (for development/testing)
                     function_schemas = self.function_registry.get_function_schemas()

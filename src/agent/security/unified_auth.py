@@ -35,6 +35,7 @@ class AuthContext:
     def has_scope(self, scope: str) -> bool:
         """Check if this context has a specific scope."""
         from .scope_service import get_scope_service
+
         scope_service = get_scope_service()
         if scope_service._hierarchy:
             result = scope_service.validate_scope_access(self.scopes, scope)
@@ -372,9 +373,7 @@ class UnifiedAuthenticationManager:
 
         if not self.auth_enabled:
             audit_logger.log_configuration_error(
-                "authentication",
-                "auth_disabled_but_required",
-                {"endpoint": str(request.url.path)}
+                "authentication", "auth_disabled_but_required", {"endpoint": str(request.url.path)}
             )
             logger.error("Authentication disabled but request requires authentication - denying access")
             raise HTTPException(status_code=401, detail="Authentication is required but disabled in configuration")
@@ -387,9 +386,7 @@ class UnifiedAuthenticationManager:
                 if auth_context and auth_context.is_valid:
                     # Log successful authentication
                     audit_logger.log_authentication_success(
-                        auth_context.user_id,
-                        client_ip,
-                        provider.get_auth_type().value
+                        auth_context.user_id, client_ip, provider.get_auth_type().value
                     )
 
                     # Expand scopes using hierarchy
@@ -406,10 +403,7 @@ class UnifiedAuthenticationManager:
                         if missing_scopes:
                             # Log authorization failure
                             audit_logger.log_authorization_failure(
-                                auth_context.user_id,
-                                str(request.url.path),
-                                "access",
-                                missing_scopes
+                                auth_context.user_id, str(request.url.path), "access", missing_scopes
                             )
 
                             logger.warning(
@@ -417,9 +411,7 @@ class UnifiedAuthenticationManager:
                                 missing_scopes_count=len(missing_scopes),
                             )
                             # Fail closed - deny access
-                            raise HTTPException(
-                                status_code=403, detail="Insufficient permissions"
-                            )
+                            raise HTTPException(status_code=403, detail="Insufficient permissions")
 
                     logger.debug(
                         "Authentication and authorization successful",
@@ -432,16 +424,13 @@ class UnifiedAuthenticationManager:
             except HTTPException:
                 # Re-raise HTTP exceptions (like permission denied)
                 raise
-            except Exception as e:
+            except Exception:
                 auth_failures.append(f"{provider.get_auth_type().value}: authentication failed")
                 logger.debug(f"Provider {provider.get_auth_type().value} failed", exc_info=True)
                 continue
 
         # No provider could authenticate the request - log failure
-        audit_logger.log_authentication_failure(
-            client_ip,
-            "Authentication failed for all configured providers"
-        )
+        audit_logger.log_authentication_failure(client_ip, "Authentication failed for all configured providers")
 
         logger.warning("Authentication failed for request", path=request.url.path)
         # Fail closed - deny access

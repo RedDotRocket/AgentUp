@@ -170,7 +170,7 @@ class ScopeService:
         sanitized_scopes = []
         for scope in user_scopes:
             if "*" in scope or not scope.replace(":", "").replace("_", "").replace("-", "").isalnum():
-                logger.warning(f"Rejecting invalid scope format")
+                logger.warning("Rejecting invalid scope format")
                 continue
             sanitized_scopes.append(scope)
 
@@ -223,16 +223,17 @@ class ScopeService:
         missing_scopes = [] if has_access else [required_scope]
 
         # Only log at DEBUG level to reduce noise
-        logger.debug(f"Scope validation: user_scopes={len(user_scopes)}, required='{required_scope}', result={has_access}, cache_hit={cache_hit}")
-
-        return ScopeCheckResult(
-            has_access=has_access,
-            expanded_scopes=expanded_scopes,
-            missing_scopes=missing_scopes,
-            cache_hit=cache_hit
+        logger.debug(
+            f"Scope validation: user_scopes={len(user_scopes)}, required='{required_scope}', result={has_access}, cache_hit={cache_hit}"
         )
 
-    def validate_multiple_scopes(self, user_scopes: list[str] | set[str], required_scopes: list[str]) -> ScopeCheckResult:
+        return ScopeCheckResult(
+            has_access=has_access, expanded_scopes=expanded_scopes, missing_scopes=missing_scopes, cache_hit=cache_hit
+        )
+
+    def validate_multiple_scopes(
+        self, user_scopes: list[str] | set[str], required_scopes: list[str]
+    ) -> ScopeCheckResult:
         """Validate if user has all required scopes."""
         if not required_scopes:
             return ScopeCheckResult(has_access=True)
@@ -256,9 +257,8 @@ class ScopeService:
             has_access=has_access,
             expanded_scopes=expanded_scopes,
             missing_scopes=missing_scopes,
-            cache_hit=cache_hits == len(required_scopes)
+            cache_hit=cache_hits == len(required_scopes),
         )
-
 
     def get_hierarchy_summary(self) -> dict[str, Any]:
         """Get hierarchy summary for debugging (safe for logging)."""
@@ -267,7 +267,7 @@ class ScopeService:
 
         return {
             "total_scopes": len(self._hierarchy.hierarchy),
-            "wildcard_scopes_count": len(self._wildcard_scopes) if hasattr(self._hierarchy, '_wildcard_scopes') else 0
+            "wildcard_scopes_count": len(self._wildcard_scopes) if hasattr(self._hierarchy, "_wildcard_scopes") else 0,
         }
 
 
@@ -281,5 +281,3 @@ def get_scope_service() -> ScopeService:
     if _scope_service is None:
         _scope_service = ScopeService()
     return _scope_service
-
-

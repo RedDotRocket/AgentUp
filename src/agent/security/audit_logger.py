@@ -38,7 +38,7 @@ class SecurityAuditLogger:
         action: str | None = None,
         success: bool = True,
         details: dict[str, Any] | None = None,
-        risk_level: str = "low"
+        risk_level: str = "low",
     ) -> None:
         """Log a security event with sanitized information."""
 
@@ -75,14 +75,16 @@ class SecurityAuditLogger:
         else:
             self._audit_logger.error("Critical security event", **event_data)
 
-    def log_authentication_success(self, user_id: str, client_ip: str | None = None, auth_method: str | None = None) -> None:
+    def log_authentication_success(
+        self, user_id: str, client_ip: str | None = None, auth_method: str | None = None
+    ) -> None:
         """Log successful authentication."""
         self.log_security_event(
             SecurityEventType.AUTHENTICATION_SUCCESS,
             user_id=user_id,
             client_ip=client_ip,
             details={"auth_method": auth_method} if auth_method else None,
-            risk_level="low"
+            risk_level="low",
         )
 
     def log_authentication_failure(self, client_ip: str | None = None, reason: str | None = None) -> None:
@@ -92,10 +94,12 @@ class SecurityAuditLogger:
             client_ip=client_ip,
             success=False,
             details={"reason": reason} if reason else None,
-            risk_level="medium"
+            risk_level="medium",
         )
 
-    def log_authorization_failure(self, user_id: str, resource: str, action: str, missing_scopes: list[str] | None = None) -> None:
+    def log_authorization_failure(
+        self, user_id: str, resource: str, action: str, missing_scopes: list[str] | None = None
+    ) -> None:
         """Log authorization failure."""
         details = {}
         if missing_scopes:
@@ -108,7 +112,7 @@ class SecurityAuditLogger:
             action=action,
             success=False,
             details=details,
-            risk_level="medium"
+            risk_level="medium",
         )
 
     def log_function_access_denied(self, user_id: str, function_name: str, required_scopes_count: int = 0) -> None:
@@ -120,7 +124,7 @@ class SecurityAuditLogger:
             action="execute",
             success=False,
             details={"required_scopes_count": required_scopes_count},
-            risk_level="low"
+            risk_level="low",
         )
 
     def log_privilege_escalation_attempt(self, user_id: str, attempted_scope: str) -> None:
@@ -131,7 +135,7 @@ class SecurityAuditLogger:
             action="scope_escalation",
             success=False,
             details={"attempted_scope_category": self._categorize_scope(attempted_scope)},
-            risk_level="high"
+            risk_level="high",
         )
 
     def log_configuration_error(self, component: str, error_type: str, details: dict[str, Any] | None = None) -> None:
@@ -140,11 +144,8 @@ class SecurityAuditLogger:
             SecurityEventType.SECURITY_CONFIGURATION_ERROR,
             resource=component,
             success=False,
-            details={
-                "error_type": error_type,
-                **(self._sanitize_details(details) if details else {})
-            },
-            risk_level="high"
+            details={"error_type": error_type, **(self._sanitize_details(details) if details else {})},
+            risk_level="high",
         )
 
     def _sanitize_user_id(self, user_id: str | None) -> str | None:
@@ -163,7 +164,7 @@ class SecurityAuditLogger:
     def _sanitize_ip(self, ip: str) -> str:
         """Sanitize IP address for privacy compliance."""
         # Mask the last octet for IPv4
-        parts = ip.split('.')
+        parts = ip.split(".")
         if len(parts) == 4:
             return f"{parts[0]}.{parts[1]}.{parts[2]}.xxx"
         return ip  # Return as-is for IPv6 or invalid IPs
@@ -179,9 +180,9 @@ class SecurityAuditLogger:
 
         for key, value in details.items():
             # Skip sensitive keys
-            if any(sensitive in key.lower() for sensitive in ['key', 'token', 'password', 'secret', 'credential']):
+            if any(sensitive in key.lower() for sensitive in ["key", "token", "password", "secret", "credential"]):
                 sanitized[f"{key}_present"] = value is not None
-            elif key.lower() == 'scopes' and isinstance(value, list):
+            elif key.lower() == "scopes" and isinstance(value, list):
                 # Don't log actual scope names, just counts
                 sanitized["scopes_count"] = len(value)
             elif isinstance(value, str) and len(value) > 100:
