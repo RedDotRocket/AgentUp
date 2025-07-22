@@ -33,24 +33,24 @@ security:
     location: "header"
     keys:
       - "some_rnadomly_generated_key_sdr3w33s"
-  
+
   # Scope hierarchy for capability access control
   scope_hierarchy:
     # Universal admin
     admin: ["*"]
-    
+
     # File system scopes
     files:admin: ["files:write", "files:read", "files:sensitive"]
     files:write: ["files:read"]
-    
+
     # System scopes
     system:admin: ["system:write", "system:read"]
     system:write: ["system:read"]
-    
+
     # Data scopes
     data:admin: ["data:write", "data:read", "data:export"]
     data:write: ["data:read"]
-    
+
     # MCP scopes
     mcp:admin: ["mcp:server", "mcp:client", "mcp:access"]
     mcp:server: ["mcp:access"]
@@ -58,9 +58,6 @@ security:
 
 # Middleware configuration
 middleware:
-  - name: logged
-    params:
-      log_level: 20
   - name: timed
     params: {}
 
@@ -81,7 +78,7 @@ state_management:
 rate_limiting:
   enabled: true
   endpoint_limits:
-    "/": 
+    "/":
       rpm: 10  # Very low limit for testing
       burst: 12
     "/health":
@@ -105,7 +102,7 @@ mcp:
           write_file: ["files:write"]
           delete_file: ["files:admin"]
           list_directory: ["files:read"]
-          
+
       - name: "database-server"
         type: "http"
         url: "http://localhost:3001/mcp"
