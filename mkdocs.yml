@@ -1,4 +1,4 @@
-site_name: AgentUp Documentation
+site_name: AgentUp Docs
 site_description: Documentation for AgentUp, a framework for building AI agents.
 site_url: https://github.com/RedDotRocket/agentup
 repo_url: https://github.com/RedDotRocket/agentup
@@ -17,11 +17,13 @@ theme:
     - navigation.instant
     - navigation.prune
     - navigation.sections
-    - navigation.integrate
+    - navigation.tabs
+    - navigation.tabs.sticky
     - search.highlight
     - search.share
     - search.suggest
     - toc.integrate
+    - toc.follow
     - content.code.copy
     - content.code.annotate
     - content.tooltips
@@ -48,6 +50,7 @@ extra_css:
 
 markdown_extensions:
   - attr_list
+  - md_in_html
   - pymdownx.emoji:
       emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
@@ -73,19 +76,14 @@ nav:
   - Getting Started: 
     - getting-started/index.md
     - Installation: getting-started/installation.md
-    - Quick Start: getting-started/quickstart.md
     - First Agent: getting-started/first-agent.md
     - AI Agent: getting-started/ai-agent.md
     - Core Concepts: getting-started/core-concepts.md
-  - User Guide:
-    - Creating Agents: user-guide/creating-agents.md
-    - Package Management: user-guide/packages.md
-    - Security: user-guide/security.md
-  - API Reference:
-    - Core API: api/core.md
-    - Registry API: api/registry.md
-  - About:
-    - License: license.md
-    - Contributing: contributing.md
+  - Configuration:
+    - Logging: configuration/logging.md
+    - Middleware: configuration/middleware.md
+    - State Management: configuration/state-management.md
+    - Routing: configuration/routing.md
+
 
 copyright: Copyright &copy; 2025 Red Dot Rocket

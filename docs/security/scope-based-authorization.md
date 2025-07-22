@@ -15,7 +15,7 @@ graph TD
     A[HTTP Request] --> B[Authentication Layer]
     B --> C[Framework Scope Enforcement]
     C --> D[Plugin Capability Execution]
-    
+
     B -.->|Only checks auth| E[Authentication Result]
     C -.->|Enforces declared scopes| F[Scope Validation]
     D -.->|Focuses on functionality| G[Business Logic]
@@ -44,7 +44,7 @@ Scopes follow a structured format that enables clear permissions and hierarchica
 
 **Examples:**
 - `files:read` - Read access to files
-- `files:write` - Write access to files  
+- `files:write` - Write access to files
 - `files:admin` - Administrative access to files
 - `system:read` - Read system information
 - `system:admin` - Administrative system access
@@ -62,19 +62,19 @@ security:
   scope_hierarchy:
     # Universal admin access
     admin: ["*"]
-    
+
     # File system scopes
     files:admin: ["files:write", "files:read", "files:sensitive"]
     files:write: ["files:read"]
-    
-    # System scopes  
+
+    # System scopes
     system:admin: ["system:write", "system:read"]
     system:write: ["system:read"]
-    
+
     # API scopes
     api:admin: ["api:write", "api:read"]
     api:write: ["api:read"]
-    
+
     # Custom domain scopes
     enterprise:admin: ["enterprise:write", "enterprise:read"]
     enterprise:write: ["enterprise:read"]
@@ -121,7 +121,7 @@ Common plugins have these default scope requirements:
 
 **sys_tools plugin:**
 - `file_read` requires `["files:read"]`
-- `file_write` requires `["files:write"]`  
+- `file_write` requires `["files:write"]`
 - `delete_file` requires `["files:admin"]`
 - `execute_command` requires `["system:admin"]`
 
@@ -142,11 +142,11 @@ plugins:
     capabilities:
       - capability_id: file_read
         required_scopes: ["files:read", "audit:log"]  # Add additional scope
-      - capability_id: delete_file  
+      - capability_id: delete_file
         required_scopes: ["files:admin", "approval:required"]  # Override default
       - capability_id: execute_command
         required_scopes: ["system:admin", "security:verified"]  # More restrictive
-  
+
   - plugin_id: brave
     capabilities:
       - capability_id: web_search
@@ -181,7 +181,7 @@ security:
           scopes: ["files:read", "system:read"]
         - key: "write-key-789"
           scopes: ["files:write", "web:search"]
-  
+
   # Scope hierarchy for permission inheritance
   scope_hierarchy:
     admin: ["*"]  # Universal access
@@ -204,12 +204,12 @@ security:
       secret_key: "${JWT_SECRET}"
       algorithm: "HS256"
       issuer: "${JWT_ISSUER}"
-      
+
   # Scope hierarchy applies to scopes found in tokens
   scope_hierarchy:
     admin: ["*"]
     developer: ["files:write", "system:read", "web:search"]
-    analyst: ["files:read", "web:search"] 
+    analyst: ["files:read", "web:search"]
     files:write: ["files:read"]
 ```
 
@@ -218,7 +218,7 @@ security:
 {
   "sub": "user123",
   "iss": "my-app",
-  "aud": "agentup-agent", 
+  "aud": "agentup-agent",
   "scopes": ["developer"],          # Scopes come from the token
   "user_id": "user123",
   "department": "engineering"
@@ -243,10 +243,10 @@ mcp:
         args: ["mcp-server-filesystem", "/tmp"]
         tool_scopes:
           read_file: ["files:read"]       # MCP tool requires files:read
-          write_file: ["files:write"]     # MCP tool requires files:write  
+          write_file: ["files:write"]     # MCP tool requires files:write
           delete_file: ["files:admin"]    # MCP tool requires files:admin
-          
-      - name: "database-server" 
+
+      - name: "database-server"
         type: "http"
         url: "http://localhost:3001/mcp"
         tool_scopes:
@@ -263,7 +263,7 @@ The framework automatically enforces the configured tool scopes for MCP tools ju
 The framework automatically filters which tools are available to AI based on the user's scopes. This means:
 
 - **Users with `files:read`** - AI can only see and use file reading capabilities
-- **Users with `files:write`** - AI can see file reading and writing capabilities  
+- **Users with `files:write`** - AI can see file reading and writing capabilities
 - **Users with `files:admin`** - AI can see all file capabilities including deletion
 - **Users with `admin`** - AI can see all available capabilities
 
@@ -327,17 +327,17 @@ security:
         - key: "admin-key-abc123"
           user_id: "admin"
           scopes: ["admin"]  # Inherits all permissions
-        
+
         # Developer - Development and file access
         - key: "dev-key-def456"
           user_id: "developer"
           scopes: ["files:write", "system:read", "web:search"]
-        
+
         # Analyst - Read-only access
         - key: "analyst-key-ghi789"
-          user_id: "analyst" 
+          user_id: "analyst"
           scopes: ["files:read", "web:search"]
-        
+
         # Service Account - Specific operations only
         - key: "service-key-jkl012"
           user_id: "backup-service"
@@ -358,7 +358,7 @@ security:
     developer: ["files:write", "system:read", "web:search"]
     analyst: ["files:read", "web:search", "image:read"]
     readonly: ["files:read"]
-    
+
     # Domain hierarchies
     files:admin: ["files:write", "files:read"]
     files:write: ["files:read"]
@@ -400,7 +400,7 @@ security:
     admin: ["*"]
     files:admin: ["files:write", "files:read"]
     files:write: ["files:read"]
-    
+
 # ❌ Bad: Flat permissions without hierarchy
 security:
   scope_hierarchy:
@@ -416,7 +416,7 @@ auth:
     keys:
       - key: "dev-key"
         scopes: ["developer"]  # Use role-based scope
-        
+
 # ❌ Bad: Individual permission lists
 auth:
   api_key:
@@ -433,10 +433,10 @@ plugins:
     capabilities:
       - capability_id: delete_file
         required_scopes: ["files:admin", "approval:required"]
-        
+
 # ❌ Bad: Making capabilities less secure than default
 plugins:
-  - plugin_id: sys_tools  
+  - plugin_id: sys_tools
     capabilities:
       - capability_id: execute_command
         required_scopes: ["files:read"]  # Too permissive!

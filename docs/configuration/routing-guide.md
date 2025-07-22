@@ -1,6 +1,9 @@
 # AgentUp Routing System Guide
 
-The AgentUp routing system determines how incoming user messages are processed and which skills handle them. This guide explains the different routing modes, when to use each, and how to configure them effectively.
+!!! warning "Documentation Under Review"
+    This routing documentation is being updated to match the current implementation. The routing system currently uses implicit routing based on plugin keywords/patterns rather than the explicit configuration shown below.
+
+The AgentUp routing system determines how incoming user messages are processed and which capabilities handle them.
 
 ## Overview
 

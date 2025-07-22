@@ -1,14 +1,13 @@
 # Create Your First AI Agent
 
-
-In this tutorial, you'll create a simple as they come, out of the box basic AgentUp agent. This will help you understand the core concepts and get hands-on experience with the framework.
+In this tutorial, you'll create a simple as they come, out of the box, basic AgentUp agent. This will help you understand the core concepts and get hands-on experience with the framework.
 
 
 !!! Prerequisites
     - AgentUp installed ([Installation Guide](installation.md))
     - Basic understanding of YAML configuration
     - Terminal/command prompt access
-
+    - Familiarity with JSON-RPC (optional, but helpful)
 ## Create the Agent Project
 
 ```bash
@@ -18,7 +17,7 @@ agentup agent create
 
 Follow the prompts to set up your agent:
 
-```bash
+```bash hl_lines="6 9"
 ----------------------------------------
 Create your AI agent:
 ----------------------------------------
@@ -38,7 +37,7 @@ o toggle, <i> to invert)
 
 After selecting only "Authentication Method", you select "API Key":
 
-```bash
+```bash hl_lines="2"
 ? Select authentication method: (Use arrow keys)
  » API Key (simple, good for development)
    JWT Bearer (production-ready with scopes)
@@ -77,9 +76,9 @@ Let's walk through the key files:
 - **`pyproject.toml`**: Agent metadata and Plugin dependencies (more on this later).
 - **`README.md`**: Basic documentation for your agent.
 
-
-
 ## Understand the Basic Configuration
+
+### agentup.yml
 
 The `agentup.yml` file is where you define your agent's behavior and capabilities.
 
@@ -99,12 +98,13 @@ version: "0.1.0"
 
 Next our where plugins are defined
 
-!!! plugins
-    Plugins are where the magic happens. They define the capabilities your agent can perform. In this case, we have a simple "Hello Plugin" that responds to greetings. Quite boring, but it serves as a good starting point.
+#### Plugins
+
+Plugins are where the magic happens. They define the capabilities your agent can perform. In this case, we have a simple "Hello Plugin" that responds to greetings. Quite boring, but it serves as a good starting point.
 
 ```yaml
 plugins:
-  - plugin_id: hello
+  - plugin_id: hello (1)!
     name: Hello Plugin
     description: Simple greeting plugin for testing and examples
     tags: [hello, basic, example]
@@ -112,13 +112,13 @@ plugins:
     output_mode: text
     keywords: [hi, greetings]
     patterns: ['^hello']
-    routing_mode: direct
     priority: 50
     capabilities:
       - capability_id: hello
         required_scopes: ["api:read"]
         enabled: true
 ```
+
 
 Some key points about this plugin configuration:
 
@@ -130,27 +130,36 @@ Some key points about this plugin configuration:
   | **output_mode** | Format the plugin returns | `text` |
   | **keywords** | Trigger words for this plugin | `[hi, greetings]` |
   | **patterns** | Regex patterns to match | `['^hello']` |
-  | **routing_mode** | Request routing method | `direct` |
   | **priority** | Execution order (lower = higher) | `50` |
   | **capabilities** | Functions this plugin provides | hello |
   | **required_scopes** | Access permissions needed | `["api:read"]` |
 
-!!! routing
+??? question "AgentUp Routing Logic"
+    AgentUp uses an **implicit routing system**, where routing is determined by the presence (or absence) of keywords and patterns in the user input. This allows
+    deterministic routing, using keywords and patterns to decide which plugin to invoke.
 
-    The `routing_mode` defines how requests are handled. In this case, `direct` means the plugin will handle requests directly without the direction of the Large Language Model (LLM). This is useful for simple plugins that you want to be 'deterministic'. When routing is set to `llm`, the LLM will decide which plugin to use based on the request context.
+    **Keywords:**
 
-!!! capabilities
+    Array of keywords that trigger direct routing to this plugin when found in user input.
 
-    The `capabilities` section defines the specific functions this plugin provides. Each capability will
-    inform on the scopes it requires, which is important for security and access control. More on that later.
+    *Example:* `["file", "directory", "ls", "cat"]`
+
+    **Patterns:**
+
+    Array of regex patterns that trigger direct routing to this plugin when matched against user input.
+
+    *Example:* `["^create file .*", "^delete .*"]`
+
+    If keywords or patterns are matched, the plugin is invoked directly. If no keywords or patterns match, the request is pickedup by the LLM who will then decide which plugin to use based on the natural language used in the request.
+
+#### capabilities
+
+The `capabilities` section defines the specific functions this plugin provides. Each capability will inform on the scopes it requires, which is important for security and access control. More on that later.
 
 ### Middleware Configuration
 
 ```yaml
 middleware:
-  - name: logged
-    params:
-      log_level: 20
   - name: timed
     params: {}
   - name: rate_limiting
@@ -160,15 +169,22 @@ middleware:
 
 Middleware allows you to add cross-cutting concerns like logging, timing, and rate limiting. In this example:
 
-- **`logged`**: Logs requests and responses at the specified log level (20 = INFO).
 - **`timed`**: Measures the time taken to process requests.
 - **`rate_limiting`**: Limits requests to 60 per minute to prevent abuse
 
-!!! tip "plugin middleware"
-    Middleware can be applied to specific plugins or globally. This allows you to control how middleware behaves for different capabilities of your agent.
+??? tip "plugin middleware"
+    Middleware can also be applied to specific plugins or globally. This allows you to control how middleware behaves for different capabilities of your agent. We will cover this in more detail in the advanced tutorials.
 
 
 ### Security Configuration
+
+AgentUp provides a flexible security model to protect your agent's capabilities.
+
+It supports multiple authentication methods:
+
+- **API Key**: Simple, good for development
+- **JWT Bearer**: Signed with scopes declared inside the token body
+- **OAuth2**: Signed with scopes, but can also be integrated with external providers
 
 ```yaml
 security:
@@ -184,26 +200,82 @@ security:
           scopes: ["api:read", "api:write", "system:read"]  # Permissions for demo plugin
   # Basic scope hierarchy for minimal template
   scope_hierarchy:
-    admin: ["*"]        # Admin has all permissions
-    api:write: ["api:read"]   # Write access includes read
-    api:read: []        # Basic read access
-    system:read: []     # System information access
-    files:read: []      # File read access
+    # Role-based scopes
+    admin: ["*"]
+    manager: ["files:admin", "system:read", "web:search", "image:read"]
+    developer: ["files:write", "web:search", "api:write"]
+    analyst: ["files:read", "web:search", "image:read"]
+    readonly: ["files:read"]
+
+    # Domain hierarchies
+    files:admin: ["files:write", "files:read"]
+    api:write: ["api:read"]
+    files:write: ["files:read"]
+    system:admin: ["system:write", "system:read"]
+    system:write: ["system:read"]
 ```
 
-This section configures security for your agents and can get quite complex, for now, our basic agent
-uses `api_key` authentication, later tutorials will cover more advanced topics like OAuth and JWT.
+#### Key Configuration Options
 
-The `location` specifies where the API key should be sent in requests. In this case, it's in the header,
-those developing web applications may prefer to use query parameters or cookies.
+| Setting | Description | Example Value |
+|---------|-------------|---------------|
+| **`header_name`** | HTTP header containing the API key | `"X-API-Key"` |
+| **`location`** | Where to set the API key | `header`, `query`, or `cookie` |
+| **`keys`** | Valid API keys and their permissions | See scopes below |
 
-`scope_hierarchy` is something we will cover in more detail later, but it allows you to define a hierarchy of permissions for your agent. This is useful for controlling access to different capabilities based on the user's role. We are using scopes here, but its really designed to work with protocols like OAuth2 and JWT, where
-scopes are backed by cryptographic tokens. For an API Key, those scopes would need to be mapped to another
-system that can cross check the permissions of the API key being used.
+??? tip "Mulitiple Keys"
+    You can define multiple API keys with different scopes. This allows you to control access to specific capabilities based on the key used.
 
-Right that will do for the basic configuration, let's move on to starting the agent and testing it out!
+#### Understanding Scopes & Permissions
 
-## Verify Agent Functionality (starting the agent)
+The `scope_hierarchy` defines a permission system for your agent:
+
+```yaml
+scope_hierarchy:
+  admin: ["*"]                    # Full access to everything
+  api:write: ["api:read"]         # Write access (includes read)
+  api:read: []                    # Basic read-only access
+  system:read: []                 # System information access
+  files:read: []                  # File reading permissions
+```
+
+This allows you to control which API keys can access specific capabilities. For example, the `hello` capability requires the `api:read` scope, so only API keys with that scope can invoke it.
+
+The `scope_hierarchy` system is more detailed then what we cover here. But to
+put it succinctly a plugin says what it needs "api:read" and then you, the user,
+state what is allowed to use within the `plugin` configuration.
+
+For example:
+
+```yaml hl_lines="5"
+plugins:
+  - plugin_id: hello
+    capabilities:
+      - capability_id: hello
+        required_scopes: ["api:read"] # - I need this scope to be invoked
+        enabled: true
+```
+
+This means the `hello` plugin requires the `api:read` scope to be invoked. If an API key does not have this scope, it will not be able to use the `hello` capability.
+
+```yaml hl_lines="4"
+ api_key:
+      keys:
+        - key: "24vgyiyNuzvPdtRG5R80YR4_eKXC9dk0"
+          scopes: ["api:read"] # - I allow this scope to invoked
+```
+
+
+
+!!! warning "Scope Security"
+    In the above example, we are using scopes with **basic API keys**. More secure options are **OAuth2** and **JWT** tokens where scopes are cryptographically secured and cannot be tampered with. The expectation is that an external policy and authorization server will mint the tokens and manage the scopes. AgentUp will
+    ensure they are enforced at runtime.
+
+## Next Steps
+
+This covers the basic security setup. Ready to see your agent in action? Let's start it up and test it out!
+
+### Verify Agent Functionality (starting the agent)
 
 Right, let's start the agent and see if everything is working as expected!
 
@@ -217,34 +289,36 @@ agentup agent serve
 
 We  Agent start up , load the configuration, and register the plugins and activities various services. You should see output similar to this:
 
-```
-2025-07-21T22:08:27.898312Z [INFO     ] Registered built-in plugin: hello (Hello Plugin) [agent.plugins.builtin]
-2025-07-21T22:08:27.898388Z [INFO     ] Registered hello plugin   [agent.plugins.core_plugins]
-2025-07-21T22:08:27.958877Z [INFO     ] Registered built-in capability 'hello' from plugin 'hello' with scopes: ['api:read'] [agent.plugins.builtin]
-2025-07-21T22:08:27.958968Z [INFO     ] Built-in plugins registered and integrated [agent.plugins.integration]
-2025-07-21T22:08:27.992681Z [INFO     ] Configuration loaded 0 plugin capabilities (out of 0 discovered) [agent.plugins.integration]
-2025-07-21T22:08:27.992760Z [INFO     ] Plugin adapter integrated with function registry for AI function calling [agent.plugins.integration]
-2025-07-21T22:08:28.024429Z [INFO     ] Registered plugin capability with scope enforcement: hello (scopes: ['api:read']) [agent.capabilities.executors]
-2025-07-21T22:08:28.024517Z [INFO     ] Loaded plugin: hello with 1 capabilities [PluginService]
-2025-07-21T22:08:28.024564Z [INFO     ] Plugin service initialized with 1 plugins [PluginService]
-2025-07-21T22:08:28.024612Z [INFO     ] ✓ Initialized PluginService [agent.services.bootstrap]
-2025-07-21T22:08:28.024663Z [INFO     ] ================================================== [agent.services.bootstrap]
-2025-07-21T22:08:28.024692Z [INFO     ] Basic Agent v0.2.0 initialized [agent.services.bootstrap]
-2025-07-21T22:08:28.024716Z [INFO     ] AI Agent Basic Agent Project. [agent.services.bootstrap]
-2025-07-21T22:08:28.024736Z [INFO     ] ================================================== [agent.services.bootstrap]
-2025-07-21T22:08:28.024758Z [INFO     ] Active Services (4):      [agent.services.bootstrap]
-2025-07-21T22:08:28.024779Z [INFO     ]   ✓ SecurityService       [agent.services.bootstrap]
-2025-07-21T22:08:28.024810Z [INFO     ]   ✓ MiddlewareManager     [agent.services.bootstrap]
-2025-07-21T22:08:28.024846Z [INFO     ]   ✓ CapabilityRegistry    [agent.services.bootstrap]
-2025-07-21T22:08:28.024866Z [INFO     ]   ✓ PluginService         [agent.services.bootstrap]
-2025-07-21T22:08:28.024900Z [INFO     ] Enabled Features:         [agent.services.bootstrap]
-2025-07-21T22:08:28.024934Z [INFO     ]   ✓ Security (api_key)    [agent.services.bootstrap]
-2025-07-21T22:08:28.024956Z [INFO     ]   ✓ Capabilities (4)      [agent.services.bootstrap]
-2025-07-21T22:08:28.024977Z [INFO     ] ================================================== [agent.services.bootstrap]
-2025-07-21T22:08:28.061587Z [INFO     ] Loaded 1 plugins from config [agent.api.routes]
-2025-07-21T22:08:28.061639Z [INFO     ] Plugin 0: id=hello, desc=Simple greeting plugin for testing and examples [agent.api.routes]
-2025-07-21T22:08:28.077410Z [INFO     ] Application startup complete. [uvicorn.error]
-```
+
+??? success "Expected Output"
+    ```
+    [INFO] Registered built-in plugin: hello (Hello Plugin) [agent.plugins.builtin]
+    [INFO] Registered hello plugin   [agent.plugins.core_plugins]
+    [INFO] Registered built-in capability 'hello' from plugin 'hello' with scopes: ['api:read'] [agent.plugins.builtin]
+    [INFO] Built-in plugins registered and integrated [agent.plugins.integration]
+    [INFO] Configuration loaded 0 plugin capabilities (out of 0 discovered) [agent.plugins.integration]
+    [INFO] Plugin adapter integrated with function registry for AI function calling [agent.plugins.integration]
+    [INFO] Registered plugin capability with scope enforcement: hello (scopes: ['api:read']) [agent.capabilities.executors]
+    [INFO] Loaded plugin: hello with 1 capabilities [PluginService]
+    [INFO] Plugin service initialized with 1 plugins [PluginService]
+    [INFO] ✓ Initialized PluginService [agent.services.bootstrap]
+    [INFO] ================================================== [agent.services.bootstrap]
+    [INFO] Basic Agent v0.2.0 initialized [agent.services.bootstrap]
+    [INFO] AI Agent Basic Agent Project. [agent.services.bootstrap]
+    [INFO] ================================================== [agent.services.bootstrap]
+    [INFO] Active Services (4):      [agent.services.bootstrap]
+    [INFO]   ✓ SecurityService       [agent.services.bootstrap]
+    [INFO]   ✓ MiddlewareManager     [agent.services.bootstrap]
+    [INFO]   ✓ CapabilityRegistry    [agent.services.bootstrap]
+    [INFO]   ✓ PluginService         [agent.services.bootstrap]
+    [INFO] Enabled Features:         [agent.services.bootstrap]
+    [INFO]   ✓ Security (api_key)    [agent.services.bootstrap]
+    [INFO]   ✓ Capabilities (4)      [agent.services.bootstrap]
+    [INFO] ================================================== [agent.services.bootstrap]
+    [INFO] Loaded 1 plugins from config [agent.api.routes]
+    [INFO] Plugin 0: id=hello, desc=Simple greeting plugin for testing and examples [agent.api.routes]
+    [INFO] Application startup complete. [uvicorn.error]
+    ```
 
 Open a new terminal and test the agent:
 
@@ -294,75 +368,77 @@ curl -X POST http://localhost:8000/ \
 
 We should see an A2A response like this:
 
-```json
-{
-  "id": "req-001",
-  "jsonrpc": "2.0",
-  "result": {
-    "artifacts": [
-      {
-        "artifactId": "5e13b182-fdf7-487f-8f76-0a807f0b680b",
-        "description": null,
-        "extensions": null,
-        "metadata": null,
-        "name": "Basic Agent-result",
-        "parts": [
+??? success "Response"
+
+    ```json
+    {
+      "id": "req-001",
+      "jsonrpc": "2.0",
+      "result": {
+        "artifacts": [
           {
-            "kind": "text",
+            "artifactId": "5e13b182-fdf7-487f-8f76-0a807f0b680b",
+            "description": null,
+            "extensions": null,
             "metadata": null,
-            "text": "Echo: Hello Agent"
-          }
-        ]
-      }
-    ],
-    "contextId": "962aed21-4519-4ef5-a877-b9b25ba0d56d",
-    "history": [
-      {
-        "contextId": "962aed21-4519-4ef5-a877-b9b25ba0d56d",
-        "extensions": null,
-        "kind": "message",
-        "messageId": "msg-001",
-        "metadata": null,
-        "parts": [
-          {
-            "kind": "text",
-            "metadata": null,
-            "text": "Hello Agent"
+            "name": "Basic Agent-result",
+            "parts": [
+              {
+                "kind": "text",
+                "metadata": null,
+                "text": "Echo: Hello Agent"
+              }
+            ]
           }
         ],
-        "referenceTaskIds": null,
-        "role": "user",
-        "taskId": "5869775c-1a55-4e56-8361-dba1492d454f"
-      },
-      {
         "contextId": "962aed21-4519-4ef5-a877-b9b25ba0d56d",
-        "extensions": null,
-        "kind": "message",
-        "messageId": "93047743-f065-4dec-a4b6-60ea98244084",
-        "metadata": null,
-        "parts": [
+        "history": [
           {
-            "kind": "text",
+            "contextId": "962aed21-4519-4ef5-a877-b9b25ba0d56d",
+            "extensions": null,
+            "kind": "message",
+            "messageId": "msg-001",
             "metadata": null,
-            "text": "Processing request with for task 5869775c-1a55-4e56-8361-dba1492d454f using Basic Agent."
+            "parts": [
+              {
+                "kind": "text",
+                "metadata": null,
+                "text": "Hello Agent"
+              }
+            ],
+            "referenceTaskIds": null,
+            "role": "user",
+            "taskId": "5869775c-1a55-4e56-8361-dba1492d454f"
+          },
+          {
+            "contextId": "962aed21-4519-4ef5-a877-b9b25ba0d56d",
+            "extensions": null,
+            "kind": "message",
+            "messageId": "93047743-f065-4dec-a4b6-60ea98244084",
+            "metadata": null,
+            "parts": [
+              {
+                "kind": "text",
+                "metadata": null,
+                "text": "Processing request with for task 5869775c-1a55-4e56-8361-dba1492d454f using Basic Agent."
+              }
+            ],
+            "referenceTaskIds": null,
+            "role": "agent",
+            "taskId": "5869775c-1a55-4e56-8361-dba1492d454f"
           }
         ],
-        "referenceTaskIds": null,
-        "role": "agent",
-        "taskId": "5869775c-1a55-4e56-8361-dba1492d454f"
+        "id": "5869775c-1a55-4e56-8361-dba1492d454f",
+        "kind": "task",
+        "metadata": null,
+        "status": {
+          "message": null,
+          "state": "completed",
+          "timestamp": "2025-07-21T22:38:56.583225+00:00"
+        }
       }
-    ],
-    "id": "5869775c-1a55-4e56-8361-dba1492d454f",
-    "kind": "task",
-    "metadata": null,
-    "status": {
-      "message": null,
-      "state": "completed",
-      "timestamp": "2025-07-21T22:38:56.583225+00:00"
     }
-  }
-}
-```
+    ```
 
 Ok, that was a lot of information, but the key part is the `result` field, which contains the `artifacts` and `history` of the interaction. The `parts` of the first artifact show the response from the Hello Plugin:
 
@@ -376,15 +452,76 @@ Ok, that was a lot of information, but the key part is the `result` field, which
 
 This confirms that the plugin is working correctly and echoing back the message you sent!
 
-But as said, this is quite a boring Agent, so let's spice it up a bit in the next section by making our Agent AI capable and adding a plugin that can handle more complex interactions!
+### Agent Card
 
+Last of all, as AgentUp follows the [A2A Specification](https://a2a.spec), you can also view your agent's card by visiting the `/agent` endpoint:
 
-<div class="next-page-cta">
-    <div class="next-page-content">
-        <span class="next-page-label">Next Step</span>
-        <a href="installation" class="next-page-link">
-            <span class="next-page-title">Create an AI Agent</span>
-            <span class="next-page-arrow">→</span>
-        </a>
-    </div>
-</div>
+```bash
+curl -s http://localhost:8000/.well-known/agent.json |jq
+```
+
+??? success "Response"
+
+    ```json
+    {
+      "additionalInterfaces": null,
+      "capabilities": {
+        "extensions": null,
+        "pushNotifications": false,
+        "stateTransitionHistory": true,
+        "streaming": true
+      },
+      "defaultInputModes": [
+        "text"
+      ],
+      "defaultOutputModes": [
+        "text"
+      ],
+      "description": "AI Agent Basic Agent Project.",
+      "documentationUrl": null,
+      "iconUrl": null,
+      "name": "Basic Agent",
+      "preferredTransport": null,
+      "protocolVersion": "0.2.5",
+      "provider": null,
+      "security": [
+        {
+          "X-API-Key": []
+        }
+      ],
+      "securitySchemes": {
+        "X-API-Key": {
+          "description": "API key for authentication",
+          "in": "header",
+          "name": "X-API-Key",
+          "type": "apiKey"
+        }
+      },
+      "skills": [
+        {
+          "description": "Simple greeting plugin for testing and examples",
+          "examples": null,
+          "id": "hello",
+          "inputModes": [
+            "text"
+          ],
+          "name": "Hello Plugin",
+          "outputModes": [
+            "text"
+          ],
+          "tags": [
+            "hello",
+            "basic",
+            "example"
+          ]
+        }
+      ],
+      "supportsAuthenticatedExtendedCard": false,
+      "url": "http://localhost:8000",
+      "version": "0.2.0"
+    }
+    ```
+
+The key points to note in the agent card, are how are plugin 'hello' is listed under `skills`, and the security scheme is defined under `securitySchemes`. This card provides a machine-readable description of your agent's capabilities and how to interact with it.
+```bash
+

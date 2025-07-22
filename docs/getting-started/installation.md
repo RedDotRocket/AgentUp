@@ -39,13 +39,3 @@ Get AgentUp installed and configured on your system.
 # Check AgentUp version
 agentup --version
 ```
-
-<div class="next-page-cta">
-    <div class="next-page-content">
-        <span class="next-page-label">Next Step</span>
-        <a href="../first-agent" class="next-page-link">
-            <span class="next-page-title">First Agent</span>
-            <span class="next-page-arrow">→</span>
-        </a>
-    </div>
-</div>

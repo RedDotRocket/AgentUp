@@ -8,16 +8,16 @@ You'll find everything you need here to get started with AgentUp, from installat
 
 ### Progressive disclosure
 
+This documentation follows a [progressive disclosure](https://en.wikipedia.org/wiki/Progressive_disclosure) approach:
+
+<img src="images/next.png" alt="drawing" width="300"/>
+
 1. **Quick Start sections** get you up and running immediately
 2. **Detailed guides** provide comprehensive coverage of each topic
 3. **Reference materials** offer complete technical specifications
 4. **Troubleshooting** helps solve specific problems
 
-### Each section includes
-
-#### Prerequisites
-
-Most sections will start with a set of prerequisites to ensure you have everything needed to follow along.
+Each section starts with a preequisites list. No asumptions are made about your prior knowledge. We intend for all to come on this journey, so we will start with the basics and build up from there.
 
 !!! Prerequisites
     What you need before starting, e.g.:
@@ -27,14 +27,12 @@ Most sections will start with a set of prerequisites to ensure you have everythi
     * Snacks
     * Hat and sun protector
 
-#### Code Samples
+We attempt to narrow in on the essentials:
 
-We use consistent formatting throughout:
+- Code blocks for commands and code snippets
+- Highlighted lines for key parts of code examples
 
-Code blocks for commands and code snippets
-Highlighted lines for key parts of code examples
-
-```python
+``` py hl_lines="2 3"
 def bubble_sort(items):
     for i in range(len(items)):
         for j in range(len(items) - 1 - i):
@@ -49,7 +47,7 @@ We attempt to teach as we go along, so you can learn the concepts behind the com
 !!! tip
     **AgentUp** is designed to be **extensible**. You can create custom plugins for reuse or share with the community.
 
-## Written by humans, not AI.
+## Human Curated Documentation
 
 Time has been taken to ensure clarity and accuracy, so you can trust the information provided here. You won't find a sea of emojis or mermaid diagrams galore. We believe in quality over quantity, and we hope you appreciate the effort that has been invested in creating this documentation.
 
@@ -67,15 +65,3 @@ Should you need help or want to connect with other users, we have several option
 ## Contributing
 
 We welcome contributions to improve this documentation, code, and overall experience! Please see our [Contributing Guide](../CONTRIBUTING.md) for details on how to help make AgentUp better for everyone.
-
----
-
-<div class="next-page-cta">
-    <div class="next-page-content">
-        <span class="next-page-label">Next Step</span>
-        <a href="getting-started" class="next-page-link">
-            <span class="next-page-title">Getting Started</span>
-            <span class="next-page-arrow">→</span>
-        </a>
-    </div>
-</div>

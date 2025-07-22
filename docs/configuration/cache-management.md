@@ -1,7 +1,6 @@
 # Cache Management
 
-AgentUp provides a comprehensive caching system to optimize performance by storing frequently accessed data,
-API responses, and computed results. This reduces latency and external API costs while improving user experience.
+AgentUp provides a comprehensive caching system to optimize performance by storing frequently accessed data, API responses, and computed results. This reduces latency and external API costs while improving user experience.
 
 ## Overview
 
@@ -101,12 +100,11 @@ middleware:
 Override both cache and middleware TTL for specific skills:
 
 ```yaml
-skills:
-  - skill_id: echo
-    middleware_override:
-      - name: cached
-        params:
-          ttl: 120  # Override all other TTL settings to 2 minutes
+plugins:
+  - plugin_id: plugin
+    state_override:
+      enabled: true
+      backend: valkey
 ```
 
 ## Complete Configuration Examples
@@ -126,9 +124,9 @@ middleware:
   - name: cached
     # No TTL specified - uses cache default_ttl (300s)
 
-# Override for specific skill
-skills:
-  - skill_id: weather
+# Override for specific plugin
+plugins:
+  - plugin_id: weather
     middleware_override:
       - name: cached
         params:
@@ -153,15 +151,15 @@ middleware:
     params:
       ttl: 1800  # 30 minutes for most operations
 
-# Per-skill overrides
-skills:
-  - skill_id: ai_assistant
+# Per-plugin overrides
+plugins:
+  - plugin_id: ai_assistant
     middleware_override:
       - name: cached
         params:
           ttl: 60  # AI responses cached for 1 minute
   
-  - skill_id: weather
+  - plugin_id: weather
     middleware_override:
       - name: cached
         params:
@@ -170,19 +168,19 @@ skills:
 
 ## Cache Management
 
-### Disable Caching for Specific Skills
+### Disable Caching for Specific Plugins
 
 ```yaml
-skills:
-  - skill_id: real_time_data
+plugins:
+  - plugin_id: real_time_data
     middleware_override: []  # Disable all middleware including caching
 ```
 
 Or disable only caching while keeping other middleware:
 
 ```yaml
-skills:
-  - skill_id: real_time_data
+plugins:
+  - plugin_id: real_time_data
     middleware_override:
       - name: timed
       - name: rate_limited

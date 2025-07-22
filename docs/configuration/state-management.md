@@ -248,16 +248,16 @@ async def handle_ai_assistant(task: Task, context=None, context_id=None):
     return "Response"
 ```
 
-### Per-Skill State Overrides
+### Per-Plugin State Overrides
 
-You can customize state behavior for individual skills:
+You can customize state behavior for individual plugins:
 
 ```yaml
-skills:
-  - skill_id: ai_assistant
+plugins:
+  - plugin_id: ai_assistant
     name: AI Assistant
     description: AI-powered assistant
-    # Override global state settings for this skill
+    # Override global state settings for this plugin
     state_override:
       enabled: true
       backend: valkey

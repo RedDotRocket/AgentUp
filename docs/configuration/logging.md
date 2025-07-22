@@ -1,6 +1,6 @@
 # Logging Configuration Guide
 
-AgentUp provides a comprehensive structured logging system built on top of `structlog` that supports multiple output formats, destinations, and advanced features like correlation IDs and request tracing.
+AgentUp provides a structured logging system built on top of `structlog` that supports console output in multiple formats, with advanced features like correlation IDs and request tracing.
 
 ## Quick Start
 
@@ -39,17 +39,6 @@ logging:
     show_path: false     # Show file paths in log messages
 ```
 
-### File Logging
-
-```yaml
-logging:
-  file:
-    enabled: true
-    path: "logs/agent.log"
-    rotation: "100 MB"     # Rotate when file reaches size
-    retention: "1 week"    # Keep old files for duration
-    compression: true      # Compress rotated files
-```
 
 ### Advanced Features
 
@@ -155,8 +144,7 @@ logging:
     colors: true
     show_path: true
     
-  file:
-    enabled: false
+  # File logging options available in configuration model
     
   correlation_id: true
   request_logging: true
@@ -179,12 +167,7 @@ logging:
     colors: false  # Disable colors in production
     show_path: true
     
-  file:
-    enabled: true
-    path: "/var/log/agent/agent.log"
-    rotation: "100 MB"
-    retention: "30 days"
-    compression: true
+  # Currently console-only - file logging planned for future release
     
   correlation_id: true
   request_logging: true
@@ -274,7 +257,7 @@ AgentUp's logging system respects standard structlog environment variables:
 **Logs not appearing**:
 - Check `logging.enabled: true` in config
 - Verify log level settings
-- Check file permissions for file logging
+- Ensure console output is enabled
 
 **Performance impact**:
 - Use appropriate log levels

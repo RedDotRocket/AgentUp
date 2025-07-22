@@ -1,5 +1,10 @@
 # Middleware Auto-Application System
 
+!!! warning "Documentation in Progress"
+    Development has been moving fast in the AgentUp framework, and this documentation is due for a refresh.
+    Once its been updated, this notice will be removed.
+
+
 This document explains AgentUp's universal middleware system that automatically applies middleware to all handlers and plugins based on configuration.
 
 ## Overview
@@ -7,7 +12,7 @@ This document explains AgentUp's universal middleware system that automatically 
 As of the latest update, AgentUp has transitioned from manual middleware application to a **universal, configuration-driven system**. Middleware defined in `agent_config.yaml` is now automatically applied to:
 
 - All built-in handlers
-- All plugin skills
+- All plugin plugins
 - All newly registered handlers
 
 ## Key Benefits
@@ -46,7 +51,7 @@ When the agent starts:
 1. **Framework loads** the middleware configuration
 2. **Global application** applies middleware to all existing handlers
 3. **Registration hook** applies middleware to new handlers as they're registered
-4. **Plugin integration** ensures plugin skills receive middleware
+4. **Plugin integration** ensures plugin plugins receive middleware
 
 ### 3. Available Middleware
 
@@ -56,7 +61,6 @@ When the agent starts:
 | `cached` | Cache responses | `ttl` (seconds) |
 | `rate_limited` | Limit request rate | `requests_per_minute` |
 | `retryable` | Retry on failure | `max_retries`, `backoff_factor` |
-| `validated` | Validate inputs | `schema` |
 
 ## Implementation Details
 
@@ -77,7 +81,7 @@ async def my_handler(task: Task) -> str:
     return "result"
 ```
 
-### Plugin Skills
+### Plugin plugins
 
 Plugins automatically receive middleware through the registration system:
 
@@ -160,14 +164,14 @@ middleware:
     params: {requests_per_minute: 60}
   - name: timed
     params: {}
-  
+
   - name: cached
     params: {ttl: 300}
 ```
 
 ## Per-Skill Override
 
-While middleware is applied globally by default, you can override middleware for specific skills using the `middleware_override` field:
+While middleware is applied globally by default, you can override middleware for specific plugins using the `middleware_override` field:
 
 ```yaml
 # Global middleware for all handlers
@@ -178,8 +182,8 @@ middleware:
     params: {ttl: 300}  # 5 minutes default
 
 # Skill-specific override
-skills:
-  - skill_id: expensive_operation
+plugins:
+  - plugin_id: expensive_operation
     name: Expensive Operation
     description: A resource-intensive operation
     middleware_override:
@@ -187,8 +191,8 @@ skills:
         params: {ttl: 3600}  # 1 hour for this specific skill
       - name: timed
         params: {}  # Timing for troubleshooting
-      
-  - skill_id: realtime_data
+
+  - plugin_id: realtime_data
     name: Real-time Data
     description: Always needs fresh data
     middleware_override:
@@ -210,8 +214,8 @@ skills:
 
 1. **Different Cache TTLs**:
    ```yaml
-   skills:
-     - skill_id: weather_api
+   plugins:
+     - plugin_id: weather_api
        middleware_override:
          - name: cached
            params: {ttl: 1800}  # 30 minutes for weather data
@@ -219,8 +223,8 @@ skills:
 
 2. **Disable Caching for Real-time Data**:
    ```yaml
-   skills:
-     - skill_id: stock_ticker
+   plugins:
+     - plugin_id: stock_ticker
        middleware_override:
          - name: timed
            params: {}
@@ -229,17 +233,17 @@ skills:
 
 3. **Higher Rate Limits for Admin Functions**:
    ```yaml
-   skills:
-     - skill_id: admin_panel
+   plugins:
+     - plugin_id: admin_panel
        middleware_override:
          - name: rate_limited
            params: {requests_per_minute: 300}  # Higher limit
    ```
 
-4. **Debug Specific Skills**:
+4. **Debug Specific Plugins**:
    ```yaml
-   skills:
-     - skill_id: problematic_skill
+   plugins:
+     - plugin_id: problematic_plugin
        middleware_override:
          - name: timed
            params: {}
@@ -248,12 +252,33 @@ skills:
 
 5. **Disable All Middleware**:
    ```yaml
-   skills:
-     - skill_id: raw_performance
+   plugins:
+     - plugin_id: raw_performance
        middleware_override: []  # Empty array disables all middleware
    ```
 
 ### Selectively Excluding Middleware
+
+```yaml
+plugins:
+  - plugin_id: no_cache_plugin
+    middleware_override:
+      - name: timed
+        params: {}
+      - name: rate_limited
+        params: {requests_per_minute: 60}
+      # Note: No caching middleware listed
+
+  # This plugin gets ONLY logging
+  - plugin_id: minimal_plugin
+    middleware_override:
+      - name: timed
+        params: {}
+
+  # This plugin gets NO middleware at all
+  - plugin_id: bare_metal_plugin
+    middleware_override: []
+```
 
 Since `middleware_override` completely replaces the global middleware, you can exclude specific middleware by simply not including them:
 
@@ -267,24 +292,24 @@ middleware:
   - name: rate_limited
     params: {requests_per_minute: 60}
 
-skills:
+plugins:
   # This skill gets everything EXCEPT caching
-  - skill_id: no_cache_skill
+  - plugin_id: no_cache_skill
     middleware_override:
       - name: timed
         params: {}
       - name: rate_limited
         params: {requests_per_minute: 60}
       # Note: No caching middleware listed
-  
+
   # This skill gets ONLY logging
-  - skill_id: minimal_skill
+  - plugin_id: minimal_skill
     middleware_override:
       - name: timed
         params: {}
-  
+
   # This skill gets NO middleware at all
-  - skill_id: bare_metal_skill
+  - plugin_id: bare_metal_skill
     middleware_override: []
 ```
 

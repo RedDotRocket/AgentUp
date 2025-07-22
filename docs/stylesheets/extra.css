@@ -115,13 +115,13 @@ body {
   background: transparent !important;
 }
 
-.md-content {
+/* .md-content {
   background: var(--cream-100) !important;
   border-radius: 1.5rem !important;
   border: 4px solid var(--charcoal-400) !important;
   box-shadow: 6px 6px 0px var(--charcoal-600) !important;
   margin: 1rem !important;
-}
+} */
 
 .md-content__inner {
   padding: 2rem !important;
@@ -188,7 +188,7 @@ h2 {
   color: var(--teal-800) !important;
   font-family: 'Bungee', cursive !important;
   font-weight: normal !important;
-  text-transform: uppercase !important;
+  /* text-transform: uppercase !important; */
   font-size: 0.8rem !important;
   border-bottom: 2px solid var(--teal-300) !important;
 }
@@ -198,7 +198,10 @@ h2 {
 }
 
 /* Admonitions (callout boxes) */
-.md-typeset .admonition {
+.md-typeset .admonition,
+.md-typeset details {
+  background: transparent !important;
+  background-color: transparent !important;
   border-radius: 1rem !important;
   border: 3px solid !important;
   box-shadow: 4px 4px 0px var(--charcoal-500) !important;
@@ -206,12 +209,17 @@ h2 {
 
 .md-typeset .admonition.note {
   border-color: var(--teal-400) !important;
-  background: var(--teal-50) !important;
+  background: transparent !important;
 }
 
 .md-typeset .admonition.warning {
   border-color: var(--rust-500) !important;
-  background: var(--rust-100) !important;
+  background: transparent !important;
+}
+
+/* Override the default admonition background variable */
+.md-typeset {
+  --md-admonition-bg-color: transparent !important;
 }
 
 /* Reduce line spacing throughout documentation */
@@ -310,87 +318,4 @@ h2 {
 @keyframes wiggle {
   0%, 100% { transform: rotate(-1deg); }
   50% { transform: rotate(1deg); }
-}
-
-
-// Next Page CTA Styling
-
-.md-typeset .admonition-title {
-  font-family: 'Bungee', cursive !important;
-  font-weight: normal !important;
-  text-transform: uppercase !important;
-  margin-bottom: 0.5rem !important;
-}
-
-/* Next Page CTA Styling */
-.next-page-cta {
-  margin: 1.5rem 0 !important;
-  padding: 0 !important;
-}
-
-.next-page-content {
-  background: linear-gradient(135deg, var(--teal-100), var(--teal-200)) !important;
-  border: 3px solid var(--teal-600) !important;
-  border-radius: 1rem !important;
-  box-shadow: 4px 4px 0px var(--teal-800) !important;
-  padding: 1rem !important;
-  position: relative !important;
-  transition: all 0.3s ease !important;
-}
-
-.next-page-content:hover {
-  transform: translate(-2px, -2px) !important;
-  box-shadow: 6px 6px 0px var(--teal-800) !important;
-}
-
-.next-page-label {
-  font-family: 'Bungee', cursive !important;
-  font-size: 0.7rem !important;
-  color: var(--teal-700) !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.5px !important;
-  display: block !important;
-  margin-bottom: 0.3rem !important;
-}
-
-.next-page-link {
-  display: flex !important;
-  align-items: center !important;
-  text-decoration: none !important;
-  color: inherit !important;
-}
-
-.next-page-link:hover {
-  text-decoration: none !important;
-  color: inherit !important;
-}
-
-.next-page-title {
-  font-family: 'Bungee', cursive !important;
-  font-size: 1.1rem !important;
-  color: var(--charcoal-900) !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.5px !important;
-  flex: 1 !important;
-}
-
-.next-page-description {
-  font-family: 'Nunito', sans-serif !important;
-  font-size: 0.85rem !important;
-  color: var(--charcoal-700) !important;
-  font-weight: 500 !important;
-  margin-left: 0.75rem !important;
-  flex: 1 !important;
-}
-
-.next-page-arrow {
-  font-size: 1.5rem !important;
-  color: var(--rust-600) !important;
-  font-weight: bold !important;
-  margin-left: 0.75rem !important;
-  transition: transform 0.3s ease !important;
-}
-
-.next-page-content:hover .next-page-arrow {
-  transform: translateX(3px) !important;
 }

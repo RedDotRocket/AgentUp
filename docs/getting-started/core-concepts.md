@@ -2,12 +2,6 @@
 
 Let's revisit the core concepts of AgentUp to understand how it works and what makes it unique.
 
-
-## What is AgentUp?
-
-AgentUp is a framework for quickly building AI agents that communicate using the Agent-to-Agent (A2A) protocol. It uses a **plugin-based architecture** and **config-driven** architecture where agents are lightweight configuration projects,
-extended with plugins to provide capabilities.
-
 ## Key Architecture Principles
 
 ### 1. Plugin-Based Architecture
@@ -31,7 +25,7 @@ extended with plugins to provide capabilities.
 
 ### 2. Configuration-Driven Design
 
-Everything in AgentUp is controlled through `agent_config.yaml`:
+Everything in AgentUp is controlled through `agentup.yml`:
 
 ```yaml
 name: "My Agent"
@@ -48,14 +42,9 @@ middleware:
   - name: rate_limiting
     config:
       requests_per_minute: 60
-
-# Conversation state management
-state_management:
-  enabled: true
-  backend: memory
 ```
 
-### 3. Plugin System
+### 3. Plugin Capabilities
 
 Plugins provide capabilities to your agent:
 
@@ -76,6 +65,39 @@ Agent Config ──┐
     └──────────────────┘
 ```
 
+### 4. Scopes and Security
+
+Scopes define what capabilities an agent can access:
+
+```
+Agent Config ──┐
+               │
+               ▼
+        Plugin Loader
+               │
+               ▼
+    ┌──────────────────┐
+    │   Capabilities   │
+    │                  │
+    │ • read_file      │
+    │ • write_file     │
+    │ • web_search     │
+    │ • send_email     │
+    └──────────────────┘
+          Scope Check
+               │
+               ▼
+    ┌──────────────────┐
+    │      Scopes      │
+    │                  │
+    │ • files:read     │
+    │ • files:write    │
+    │ • web:search     │
+    │ • email:send     │
+    └──────────────────┘
+```
+
+
 **Key concepts:**
 
   - **Plugins** = Python packages with capabilities
@@ -88,6 +110,7 @@ Agent Config ──┐
 
 
 #### Plugin Capabilities
+
 Provided by plugins, configured in your agent:
 
   - File operations (`read_file`, `write_file`)
@@ -109,19 +132,21 @@ Provided by plugins, configured in your agent:
 
 ## Auto-Application Pattern
 
-AgentUp automatically applies cross-cutting concerns:
+AgentUp globally applies cross-cutting concerns:
 
 ```yaml
 # Global settings applied everywhere
 middleware:
   - name: rate_limiting
   - name: authentication
-  - name: logging
 
 state_management:
   enabled: true
+```
 
-# Per-plugin overrides possible
+Per-plugin overrides possible
+
+```yaml
 plugins:
   - plugin_id: expensive_api
     middleware_override:
@@ -129,10 +154,3 @@ plugins:
         config:
           requests_per_minute: 10  # Slower for this plugin
 ```
-
-**Benefits:**
-
-- **No boilerplate code** - Framework handles common concerns
-- **Consistent behavior** - Same patterns across all capabilities
-- **Override flexibility** - Customize per plugin if needed
-- **Core Decoupling** - Core functionality remains clean and focused, no backport hell to worry about

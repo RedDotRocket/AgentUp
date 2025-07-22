@@ -58,9 +58,6 @@ security:
 
 # Middleware configuration
 middleware:
-  - name: logged
-    params:
-      log_level: 20
   - name: timed
     params: {}
 
