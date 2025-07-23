@@ -14,7 +14,6 @@ plugins:
     output_mode: text
     keywords: [echo, repeat, say]
     patterns: ['^echo ', '^repeat ', '^say ']
-    routing_mode: direct
     priority: 50
     capabilities:
       - capability_id: echo_response
@@ -23,7 +22,7 @@ plugins:
     name: AI Assistant
     description: AI-powered assistant for various tasks
     tags: [ai, assistant, helper]
-    # No keywords or patterns defined, only available via AI routing
+    # No keywords or patterns defined - uses implicit capability detection
     input_mode: text
     output_mode: text
     priority: 100
@@ -235,15 +234,6 @@ mcp:
     expose_resources: [agent_status, agent_capabilities]
     port: 8001
 
-# Routing configuration
-routing:
-{% if ai_provider_config %}
-  default_mode: ai  # Use AI routing when AI provider is configured
-{% else %}
-  default_mode: ai  # Use AI routing for full template by default
-{% endif %}
-  fallback_capability: ai_assistant
-  fallback_enabled: true
 
 # Enterprise context-aware middleware configuration
 middleware:

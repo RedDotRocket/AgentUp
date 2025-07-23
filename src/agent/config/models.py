@@ -63,14 +63,6 @@ class InvalidAgentResponseError(Exception):
     pass
 
 
-class RoutingConfig(BaseModel):
-    """Global routing configuration."""
-
-    default_mode: str = "ai"  # "ai" or "direct"
-    fallback_plugin: str | None = None  # Fallback plugin when no match
-    fallback_enabled: bool = True  # Allow AI→Direct fallback
-
-
 class PluginCapability(BaseModel):
     """Model for plugin capability configuration."""
 
@@ -289,7 +281,6 @@ __all__ = [
     "ContentTypeNotSupportedError",
     "InvalidAgentResponseError",
     # Custom models
-    "RoutingConfig",
     "PluginConfig",
     "AgentConfig",
     "LoggingConfig",

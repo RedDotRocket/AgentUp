@@ -1,3 +1,4 @@
+import re
 from typing import Any
 
 import structlog
@@ -42,16 +43,12 @@ class GenericAgentExecutor(AgentExecutor):
         else:
             self.agent_name = agent.agent_name
 
-        # Load config for new routing system
+        # Load config for routing
         from agent.config import load_config
 
         config = load_config()
 
-        # Parse routing configuration (implicit routing based on keywords/patterns)
-        self.fallback_plugin = "echo"  # Default fallback plugin
-        self.fallback_enabled = True
-
-        # Parse plugins with implicit routing configuration
+        # Parse plugins for direct routing based on keywords/patterns
         self.plugins = {}
         for plugin_data in config.get("plugins", []):
             if plugin_data.get("enabled", True):
@@ -59,11 +56,7 @@ class GenericAgentExecutor(AgentExecutor):
                 keywords = plugin_data.get("keywords", [])
                 patterns = plugin_data.get("patterns", [])
 
-                # Implicit routing: if keywords or patterns exist, direct routing is available
-                has_direct_routing = bool(keywords or patterns)
-
                 self.plugins[plugin_id] = {
-                    "has_direct_routing": has_direct_routing,
                     "keywords": keywords,
                     "patterns": patterns,
                     "name": plugin_data.get("name", plugin_id),
@@ -71,8 +64,7 @@ class GenericAgentExecutor(AgentExecutor):
                     "priority": plugin_data.get("priority", 100),
                 }
 
-        # Initialize Function Dispatcher for AI routing (all plugins are available for AI routing)
-        # AI routing is available when there are plugins without direct routing or as fallback
+        # Initialize Function Dispatcher for AI routing (fallback)
         from .dispatcher import get_function_dispatcher
 
         self.dispatcher = get_function_dispatcher()
@@ -120,31 +112,25 @@ class GenericAgentExecutor(AgentExecutor):
                 )
                 return
 
-            # New routing system: determine plugin and routing mode
+            # Check for direct routing first (keyword/pattern matching)
             user_input = self._extract_user_message(task)
-            target_plugin, routing_mode = self._determine_plugin_and_routing(user_input)
+            direct_plugin = self._find_direct_plugin(user_input)
 
-            if routing_mode == "ai":
-                logger.info(
-                    f"Processing task {task.id} using {routing_mode} routing (LLM will select appropriate functions)"
-                )
+            if direct_plugin:
+                logger.info(f"Processing task {task.id} with direct routing to plugin: {direct_plugin}")
+                # Process with direct routing to specific plugin
+                result = await self._process_direct_routing(task, direct_plugin)
+                await self._create_response_artifact(result, task, updater)
             else:
-                logger.info(f"Processing task {task.id} with plugin '{target_plugin}' using {routing_mode} routing")
-
-            # Process based on determined routing mode
-            if routing_mode == "ai":
-                # Use AI routing - LLM selects the appropriate plugin
+                logger.info(f"Processing task {task.id} with AI routing (no direct match)")
+                # Process with dispatcher - AI routing
                 if self.supports_streaming:
                     # Stream responses incrementally
                     await self._process_streaming(task, updater, event_queue)
                 else:
-                    # Process synchronously with AI
+                    # Process synchronously - dispatcher handles routing internally
                     result = await self.dispatcher.process_task(task)
                     await self._create_response_artifact(result, task, updater)
-            else:
-                # Use direct routing - invoke specific plugin handler
-                result = await self._process_direct_routing(task, target_plugin)
-                await self._create_response_artifact(result, task, updater)
 
         except ValueError as e:
             # Handle unsupported operations gracefully (UnsupportedOperationError is a data model, not exception)
@@ -171,83 +157,6 @@ class GenericAgentExecutor(AgentExecutor):
                 final=True,
             )
 
-    def _determine_plugin_and_routing(self, user_input: str) -> tuple[str, str]:
-        """Determine which plugin and routing mode to use for the user input.
-
-        New implicit routing logic:
-        1. Check for direct routing matches (keywords/patterns) with priority
-        2. If no direct match found, use AI routing
-        3. If multiple direct matches, use highest priority plugin
-        """
-        import re
-
-        if not user_input:
-            return self.fallback_plugin, "direct"
-
-        direct_matches = []
-
-        # Check each plugin for direct routing matches
-        for plugin_id, plugin_config in self.plugins.items():
-            if not plugin_config["has_direct_routing"]:
-                continue
-
-            keywords = plugin_config.get("keywords", [])
-            patterns = plugin_config.get("patterns", [])
-
-            # Check keywords
-            for keyword in keywords:
-                if keyword.lower() in user_input.lower():
-                    logger.debug(f"Matched keyword '{keyword}' for plugin '{plugin_id}'")
-                    direct_matches.append((plugin_id, plugin_config["priority"]))
-                    break  # Found a match for this plugin, no need to check more keywords
-
-            # Check patterns if no keyword match found for this plugin
-            if not any(match[0] == plugin_id for match in direct_matches):
-                for pattern in patterns:
-                    try:
-                        if re.search(pattern, user_input, re.IGNORECASE):
-                            logger.debug(f"Matched pattern '{pattern}' for plugin '{plugin_id}'")
-                            direct_matches.append((plugin_id, plugin_config["priority"]))
-                            break  # Found a match for this plugin
-                    except re.error as e:
-                        logger.warning(f"Invalid regex pattern '{pattern}' in plugin '{plugin_id}': {e}")
-
-        # If direct matches found, use the highest priority one
-        if direct_matches:
-            # Sort by priority (lower number = higher priority)
-            direct_matches.sort(key=lambda x: x[1])
-            selected_plugin = direct_matches[0][0]
-            logger.info(f"Direct routing to plugin '{selected_plugin}' (priority: {direct_matches[0][1]})")
-            return selected_plugin, "direct"
-
-        # No direct routing match found, use AI routing
-        logger.info("No direct routing match found, using AI routing")
-        return None, "ai"
-
-    async def _process_direct_routing(self, task: Task, target_plugin: str = None) -> str:
-        """Process task using direct handler routing (no AI)."""
-        logger.info(f"Starting direct routing for task: {task}")
-
-        # Use provided target plugin or fall back to fallback plugin
-        plugin_id = target_plugin or self.fallback_plugin
-        logger.info(f"Routing to plugin: {plugin_id}")
-
-        # Get capability executor for the plugin
-        from agent.capabilities import get_capability_executor
-
-        executor = get_capability_executor(plugin_id)
-
-        if not executor:
-            return f"No capability executor found for plugin: {plugin_id}"
-
-        # Call capability executor directly
-        try:
-            result = await executor(task)
-            return result if isinstance(result, str) else str(result)
-        except Exception as e:
-            logger.error(f"Error in capability executor {plugin_id}: {e}")
-            return f"Error processing request: {str(e)}"
-
     def _extract_user_message(self, task: Task) -> str:
         """Extract user message from A2A task using A2A SDK structure."""
         try:
@@ -266,6 +175,56 @@ class GenericAgentExecutor(AgentExecutor):
         except Exception as e:
             logger.error(f"Error extracting user message: {e}")
             return ""
+
+    def _find_direct_plugin(self, user_input: str) -> str | None:
+        """Find plugin for direct routing based on keywords/patterns."""
+        if not user_input:
+            return None
+
+        user_input_lower = user_input.lower()
+
+        # Sort plugins by priority (lower number = higher priority)
+        sorted_plugins = sorted(self.plugins.items(), key=lambda x: x[1].get("priority", 100))
+
+        for plugin_id, plugin_info in sorted_plugins:
+            # Check keywords
+            keywords = plugin_info.get("keywords", [])
+            for keyword in keywords:
+                if keyword.lower() in user_input_lower:
+                    logger.debug(f"Keyword '{keyword}' matched for plugin '{plugin_id}'")
+                    return plugin_id
+
+            # Check patterns
+            patterns = plugin_info.get("patterns", [])
+            for pattern in patterns:
+                try:
+                    if re.search(pattern, user_input, re.IGNORECASE):
+                        logger.debug(f"Pattern '{pattern}' matched for plugin '{plugin_id}'")
+                        return plugin_id
+                except re.error as e:
+                    logger.warning(f"Invalid regex pattern '{pattern}' in plugin '{plugin_id}': {e}")
+
+        return None
+
+    async def _process_direct_routing(self, task: Task, plugin_id: str) -> str:
+        """Process task using direct routing to a specific plugin."""
+        logger.info(f"Direct routing to plugin: {plugin_id}")
+
+        try:
+            # Get capability executor for the plugin
+            from agent.capabilities import get_capability_executor
+
+            executor = get_capability_executor(plugin_id)
+            if not executor:
+                return f"Plugin '{plugin_id}' is not available or not properly configured."
+
+            # Call the capability directly
+            result = await executor(task)
+            return result if isinstance(result, str) else str(result)
+
+        except Exception as e:
+            logger.error(f"Error in direct routing to plugin '{plugin_id}': {e}")
+            return f"Sorry, I encountered an error while processing your request: {str(e)}"
 
     async def _process_streaming(
         self,

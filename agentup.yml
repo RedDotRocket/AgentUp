@@ -7,11 +7,6 @@ agent:
   description: AI Agent My Agent Project.
   version: 0.3.0
 
-# Routing configuration
-routing:
-  default_mode: direct
-  fallback_enabled: false
-
 # Core plugins configuration with capability-based structure
 plugins:
   - plugin_id: hello

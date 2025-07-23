@@ -95,7 +95,7 @@ class Plugin:
     @hookimpl
     def can_handle_task(self, context: CapabilityContext) -> {% if template == "advanced" %}float{% else %}bool{% endif %}:
         """Check if this capability can handle the task."""
-        {% if template == "advanced" %}# Advanced routing with confidence scoring
+        {% if template == "advanced" %}# Advanced capability detection with confidence scoring
         user_input = self._extract_user_input(context).lower()
 
         # Define keywords and their confidence scores
@@ -114,7 +114,7 @@ class Plugin:
         return confidence
         {% elif template == "ai" %}# For AI functions, let the LLM decide
         return True
-        {% else %}# Add your routing logic here
+        {% else %}# Add your capability detection logic here
         # For now, return True to handle all tasks
         return True
         {% endif %}

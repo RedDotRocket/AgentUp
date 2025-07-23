@@ -387,7 +387,6 @@ class TestConfigIntegration:
                     "description": "General purpose AI assistant",
                     "input_mode": "text",
                     "output_mode": "text",
-                    "routing_mode": "ai",
                 }
             ],
             "ai": {

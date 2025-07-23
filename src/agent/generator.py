@@ -356,14 +356,10 @@ class ProjectGenerator:
                 "version": "0.3.0",
             },
             "plugins": self._build_plugins_config(),
-            "routing": self._build_routing_config(),
         }
 
         # Add AgentUp Security Framework configuration
         config["security"] = self._build_asf_config()
-
-        # Add routing configuration (for backward compatibility)
-        config["routing"] = self._build_routing_config()
 
         # Add AI configuration for LLM-powered agents
         if "ai_provider" in self.features:
@@ -396,7 +392,7 @@ When users ask for something:
 
 Always be helpful, accurate, and maintain a friendly tone. You are designed to assist users effectively while being natural and conversational.""",
                 "max_context_turns": 10,
-                "fallback_to_routing": True,  # Fall back to keyword routing if LLM fails
+                "fallback_enabled": True,  # Enable fallback to basic capabilities
             }
 
         # Add features-specific configuration
@@ -452,7 +448,6 @@ Always be helpful, accurate, and maintain a friendly tone. You are designed to a
                     "plugin_id": "echo",
                     "name": "Echo Service",
                     "description": "Simple echo service for testing",
-                    "routing_mode": "direct",
                     "keywords": ["echo", "test", "ping"],
                     "input_mode": "text",
                     "output_mode": "text",
@@ -659,27 +654,6 @@ Always be helpful, accurate, and maintain a friendly tone. You are designed to a
                 },
             },
         }
-
-    def _build_routing_config(self) -> dict[str, Any]:
-        """Build routing configuration based on template."""
-        # Check if AI provider is selected
-        has_ai_provider = "ai_provider" in self.features
-
-        # Determine routing mode based on features
-        if has_ai_provider:
-            default_mode = "ai"
-        elif self.template_name == "minimal":
-            default_mode = "direct"
-        else:
-            default_mode = "ai"
-
-        # Determine fallback capability based on template
-        if self.template_name == "minimal":
-            fallback_capability = "echo"
-        else:
-            fallback_capability = "ai_assistant"
-
-        return {"default_mode": default_mode, "fallback_capability": fallback_capability, "fallback_enabled": True}
 
     def _get_auth_config(self, auth_type: str) -> dict[str, Any]:
         """Get authentication configuration."""

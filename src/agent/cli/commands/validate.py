@@ -43,10 +43,6 @@ def validate(config: str, check_env: bool, check_handlers: bool, strict: bool):
     validate_agent_section(config_data.get("agent", {}), errors, warnings)
     validate_plugins_section(config_data.get("plugins", []), errors, warnings)
 
-    # Validate routing configuration
-    if "routing" in config_data:
-        validate_routing_section(config_data["routing"], errors, warnings)
-
     # Validate AI configuration against plugins requirements
     validate_ai_requirements(config_data, errors, warnings)
 
@@ -120,7 +116,6 @@ def validate_required_fields(config: dict[str, Any], errors: list[str], warnings
     known_fields = {
         "agent",
         "plugins",
-        "routing",
         "services",
         "security",
         "ai",
@@ -203,24 +198,13 @@ def validate_plugins_section(plugins: list[dict[str, Any]], errors: list[str], w
                     f"Invalid plugin ID '{plugin_id}'. Must start with letter and contain only letters, numbers, and underscores."
                 )
 
-        # Validate routing configuration
-        routing_mode = plugin.get("routing_mode")
-        if routing_mode and routing_mode not in ["ai", "direct"]:
-            errors.append(f"Plugin {i} has invalid routing_mode '{routing_mode}'. Must be 'ai' or 'direct'")
-
-        # For direct routing, check that keywords or patterns are provided
-        if routing_mode == "direct":
-            keywords = plugin.get("keywords", [])
-            patterns = plugin.get("patterns", [])
-            if not keywords and not patterns:
-                warnings.append(f"Plugin {i} uses direct routing but has no keywords or patterns defined")
-
-            # Validate regex patterns
-            for pattern in patterns:
-                try:
-                    re.compile(pattern)
-                except re.error as e:
-                    errors.append(f"Plugin {i} has invalid regex pattern '{pattern}': {e}")
+        # Validate regex patterns (if provided for capability detection)
+        patterns = plugin.get("patterns", [])
+        for pattern in patterns:
+            try:
+                re.compile(pattern)
+            except re.error as e:
+                errors.append(f"Plugin {i} has invalid regex pattern '{pattern}': {e}")
 
         # Validate input/output modes
         input_mode = plugin.get("input_mode", "text")
@@ -478,74 +462,34 @@ def check_handler_implementations(plugins: list[dict[str, Any]], errors: list[st
         errors.append(f"Error checking handlers: {str(e)}")
 
 
-def validate_routing_section(routing: dict[str, Any], errors: list[str], warnings: list[str]):
-    """Validate routing configuration section."""
-    if not isinstance(routing, dict):
-        errors.append("Routing configuration must be a dictionary")
-        return
-
-    # Validate default_mode
-    default_mode = routing.get("default_mode", "ai")
-    if default_mode not in ["ai", "direct"]:
-        errors.append(f"Invalid routing default_mode '{default_mode}'. Must be 'ai' or 'direct'")
-
-    click.echo(f"{click.style('✓', fg='green')} Routing configuration valid")
-
-
 def validate_ai_requirements(config: dict[str, Any], errors: list[str], warnings: list[str]):
-    """Validate AI configuration requirements based on plugins."""
-    plugins = config.get("plugins", [])
-    routing = config.get("routing", {})
-    ai_config = config.get("ai", {})
+    """Validate AI configuration if present."""
     ai_provider = config.get("ai_provider", {})
 
-    # Check if any plugin requires AI routing
-    default_mode = routing.get("default_mode", "ai")
-
-    needs_ai = False
-
-    for plugin in plugins:
-        plugin_routing_mode = plugin.get("routing_mode", default_mode)
-        if plugin_routing_mode == "ai":
-            needs_ai = True
-            break
-
-    if needs_ai:
-        # AI is required, validate AI configuration
-        if not ai_config.get("enabled", True):
-            errors.append("AI routing is required by plugins but ai.enabled is false")
-
-        # Check that AI provider is configured
-        if not ai_provider:
-            errors.append("AI routing is required but no ai_provider configuration found")
+    # If AI is configured, validate the configuration
+    if ai_provider:
+        # Validate AI provider configuration
+        if "provider" not in ai_provider:
+            errors.append("AI provider configuration missing 'provider' field")
         else:
-            # Validate AI provider configuration
-            if "provider" not in ai_provider:
-                errors.append("AI provider configuration missing 'provider' field")
+            provider = ai_provider["provider"]
+
+            # Validate provider-specific requirements
+            if provider == "openai":
+                if "api_key" not in ai_provider:
+                    errors.append("OpenAI provider requires 'api_key' field")
+            elif provider == "anthropic":
+                if "api_key" not in ai_provider:
+                    errors.append("Anthropic provider requires 'api_key' field")
+            elif provider == "ollama":
+                # Ollama doesn't require API key but might need base_url
+                pass
             else:
-                provider = ai_provider["provider"]
+                warnings.append(f"Unknown AI provider: '{provider}'")
 
-                # Validate provider-specific requirements
-                if provider == "openai":
-                    if "api_key" not in ai_provider:
-                        errors.append("OpenAI provider requires 'api_key' field")
-                elif provider == "anthropic":
-                    if "api_key" not in ai_provider:
-                        errors.append("Anthropic provider requires 'api_key' field")
-                elif provider == "ollama":
-                    # Ollama doesn't require API key but might need base_url
-                    pass
-                else:
-                    warnings.append(f"Unknown AI provider: '{provider}'")
-
-                # Validate common AI provider fields
-                if "model" not in ai_provider:
-                    warnings.append("AI provider configuration missing 'model' field - will use provider default")
-
-    elif ai_config.get("enabled", False):
-        warnings.append(
-            "AI is enabled but no plugins use AI routing. Consider disabling AI or adding AI-routed plugins"
-        )
+            # Validate common AI provider fields
+            if "model" not in ai_provider:
+                warnings.append("AI provider configuration missing 'model' field - will use provider default")
 
     click.echo(f"{click.style('✓', fg='green')} AI requirements validated")
 

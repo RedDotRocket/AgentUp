@@ -297,7 +297,6 @@ class TestConfigurationGeneration:
 
         assert len(plugins_config) == 1
         assert plugins_config[0]["plugin_id"] == "echo"
-        assert plugins_config[0]["routing_mode"] == "direct"
         assert "echo" in plugins_config[0]["keywords"]
 
     def test_build_plugins_config_standard(self, temp_dir: Path):
@@ -309,7 +308,6 @@ class TestConfigurationGeneration:
 
         assert len(plugins_config) == 1
         assert plugins_config[0]["plugin_id"] == "ai_assistant"
-        # Note: routing_mode is not always present in standard template
 
     def test_build_plugins_config_demo(self, temp_dir: Path):
         """Test plugins configuration for demo template."""
@@ -363,26 +361,6 @@ class TestConfigurationGeneration:
         assert "valkey" in services_config
         assert services_config["valkey"]["type"] == "cache"
         assert "url" in services_config["valkey"]["config"]
-
-    def test_build_routing_config(self, temp_dir: Path):
-        """Test routing configuration building."""
-        # Test minimal template routing
-        minimal_config = create_test_config("minimal-test", "minimal")
-        minimal_generator = ProjectGenerator(temp_dir, minimal_config)
-        minimal_routing = minimal_generator._build_routing_config()
-
-        assert minimal_routing["default_mode"] == "direct"
-        assert minimal_routing["fallback_capability"] == "echo"
-        assert minimal_routing["fallback_enabled"] is True
-
-        # Test standard template routing
-        standard_config = create_test_config("standard-test", "standard")
-        standard_generator = ProjectGenerator(temp_dir, standard_config)
-        standard_routing = standard_generator._build_routing_config()
-
-        assert standard_routing["default_mode"] == "ai"
-        assert standard_routing["fallback_capability"] == "ai_assistant"
-        assert standard_routing["fallback_enabled"] is True
 
     def test_build_middleware_config(self, temp_dir: Path):
         """Test middleware configuration building."""

@@ -14,20 +14,12 @@ plugins:
     output_mode: text
     keywords: [hello, hi, greetings]
     patterns: ['^hello', '^hi', 'greetings']
-    routing_mode: direct
     priority: 50
     capabilities:
       - capability_id: hello
         required_scopes: ["api:read"]
         enabled: true
 
-# Routing configuration
-routing:
-{% if ai_provider_config %}
-  default_mode: ai  # Use AI routing when AI provider is configured
-{% else %}
-  default_mode: direct  # Use direct routing by default for minimal template
-{% endif %}
 
 # AI configuration
 {% if ai_provider_config %}

@@ -43,7 +43,6 @@ def create_test_agent_config(
                 "description": "General purpose AI assistant",
                 "input_mode": "text",
                 "output_mode": "text",
-                "routing_mode": "ai",
             }
         ],
         "ai": {
@@ -292,7 +291,7 @@ def build_minimal_config() -> dict[str, Any]:
     return (
         AgentConfigBuilder()
         .with_agent("minimal-test", "Minimal test agent")
-        .with_skill("echo", "Echo", routing_mode="direct", keywords=["echo"])
+        .with_skill("echo", "Echo", keywords=["echo"])
         .build()
     )
 
@@ -304,7 +303,7 @@ def build_standard_config() -> dict[str, Any]:
         .with_agent("standard-test", "Standard test agent")
         .with_ai("openai", "gpt-4o-mini")
         .with_openai_service()
-        .with_skill("ai_assistant", "AI Assistant", routing_mode="ai")
+        .with_skill("ai_assistant", "AI Assistant")
         .build()
     )
 
@@ -316,6 +315,6 @@ def build_ollama_config() -> dict[str, Any]:
         .with_agent("ollama-test", "Ollama test agent")
         .with_ai("ollama", "qwen3:0.6b")
         .with_ollama_service()
-        .with_skill("ai_assistant", "AI Assistant", routing_mode="ai")
+        .with_skill("ai_assistant", "AI Assistant")
         .build()
     )
