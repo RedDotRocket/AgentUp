@@ -49,7 +49,7 @@ def configure_cli_logging():
 
 
 @click.group()
-@click.version_option(version="0.2.0", prog_name="agentup")
+@click.version_option(version="0.3.0", prog_name="agentup")
 def cli():
     """AgentUp - Create, build, manage, and deploy AI agents."""
     # Configure logging for all CLI commands

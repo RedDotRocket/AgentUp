@@ -25,6 +25,7 @@ def get_feature_choices() -> list[questionary.Choice]:
         questionary.Choice("MCP Integration (Model Context Protocol)", value="mcp", checked=True),
         questionary.Choice("Push Notifications (webhooks)", value="push_notifications"),
         questionary.Choice("Development Features (filesystem plugins, debug mode)", value="development"),
+        questionary.Choice("Deployment (Docker, Helm Charts)", value="deployment"),
     ]
 
 
@@ -43,6 +44,7 @@ def get_template_features(template: str = None) -> dict[str, dict[str, Any]]:
                 "ai_provider",
                 "mcp",
                 "push_notifications",
+                "deployment",
             ],
             "description": "Enterprise-ready agent with AgentUp Security Framework and all advanced features",
         },

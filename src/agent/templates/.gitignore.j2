@@ -190,9 +190,23 @@ agentup.local.yml
 
 # Generated deployment files
 docker-compose.override.yml
+{% if has_deployment %}# Docker build artifacts
+.dockerignore
+*.tar
+docker-build/
+
+# Kubernetes secrets and configs
 k8s/
 helm/charts/
 helm/{{ project_name_snake }}/charts/
+*.kubeconfig
+secrets.yaml
+configmap.yaml
+
+# Helm artifacts
+helm/templates/*.tgz
+helm/Chart.lock
+{% endif %}
 
 # Cache and temporary files
 .cache/

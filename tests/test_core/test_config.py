@@ -326,7 +326,7 @@ class TestConfigValidation:
     def test_minimal_config_no_services(self, temp_dir: Path):
         """Test minimal configuration without services section."""
         minimal_config = {
-            "agent": {"name": "minimal-test", "version": "0.2.0"},
+            "agent": {"name": "minimal-test", "version": "0.3.0"},
             "skills": [{"skill_id": "echo", "name": "Echo", "description": "Echo back input"}],
             "routing": {"default_mode": "direct", "fallback_capability": "echo"},
         }
@@ -378,7 +378,7 @@ class TestConfigIntegration:
     def test_full_config_loading_and_processing(self, temp_dir: Path, env_vars):
         """Test loading and processing a full configuration."""
         full_config = {
-            "agent": {"name": "integration-test", "description": "Integration test agent", "version": "0.2.0"},
+            "agent": {"name": "integration-test", "description": "Integration test agent", "version": "0.3.0"},
             "routing": {"default_mode": "ai", "fallback_capability": "ai_assistant", "fallback_enabled": True},
             "skills": [
                 {

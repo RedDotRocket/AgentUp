@@ -5,7 +5,7 @@ minimal_config:
   agent:
     name: minimal-test
     description: Minimal test agent
-    version: 0.2.0
+    version: 0.3.0
   routing:
     default_mode: direct
     fallback_plugin: echo
@@ -25,7 +25,7 @@ standard_openai_config:
   agent:
     name: openai-test
     description: OpenAI test agent
-    version: 0.2.0
+    version: 0.3.0
   routing:
     default_mode: ai
     fallback_plugin: ai_assistant
@@ -56,7 +56,7 @@ ollama_config:
   agent:
     name: ollama-test
     description: Ollama test agent
-    version: 0.2.0
+    version: 0.3.0
   routing:
     default_mode: ai
     fallback_plugin: ai_assistant
@@ -87,7 +87,7 @@ anthropic_config:
   agent:
     name: anthropic-test
     description: Anthropic test agent
-    version: 0.2.0
+    version: 0.3.0
   routing:
     default_mode: ai
     fallback_plugin: ai_assistant
@@ -118,7 +118,7 @@ full_config:
   agent:
     name: full-test
     description: Full featured test agent
-    version: 0.2.0
+    version: 0.3.0
   routing:
     default_mode: ai
     fallback_plugin: ai_assistant

@@ -374,4 +374,31 @@ def configure_features(features: list) -> dict[str, Any]:
 
                 config["plugin_directory"] = plugin_dir
 
+    if "deployment" in features:
+        # Docker configuration
+        docker_enabled = questionary.confirm(
+            "Generate Docker files? (Dockerfile, docker-compose.yml)", default=True, style=custom_style
+        ).ask()
+
+        config["docker_enabled"] = docker_enabled
+
+        if docker_enabled:
+            docker_registry = questionary.text("Docker registry (optional):", default="", style=custom_style).ask()
+
+            config["docker_registry"] = docker_registry if docker_registry else None
+
+        # Helm configuration
+        helm_enabled = questionary.confirm(
+            "Generate Helm charts for Kubernetes deployment?", default=True, style=custom_style
+        ).ask()
+
+        config["helm_enabled"] = helm_enabled
+
+        if helm_enabled:
+            helm_namespace = questionary.text(
+                "Default Kubernetes namespace:", default="default", style=custom_style
+            ).ask()
+
+            config["helm_namespace"] = helm_namespace
+
     return config

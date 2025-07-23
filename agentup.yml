@@ -5,7 +5,7 @@
 agent:
   name: My Agent
   description: AI Agent My Agent Project.
-  version: 0.2.0
+  version: 0.3.0
 
 # Routing configuration
 routing:

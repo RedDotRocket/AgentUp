@@ -124,6 +124,53 @@ class ProjectGenerator:
         gitignore_content = self._render_template(".gitignore")
         (self.output_dir / ".gitignore").write_text(gitignore_content)
 
+        # Generate deployment files if deployment feature is enabled
+        if "deployment" in self.features:
+            self._generate_deployment_files()
+
+    def _generate_deployment_files(self):
+        """Generate deployment files based on feature configuration."""
+        feature_config = self.config.get("feature_config", {})
+
+        # Generate Dockerfile if docker is enabled
+        if feature_config.get("docker_enabled", True):
+            dockerfile_content = self._render_template("Dockerfile")
+            (self.output_dir / "Dockerfile").write_text(dockerfile_content)
+
+            # Generate docker-compose.yml
+            docker_compose_content = self._render_template("docker-compose.yml")
+            (self.output_dir / "docker-compose.yml").write_text(docker_compose_content)
+
+        # Generate Helm charts if helm is enabled
+        if feature_config.get("helm_enabled", True):
+            self._generate_helm_charts()
+
+    def _generate_helm_charts(self):
+        """Generate Helm chart files."""
+        helm_dir = self.output_dir / "helm"
+        helm_templates_dir = helm_dir / "templates"
+
+        # Create directories
+        helm_dir.mkdir(exist_ok=True)
+        helm_templates_dir.mkdir(exist_ok=True)
+
+        # Generate Helm chart files
+        chart_content = self._render_template("helm/Chart.yaml")
+        (helm_dir / "Chart.yaml").write_text(chart_content)
+
+        values_content = self._render_template("helm/values.yaml")
+        (helm_dir / "values.yaml").write_text(values_content)
+
+        # Generate template files
+        deployment_content = self._render_template("helm/templates/deployment.yaml")
+        (helm_templates_dir / "deployment.yaml").write_text(deployment_content)
+
+        service_content = self._render_template("helm/templates/service.yaml")
+        (helm_templates_dir / "service.yaml").write_text(service_content)
+
+        helpers_content = self._render_template("helm/templates/_helpers.tpl")
+        (helm_templates_dir / "_helpers.tpl").write_text(helpers_content)
+
     def _create_env_file(self):
         # Create .env file for environment variables
         env_file = self.output_dir / ".env"
@@ -207,6 +254,7 @@ class ProjectGenerator:
             "has_mcp": "mcp" in self.features,
             "has_push_notifications": "push_notifications" in self.features,
             "has_development": "development" in self.features,
+            "has_deployment": "deployment" in self.features,
             "template_name": self.template_name,
         }
 
@@ -218,6 +266,7 @@ class ProjectGenerator:
                     "ai_provider_config": ai_provider_config,
                     "llm_provider_config": True,  # For backward compatibility with existing templates
                     "ai_enabled": True,  # Enable AI when provider is configured
+                    "has_ai_provider": True,
                 }
             )
         else:
@@ -226,6 +275,7 @@ class ProjectGenerator:
                     "ai_provider_config": None,
                     "llm_provider_config": False,
                     "ai_enabled": False,  # Disable AI when no provider configured
+                    "has_ai_provider": False,
                 }
             )
 
@@ -257,6 +307,9 @@ class ProjectGenerator:
             context["feature_config"] = self.config["feature_config"]
         else:
             context["feature_config"] = {}
+
+        # Add deployment-specific context variables
+        context["has_env_file"] = True  # Most agents will have .env file
 
         # Add AgentUp Security Framework variables
         auth_enabled = "auth" in self.features
@@ -300,7 +353,7 @@ class ProjectGenerator:
             "agent": {
                 "name": self.project_name,
                 "description": self.config.get("description", ""),
-                "version": "0.2.0",
+                "version": "0.3.0",
             },
             "plugins": self._build_plugins_config(),
             "routing": self._build_routing_config(),

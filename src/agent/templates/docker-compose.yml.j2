@@ -1,0 +1,64 @@
+{% if feature_config.docker_enabled %}version: '3.8'
+
+services:
+  {{ project_name_snake }}:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - AGENTUP_CONFIG_PATH=/app/agentup.yml
+      - PYTHONUNBUFFERED=1
+{% if has_ai_provider %}      # AI Provider Configuration
+{% if ai_provider_config.provider == "openai" %}      - OPENAI_API_KEY=${OPENAI_API_KEY}
+{% elif ai_provider_config.provider == "anthropic" %}      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+{% elif ai_provider_config.provider == "ollama" %}      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434}
+{% endif %}{% endif %}
+{% if has_state_management and feature_config.state_backend == "valkey" %}      # State Management
+      - VALKEY_URL=redis://valkey:6379/0
+{% endif %}
+{% if has_middleware and "cache" in feature_config.middleware and feature_config.cache_backend == "valkey" %}      # Cache Backend
+      - CACHE_BACKEND_URL=redis://valkey:6379/1
+{% endif %}
+    volumes:
+      - ./agentup.yml:/app/agentup.yml:ro
+{% if has_env_file %}      - ./.env:/app/.env:ro
+{% endif %}
+{% if (has_state_management and feature_config.state_backend == "valkey") or (has_middleware and "cache" in feature_config.middleware and feature_config.cache_backend == "valkey") or (ai_provider_config.provider == "ollama") %}    depends_on:
+{% if has_state_management and feature_config.state_backend == "valkey" %}      - valkey
+{% elif has_middleware and "cache" in feature_config.middleware and feature_config.cache_backend == "valkey" %}      - valkey
+{% elif ai_provider_config.provider == "ollama" %}      - ollama
+{% endif %}{% endif %}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health', timeout=5.0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+{% if (has_state_management and feature_config.state_backend == "valkey") or (has_middleware and "cache" in feature_config.middleware and feature_config.cache_backend == "valkey") %}  valkey:
+    image: cgr.dev/chainguard/valkey:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - valkey_data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+{% endif %}{% if ai_provider_config.provider == "ollama" %}  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+
+{% endif %}volumes:
+{% if (has_state_management and feature_config.state_backend == "valkey") or (has_middleware and "cache" in feature_config.middleware and feature_config.cache_backend == "valkey") %}  valkey_data:
+{% endif %}{% if ai_provider_config.provider == "ollama" %}  ollama_data:
+{% endif %}{% endif %}

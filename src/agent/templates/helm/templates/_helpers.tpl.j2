@@ -1,0 +1,60 @@
+{{ "{{" }}/*
+Expand the name of the chart.
+*/{{ "}}" }}
+{{ "{{-" }} define "{{ project_name_snake }}.name" -{{ "}}" }}
+{{ "{{-" }} default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" {{ "}}" }}
+{{ "{{-" }} end {{ "}}" }}
+
+{{ "{{" }}/*
+Create a default fully qualified app name.
+*/{{ "}}" }}
+{{ "{{-" }} define "{{ project_name_snake }}.fullname" -{{ "}}" }}
+{{ "{{-" }} if .Values.fullnameOverride {{ "}}" }}
+{{ "{{-" }} .Values.fullnameOverride | trunc 63 | trimSuffix "-" {{ "}}" }}
+{{ "{{-" }} else {{ "}}" }}
+{{ "{{-" }} $name := default .Chart.Name .Values.nameOverride {{ "}}" }}
+{{ "{{-" }} if contains $name .Release.Name {{ "}}" }}
+{{ "{{-" }} .Release.Name | trunc 63 | trimSuffix "-" {{ "}}" }}
+{{ "{{-" }} else {{ "}}" }}
+{{ "{{-" }} printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" {{ "}}" }}
+{{ "{{-" }} end {{ "}}" }}
+{{ "{{-" }} end {{ "}}" }}
+{{ "{{-" }} end {{ "}}" }}
+
+{{ "{{" }}/*
+Create chart name and version as used by the chart label.
+*/{{ "}}" }}
+{{ "{{-" }} define "{{ project_name_snake }}.chart" -{{ "}}" }}
+{{ "{{-" }} printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" {{ "}}" }}
+{{ "{{-" }} end {{ "}}" }}
+
+{{ "{{" }}/*
+Common labels
+*/{{ "}}" }}
+{{ "{{-" }} define "{{ project_name_snake }}.labels" -{{ "}}" }}
+helm.sh/chart: {{ "{{" }} include "{{ project_name_snake }}.chart" . {{ "}}" }}
+{{ "{{" }} include "{{ project_name_snake }}.selectorLabels" . {{ "}}" }}
+{{ "{{-" }} if .Chart.AppVersion {{ "}}" }}
+app.kubernetes.io/version: {{ "{{" }} .Chart.AppVersion | quote {{ "}}" }}
+{{ "{{-" }} end {{ "}}" }}
+app.kubernetes.io/managed-by: {{ "{{" }} .Release.Service {{ "}}" }}
+{{ "{{-" }} end {{ "}}" }}
+
+{{ "{{" }}/*
+Selector labels
+*/{{ "}}" }}
+{{ "{{-" }} define "{{ project_name_snake }}.selectorLabels" -{{ "}}" }}
+app.kubernetes.io/name: {{ "{{" }} include "{{ project_name_snake }}.name" . {{ "}}" }}
+app.kubernetes.io/instance: {{ "{{" }} .Release.Name {{ "}}" }}
+{{ "{{-" }} end {{ "}}" }}
+
+{{ "{{" }}/*
+Create the name of the service account to use
+*/{{ "}}" }}
+{{ "{{-" }} define "{{ project_name_snake }}.serviceAccountName" -{{ "}}" }}
+{{ "{{-" }} if .Values.serviceAccount.create {{ "}}" }}
+{{ "{{-" }} default (include "{{ project_name_snake }}.fullname" .) .Values.serviceAccount.name {{ "}}" }}
+{{ "{{-" }} else {{ "}}" }}
+{{ "{{-" }} default "default" .Values.serviceAccount.name {{ "}}" }}
+{{ "{{-" }} end {{ "}}" }}
+{{ "{{-" }} end {{ "}}" }}

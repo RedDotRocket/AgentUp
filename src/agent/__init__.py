@@ -1,6 +1,6 @@
 """AgentUp - A2A-compliant AI agent framework."""
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 # Lazy imports to avoid loading config when using CLI
 # Import these explicitly when needed:

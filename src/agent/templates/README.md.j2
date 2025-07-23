@@ -137,11 +137,20 @@ curl http://localhost:8000/.well-known/agent.json
 
 ```
 {{ project_name_snake }}/
-├── agentup.yml     # Main configuration
-├── .env                  # Environment variables  
-├── README.md            # This file
-└── pyproject.toml       # Dependencies (just agentup)
-```
+├── agentup.yml          # Main configuration
+├── .env                 # Environment variables  
+├── README.md           # This file
+├── pyproject.toml      # Dependencies (just agentup)
+{% if has_deployment %}├── Dockerfile          # Container image definition
+├── docker-compose.yml  # Local development with dependencies
+└── helm/               # Kubernetes Helm charts
+    ├── Chart.yaml      # Helm chart metadata
+    ├── values.yaml     # Default configuration values
+    └── templates/      # Kubernetes resource templates
+        ├── deployment.yaml
+        ├── service.yaml
+        └── _helpers.tpl
+{% endif %}```
 
 ## Deployment
 
@@ -150,6 +159,80 @@ The agent can be deployed anywhere Python runs:
 ```bash
 uvicorn agent.api.app:app --host 0.0.0.0 --port 8000
 ```
+
+{% if has_deployment %}
+### Docker Deployment
+
+This project includes Docker support for easy deployment:
+
+```bash
+# Build the Docker image
+docker build -t {{ project_name_snake }}:latest .
+
+# Run with docker-compose (includes dependencies)
+docker-compose up -d
+
+# Or run directly
+docker run -d -p 8000:8000 --env-file .env {{ project_name_snake }}:latest
+```
+
+{% if feature_config.docker_registry %}
+**Push to Registry:**
+```bash
+# Tag for your registry
+docker tag {{ project_name_snake }}:latest {{ feature_config.docker_registry }}/{{ project_name_snake }}:latest
+
+# Push to registry
+docker push {{ feature_config.docker_registry }}/{{ project_name_snake }}:latest
+```
+{% endif %}
+
+### Kubernetes Deployment
+
+Deploy to Kubernetes using the included Helm charts:
+
+```bash
+# Install with Helm
+helm install {{ project_name_snake }} ./helm/
+
+# Or apply directly to Kubernetes
+kubectl apply -f helm/templates/
+
+# Port forward for local testing
+kubectl port-forward service/{{ project_name_snake }} 8000:8000
+```
+
+**Helm Configuration:**
+```bash
+# Customize deployment
+helm install {{ project_name_snake }} ./helm/ \
+  --set image.repository=your-registry/{{ project_name_snake }} \
+  --set image.tag=v1.0.0 \
+  --set ingress.enabled=true \
+  --set ingress.hosts[0].host={{ project_name_snake }}.example.com
+
+# Upgrade deployment
+helm upgrade {{ project_name_snake }} ./helm/
+```
+
+### Production Considerations
+
+**Security:**
+- Uses Chainguard distroless base image for minimal attack surface
+- Runs as non-root user (UID 65532)
+- Read-only root filesystem in containers
+
+**Monitoring:**
+- Health check endpoint at `/health`
+- Structured logging with JSON format
+- Metrics available via AgentUp framework
+
+**Scaling:**
+- Stateless design supports horizontal scaling
+- External state management via Valkey/Redis{% if feature_config.state_backend == "valkey" %} (configured){% endif %}
+- Load balancer friendly
+
+{% endif %}
 
 ## Documentation
 

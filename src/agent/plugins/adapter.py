@@ -147,20 +147,20 @@ class PluginAdapter:
 
     def _get_plugin_config_for_task(self, task: Task) -> dict[str, Any]:
         """Get plugin configuration from agent config for a task.
-        
+
         This method tries to determine which plugin is handling the task
         and returns its configuration from agentup.yml.
         """
         try:
             from agent.config import load_config
-            
+
             config = load_config()
             configured_plugins = config.get("plugins", [])
-            
+
             # For AI function calls, we need to determine which plugin is being used
             # Check if we can determine the plugin from the function call context
-            function_name = getattr(task, 'function_name', None) or getattr(task, 'name', None)
-            
+            function_name = getattr(task, "function_name", None) or getattr(task, "name", None)
+
             if function_name:
                 # Try to find which plugin provides this function
                 for plugin_config in configured_plugins:
@@ -170,24 +170,24 @@ class PluginAdapter:
                         plugin_functions = self._get_plugin_function_names(plugin_id)
                         if function_name in plugin_functions:
                             return plugin_config.get("config", {})
-            
+
             # Fallback: if we can't determine specific plugin, try RAG plugin as that's most common
             for plugin_config in configured_plugins:
                 if plugin_config.get("plugin_id") == "rag":
                     return plugin_config.get("config", {})
-                    
+
             return {}
-            
+
         except Exception as e:
             logger.warning(f"Could not load plugin config for task: {e}")
             return {}
-    
+
     def _get_plugin_function_names(self, plugin_id: str) -> list[str]:
         """Get list of function names provided by a plugin."""
         try:
             # Get all capabilities provided by this plugin
             function_names = []
-            for capability_id, capability_info in self.plugin_manager.capabilities.items():
+            for capability_id, _capability_info in self.plugin_manager.capabilities.items():
                 # Check if this capability belongs to the plugin
                 if self.plugin_manager.capability_to_plugin.get(capability_id) == plugin_id:
                     # Get AI functions for this capability
@@ -205,6 +205,7 @@ class PluginAdapter:
         # Get services if available
         try:
             from agent.services import get_services
+
             services = get_services()
         except Exception:
             services = {}
@@ -218,26 +219,26 @@ class PluginAdapter:
             services=services,
             metadata=metadata,
         )
-    
+
     def _get_plugin_config_for_capability(self, capability_id: str) -> dict[str, Any]:
         """Get plugin configuration for a specific capability."""
         try:
             from agent.config import load_config
-            
+
             config = load_config()
             configured_plugins = config.get("plugins", [])
-            
+
             # Find which plugin provides this capability
             plugin_id = self.plugin_manager.capability_to_plugin.get(capability_id)
-            
+
             if plugin_id:
                 # Find the plugin configuration
                 for plugin_config in configured_plugins:
                     if plugin_config.get("plugin_id") == plugin_id:
                         return plugin_config.get("config", {})
-            
+
             return {}
-            
+
         except Exception as e:
             logger.warning(f"Could not load plugin config for capability {capability_id}: {e}")
             return {}

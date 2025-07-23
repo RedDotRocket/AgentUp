@@ -98,7 +98,7 @@ class ConfigurationManager:
         agent_config = self.get("agent", {})
         return {
             "name": agent_config.get("name", "Agent"),
-            "version": agent_config.get("version", "0.2.0"),
+            "version": agent_config.get("version", "0.3.0"),
             "description": agent_config.get("description", "AgentUp Agent"),
         }
 

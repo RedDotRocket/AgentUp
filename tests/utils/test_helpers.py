@@ -34,7 +34,7 @@ def create_test_agent_config(
 ) -> dict[str, Any]:
     """Create a test agent configuration YAML structure."""
     config = {
-        "agent": {"name": agent_name, "description": f"Test agent {agent_name}", "version": "0.2.0"},
+        "agent": {"name": agent_name, "description": f"Test agent {agent_name}", "version": "0.3.0"},
         "routing": {"default_mode": "ai", "fallback_capability": "ai_assistant", "fallback_enabled": True},
         "skills": [
             {
@@ -227,7 +227,7 @@ class AgentConfigBuilder:
     def __init__(self):
         self.config = {}
 
-    def with_agent(self, name: str = "test-agent", description: str = None, version: str = "0.2.0"):
+    def with_agent(self, name: str = "test-agent", description: str = None, version: str = "0.3.0"):
         """Add agent configuration."""
         self.config["agent"] = {"name": name, "description": description or f"Test agent {name}", "version": version}
         return self
