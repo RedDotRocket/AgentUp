@@ -257,13 +257,6 @@ middleware:
     params:
       requests_per_minute: 120  # Higher rate for enterprise
       burst_size: 30           # Allow burst traffic
-      # Enterprise plugin-specific rate limiting
-      plugin_specific_limits:
-        local: 200             # High rate for local plugins
-        network: 60            # Moderate rate for network plugins
-        hybrid: 120            # Standard enterprise rate
-        ai_function: 30        # Conservative rate for AI operations
-        core: 500              # Very high rate for core functions
 {% endif %}
 {% if has_middleware and 'retry' in feature_config.get('middleware', []) %}
   - name: retryable

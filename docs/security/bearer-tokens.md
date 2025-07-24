@@ -75,12 +75,7 @@ Bearer token authentication works  with context-aware middleware:
 # Context-aware middleware configuration
 middleware:
   - name: rate_limited
-    params:
-      # Plugin-specific rate limits based on authentication
-      plugin_specific_limits:
-        local: 200      # Higher rate for authenticated local plugins
-        network: 60     # Conservative rate for network operations
-        ai_function: 30 # Careful rate limiting for AI operations
+    params: {}
   - name: cached
     params:
       # Authentication-aware caching

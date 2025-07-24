@@ -617,14 +617,6 @@ Always be helpful, accurate, and maintain a friendly tone. You are designed to a
             "name": "rate_limited",
             "params": {
                 "requests_per_minute": base_rpm,
-                # Plugin-specific rate limiting
-                "plugin_specific_limits": {
-                    "local": base_rpm * 2,  # Higher rate for local plugins
-                    "network": base_rpm // 2,  # Lower rate for network plugins
-                    "hybrid": base_rpm,  # Standard rate for hybrid plugins
-                    "ai_function": base_rpm // 3,  # Much lower rate for AI functions
-                    "core": base_rpm * 3,  # Higher rate for core functions
-                },
             },
         }
 

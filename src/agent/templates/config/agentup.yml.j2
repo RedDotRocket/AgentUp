@@ -255,12 +255,6 @@ middleware:
   - name: rate_limited
     params:
       requests_per_minute: {{ rate_limit_rpm | default(60) }}
-      # Plugin-specific rate limiting
-      plugin_specific_limits:
-        local: {{ rate_limit_rpm | default(60) }}           # Standard rate for local plugins
-        network: {{ (rate_limit_rpm | default(60)) // 2 }}  # Lower rate for network plugins
-        hybrid: {{ rate_limit_rpm | default(60) }}          # Standard rate for hybrid plugins
-        ai_function: {{ (rate_limit_rpm | default(60)) // 3 }}  # Much lower rate for AI functions
 {% endif %}
 {% if 'retry' in feature_config.get('middleware', []) %}
   - name: retryable
