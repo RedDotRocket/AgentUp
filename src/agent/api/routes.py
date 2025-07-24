@@ -86,7 +86,8 @@ def create_agent_card(extended: bool = False) -> AgentCard:
 
     # Create a hash of the configuration to detect changes
     config_str = str(sorted(config.items()))
-    current_config_hash = hashlib.md5(config_str.encode()).hexdigest()
+    # Bandit issue: B324 - Using hashlib.md5() is acceptable here for caching purposes
+    current_config_hash = hashlib.md5(config_str.encode()).hexdigest()  # nosec
 
     # Check if we can use cached version
     if _cached_config_hash == current_config_hash:
