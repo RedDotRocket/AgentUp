@@ -328,16 +328,6 @@ logging:
     enabled: {{ console_logging | default(true) }}
     colors: {{ console_colors | default(true) }}
 
-  # File logging
-  file:
-    enabled: {{ file_logging | default(false) }}
-{% if file_logging %}
-    path: "{{ log_file_path | default('logs/' + project_name_snake + '.log') }}"
-    rotation: "{{ log_rotation | default('100 MB') }}"
-    retention: "{{ log_retention | default('7 days') }}"
-    compression: {{ log_compression | default(false) }}
-{% endif %}
-
   # Advanced features
   correlation_id: {{ correlation_id | default(false) }}
   request_logging: {{ request_logging | default(false) }}

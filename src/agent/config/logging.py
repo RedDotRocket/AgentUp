@@ -2,7 +2,7 @@
 Logging configuration module for AgentUp.
 
 This module provides centralized logging configuration using structlog for structured logging
-with support for multiple output formats (text, JSON), different backends (console, file),
+with support for multiple output formats (text, JSON), console output,
 and integration with FastAPI/uvicorn.
 """
 

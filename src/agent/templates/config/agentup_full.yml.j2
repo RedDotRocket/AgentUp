@@ -339,14 +339,6 @@ logging:
     enabled: true
     colors: false  # Disable colors in production
 
-  # File logging enabled for production
-  file:
-    enabled: true
-    path: "logs/{{ project_name_snake }}.log"
-    rotation: "100 MB"
-    retention: "30 days"
-    compression: true
-
   # Advanced features for production
   correlation_id: true        # Essential for distributed tracing
   request_logging: true       # Important for monitoring and debugging

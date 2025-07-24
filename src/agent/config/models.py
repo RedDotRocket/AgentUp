@@ -147,14 +147,6 @@ class LoggingConfig(BaseModel):
         "colors": True,
     }
 
-    file: dict[str, Any] = {
-        "enabled": False,
-        "path": "logs/agent.log",
-        "rotation": "100 MB",
-        "retention": "1 week",
-        "compression": True,
-    }
-
     # Advanced configuration
     correlation_id: bool = True
     request_logging: bool = True
