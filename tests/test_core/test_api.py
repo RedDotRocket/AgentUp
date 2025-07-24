@@ -34,15 +34,16 @@ from agent.config.models import (
 class TestAgentCard:
     """Test agent card creation."""
 
-    @patch("agent.api.routes.load_config")
-    def test_create_agent_card_minimal(self, mock_load_config):
+    @patch("agent.api.routes.ConfigurationManager")
+    def test_create_agent_card_minimal(self, mock_config_manager):
         """Test creating agent card with minimal configuration."""
-        mock_load_config.return_value = {
+        mock_config = {
             "project_name": "TestAgent",
             "description": "Test Agent Description",
             "agent": {"name": "TestAgent", "description": "Test Agent", "version": "1.0.0"},
             "skills": [],
         }
+        mock_config_manager.return_value.config = mock_config
 
         card = create_agent_card()
 
@@ -58,10 +59,10 @@ class TestAgentCard:
         assert card.capabilities.pushNotifications is False
         assert card.capabilities.stateTransitionHistory is True
 
-    @patch("agent.api.routes.load_config")
-    def test_create_agent_card_with_skills(self, mock_load_config):
+    @patch("agent.api.routes.ConfigurationManager")
+    def test_create_agent_card_with_skills(self, mock_config_manager):
         """Test creating agent card with skills."""
-        mock_load_config.return_value = {
+        mock_config = {
             "agent": {"name": "SkillfulAgent", "description": "Agent with skills", "version": "2.0.0"},
             "plugins": [
                 {
@@ -74,6 +75,7 @@ class TestAgentCard:
                 }
             ],
         }
+        mock_config_manager.return_value.config = mock_config
 
         card = create_agent_card()
 
@@ -81,14 +83,15 @@ class TestAgentCard:
         assert card.skills[0].id == "chat"
         assert card.skills[0].name == "Chat"
 
-    @patch("agent.api.routes.load_config")
-    def test_create_agent_card_with_security_enabled(self, mock_load_config):
+    @patch("agent.api.routes.ConfigurationManager")
+    def test_create_agent_card_with_security_enabled(self, mock_config_manager):
         """Test creating agent card with security enabled."""
-        mock_load_config.return_value = {
+        mock_config = {
             "agent": {"name": "SecureAgent"},
             "skills": [],
             "security": {"enabled": True, "type": "api_key"},
         }
+        mock_config_manager.return_value.config = mock_config
 
         card = create_agent_card()
 
@@ -96,6 +99,38 @@ class TestAgentCard:
         assert card.securitySchemes is not None
         assert card.security is not None
         assert len(card.security) > 0
+
+    @patch("agent.api.routes.ConfigurationManager")
+    def test_create_agent_card_caching(self, mock_config_manager):
+        """Test that agent card is cached properly."""
+        mock_config = {
+            "project_name": "CachedAgent",
+            "agent": {"name": "CachedAgent", "description": "Test caching", "version": "1.0.0"},
+            "plugins": [],
+        }
+        mock_config_manager.return_value.config = mock_config
+
+        # Clear any existing cache
+        import agent.api.routes
+        agent.api.routes._cached_agent_card = None
+        agent.api.routes._cached_extended_agent_card = None
+        agent.api.routes._cached_config_hash = None
+
+        # First call should create the card
+        card1 = create_agent_card()
+        
+        # Second call should return cached version
+        card2 = create_agent_card()
+        
+        # Should be the same instance (cached)
+        assert card1 is card2
+        assert card1.name == "CachedAgent"
+        
+        # Test extended cards are cached separately
+        extended_card1 = create_agent_card(extended=True)
+        extended_card2 = create_agent_card(extended=True)
+        
+        assert extended_card1 is extended_card2
 
 
 class TestRequestHandlerManagement:
@@ -136,10 +171,10 @@ class TestHealthEndpoints:
         """Create test client."""
         return TestClient(app)
 
-    @patch("agent.api.routes.load_config")
-    def test_health_check(self, mock_load_config, client):
+    @patch("agent.api.routes.ConfigurationManager")
+    def test_health_check(self, mock_config_manager, client):
         """Test basic health check endpoint."""
-        mock_load_config.return_value = {"project_name": "TestAgent"}
+        mock_config_manager.return_value.get.return_value = "TestAgent"
 
         response = client.get("/health")
 

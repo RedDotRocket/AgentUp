@@ -19,7 +19,6 @@ from a2a.types import (
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from agent.config import load_config
 from agent.config.models import (
     AgentCapabilities,
     AgentCard,
@@ -36,6 +35,7 @@ from agent.push.types import (
     listTaskPushNotificationConfigResponse,
 )
 from agent.security import AuthContext, get_auth_result, protected
+from agent.services.config import ConfigurationManager
 
 # Setup logger
 logger = structlog.get_logger(__name__)
@@ -44,6 +44,11 @@ logger = structlog.get_logger(__name__)
 router = APIRouter()
 
 # Configuration will be loaded when needed
+
+# Agent card caching
+_cached_agent_card: AgentCard | None = None
+_cached_extended_agent_card: AgentCard | None = None
+_cached_config_hash: str | None = None
 
 # Task storage
 task_storage: dict[str, dict[str, Any]] = {}
@@ -71,18 +76,31 @@ def create_agent_card(extended: bool = False) -> AgentCard:
     Args:
         extended: If True, include plugins with visibility="extended" in addition to public plugins
     """
+    import hashlib
 
-    config = load_config(configure_logging=False)  # Don't reconfigure logging
+    global _cached_agent_card, _cached_extended_agent_card, _cached_config_hash
+
+    # Get configuration from the cached ConfigurationManager
+    config_manager = ConfigurationManager()
+    config = config_manager.config
+
+    # Create a hash of the configuration to detect changes
+    config_str = str(sorted(config.items()))
+    current_config_hash = hashlib.md5(config_str.encode()).hexdigest()
+
+    # Check if we can use cached version
+    if _cached_config_hash == current_config_hash:
+        if extended and _cached_extended_agent_card is not None:
+            return _cached_extended_agent_card
+        elif not extended and _cached_agent_card is not None:
+            return _cached_agent_card
+
+    # Cache miss - regenerate agent card
     agent_info = config.get("agent", {})
     plugins = config.get("plugins", [])
 
-    # Debug: Log plugins to understand the validation error
-    import logging
-
-    logger = logging.getLogger(__name__)
-    logger.info(f"Loaded {len(plugins)} plugins from config")
-    for i, plugin in enumerate(plugins):
-        logger.info(f"Plugin {i}: id={plugin.get('plugin_id')}, desc={plugin.get('description')}")
+    # Only log plugins when actually regenerating (cache miss)
+    logger.debug(f"Regenerating agent card - loaded {len(plugins)} plugins from config")
 
     # Convert plugins to A2A Skill format based on visibility
     agent_skills = []
@@ -192,6 +210,13 @@ def create_agent_card(extended: bool = False) -> AgentCard:
         supportsAuthenticatedExtendedCard=has_extended_plugins,
     )
 
+    # Update cache
+    _cached_config_hash = current_config_hash
+    if extended:
+        _cached_extended_agent_card = agent_card
+    else:
+        _cached_agent_card = agent_card
+
     return agent_card
 
 
@@ -224,12 +249,12 @@ async def get_task_status(task_id: str, request: Request) -> JSONResponse:
 @router.get("/health")
 async def health_check() -> JSONResponse:
     """Basic health check endpoint."""
-    config = load_config(configure_logging=False)
+    config_manager = ConfigurationManager()
     return JSONResponse(
         status_code=200,
         content={
             "status": "healthy",
-            "agent": config.get("project_name", "Agent"),
+            "agent": config_manager.get("project_name", "Agent"),
             "timestamp": datetime.now().isoformat(),
         },
     )
