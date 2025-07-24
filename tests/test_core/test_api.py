@@ -112,24 +112,25 @@ class TestAgentCard:
 
         # Clear any existing cache
         import agent.api.routes
+
         agent.api.routes._cached_agent_card = None
         agent.api.routes._cached_extended_agent_card = None
         agent.api.routes._cached_config_hash = None
 
         # First call should create the card
         card1 = create_agent_card()
-        
+
         # Second call should return cached version
         card2 = create_agent_card()
-        
+
         # Should be the same instance (cached)
         assert card1 is card2
         assert card1.name == "CachedAgent"
-        
+
         # Test extended cards are cached separately
         extended_card1 = create_agent_card(extended=True)
         extended_card2 = create_agent_card(extended=True)
-        
+
         assert extended_card1 is extended_card2
 
 
