@@ -53,6 +53,7 @@ Thumbs.db
 
 # AgentUp
 dump.rdb
+.planning/
 
 # Testing and CI artifacts
 .coverage

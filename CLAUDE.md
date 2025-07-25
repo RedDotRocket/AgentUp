@@ -107,9 +107,17 @@ src/agent/
 - **Formatting**: Ruff with 120-character line length, double quotes, 4-space indentation
 - **Linting**: Enabled rules include pycodestyle, pyflakes, isort, flake8-bugbear, pyupgrade
 - **Type Hints**: Encouraged but not strictly enforced; MyPy configured for gradual typing
+- **Modern Typing**: Use built-in `dict` and `list` instead of `typing.Dict` and `typing.List` (Python 3.9+)
+- **Pydantic v2**: Use `@field_validator` and `@model_validator` decorators (not deprecated `@validator`)
 - **Naming**: snake_case for functions/variables, PascalCase for classes, UPPER_SNAKE_CASE for constants
 - **Logging**: Use `structlog.get_logger(__name__)` pattern with structured logging
 - **Imports**: Automatic organization via Ruff isort integration
+
+### Typing Guidelines
+- ✅ **Use**: `dict[str, Any]`, `list[str]`, `str | None`
+- ❌ **Avoid**: `Dict[str, Any]`, `List[str]`, `Optional[str]`
+- **Import from typing**: Only `Union`, `Literal`, `Any`, `TypeVar`, `Generic`, `Protocol`
+- **See**: `docs/MODERN_TYPING_GUIDE.md` for complete typing conventions
 
 ## Task Completion Workflow
 

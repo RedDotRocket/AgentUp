@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import json
 from dataclasses import dataclass
@@ -34,7 +36,7 @@ class ConversationState:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ConversationState":
+    def from_dict(cls, data: dict[str, Any]) -> ConversationState:
         """Create from dictionary."""
         return cls(
             context_id=data["context_id"],

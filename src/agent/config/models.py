@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Import typing for exception classes
 from abc import ABC
 from typing import Any
@@ -89,7 +91,7 @@ class PluginsConfig(BaseModel):
     plugins: list[PluginConfig] = []
 
     @classmethod
-    def from_config_value(cls, config_value) -> "PluginsConfig":
+    def from_config_value(cls, config_value) -> PluginsConfig:
         """Create PluginsConfig from various config formats."""
         if isinstance(config_value, dict):
             if "enabled" in config_value or "plugins" in config_value:
