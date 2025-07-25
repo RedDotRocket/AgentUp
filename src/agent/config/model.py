@@ -4,6 +4,7 @@ Pydantic models for AgentUp configuration.
 This module defines all configuration data structures using Pydantic models
 for type safety and validation.
 """
+
 from __future__ import annotations
 
 import os
@@ -19,6 +20,7 @@ from ..types import ConfigDict, FilePath, LogLevel, ModulePath, ServiceName, Ser
 
 class EnvironmentVariable(BaseModel):
     """Model for environment variable references."""
+
     name: str = Field(..., description="Environment variable name")
     default: str | None = Field(None, description="Default value if not set")
     required: bool = Field(True, description="Whether variable is required")
@@ -34,12 +36,14 @@ class EnvironmentVariable(BaseModel):
 
 class LogFormat(str, Enum):
     """Logging format options."""
+
     TEXT = "text"
     JSON = "json"
 
 
 class LoggingConsoleConfig(BaseModel):
     """Console logging configuration."""
+
     enabled: bool = Field(True, description="Enable console logging")
     colors: bool = Field(True, description="Enable colored output")
     show_time: bool = Field(True, description="Show timestamps")
@@ -48,6 +52,7 @@ class LoggingConsoleConfig(BaseModel):
 
 class LoggingFileConfig(BaseModel):
     """File logging configuration."""
+
     enabled: bool = Field(False, description="Enable file logging")
     path: FilePath = Field("logs/agentup.log", description="Log file path")
     max_size: int = Field(10 * 1024 * 1024, description="Max file size in bytes")
@@ -57,6 +62,7 @@ class LoggingFileConfig(BaseModel):
 
 class LoggingConfig(BaseModel):
     """Comprehensive logging configuration."""
+
     enabled: bool = Field(True, description="Enable logging system")
     level: LogLevel = Field("INFO", description="Global log level")
     format: LogFormat = Field(LogFormat.TEXT, description="Log output format")
@@ -109,6 +115,7 @@ class LoggingConfig(BaseModel):
 
 class ServiceConfig(BaseModel):
     """Base service configuration."""
+
     type: ServiceType = Field(..., description="Service type identifier")
     enabled: bool = Field(True, description="Whether service is enabled")
     init_path: ModulePath | None = Field(None, description="Custom initialization module path")
@@ -142,6 +149,7 @@ class ServiceConfig(BaseModel):
 
 class MCPServerConfig(BaseModel):
     """MCP server configuration."""
+
     name: str = Field(..., description="Server name")
     type: Literal["stdio", "http"] = Field(..., description="Connection type")
 
@@ -157,14 +165,11 @@ class MCPServerConfig(BaseModel):
     timeout: int = Field(30, description="Request timeout in seconds")
 
     # Tool permissions
-    tool_scopes: dict[str, list[str]] = Field(
-        default_factory=dict,
-        description="Tool name to required scopes mapping"
-    )
+    tool_scopes: dict[str, list[str]] = Field(default_factory=dict, description="Tool name to required scopes mapping")
     allowed_tools: list[str] | None = Field(None, description="Allowed tools (None = all)")
     blocked_tools: list[str] = Field(default_factory=list, description="Blocked tools")
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_server_config(self) -> MCPServerConfig:
         """Validate server configuration based on type."""
         if self.type == "stdio":
@@ -180,6 +185,7 @@ class MCPServerConfig(BaseModel):
 
 class MCPConfig(BaseModel):
     """MCP (Model Context Protocol) configuration."""
+
     enabled: bool = Field(False, description="Enable MCP support")
 
     # Client configuration
@@ -206,25 +212,26 @@ class MCPConfig(BaseModel):
 
 class SecurityConfig(BaseModel):
     """Security configuration reference."""
+
     enabled: bool = Field(True, description="Enable security features")
     # Note: Detailed security config is in security/model.py to avoid circular imports
 
 
 class PluginCapabilityConfig(BaseModel):
     """Plugin capability configuration."""
+
     capability_id: str = Field(..., description="Capability identifier")
     name: str | None = Field(None, description="Human-readable name")
     description: str | None = Field(None, description="Capability description")
     required_scopes: list[str] = Field(default_factory=list, description="Required scopes")
     enabled: bool = Field(True, description="Whether capability is enabled")
     config: ConfigDict = Field(default_factory=dict, description="Capability-specific config")
-    middleware_override: list[dict[str, Any]] | None = Field(
-        None, description="Override middleware configuration"
-    )
+    middleware_override: list[dict[str, Any]] | None = Field(None, description="Override middleware configuration")
 
 
 class PluginConfig(BaseModel):
     """Individual plugin configuration."""
+
     plugin_id: str = Field(..., description="Plugin identifier")
     name: str | None = Field(None, description="Plugin name")
     description: str | None = Field(None, description="Plugin description")
@@ -232,9 +239,7 @@ class PluginConfig(BaseModel):
     version: Version | None = Field(None, description="Plugin version constraint")
 
     # Capability configuration
-    capabilities: list[PluginCapabilityConfig] = Field(
-        default_factory=list, description="Plugin capabilities"
-    )
+    capabilities: list[PluginCapabilityConfig] = Field(default_factory=list, description="Plugin capabilities")
 
     # Default settings applied to all capabilities
     default_scopes: list[str] = Field(default_factory=list, description="Default scopes")
@@ -252,11 +257,11 @@ class PluginConfig(BaseModel):
 
 class PluginsConfig(BaseModel):
     """Plugins system configuration."""
+
     enabled: bool = Field(True, description="Enable plugin system")
     auto_discovery: bool = Field(True, description="Enable automatic plugin discovery")
     search_paths: list[FilePath] = Field(
-        default_factory=lambda: ["plugins/", "~/.agentup/plugins/"],
-        description="Plugin search paths"
+        default_factory=lambda: ["plugins/", "~/.agentup/plugins/"], description="Plugin search paths"
     )
 
     # Plugin configurations
@@ -277,40 +282,28 @@ class PluginsConfig(BaseModel):
 
 class MiddlewareConfig(BaseModel):
     """Middleware configuration."""
+
     enabled: bool = Field(True, description="Enable middleware system")
 
     # Rate limiting
     rate_limiting: dict[str, Any] = Field(
-        default_factory=lambda: {
-            "enabled": True,
-            "requests_per_minute": 60,
-            "burst_size": 10
-        }
+        default_factory=lambda: {"enabled": True, "requests_per_minute": 60, "burst_size": 10}
     )
 
     # Caching
     caching: dict[str, Any] = Field(
-        default_factory=lambda: {
-            "enabled": True,
-            "backend": "memory",
-            "default_ttl": 300,
-            "max_size": 1000
-        }
+        default_factory=lambda: {"enabled": True, "backend": "memory", "default_ttl": 300, "max_size": 1000}
     )
 
     # Retry logic
     retry: dict[str, Any] = Field(
-        default_factory=lambda: {
-            "enabled": True,
-            "max_attempts": 3,
-            "initial_delay": 1.0,
-            "max_delay": 60.0
-        }
+        default_factory=lambda: {"enabled": True, "max_attempts": 3, "initial_delay": 1.0, "max_delay": 60.0}
     )
 
 
 class APIConfig(BaseModel):
     """API server configuration."""
+
     enabled: bool = Field(True, description="Enable API server")
     host: str = Field("127.0.0.1", description="Server host")
     port: int = Field(8000, description="Server port")
@@ -329,8 +322,7 @@ class APIConfig(BaseModel):
     cors_enabled: bool = Field(True, description="Enable CORS")
     cors_origins: list[str] = Field(default_factory=lambda: ["*"], description="Allowed origins")
     cors_methods: list[str] = Field(
-        default_factory=lambda: ["GET", "POST", "PUT", "DELETE"],
-        description="Allowed methods"
+        default_factory=lambda: ["GET", "POST", "PUT", "DELETE"], description="Allowed methods"
     )
 
     @field_validator("port")
@@ -352,28 +344,21 @@ class APIConfig(BaseModel):
 
 class AgentConfig(BaseModel):
     """Main agent configuration."""
+
     # Basic agent information
     project_name: str = Field("AgentUp", description="Project name")
     description: str = Field("AI agent powered by AgentUp", description="Agent description")
     version: Version = Field("1.0.0", description="Agent version")
 
     # Module paths for dynamic loading
-    dispatcher_path: ModulePath | None = Field(
-        None, description="Function dispatcher module path"
-    )
+    dispatcher_path: ModulePath | None = Field(None, description="Function dispatcher module path")
     services_enabled: bool = Field(True, description="Enable services system")
-    services_init_path: ModulePath | None = Field(
-        None, description="Services initialization module path"
-    )
+    services_init_path: ModulePath | None = Field(None, description="Services initialization module path")
 
     # MCP integration
     mcp_enabled: bool = Field(False, description="Enable MCP integration")
-    mcp_init_path: ModulePath | None = Field(
-        None, description="MCP initialization module path"
-    )
-    mcp_shutdown_path: ModulePath | None = Field(
-        None, description="MCP shutdown module path"
-    )
+    mcp_init_path: ModulePath | None = Field(None, description="MCP initialization module path")
+    mcp_shutdown_path: ModulePath | None = Field(None, description="MCP shutdown module path")
 
     # Configuration sections
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
@@ -384,9 +369,7 @@ class AgentConfig(BaseModel):
     mcp: MCPConfig = Field(default_factory=MCPConfig)
 
     # Services configuration
-    services: dict[ServiceName, ServiceConfig] = Field(
-        default_factory=dict, description="Service configurations"
-    )
+    services: dict[ServiceName, ServiceConfig] = Field(default_factory=dict, description="Service configurations")
 
     # Custom configuration sections
     custom: ConfigDict = Field(default_factory=dict, description="Custom configuration")
@@ -413,11 +396,12 @@ class AgentConfig(BaseModel):
     def validate_version(cls, v: str) -> str:
         """Validate semantic version format."""
         import re
+
         if not re.match(r"^\d+\.\d+\.\d+(?:-[\w.-]+)?$", v):
             raise ValueError("Version must follow semantic versioning (e.g., 1.0.0)")
         return v
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_mcp_consistency(self) -> AgentConfig:
         """Ensure MCP configuration consistency."""
         if self.mcp_enabled:
@@ -475,7 +459,7 @@ def expand_env_vars(value: Any) -> Any:
 
             return os.getenv(var_name, default or match.group(0))
 
-        return re.sub(r'\$\{([^}]+)\}', replace_env_var, value)
+        return re.sub(r"\$\{([^}]+)\}", replace_env_var, value)
     elif isinstance(value, dict):
         return {k: expand_env_vars(v) for k, v in value.items()}
     elif isinstance(value, list):

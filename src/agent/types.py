@@ -4,6 +4,7 @@ Core type definitions for AgentUp.
 This module provides common type aliases and utility types used throughout
 the AgentUp codebase to ensure consistent typing.
 """
+
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -87,9 +88,11 @@ TableName = str
 ColumnName = str
 PrimaryKey = str | int
 
+
 # Common constants as types
 class HttpMethod:
     """HTTP method constants."""
+
     GET = "GET"
     POST = "POST"
     PUT = "PUT"
@@ -98,8 +101,10 @@ class HttpMethod:
     HEAD = "HEAD"
     OPTIONS = "OPTIONS"
 
+
 class ContentType:
     """Common content type constants."""
+
     JSON = "application/json"
     XML = "application/xml"
     TEXT = "text/plain"
@@ -108,52 +113,79 @@ class ContentType:
     MULTIPART = "multipart/form-data"
     BINARY = "application/octet-stream"
 
+
 class AuthScheme:
     """Authentication scheme constants."""
+
     BEARER = "Bearer"
     BASIC = "Basic"
     API_KEY = "ApiKey"
     OAUTH2 = "OAuth2"
 
+
 # Re-export commonly used types
 __all__ = [
     # Core JSON type
     "JsonValue",
-
     # Identity types
-    "UserId", "ScopeName", "IPAddress", "ModulePath", "FilePath",
-
+    "UserId",
+    "ScopeName",
+    "IPAddress",
+    "ModulePath",
+    "FilePath",
     # HTTP types
-    "HeaderName", "QueryParam", "CookieName", "Headers", "QueryParams", "FormData",
-
+    "HeaderName",
+    "QueryParam",
+    "CookieName",
+    "Headers",
+    "QueryParams",
+    "FormData",
     # Configuration types
-    "ConfigDict", "MetadataDict", "EnvironmentDict",
-
+    "ConfigDict",
+    "MetadataDict",
+    "EnvironmentDict",
     # Time types
-    "Timestamp", "Duration", "TTL",
-
+    "Timestamp",
+    "Duration",
+    "TTL",
     # Service types
-    "ServiceName", "ServiceType", "ServiceId",
-
+    "ServiceName",
+    "ServiceType",
+    "ServiceId",
     # Plugin types
-    "PluginId", "CapabilityId", "HookName",
-
+    "PluginId",
+    "CapabilityId",
+    "HookName",
     # Security types
-    "Token", "Hash", "Salt", "Signature",
-
+    "Token",
+    "Hash",
+    "Salt",
+    "Signature",
     # MCP types
-    "MCPServerName", "MCPToolName", "MCPResourceId",
-
+    "MCPServerName",
+    "MCPToolName",
+    "MCPResourceId",
     # API types
-    "RequestId", "TaskId", "SessionId", "CorrelationId",
-
+    "RequestId",
+    "TaskId",
+    "SessionId",
+    "CorrelationId",
     # Error types
-    "ErrorCode", "ErrorMessage",
-
+    "ErrorCode",
+    "ErrorMessage",
     # Other types
-    "Version", "URL", "WebSocketURL", "FileContent", "MimeType",
-    "LogLevel", "LoggerName", "TableName", "ColumnName", "PrimaryKey",
-
+    "Version",
+    "URL",
+    "WebSocketURL",
+    "FileContent",
+    "MimeType",
+    "LogLevel",
+    "LoggerName",
+    "TableName",
+    "ColumnName",
+    "PrimaryKey",
     # Constants
-    "HttpMethod", "ContentType", "AuthScheme",
+    "HttpMethod",
+    "ContentType",
+    "AuthScheme",
 ]

@@ -1,6 +1,7 @@
 """
 Tests for the validation framework.
 """
+
 import pytest  # noqa: F401
 from pydantic import BaseModel, Field
 
@@ -111,19 +112,17 @@ class TestBaseValidator:
         validator = self.SimpleValidator(SampleModel)
 
         # Valid data
-        result = validator.validate_dict({
-            "name": "John",
-            "age": 25,
-            "email": "john@example.com"
-        })
+        result = validator.validate_dict({"name": "John", "age": 25, "email": "john@example.com"})
         assert result.valid is True
 
         # Invalid data (Pydantic validation)
-        result = validator.validate_dict({
-            "name": "",  # Too short
-            "age": -5,   # Negative age
-            "email": "john@example.com"
-        })
+        result = validator.validate_dict(
+            {
+                "name": "",  # Too short
+                "age": -5,  # Negative age
+                "email": "john@example.com",
+            }
+        )
         assert result.valid is False
         assert len(result.errors) >= 2
 
@@ -152,12 +151,7 @@ class TestBaseValidator:
         assert "under 18" in result.warnings[0]
 
         # Test HTTPS suggestion
-        model = SampleModel(
-            name="User",
-            age=25,
-            email="user@example.com",
-            website="http://example.com"
-        )
+        model = SampleModel(name="User", age=25, email="user@example.com", website="http://example.com")
         result = validator.validate(model)
         assert result.valid is True
         assert "HTTPS" in result.suggestions[0]
@@ -230,7 +224,7 @@ class TestConditionalValidator:
             SampleModel,
             condition=lambda m: m.website is not None,
             validator=website_validator,
-            skip_message="Website validation skipped"
+            skip_message="Website validation skipped",
         )
 
         # Model without website - should skip validation
@@ -240,12 +234,7 @@ class TestConditionalValidator:
         assert "skipped" in result1.suggestions[0]
 
         # Model with invalid website - should run validation
-        model2 = SampleModel(
-            name="User2",
-            age=25,
-            email="user2@example.com",
-            website="invalid-url"
-        )
+        model2 = SampleModel(name="User2", age=25, email="user2@example.com", website="invalid-url")
         result2 = conditional.validate(model2)
         assert result2.valid is False
         assert "must start with http" in result2.errors[0]
@@ -260,13 +249,9 @@ class TestFieldValidator:
 
         # Add field validators
         validator.add_field_validator(
-            "name",
-            lambda value: "Name cannot be 'admin'" if value.lower() == "admin" else None
+            "name", lambda value: "Name cannot be 'admin'" if value.lower() == "admin" else None
         )
-        validator.add_field_validator(
-            "age",
-            lambda value: "Age should be realistic" if value > 100 else None
-        )
+        validator.add_field_validator("age", lambda value: "Age should be realistic" if value > 100 else None)
 
         # Test field validation with data that passes Pydantic but fails custom validation
         model = SampleModel(name="admin", age=90, email="admin@example.com")  # age=90 is valid for Pydantic
@@ -283,7 +268,7 @@ class TestFieldValidator:
         # Add validator that raises exception
         validator.add_field_validator(
             "name",
-            lambda value: 1 / 0  # Will raise ZeroDivisionError
+            lambda value: 1 / 0,  # Will raise ZeroDivisionError
         )
 
         model = SampleModel(name="Test", age=25, email="test@example.com")
@@ -303,12 +288,9 @@ class TestBusinessRuleValidator:
         # Add business rules
         validator.add_rule(
             lambda model: model.age >= 18 if model.email.endswith("@company.com") else True,
-            "Company email users must be 18 or older"
+            "Company email users must be 18 or older",
         )
-        validator.add_rule(
-            lambda model: len(model.name) >= 3,
-            "Name must be at least 3 characters"
-        )
+        validator.add_rule(lambda model: len(model.name) >= 3, "Name must be at least 3 characters")
 
         # Test failing business rule
         model = SampleModel(name="Al", age=16, email="al@company.com")
@@ -342,21 +324,19 @@ class TestCrossFieldValidator:
 
         # Add cross-field constraints
         validator.add_constraint(
-            ["name", "email"],
-            lambda name, email: name.lower() in email.lower(),
-            "Name should appear in email address"
+            ["name", "email"], lambda name, email: name.lower() in email.lower(), "Name should appear in email address"
         )
         validator.add_constraint(
             ["age", "website"],
             lambda age, website: website is not None if age >= 18 else True,
-            "Adults should have a website"
+            "Adults should have a website",
         )
 
         # Test failing constraints
         model = SampleModel(
             name="John",
             age=25,
-            email="jane@example.com"  # Name not in email
+            email="jane@example.com",  # Name not in email
             # No website for adult
         )
         result = validator.validate(model)
@@ -371,11 +351,7 @@ class TestCrossFieldValidator:
         validator = CrossFieldValidator(SampleModel)
 
         # Add constraint that raises exception
-        validator.add_constraint(
-            ["name", "age"],
-            lambda name, age: 1 / 0,
-            "This will fail"
-        )
+        validator.add_constraint(["name", "age"], lambda name, age: 1 / 0, "This will fail")
 
         model = SampleModel(name="Test", age=25, email="test@example.com")
         result = validator.validate(model)
@@ -399,9 +375,9 @@ class TestPerformanceValidator:
         # Test model exceeding limits
         model = ComplexModel(
             title="This title is too long",  # > 10 chars
-            items=["a", "b", "c", "d"],      # > 3 items
+            items=["a", "b", "c", "d"],  # > 3 items
             metadata={"a": "1", "b": "2", "c": "3"},  # > 2 items
-            settings={"x": 1}
+            settings={"x": 1},
         )
         result = validator.validate(model)
 
@@ -424,7 +400,7 @@ class TestPerformanceValidator:
             title="Test",
             items=["a"],
             metadata=large_metadata,  # High complexity due to size
-            settings={"x": 1}
+            settings={"x": 1},
         )
         result = validator.validate(model)
 
@@ -487,29 +463,19 @@ class TestValidationIntegration:
         # Create multiple validators
         field_validator = FieldValidator(SampleModel)
         field_validator.add_field_validator(
-            "name",
-            lambda v: "Name too generic" if v.lower() in ["user", "admin"] else None
+            "name", lambda v: "Name too generic" if v.lower() in ["user", "admin"] else None
         )
 
         business_validator = BusinessRuleValidator(SampleModel)
-        business_validator.add_rule(
-            lambda m: m.age >= 13,
-            "Must be at least 13 years old"
-        )
+        business_validator.add_rule(lambda m: m.age >= 13, "Must be at least 13 years old")
 
         cross_field_validator = CrossFieldValidator(SampleModel)
         cross_field_validator.add_constraint(
-            ["name", "age"],
-            lambda name, age: len(name) >= 3 if age >= 18 else True,
-            "Adults must have full names"
+            ["name", "age"], lambda name, age: len(name) >= 3 if age >= 18 else True, "Adults must have full names"
         )
 
         # Combine all validators
-        composite = CompositeValidator(SampleModel, [
-            field_validator,
-            business_validator,
-            cross_field_validator
-        ])
+        composite = CompositeValidator(SampleModel, [field_validator, business_validator, cross_field_validator])
 
         # Test model that fails business rule validation
         model = SampleModel(name="Al", age=12, email="al@example.com")
@@ -521,16 +487,13 @@ class TestValidationIntegration:
     def test_validation_with_pydantic_errors(self):
         """Test validation combined with Pydantic validation errors."""
         validator = BusinessRuleValidator(SampleModel)
-        validator.add_rule(
-            lambda m: m.age != 42,
-            "Age cannot be 42"
-        )
+        validator.add_rule(lambda m: m.age != 42, "Age cannot be 42")
 
         # Test with both Pydantic and custom validation errors
         invalid_data = {
-            "name": "",      # Pydantic validation error
-            "age": 42,       # Custom validation error
-            "email": "valid@example.com"
+            "name": "",  # Pydantic validation error
+            "age": 42,  # Custom validation error
+            "email": "valid@example.com",
         }
 
         result = validator.validate_dict(invalid_data)
@@ -542,6 +505,7 @@ class TestValidationIntegration:
 
     def test_performance_with_large_models(self):
         """Test validation performance with larger models."""
+
         # Create a model with many fields
         class LargeModel(BaseModel):
             field1: str = "value1"
@@ -559,8 +523,8 @@ class TestValidationIntegration:
 
         # Test with large data
         model = LargeModel(
-            large_list=["item"] * 100,    # Within limit
-            large_dict={f"key{i}": f"value{i}" for i in range(50)}  # Within limit
+            large_list=["item"] * 100,  # Within limit
+            large_dict={f"key{i}": f"value{i}" for i in range(50)},  # Within limit
         )
 
         result = validator.validate(model)

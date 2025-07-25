@@ -1,6 +1,7 @@
 """
 Tests for AgentUp type definitions.
 """
+
 import pytest  # noqa: F401
 
 from src.agent.types import (
@@ -40,7 +41,7 @@ class TestJsonValue:
             "boolean": True,
             "null": None,
             "list": [1, 2, 3],
-            "dict": {"nested": "value"}
+            "dict": {"nested": "value"},
         }
 
         assert isinstance(nested_dict["string"], str)
@@ -74,19 +75,13 @@ class TestTypeAliases:
 
     def test_headers_type(self):
         """Test Headers type."""
-        headers: Headers = {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer token123"
-        }
+        headers: Headers = {"Content-Type": "application/json", "Authorization": "Bearer token123"}
         assert isinstance(headers, dict)
         assert headers["Content-Type"] == "application/json"
 
     def test_query_params_type(self):
         """Test QueryParams type."""
-        params: QueryParams = {
-            "single": "value",
-            "multiple": ["value1", "value2"]
-        }
+        params: QueryParams = {"single": "value", "multiple": ["value1", "value2"]}
         assert isinstance(params, dict)
         assert params["single"] == "value"
         assert isinstance(params["multiple"], list)
@@ -97,7 +92,7 @@ class TestTypeAliases:
             "string_setting": "value",
             "number_setting": 42,
             "boolean_setting": True,
-            "nested_setting": {"key": "value"}
+            "nested_setting": {"key": "value"},
         }
         assert isinstance(config, dict)
         assert config["string_setting"] == "value"
@@ -105,11 +100,7 @@ class TestTypeAliases:
 
     def test_metadata_dict_type(self):
         """Test MetadataDict type."""
-        metadata: MetadataDict = {
-            "version": "1.0.0",
-            "author": "AgentUp",
-            "description": "Test metadata"
-        }
+        metadata: MetadataDict = {"version": "1.0.0", "author": "AgentUp", "description": "Test metadata"}
         assert isinstance(metadata, dict)
         assert all(isinstance(v, str) for v in metadata.values())
 
@@ -150,21 +141,12 @@ class TestTypeUsage:
 
     def test_function_with_typed_parameters(self):
         """Test function using typed parameters."""
-        def process_request(
-            user_id: UserId,
-            headers: Headers,
-            params: QueryParams
-        ) -> ConfigDict:
-            return {
-                "user": user_id,
-                "content_type": headers.get("Content-Type"),
-                "param_count": len(params)
-            }
+
+        def process_request(user_id: UserId, headers: Headers, params: QueryParams) -> ConfigDict:
+            return {"user": user_id, "content_type": headers.get("Content-Type"), "param_count": len(params)}
 
         result = process_request(
-            user_id="user123",
-            headers={"Content-Type": "application/json"},
-            params={"query": "test"}
+            user_id="user123", headers={"Content-Type": "application/json"}, params={"query": "test"}
         )
 
         assert result["user"] == "user123"
@@ -174,17 +156,10 @@ class TestTypeUsage:
     def test_nested_json_structure(self):
         """Test nested JSON-like structure."""
         complex_config: ConfigDict = {
-            "database": {
-                "host": "localhost",
-                "port": 5432,
-                "credentials": {
-                    "username": "admin",
-                    "password": "secret"
-                }
-            },
+            "database": {"host": "localhost", "port": 5432, "credentials": {"username": "admin", "password": "secret"}},
             "features": ["auth", "logging", "monitoring"],
             "debug": True,
-            "version": "1.0.0"
+            "version": "1.0.0",
         }
 
         assert isinstance(complex_config["database"], dict)

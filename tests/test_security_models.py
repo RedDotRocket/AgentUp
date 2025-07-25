@@ -1,6 +1,7 @@
 """
 Tests for AgentUp security models.
 """
+
 from datetime import datetime, timedelta
 
 import pytest
@@ -35,11 +36,7 @@ class TestScope:
         assert scope.description is None
         assert scope.parent is None
 
-        scope_with_desc = Scope(
-            name="api:v1:read",
-            description="Read API v1 resources",
-            parent="api:v1"
-        )
+        scope_with_desc = Scope(name="api:v1:read", description="Read API v1 resources", parent="api:v1")
         assert scope_with_desc.name == "api:v1:read"
         assert scope_with_desc.description == "Read API v1 resources"
         assert scope_with_desc.parent == "api:v1"
@@ -118,7 +115,7 @@ class TestAPIKeyData:
             key=SecretStr(test_key),
             name="Test Key",
             scopes=[Scope(name="read"), Scope(name="write")],
-            description="Test API key"
+            description="Test API key",
         )
 
         assert key.key.get_secret_value() == test_key
@@ -157,39 +154,26 @@ class TestAPIKeyData:
         now = datetime.utcnow()
 
         # Valid expiration (in future)
-        key = APIKeyData(
-            key=SecretStr("Aa1!" * 8),
-            created_at=now,
-            expires_at=now + timedelta(days=30)
-        )
+        key = APIKeyData(key=SecretStr("Aa1!" * 8), created_at=now, expires_at=now + timedelta(days=30))
         assert not key.is_expired
 
         # Invalid expiration (in past)
         with pytest.raises(ValidationError):
-            APIKeyData(
-                key=SecretStr("Aa1!" * 8),
-                created_at=now,
-                expires_at=now - timedelta(days=1)
-            )
+            APIKeyData(key=SecretStr("Aa1!" * 8), created_at=now, expires_at=now - timedelta(days=1))
 
         # Test expired key
         past_time = now - timedelta(days=2)
         expired_key = APIKeyData(
             key=SecretStr("Aa1!" * 8),
             created_at=past_time,
-            expires_at=past_time + timedelta(seconds=1)  # Expires 1 second after creation, but still in the past
+            expires_at=past_time + timedelta(seconds=1),  # Expires 1 second after creation, but still in the past
         )
         assert expired_key.is_expired
 
     def test_scope_checking(self):
         """Test API key scope checking."""
         key = APIKeyData(
-            key=SecretStr("Aa1!" * 8),
-            scopes=[
-                Scope(name="api"),
-                Scope(name="read"),
-                Scope(name="user:profile")
-            ]
+            key=SecretStr("Aa1!" * 8), scopes=[Scope(name="api"), Scope(name="read"), Scope(name="user:profile")]
         )
 
         # Direct scope match
@@ -216,8 +200,8 @@ class TestAPIKeyConfig:
             location="header",
             keys=[
                 APIKeyData(key=SecretStr("Aa1!" * 8), name="Key 1"),
-                APIKeyData(key=SecretStr("Bb2@" * 8), name="Key 2")
-            ]
+                APIKeyData(key=SecretStr("Bb2@" * 8), name="Key 2"),
+            ],
         )
 
         assert config.header_name == "X-Custom-Key"
@@ -227,20 +211,14 @@ class TestAPIKeyConfig:
     def test_header_name_validation(self):
         """Test HTTP header name validation."""
         # Valid header names
-        APIKeyConfig(
-            header_name="X-API-Key",
-            keys=[APIKeyData(key=SecretStr("Aa1!" * 8))]
-        )
-        APIKeyConfig(
-            header_name="Authorization",
-            keys=[APIKeyData(key=SecretStr("Aa1!" * 8))]
-        )
+        APIKeyConfig(header_name="X-API-Key", keys=[APIKeyData(key=SecretStr("Aa1!" * 8))])
+        APIKeyConfig(header_name="Authorization", keys=[APIKeyData(key=SecretStr("Aa1!" * 8))])
 
         # Invalid header names
         with pytest.raises(ValidationError):
             APIKeyConfig(
                 header_name="Invalid Header Name",  # Spaces not allowed
-                keys=[APIKeyData(key=SecretStr("Aa1!" * 8))]
+                keys=[APIKeyData(key=SecretStr("Aa1!" * 8))],
             )
 
     def test_unique_keys_validation(self):
@@ -251,7 +229,7 @@ class TestAPIKeyConfig:
             APIKeyConfig(
                 keys=[
                     APIKeyData(key=same_key, name="Key 1"),
-                    APIKeyData(key=same_key, name="Key 2")  # Duplicate
+                    APIKeyData(key=same_key, name="Key 2"),  # Duplicate
                 ]
             )
         assert "Duplicate API keys" in str(exc_info.value)
@@ -261,10 +239,7 @@ class TestAPIKeyConfig:
         valid_locations = ["header", "query", "cookie"]
 
         for location in valid_locations:
-            APIKeyConfig(
-                location=location,
-                keys=[APIKeyData(key=SecretStr("Aa1!" * 8))]
-            )
+            APIKeyConfig(location=location, keys=[APIKeyData(key=SecretStr("Aa1!" * 8))])
 
         # Invalid location should be caught by Literal type
 
@@ -287,17 +262,12 @@ class TestJWTConfig:
         """Test JWT config with asymmetric algorithms."""
         # Should require public key for RS/ES algorithms
         with pytest.raises(ValidationError) as exc_info:
-            JWTConfig(
-                secret_key=SecretStr("private-key"),
-                algorithm=JWTAlgorithm.RS256
-            )
+            JWTConfig(secret_key=SecretStr("private-key"), algorithm=JWTAlgorithm.RS256)
         assert "Public key required" in str(exc_info.value)
 
         # Valid asymmetric config
         config = JWTConfig(
-            secret_key=SecretStr("private-key"),
-            algorithm=JWTAlgorithm.RS256,
-            public_key=SecretStr("public-key")
+            secret_key=SecretStr("private-key"), algorithm=JWTAlgorithm.RS256, public_key=SecretStr("public-key")
         )
         assert config.algorithm == JWTAlgorithm.RS256
         assert config.public_key is not None
@@ -310,7 +280,7 @@ class TestJWTConfig:
             expiration=timedelta(minutes=30),
             issuer="agentup",
             audience="api",
-            required_claims=["sub", "exp", "iat", "custom"]
+            required_claims=["sub", "exp", "iat", "custom"],
         )
 
         assert config.algorithm == JWTAlgorithm.HS512
@@ -332,7 +302,7 @@ class TestOAuth2Config:
             token_url="https://auth.example.com/oauth/token",
             redirect_uri="https://app.example.com/callback",
             scopes=["read", "write"],
-            jwks_url="https://auth.example.com/.well-known/jwks.json"
+            jwks_url="https://auth.example.com/.well-known/jwks.json",
         )
 
         assert config.client_id == "client123"
@@ -349,7 +319,7 @@ class TestOAuth2Config:
             authorization_url="https://example.com/auth",
             token_url="https://example.com/token",
             redirect_uri="https://app.com/callback",
-            jwks_url="https://example.com/.well-known/jwks.json"  # Required for JWT validation
+            jwks_url="https://example.com/.well-known/jwks.json",  # Required for JWT validation
         )
 
         # Invalid URLs
@@ -359,7 +329,7 @@ class TestOAuth2Config:
                 client_secret=SecretStr("secret"),
                 authorization_url="invalid-url",
                 token_url="https://example.com/token",
-                redirect_uri="https://app.com/callback"
+                redirect_uri="https://app.com/callback",
             )
 
     def test_oauth2_validation_strategy(self):
@@ -372,7 +342,7 @@ class TestOAuth2Config:
                 authorization_url="https://example.com/auth",
                 token_url="https://example.com/token",
                 redirect_uri="https://app.com/callback",
-                validation_strategy="jwt"
+                validation_strategy="jwt",
                 # Missing jwks_url
             )
         assert "jwks_url required" in str(exc_info.value)
@@ -385,7 +355,7 @@ class TestOAuth2Config:
                 authorization_url="https://example.com/auth",
                 token_url="https://example.com/token",
                 redirect_uri="https://app.com/callback",
-                validation_strategy="introspection"
+                validation_strategy="introspection",
                 # Missing introspection_endpoint
             )
         assert "introspection_endpoint required" in str(exc_info.value)
@@ -396,13 +366,7 @@ class TestSecurityConfig:
 
     def test_minimal_security_config(self):
         """Test minimal valid security configuration."""
-        config = SecurityConfig(
-            auth={
-                AuthType.API_KEY: APIKeyConfig(
-                    keys=[APIKeyData(key=SecretStr("Aa1!" * 8))]
-                )
-            }
-        )
+        config = SecurityConfig(auth={AuthType.API_KEY: APIKeyConfig(keys=[APIKeyData(key=SecretStr("Aa1!" * 8))])})
 
         assert config.enabled is True
         assert config.require_https is True
@@ -413,12 +377,8 @@ class TestSecurityConfig:
         """Test security config with multiple auth methods."""
         config = SecurityConfig(
             auth={
-                AuthType.API_KEY: APIKeyConfig(
-                    keys=[APIKeyData(key=SecretStr("Aa1!" * 8))]
-                ),
-                AuthType.JWT: JWTConfig(
-                    secret_key=SecretStr("jwt-secret-key-32-chars-long!!")
-                )
+                AuthType.API_KEY: APIKeyConfig(keys=[APIKeyData(key=SecretStr("Aa1!" * 8))]),
+                AuthType.JWT: JWTConfig(secret_key=SecretStr("jwt-secret-key-32-chars-long!!")),
             }
         )
 
@@ -436,26 +396,23 @@ class TestSecurityConfig:
         """Test CORS origins validation."""
         # Valid origins
         SecurityConfig(
-            auth={AuthType.API_KEY: APIKeyConfig(keys=[APIKeyData(key=SecretStr("Aa1!" * 8))])},
-            allowed_origins=["*"]
+            auth={AuthType.API_KEY: APIKeyConfig(keys=[APIKeyData(key=SecretStr("Aa1!" * 8))])}, allowed_origins=["*"]
         )
         SecurityConfig(
             auth={AuthType.API_KEY: APIKeyConfig(keys=[APIKeyData(key=SecretStr("Aa1!" * 8))])},
-            allowed_origins=["https://example.com", "https://app.example.com"]
+            allowed_origins=["https://example.com", "https://app.example.com"],
         )
 
         # Invalid origins
         with pytest.raises(ValidationError):
             SecurityConfig(
                 auth={AuthType.API_KEY: APIKeyConfig(keys=[APIKeyData(key=SecretStr("Aa1!" * 8))])},
-                allowed_origins=["invalid-origin"]
+                allowed_origins=["invalid-origin"],
             )
 
     def test_security_config_defaults(self):
         """Test security configuration defaults."""
-        config = SecurityConfig(
-            auth={AuthType.API_KEY: APIKeyConfig(keys=[APIKeyData(key=SecretStr("Aa1!" * 8))])}
-        )
+        config = SecurityConfig(auth={AuthType.API_KEY: APIKeyConfig(keys=[APIKeyData(key=SecretStr("Aa1!" * 8))])})
 
         assert config.enabled is True
         assert config.require_https is True
@@ -477,7 +434,7 @@ class TestAuthContext:
             auth_type=AuthType.API_KEY,
             auth_result=AuthResult.SUCCESS,
             user_id="user123",
-            scopes={Scope(name="read"), Scope(name="api:v1")}
+            scopes={Scope(name="read"), Scope(name="api:v1")},
         )
 
         assert context.authenticated is True
@@ -488,12 +445,7 @@ class TestAuthContext:
     def test_scope_checking_methods(self):
         """Test scope checking methods."""
         context = AuthContext(
-            authenticated=True,
-            scopes={
-                Scope(name="api"),
-                Scope(name="read"),
-                Scope(name="user:profile")
-            }
+            authenticated=True, scopes={Scope(name="api"), Scope(name="read"), Scope(name="user:profile")}
         )
 
         # has_scope
@@ -520,7 +472,7 @@ class TestAuditLogEntry:
             action=AuditAction.LOGIN,
             result=AuditResult.SUCCESS,
             user_id="user123",
-            ip_address="192.168.1.1"
+            ip_address="192.168.1.1",
         )
 
         assert entry.event_type == "auth"
@@ -539,7 +491,7 @@ class TestAuditLogEntry:
             user_id="user123",
             resource_type="document",
             resource_id="doc456",
-            ip_address="10.0.0.1"
+            ip_address="10.0.0.1",
         )
 
         log_line = entry.to_log_format()
@@ -554,10 +506,7 @@ class TestAuditLogEntry:
     def test_audit_log_with_error(self):
         """Test audit log with error information."""
         entry = AuditLogEntry(
-            event_type="auth",
-            action=AuditAction.LOGIN,
-            result=AuditResult.FAILURE,
-            error_message="Invalid credentials"
+            event_type="auth", action=AuditAction.LOGIN, result=AuditResult.FAILURE, error_message="Invalid credentials"
         )
 
         log_line = entry.to_log_format()
@@ -575,7 +524,7 @@ class TestPermissionModels:
             resource_type="document",
             resource_id="doc456",
             action="read",
-            context={"department": "engineering"}
+            context={"department": "engineering"},
         )
 
         assert check.user_id == "user123"
@@ -590,7 +539,7 @@ class TestPermissionModels:
             reason="Insufficient privileges",
             required_scopes=["document:read"],
             missing_scopes=["document:read"],
-            conditions=["Must be in same department"]
+            conditions=["Must be in same department"],
         )
 
         assert result.granted is False
@@ -606,12 +555,8 @@ class TestModelSerialization:
     def test_security_config_serialization(self):
         """Test security config serialization."""
         config = SecurityConfig(
-            auth={
-                AuthType.API_KEY: APIKeyConfig(
-                    keys=[APIKeyData(key=SecretStr("Aa1!" * 8), name="Test Key")]
-                )
-            },
-            require_https=False
+            auth={AuthType.API_KEY: APIKeyConfig(keys=[APIKeyData(key=SecretStr("Aa1!" * 8), name="Test Key")])},
+            require_https=False,
         )
 
         # Serialize to dict
@@ -624,13 +569,10 @@ class TestModelSerialization:
 
     def test_auth_context_with_sets(self):
         """Test auth context serialization with sets."""
-        context = AuthContext(
-            authenticated=True,
-            scopes={Scope(name="read"), Scope(name="write")}
-        )
+        context = AuthContext(authenticated=True, scopes={Scope(name="read"), Scope(name="write")})
 
         # Should be able to convert to dict (use mode='json' for better serialization of complex types)
-        context_dict = context.model_dump(mode='json')
+        context_dict = context.model_dump(mode="json")
         assert context_dict["authenticated"] is True
         # Sets are converted to lists in serialization
         assert isinstance(context_dict["scopes"], list)
@@ -638,11 +580,7 @@ class TestModelSerialization:
 
     def test_json_serialization_with_datetime(self):
         """Test JSON serialization with datetime fields."""
-        entry = AuditLogEntry(
-            event_type="test",
-            action=AuditAction.READ,
-            result=AuditResult.SUCCESS
-        )
+        entry = AuditLogEntry(event_type="test", action=AuditAction.READ, result=AuditResult.SUCCESS)
 
         # Should serialize datetime properly
         json_str = entry.model_dump_json()

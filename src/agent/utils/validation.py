@@ -4,6 +4,7 @@ Validation framework for AgentUp Pydantic models.
 This module provides base validation classes and utilities for comprehensive
 model validation beyond Pydantic's built-in capabilities.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -12,18 +13,17 @@ from typing import Any, Generic, TypeVar
 from pydantic import BaseModel, Field, ValidationError
 
 # Generic type for model validators
-T = TypeVar('T', bound=BaseModel)
+T = TypeVar("T", bound=BaseModel)
 
 
 class ValidationResult(BaseModel):
     """Result of model validation with detailed feedback."""
+
     valid: bool = Field(..., description="Whether validation passed")
     errors: list[str] = Field(default_factory=list, description="Validation errors")
     warnings: list[str] = Field(default_factory=list, description="Validation warnings")
     suggestions: list[str] = Field(default_factory=list, description="Improvement suggestions")
-    field_errors: dict[str, list[str]] = Field(
-        default_factory=dict, description="Field-specific errors"
-    )
+    field_errors: dict[str, list[str]] = Field(default_factory=dict, description="Field-specific errors")
 
     def add_error(self, message: str, field: str | None = None) -> None:
         """Add a validation error."""
@@ -136,6 +136,7 @@ class BaseValidator(ABC, Generic[T]):
         """
         try:
             import json
+
             data = json.loads(json_data)
             return self.validate_dict(data)
         except json.JSONDecodeError as e:
@@ -179,11 +180,7 @@ class ConditionalValidator(BaseValidator[T]):
     """Validator that applies conditions before validation."""
 
     def __init__(
-        self,
-        model_class: type[T],
-        condition: callable,
-        validator: BaseValidator[T],
-        skip_message: str | None = None
+        self, model_class: type[T], condition: callable, validator: BaseValidator[T], skip_message: str | None = None
     ):
         """Initialize conditional validator.
 
@@ -258,10 +255,7 @@ class FieldValidator(BaseValidator[T]):
                     if error_message:
                         result.add_error(error_message, field_name)
                 except Exception as e:
-                    result.add_error(
-                        f"Field validator error: {str(e)}",
-                        field_name
-                    )
+                    result.add_error(f"Field validator error: {str(e)}", field_name)
 
         return result
 
@@ -281,6 +275,7 @@ class SchemaValidator(BaseValidator[T]):
 
         try:
             import jsonschema
+
             self.jsonschema = jsonschema
         except ImportError:
             raise ImportError("jsonschema package required for SchemaValidator") from None
@@ -323,6 +318,7 @@ class BusinessRuleValidator(BaseValidator[T]):
             rule_func: Function that takes model and returns bool (True = valid)
             error_message: Custom error message if rule fails
         """
+
         def wrapper(model):
             try:
                 if not rule_func(model):
@@ -360,12 +356,7 @@ class CrossFieldValidator(BaseValidator[T]):
         super().__init__(model_class)
         self.constraints: list[callable] = []
 
-    def add_constraint(
-        self,
-        fields: list[str],
-        constraint_func: callable,
-        error_message: str | None = None
-    ) -> None:
+    def add_constraint(self, fields: list[str], constraint_func: callable, error_message: str | None = None) -> None:
         """Add a cross-field constraint.
 
         Args:
@@ -373,6 +364,7 @@ class CrossFieldValidator(BaseValidator[T]):
             constraint_func: Function that takes field values and returns bool
             error_message: Custom error message if constraint fails
         """
+
         def wrapper(model):
             try:
                 field_values = {}
@@ -454,10 +446,7 @@ class PerformanceValidator(BaseValidator[T]):
             size = self._calculate_size(field_value)
 
             if size > max_size:
-                result.add_error(
-                    f"Field '{field_name}' size ({size}) exceeds limit ({max_size})",
-                    field_name
-                )
+                result.add_error(f"Field '{field_name}' size ({size}) exceeds limit ({max_size})", field_name)
 
         # Check complexity limits
         for field_name, max_complexity in self.complexity_limits.items():
@@ -469,8 +458,7 @@ class PerformanceValidator(BaseValidator[T]):
 
             if complexity > max_complexity:
                 result.add_error(
-                    f"Field '{field_name}' complexity ({complexity}) exceeds limit ({max_complexity})",
-                    field_name
+                    f"Field '{field_name}' complexity ({complexity}) exceeds limit ({max_complexity})", field_name
                 )
 
         return result
@@ -509,18 +497,21 @@ def validate_url(url: str) -> str | None:
     if not url:
         return "URL cannot be empty"
 
-    if not url.startswith(('http://', 'https://')):
+    if not url.startswith(("http://", "https://")):
         return "URL must start with http:// or https://"
 
     # Basic URL format check
     import re
+
     url_pattern = re.compile(
-        r'^https?://'  # http:// or https://
-        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?|'  # domain...
-        r'localhost|'  # localhost...
-        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # ...or ip
-        r'(?::\d+)?'  # optional port
-        r'(?:/?|[/?]\S+)$', re.IGNORECASE)
+        r"^https?://"  # http:// or https://
+        r"(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?|"  # domain...
+        r"localhost|"  # localhost...
+        r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})"  # ...or ip
+        r"(?::\d+)?"  # optional port
+        r"(?:/?|[/?]\S+)$",
+        re.IGNORECASE,
+    )
 
     if not url_pattern.match(url):
         return "Invalid URL format"
@@ -541,9 +532,8 @@ def validate_email(email: str) -> str | None:
         return "Email cannot be empty"
 
     import re
-    email_pattern = re.compile(
-        r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-    )
+
+    email_pattern = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
 
     if not email_pattern.match(email):
         return "Invalid email format"
@@ -564,11 +554,12 @@ def validate_version(version: str) -> str | None:
         return "Version cannot be empty"
 
     import re
+
     version_pattern = re.compile(
-        r'^(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)'
-        r'(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)'
-        r'(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)'
-        r')?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$'
+        r"^(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)"
+        r"(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)"
+        r"(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)"
+        r")?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$"
     )
 
     if not version_pattern.match(version):

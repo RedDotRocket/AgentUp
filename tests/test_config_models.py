@@ -1,6 +1,7 @@
 """
 Tests for AgentUp configuration models.
 """
+
 import pytest
 from pydantic import ValidationError
 
@@ -35,11 +36,7 @@ class TestLoggingConfig:
 
     def test_custom_logging_config(self):
         """Test custom logging configuration."""
-        config = LoggingConfig(
-            level="DEBUG",
-            format=LogFormat.JSON,
-            modules={"security": "WARNING", "api": "DEBUG"}
-        )
+        config = LoggingConfig(level="DEBUG", format=LogFormat.JSON, modules={"security": "WARNING", "api": "DEBUG"})
 
         assert config.level == "DEBUG"
         assert config.format == LogFormat.JSON
@@ -78,10 +75,7 @@ class TestServiceConfig:
     def test_custom_service_config(self):
         """Test custom service configuration."""
         config = ServiceConfig(
-            type="custom-service",
-            enabled=False,
-            priority=10,
-            settings={"api_key": "secret", "timeout": 30}
+            type="custom-service", enabled=False, priority=10, settings={"api_key": "secret", "timeout": 30}
         )
 
         assert config.type == "custom-service"
@@ -134,10 +128,7 @@ class TestAPIConfig:
     def test_custom_api_config(self):
         """Test custom API configuration."""
         config = APIConfig(
-            host="0.0.0.0",
-            port=9000,
-            workers=4,
-            cors_origins=["https://example.com", "https://app.example.com"]
+            host="0.0.0.0", port=9000, workers=4, cors_origins=["https://example.com", "https://app.example.com"]
         )
 
         assert config.host == "0.0.0.0"
@@ -174,11 +165,7 @@ class TestMCPConfig:
     def test_mcp_server_config_stdio(self):
         """Test MCP server config for stdio type."""
         config = MCPServerConfig(
-            name="test-server",
-            type="stdio",
-            command="python",
-            args=["-m", "mcp_server"],
-            env={"DEBUG": "1"}
+            name="test-server", type="stdio", command="python", args=["-m", "mcp_server"], env={"DEBUG": "1"}
         )
 
         assert config.name == "test-server"
@@ -194,7 +181,7 @@ class TestMCPConfig:
             type="http",
             url="https://api.example.com/mcp",
             headers={"Authorization": "Bearer token"},
-            timeout=60
+            timeout=60,
         )
 
         assert config.name == "http-server"
@@ -227,14 +214,7 @@ class TestMCPConfig:
             client_enabled=True,
             server_enabled=True,
             server_port=9000,
-            servers=[
-                MCPServerConfig(
-                    name="local",
-                    type="stdio",
-                    command="python",
-                    args=["-m", "local_server"]
-                )
-            ]
+            servers=[MCPServerConfig(name="local", type="stdio", command="python", args=["-m", "local_server"])],
         )
 
         assert config.enabled is True
@@ -253,7 +233,7 @@ class TestPluginConfig:
             name="Text Processing",
             description="Process text input",
             required_scopes=["read", "process"],
-            config={"max_length": 1000}
+            config={"max_length": 1000},
         )
 
         assert capability.capability_id == "text_processor"
@@ -267,13 +247,8 @@ class TestPluginConfig:
             plugin_id="my.text.plugin",
             name="Text Plugin",
             description="A plugin for text processing",
-            capabilities=[
-                PluginCapabilityConfig(
-                    capability_id="process",
-                    required_scopes=["text:read"]
-                )
-            ],
-            default_scopes=["basic"]
+            capabilities=[PluginCapabilityConfig(capability_id="process", required_scopes=["text:read"])],
+            default_scopes=["basic"],
         )
 
         assert plugin.plugin_id == "my.text.plugin"
@@ -321,7 +296,7 @@ class TestAgentConfig:
             description="Custom AI agent",
             version="2.1.0",
             environment="production",
-            mcp_enabled=True
+            mcp_enabled=True,
         )
 
         assert config.project_name == "MyAgent"
@@ -371,7 +346,7 @@ class TestAgentConfig:
         config = AgentConfig(
             services={
                 "llm": ServiceConfig(type="openai", settings={"api_key": "secret"}),
-                "database": ServiceConfig(type="postgresql", priority=10)
+                "database": ServiceConfig(type="postgresql", priority=10),
             }
         )
 
@@ -397,11 +372,7 @@ class TestConfigurationSettings:
 
     def test_directory_creation(self):
         """Test directory creation functionality."""
-        settings = ConfigurationSettings(
-            DATA_DIR="test_data",
-            LOGS_DIR="test_logs",
-            PLUGINS_DIR="test_plugins"
-        )
+        settings = ConfigurationSettings(DATA_DIR="test_data", LOGS_DIR="test_logs", PLUGINS_DIR="test_plugins")
 
         # This would create directories in a real environment
         # Here we just test that the method exists and can be called
@@ -444,14 +415,7 @@ class TestUtilityFunctions:
         os.environ["DB_HOST"] = "localhost"
         os.environ["DB_PORT"] = "5432"
 
-        config = {
-            "database": {
-                "host": "${DB_HOST}",
-                "port": "${DB_PORT}",
-                "name": "mydb"
-            },
-            "debug": "${DEBUG:false}"
-        }
+        config = {"database": {"host": "${DB_HOST}", "port": "${DB_PORT}", "name": "mydb"}, "debug": "${DEBUG:false}"}
 
         result = expand_env_vars(config)
 
@@ -487,11 +451,7 @@ class TestModelSerialization:
 
     def test_agent_config_serialization(self):
         """Test agent config serialization."""
-        config = AgentConfig(
-            project_name="TestAgent",
-            version="1.2.3",
-            mcp_enabled=True
-        )
+        config = AgentConfig(project_name="TestAgent", version="1.2.3", mcp_enabled=True)
 
         # Serialize to dict
         config_dict = config.dict()

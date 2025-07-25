@@ -1,6 +1,7 @@
 """
 Tests for AgentUp state management models.
 """
+
 from datetime import datetime, timedelta
 
 import pytest
@@ -27,10 +28,7 @@ class TestStateVariable:
     def test_string_state_variable(self):
         """Test string state variable."""
         var = StateVariable[str](
-            key="user_name",
-            value="John Doe",
-            type_name=StateVariableType.STRING,
-            description="User's full name"
+            key="user_name", value="John Doe", type_name=StateVariableType.STRING, description="User's full name"
         )
 
         assert var.key == "user_name"
@@ -45,7 +43,7 @@ class TestStateVariable:
             key="user_age",
             value=25,
             type_name=StateVariableType.INTEGER,
-            ttl=3600  # 1 hour
+            ttl=3600,  # 1 hour
         )
 
         assert var.key == "user_age"
@@ -57,10 +55,7 @@ class TestStateVariable:
         """Test dictionary state variable."""
         config_data = {"theme": "dark", "notifications": True}
         var = StateVariable[dict](
-            key="user_config",
-            value=config_data,
-            type_name=StateVariableType.DICT,
-            tags=["config", "user"]
+            key="user_config", value=config_data, type_name=StateVariableType.DICT, tags=["config", "user"]
         )
 
         assert var.key == "user_config"
@@ -112,18 +107,14 @@ class TestStateVariable:
             value="test",
             type_name=StateVariableType.STRING,
             ttl=5,  # 5 seconds
-            updated_at=past_time
+            updated_at=past_time,
         )
         assert expired_var.is_expired
 
         # Not yet expired
         recent_time = datetime.utcnow() - timedelta(seconds=1)
         fresh_var = StateVariable(
-            key="test",
-            value="test",
-            type_name=StateVariableType.STRING,
-            ttl=10,
-            updated_at=recent_time
+            key="test", value="test", type_name=StateVariableType.STRING, ttl=10, updated_at=recent_time
         )
         assert not fresh_var.is_expired
 
@@ -135,6 +126,7 @@ class TestStateVariable:
 
         # Small delay to ensure timestamp difference
         import time
+
         time.sleep(0.01)
 
         var.touch()
@@ -148,12 +140,7 @@ class TestConversationMessage:
 
     def test_basic_message_creation(self):
         """Test creating basic messages."""
-        message = ConversationMessage(
-            id="msg_123",
-            role=ConversationRole.USER,
-            content="Hello, how are you?",
-            tokens=5
-        )
+        message = ConversationMessage(id="msg_123", role=ConversationRole.USER, content="Hello, how are you?", tokens=5)
 
         assert message.id == "msg_123"
         assert message.role == ConversationRole.USER
@@ -168,7 +155,7 @@ class TestConversationMessage:
             role=ConversationRole.FUNCTION,
             content="Function result",
             function_name="get_weather",
-            function_call={"location": "New York", "units": "celsius"}
+            function_call={"location": "New York", "units": "celsius"},
         )
 
         assert message.role == ConversationRole.FUNCTION
@@ -183,8 +170,8 @@ class TestConversationMessage:
             content="I'll help you with that.",
             tool_calls=[
                 {"tool": "calculator", "operation": "add", "args": [2, 3]},
-                {"tool": "search", "query": "weather today"}
-            ]
+                {"tool": "search", "query": "weather today"},
+            ],
         )
 
         assert len(message.tool_calls) == 2
@@ -198,7 +185,7 @@ class TestConversationMessage:
             role=ConversationRole.USER,
             content="Thanks for the help!",
             reply_to="msg_assistant",
-            thread_id="thread_123"
+            thread_id="thread_123",
         )
 
         assert message.reply_to == "msg_assistant"
@@ -207,20 +194,12 @@ class TestConversationMessage:
     def test_content_validation(self):
         """Test message content validation."""
         # Valid content
-        ConversationMessage(
-            id="test",
-            role=ConversationRole.USER,
-            content="Normal message"
-        )
+        ConversationMessage(id="test", role=ConversationRole.USER, content="Normal message")
 
         # Too large content
         large_content = "x" * (1_000_001)  # Over 1MB
         with pytest.raises(ValidationError) as exc_info:
-            ConversationMessage(
-                id="test",
-                role=ConversationRole.USER,
-                content=large_content
-            )
+            ConversationMessage(id="test", role=ConversationRole.USER, content=large_content)
         assert "too large" in str(exc_info.value)
 
     def test_message_id_validation(self):
@@ -243,11 +222,7 @@ class TestConversationState:
 
     def test_basic_conversation_state(self):
         """Test basic conversation state creation."""
-        state = ConversationState(
-            context_id="conv_123",
-            user_id="user_456",
-            session_id="session_789"
-        )
+        state = ConversationState(context_id="conv_123", user_id="user_456", session_id="session_789")
 
         assert state.context_id == "conv_123"
         assert state.user_id == "user_456"
@@ -261,16 +236,8 @@ class TestConversationState:
         """Test adding messages to conversation."""
         state = ConversationState(context_id="test")
 
-        message1 = ConversationMessage(
-            id="msg1",
-            role=ConversationRole.USER,
-            content="Hello"
-        )
-        message2 = ConversationMessage(
-            id="msg2",
-            role=ConversationRole.ASSISTANT,
-            content="Hi there!"
-        )
+        message1 = ConversationMessage(id="msg1", role=ConversationRole.USER, content="Hello")
+        message2 = ConversationMessage(id="msg2", role=ConversationRole.ASSISTANT, content="Hi there!")
 
         state.add_message(message1)
         state.add_message(message2)
@@ -286,11 +253,7 @@ class TestConversationState:
 
         # Add more messages than the limit
         for i in range(5):
-            message = ConversationMessage(
-                id=f"msg{i}",
-                role=ConversationRole.USER,
-                content=f"Message {i}"
-            )
+            message = ConversationMessage(id=f"msg{i}", role=ConversationRole.USER, content=f"Message {i}")
             state.add_message(message)
 
         # Should only keep the last 3 messages (or half when auto-summarizing)
@@ -359,11 +322,7 @@ class TestConversationState:
 
         # Create expired variable manually
         expired_var = StateVariable(
-            key="expired",
-            value="old_value",
-            type_name=StateVariableType.STRING,
-            ttl=5,
-            updated_at=past_time
+            key="expired", value="old_value", type_name=StateVariableType.STRING, ttl=5, updated_at=past_time
         )
         state.variables["expired"] = expired_var
 
@@ -386,7 +345,7 @@ class TestConversationState:
             ConversationMessage(id="1", role=ConversationRole.USER, content="Hello", tokens=2),
             ConversationMessage(id="2", role=ConversationRole.ASSISTANT, content="Hi!", tokens=1),
             ConversationMessage(id="3", role=ConversationRole.USER, content="How are you?", tokens=3),
-            ConversationMessage(id="4", role=ConversationRole.ASSISTANT, content="I'm good!", tokens=2)
+            ConversationMessage(id="4", role=ConversationRole.ASSISTANT, content="I'm good!", tokens=2),
         ]
 
         for msg in messages:
@@ -442,11 +401,7 @@ class TestStateBackendConfig:
 
     def test_memory_backend_config(self):
         """Test memory backend configuration."""
-        config = StateBackendConfig(
-            type=StateBackendType.MEMORY,
-            max_size=5000,
-            ttl=1800
-        )
+        config = StateBackendConfig(type=StateBackendType.MEMORY, max_size=5000, ttl=1800)
 
         assert config.type == StateBackendType.MEMORY
         assert config.max_size == 5000
@@ -459,7 +414,7 @@ class TestStateBackendConfig:
             host="localhost",
             port=6379,
             database="0",
-            redis_settings={"db": 0, "decode_responses": True}
+            redis_settings={"db": 0, "decode_responses": True},
         )
 
         assert config.type == StateBackendType.REDIS
@@ -469,11 +424,7 @@ class TestStateBackendConfig:
 
     def test_file_backend_config(self):
         """Test file backend configuration."""
-        config = StateBackendConfig(
-            type=StateBackendType.FILE,
-            file_path="/var/lib/agentup/state.db",
-            compression=True
-        )
+        config = StateBackendConfig(type=StateBackendType.FILE, file_path="/var/lib/agentup/state.db", compression=True)
 
         assert config.type == StateBackendType.FILE
         assert config.file_path == "/var/lib/agentup/state.db"
@@ -485,7 +436,7 @@ class TestStateBackendConfig:
             type=StateBackendType.DATABASE,
             connection_string="postgresql://user:pass@localhost/agentup",
             table_name="conversation_states",
-            connection_pool_size=20
+            connection_pool_size=20,
         )
 
         assert config.type == StateBackendType.DATABASE
@@ -525,7 +476,7 @@ class TestStateOperation:
             context_id="conv_456",
             key="user_name",
             success=True,
-            user_id="user_789"
+            user_id="user_789",
         )
 
         assert operation.operation_id == "op_123"
@@ -545,7 +496,7 @@ class TestStateOperation:
             key="missing_key",
             success=False,
             error_message="Key not found",
-            duration_ms=5.2
+            duration_ms=5.2,
         )
 
         assert operation.success is False
@@ -568,7 +519,7 @@ class TestStateMetrics:
             avg_set_latency_ms=3.8,
             backend_type=StateBackendType.REDIS,
             backend_health="healthy",
-            measurement_window=timedelta(hours=1)
+            measurement_window=timedelta(hours=1),
         )
 
         assert metrics.total_contexts == 150
@@ -596,11 +547,7 @@ class TestStateConfig:
 
     def test_custom_state_config(self):
         """Test custom state configuration."""
-        backend = StateBackendConfig(
-            type=StateBackendType.REDIS,
-            host="redis.example.com",
-            port=6379
-        )
+        backend = StateBackendConfig(type=StateBackendType.REDIS, host="redis.example.com", port=6379)
         config = StateConfig(
             enabled=True,
             backend=backend,
@@ -608,7 +555,7 @@ class TestStateConfig:
             default_max_variables=2000,
             cleanup_interval=600,
             cache_size=2000,
-            operation_logging=True
+            operation_logging=True,
         )
 
         assert config.backend.type == StateBackendType.REDIS
@@ -642,11 +589,7 @@ class TestModelIntegration:
     def test_full_conversation_workflow(self):
         """Test a complete conversation workflow."""
         # Create conversation state
-        state = ConversationState(
-            context_id="full_test",
-            user_id="user123",
-            max_history_size=5
-        )
+        state = ConversationState(context_id="full_test", user_id="user123", max_history_size=5)
 
         # Set initial variables
         state.set_variable("user_name", "Alice")
@@ -659,7 +602,9 @@ class TestModelIntegration:
             ConversationMessage(id="2", role=ConversationRole.ASSISTANT, content="Hello Alice! How can I help?"),
             ConversationMessage(id="3", role=ConversationRole.USER, content="What's the weather like?"),
             ConversationMessage(id="4", role=ConversationRole.ASSISTANT, content="Let me check that for you."),
-            ConversationMessage(id="5", role=ConversationRole.FUNCTION, content="Sunny, 72°F", function_name="get_weather"),
+            ConversationMessage(
+                id="5", role=ConversationRole.FUNCTION, content="Sunny, 72°F", function_name="get_weather"
+            ),
             ConversationMessage(id="6", role=ConversationRole.ASSISTANT, content="It's sunny and 72°F today!"),
         ]
 
@@ -682,17 +627,10 @@ class TestModelIntegration:
     def test_state_persistence_simulation(self):
         """Test state persistence-like operations."""
         # Simulate saving/loading state
-        original_state = ConversationState(
-            context_id="persist_test",
-            user_id="user456"
-        )
+        original_state = ConversationState(context_id="persist_test", user_id="user456")
 
         original_state.set_variable("session_start", datetime.utcnow().isoformat())
-        original_state.add_message(ConversationMessage(
-            id="msg1",
-            role=ConversationRole.USER,
-            content="Test message"
-        ))
+        original_state.add_message(ConversationMessage(id="msg1", role=ConversationRole.USER, content="Test message"))
 
         # Serialize to dict (simulating persistence)
         state_dict = original_state.dict()

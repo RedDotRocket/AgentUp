@@ -4,6 +4,7 @@ Pydantic models for AgentUp security module.
 This module defines all security-related data structures including authentication,
 authorization, and audit logging models.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -26,6 +27,7 @@ from agent.types import (
 
 class AuthType(str, Enum):
     """Supported authentication types."""
+
     API_KEY = "api_key"
     BEARER = "bearer"
     JWT = "jwt"
@@ -34,6 +36,7 @@ class AuthType(str, Enum):
 
 class Scope(BaseModel):
     """Security scope definition with hierarchy support."""
+
     name: ScopeName = Field(..., description="Scope name")
     description: str | None = Field(None, description="Scope description")
     parent: ScopeName | None = Field(None, description="Parent scope name")
@@ -43,13 +46,11 @@ class Scope(BaseModel):
     def validate_scope_format(cls, v: str) -> str:
         """Ensure scope follows naming convention."""
         import re
+
         # Scopes should be lowercase with colons for hierarchy
         # e.g., "read", "write", "admin:users", "api:v1:read"
         if not re.match(r"^[a-z0-9]+(?::[a-z0-9]+)*$", v):
-            raise ValueError(
-                f"Invalid scope format: {v}. "
-                "Use lowercase alphanumeric with colons for hierarchy"
-            )
+            raise ValueError(f"Invalid scope format: {v}. Use lowercase alphanumeric with colons for hierarchy")
         return v
 
     def is_subscope_of(self, parent: Scope) -> bool:
@@ -72,6 +73,7 @@ class Scope(BaseModel):
 
 class APIKeyData(BaseModel):
     """API key with metadata and permissions."""
+
     key: SecretStr = Field(..., description="The API key value")
     name: str | None = Field(None, description="Human-readable key name")
     scopes: list[Scope] = Field(default_factory=list, description="Assigned scopes")
@@ -98,6 +100,7 @@ class APIKeyData(BaseModel):
 
         # Check entropy (simplified)
         import string
+
         char_types = 0
         if any(c in string.ascii_lowercase for c in key_str):
             char_types += 1
@@ -110,13 +113,12 @@ class APIKeyData(BaseModel):
 
         if char_types < 3:
             raise ValueError(
-                "API key must contain at least 3 different character types "
-                "(lowercase, uppercase, digits, special)"
+                "API key must contain at least 3 different character types (lowercase, uppercase, digits, special)"
             )
 
         return v
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_expiration(self) -> APIKeyData:
         """Ensure expiration is in the future."""
         if self.expires_at and self.created_at:
@@ -147,33 +149,19 @@ class APIKeyData(BaseModel):
 
 class APIKeyConfig(BaseModel):
     """API key authentication configuration."""
-    header_name: HeaderName = Field(
-        "X-API-Key",
-        description="HTTP header name for API key"
-    )
-    location: Literal["header", "query", "cookie"] = Field(
-        "header",
-        description="Where to look for the API key"
-    )
-    query_param: QueryParam = Field(
-        "api_key",
-        description="Query parameter name if location is 'query'"
-    )
-    cookie_name: CookieName = Field(
-        "api_key",
-        description="Cookie name if location is 'cookie'"
-    )
-    keys: list[APIKeyData] = Field(
-        ...,
-        min_items=1,
-        description="List of valid API keys"
-    )
+
+    header_name: HeaderName = Field("X-API-Key", description="HTTP header name for API key")
+    location: Literal["header", "query", "cookie"] = Field("header", description="Where to look for the API key")
+    query_param: QueryParam = Field("api_key", description="Query parameter name if location is 'query'")
+    cookie_name: CookieName = Field("api_key", description="Cookie name if location is 'cookie'")
+    keys: list[APIKeyData] = Field(..., min_items=1, description="List of valid API keys")
 
     @field_validator("header_name")
     @classmethod
     def validate_header_name(cls, v: str) -> str:
         """Validate HTTP header name format."""
         import re
+
         if not re.match(r"^[!#$%&'*+\-.0-9A-Z^_`a-z|~]+$", v):
             raise ValueError(f"Invalid header name format: {v}")
         return v
@@ -193,6 +181,7 @@ class APIKeyConfig(BaseModel):
 
 class JWTAlgorithm(str, Enum):
     """Supported JWT algorithms."""
+
     HS256 = "HS256"
     HS384 = "HS384"
     HS512 = "HS512"
@@ -206,44 +195,40 @@ class JWTAlgorithm(str, Enum):
 
 class JWTConfig(BaseModel):
     """JWT authentication configuration."""
+
     secret_key: SecretStr = Field(..., description="JWT signing key")
-    algorithm: JWTAlgorithm = Field(
-        JWTAlgorithm.HS256,
-        description="JWT signing algorithm"
-    )
-    expiration: timedelta = Field(
-        timedelta(hours=1),
-        description="Token expiration time"
-    )
+    algorithm: JWTAlgorithm = Field(JWTAlgorithm.HS256, description="JWT signing algorithm")
+    expiration: timedelta = Field(timedelta(hours=1), description="Token expiration time")
     issuer: str | None = Field(None, description="Expected token issuer")
     audience: str | None = Field(None, description="Expected token audience")
 
     # Public key for RS/ES algorithms
-    public_key: SecretStr | None = Field(
-        None,
-        description="Public key for asymmetric algorithms"
-    )
+    public_key: SecretStr | None = Field(None, description="Public key for asymmetric algorithms")
 
     # Token claims
     required_claims: list[str] = Field(
-        default_factory=lambda: ["sub", "exp"],
-        description="Claims that must be present"
+        default_factory=lambda: ["sub", "exp"], description="Claims that must be present"
     )
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_algorithm_key_pair(self) -> JWTConfig:
         """Ensure proper keys for algorithm type."""
-        if self.algorithm in [JWTAlgorithm.RS256, JWTAlgorithm.RS384, JWTAlgorithm.RS512,
-                              JWTAlgorithm.ES256, JWTAlgorithm.ES384, JWTAlgorithm.ES512]:
+        if self.algorithm in [
+            JWTAlgorithm.RS256,
+            JWTAlgorithm.RS384,
+            JWTAlgorithm.RS512,
+            JWTAlgorithm.ES256,
+            JWTAlgorithm.ES384,
+            JWTAlgorithm.ES512,
+        ]:
             if not self.public_key:
-                raise ValueError(
-                    f"Public key required for {self.algorithm} algorithm"
-                )
+                raise ValueError(f"Public key required for {self.algorithm} algorithm")
         return self
 
 
 class OAuth2Config(BaseModel):
     """OAuth2 authentication configuration."""
+
     client_id: str = Field(..., description="OAuth2 client ID")
     client_secret: SecretStr = Field(..., description="OAuth2 client secret")
     authorization_url: str = Field(..., description="Authorization endpoint URL")
@@ -252,15 +237,11 @@ class OAuth2Config(BaseModel):
     scopes: list[str] = Field(default_factory=list, description="OAuth2 scopes")
 
     # Token validation strategy
-    validation_strategy: Literal["jwt", "introspection", "both"] = Field(
-        "jwt", description="Token validation method"
-    )
+    validation_strategy: Literal["jwt", "introspection", "both"] = Field("jwt", description="Token validation method")
 
     # JWT validation settings
     jwks_url: str | None = Field(None, description="JWKS endpoint URL")
-    jwt_algorithm: JWTAlgorithm = Field(
-        JWTAlgorithm.RS256, description="JWT algorithm for validation"
-    )
+    jwt_algorithm: JWTAlgorithm = Field(JWTAlgorithm.RS256, description="JWT algorithm for validation")
     jwt_audience: str | None = Field(None, description="Expected JWT audience")
     jwt_issuer: str | None = Field(None, description="Expected JWT issuer")
 
@@ -272,9 +253,7 @@ class OAuth2Config(BaseModel):
 
     # Advanced settings
     use_pkce: bool = Field(True, description="Use PKCE for authorization code flow")
-    token_endpoint_auth_method: str = Field(
-        "client_secret_basic", description="Token endpoint authentication method"
-    )
+    token_endpoint_auth_method: str = Field("client_secret_basic", description="Token endpoint authentication method")
 
     @field_validator("authorization_url", "token_url", "jwks_url", "introspection_endpoint")
     @classmethod
@@ -284,7 +263,7 @@ class OAuth2Config(BaseModel):
             raise ValueError(f"Invalid URL: {v}")
         return v
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_strategy_config(self) -> OAuth2Config:
         """Ensure required fields for validation strategy."""
         if self.validation_strategy in ["jwt", "both"] and not self.jwks_url:
@@ -296,26 +275,19 @@ class OAuth2Config(BaseModel):
 
 class SecurityConfig(BaseModel):
     """Complete security configuration."""
+
     enabled: bool = Field(True, description="Enable security features")
 
     # Authentication methods (at least one required)
     auth: dict[AuthType, APIKeyConfig | JWTConfig | OAuth2Config] = Field(
-        ...,
-        description="Authentication configurations by type"
+        ..., description="Authentication configurations by type"
     )
 
     # Global security settings
-    require_https: bool = Field(
-        True,
-        description="Require HTTPS for all requests"
-    )
-    allowed_origins: list[str] = Field(
-        default_factory=lambda: ["*"],
-        description="CORS allowed origins"
-    )
+    require_https: bool = Field(True, description="Require HTTPS for all requests")
+    allowed_origins: list[str] = Field(default_factory=lambda: ["*"], description="CORS allowed origins")
     allowed_methods: list[str] = Field(
-        default_factory=lambda: ["GET", "POST", "PUT", "DELETE"],
-        description="Allowed HTTP methods"
+        default_factory=lambda: ["GET", "POST", "PUT", "DELETE"], description="Allowed HTTP methods"
     )
 
     # Security headers
@@ -349,8 +321,7 @@ class SecurityConfig(BaseModel):
             if auth_type in expected_type:
                 if not isinstance(config, expected_type[auth_type]):
                     raise ValueError(
-                        f"Invalid config type for {auth_type}. "
-                        f"Expected {expected_type[auth_type].__name__}"
+                        f"Invalid config type for {auth_type}. Expected {expected_type[auth_type].__name__}"
                     )
 
         return v
@@ -367,6 +338,7 @@ class SecurityConfig(BaseModel):
 
 class AuthResult(str, Enum):
     """Authentication result status."""
+
     SUCCESS = "success"
     INVALID_CREDENTIALS = "invalid_credentials"
     EXPIRED = "expired"
@@ -377,6 +349,7 @@ class AuthResult(str, Enum):
 
 class AuthContext(BaseModel):
     """Runtime authentication context."""
+
     authenticated: bool = Field(False, description="Whether request is authenticated")
     auth_type: AuthType | None = Field(None, description="Type of authentication used")
     auth_result: AuthResult | None = Field(None, description="Authentication result")
@@ -430,6 +403,7 @@ class AuthContext(BaseModel):
 
 class AuditAction(str, Enum):
     """Types of auditable actions."""
+
     LOGIN = "login"
     LOGOUT = "logout"
     CREATE = "create"
@@ -445,6 +419,7 @@ class AuditAction(str, Enum):
 
 class AuditResult(str, Enum):
     """Result of an audited action."""
+
     SUCCESS = "success"
     FAILURE = "failure"
     ERROR = "error"
@@ -453,6 +428,7 @@ class AuditResult(str, Enum):
 
 class AuditLogEntry(BaseModel):
     """Security audit log entry with comprehensive tracking."""
+
     # Timing
     timestamp: Timestamp = Field(default_factory=datetime.utcnow, description="Event timestamp")
     duration_ms: float | None = Field(None, description="Operation duration in milliseconds")
@@ -508,13 +484,12 @@ class AuditLogEntry(BaseModel):
 
     class Config:
         # Allow JSON serialization of datetime
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
+        json_encoders = {datetime: lambda v: v.isoformat()}
 
 
 class PermissionCheck(BaseModel):
     """Request for permission verification."""
+
     user_id: UserId = Field(..., description="User to check")
     resource_type: str = Field(..., description="Resource type")
     resource_id: str | None = Field(None, description="Specific resource ID")
@@ -524,6 +499,7 @@ class PermissionCheck(BaseModel):
 
 class PermissionResult(BaseModel):
     """Result of permission check."""
+
     granted: bool = Field(..., description="Whether permission is granted")
     reason: str | None = Field(None, description="Reason for denial")
     required_scopes: list[str] = Field(default_factory=list, description="Required scopes")
@@ -533,6 +509,7 @@ class PermissionResult(BaseModel):
 
 class SecurityEvent(BaseModel):
     """Security event for monitoring and alerting."""
+
     event_id: str = Field(..., description="Unique event identifier")
     timestamp: Timestamp = Field(default_factory=datetime.utcnow, description="Event timestamp")
     severity: Literal["low", "medium", "high", "critical"] = Field(..., description="Event severity")

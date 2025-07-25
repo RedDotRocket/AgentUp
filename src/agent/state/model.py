@@ -4,6 +4,7 @@ Pydantic models for AgentUp state management.
 This module defines all state-related data structures including conversation state,
 variables, and backend configuration.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -15,11 +16,12 @@ from pydantic import BaseModel, Field, field_validator
 from ..types import TTL, ConfigDict, FilePath, SessionId, Timestamp, UserId
 
 # Generic type for state variables
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class StateVariableType(str, Enum):
     """Types of state variables."""
+
     STRING = "string"
     INTEGER = "integer"
     FLOAT = "float"
@@ -32,6 +34,7 @@ class StateVariableType(str, Enum):
 
 class StateVariable(BaseModel, Generic[T]):
     """Typed state variable with metadata."""
+
     key: str = Field(..., description="Variable key")
     value: T = Field(..., description="Variable value")
     type_name: StateVariableType = Field(..., description="Variable type")
@@ -53,6 +56,7 @@ class StateVariable(BaseModel, Generic[T]):
             raise ValueError("Key must be 1-256 characters")
         # Allow alphanumeric, dots, hyphens, underscores
         import re
+
         if not re.match(r"^[a-zA-Z0-9._-]+$", v):
             raise ValueError("Key can only contain alphanumeric characters, dots, hyphens, and underscores")
         return v
@@ -84,6 +88,7 @@ class StateVariable(BaseModel, Generic[T]):
 
 class ConversationRole(str, Enum):
     """Roles in a conversation."""
+
     USER = "user"
     ASSISTANT = "assistant"
     SYSTEM = "system"
@@ -93,6 +98,7 @@ class ConversationRole(str, Enum):
 
 class ConversationMessage(BaseModel):
     """Single message in conversation history."""
+
     id: str = Field(..., description="Message identifier")
     role: ConversationRole = Field(..., description="Message role")
     content: str = Field(..., description="Message content")
@@ -130,6 +136,7 @@ class ConversationMessage(BaseModel):
 
 class ConversationSummary(BaseModel):
     """Summary of conversation history."""
+
     total_messages: int = Field(..., description="Total number of messages")
     user_messages: int = Field(..., description="Number of user messages")
     assistant_messages: int = Field(..., description="Number of assistant messages")
@@ -142,6 +149,7 @@ class ConversationSummary(BaseModel):
 
 class ConversationState(BaseModel):
     """Complete conversation state management."""
+
     context_id: str = Field(..., description="Conversation context identifier")
     user_id: UserId | None = Field(None, description="Associated user")
     session_id: SessionId | None = Field(None, description="Session identifier")
@@ -152,13 +160,9 @@ class ConversationState(BaseModel):
     last_activity: Timestamp = Field(default_factory=datetime.utcnow, description="Last activity time")
 
     # State data
-    variables: dict[str, StateVariable] = Field(
-        default_factory=dict, description="State variables"
-    )
+    variables: dict[str, StateVariable] = Field(default_factory=dict, description="State variables")
     metadata: dict[str, str] = Field(default_factory=dict, description="Conversation metadata")
-    history: list[ConversationMessage] = Field(
-        default_factory=list, description="Message history"
-    )
+    history: list[ConversationMessage] = Field(default_factory=list, description="Message history")
 
     # Configuration
     max_history_size: int = Field(100, description="Maximum history size")
@@ -204,8 +208,8 @@ class ConversationState(BaseModel):
                 self._archive_old_messages()
             else:
                 # Remove oldest messages
-                removed = self.history[:-self.max_history_size]
-                self.history = self.history[-self.max_history_size:]
+                removed = self.history[: -self.max_history_size]
+                self.history = self.history[-self.max_history_size :]
                 self.archived_messages += len(removed)
 
     def set_variable(self, key: str, value: Any, ttl: TTL | None = None) -> None:
@@ -225,12 +229,7 @@ class ConversationState(BaseModel):
                 var.ttl = ttl
         else:
             # Create new variable
-            self.variables[key] = StateVariable(
-                key=key,
-                value=value,
-                type_name=var_type,
-                ttl=ttl
-            )
+            self.variables[key] = StateVariable(key=key, value=value, type_name=var_type, ttl=ttl)
 
         self.updated_at = datetime.utcnow()
 
@@ -256,10 +255,7 @@ class ConversationState(BaseModel):
 
     def cleanup_expired_variables(self) -> int:
         """Remove expired variables and return count removed."""
-        expired_keys = [
-            key for key, var in self.variables.items()
-            if var.is_expired
-        ]
+        expired_keys = [key for key, var in self.variables.items() if var.is_expired]
 
         for key in expired_keys:
             del self.variables[key]
@@ -286,7 +282,7 @@ class ConversationState(BaseModel):
             first_message_at=first_msg.timestamp if first_msg else None,
             last_message_at=last_msg.timestamp if last_msg else None,
             topics=self.tags.copy(),
-            summary_text=self.summary.summary_text if self.summary else None
+            summary_text=self.summary.summary_text if self.summary else None,
         )
 
     def _determine_type(self, value: Any) -> StateVariableType:
@@ -318,24 +314,17 @@ class ConversationState(BaseModel):
 
         # Update summary
         if not self.summary:
-            self.summary = ConversationSummary(
-                total_messages=0,
-                user_messages=0,
-                assistant_messages=0
-            )
+            self.summary = ConversationSummary(total_messages=0, user_messages=0, assistant_messages=0)
 
         # Update counts
         self.summary.total_messages += len(to_archive)
-        self.summary.user_messages += sum(
-            1 for msg in to_archive if msg.role == ConversationRole.USER
-        )
-        self.summary.assistant_messages += sum(
-            1 for msg in to_archive if msg.role == ConversationRole.ASSISTANT
-        )
+        self.summary.user_messages += sum(1 for msg in to_archive if msg.role == ConversationRole.USER)
+        self.summary.assistant_messages += sum(1 for msg in to_archive if msg.role == ConversationRole.ASSISTANT)
 
 
 class StateBackendType(str, Enum):
     """State storage backend types."""
+
     MEMORY = "memory"
     REDIS = "redis"
     FILE = "file"
@@ -344,6 +333,7 @@ class StateBackendType(str, Enum):
 
 class StateBackendConfig(BaseModel):
     """Configuration for state storage backend."""
+
     type: StateBackendType = Field(..., description="Backend type")
 
     # Common settings
@@ -394,6 +384,7 @@ class StateBackendConfig(BaseModel):
 
 class StateOperationType(str, Enum):
     """Types of state operations."""
+
     GET = "get"
     SET = "set"
     DELETE = "delete"
@@ -403,6 +394,7 @@ class StateOperationType(str, Enum):
 
 class StateOperation(BaseModel):
     """State operation for logging and debugging."""
+
     operation_id: str = Field(..., description="Operation identifier")
     operation_type: StateOperationType = Field(..., description="Operation type")
     context_id: str = Field(..., description="Context identifier")
@@ -423,6 +415,7 @@ class StateOperation(BaseModel):
 
 class StateMetrics(BaseModel):
     """State management metrics."""
+
     # Counts
     total_contexts: int = Field(0, description="Total conversation contexts")
     total_variables: int = Field(0, description="Total state variables")
@@ -438,9 +431,7 @@ class StateMetrics(BaseModel):
 
     # Backend metrics
     backend_type: StateBackendType = Field(..., description="Backend type")
-    backend_health: Literal["healthy", "degraded", "unhealthy"] = Field(
-        "healthy", description="Backend health status"
-    )
+    backend_health: Literal["healthy", "degraded", "unhealthy"] = Field("healthy", description="Backend health status")
 
     # Time window
     measurement_window: timedelta = Field(..., description="Measurement time window")
@@ -449,6 +440,7 @@ class StateMetrics(BaseModel):
 
 class StateConfig(BaseModel):
     """Complete state management configuration."""
+
     enabled: bool = Field(True, description="Enable state management")
 
     # Backend configuration
