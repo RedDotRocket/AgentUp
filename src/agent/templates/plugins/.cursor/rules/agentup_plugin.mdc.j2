@@ -64,9 +64,21 @@ The plugin is registered via entry point in `pyproject.toml`:
 
 ### Code Style
 - Follow PEP 8 and Python best practices
-- Use type hints throughout the codebase
+- Use type hints throughout the codebase (following modern Python typing conventions)
 - Use async/await for I/O operations
 - Handle errors gracefully with proper A2A error responses
+
+### Modern Typing Conventions (Python 3.9+)
+- **Use built-in types**: `dict[str, Any]` instead of `typing.Dict[str, Any]`
+- **Use built-in types**: `list[str]` instead of `typing.List[str]`
+- **Use union syntax**: `str | None` instead of `Optional[str]` (Python 3.10+)
+- **Import selectively**: Only import from `typing` what's not available as built-ins
+
+### Pydantic v2 Requirements
+- Use `@field_validator` instead of deprecated `@validator`
+- Use `@model_validator(mode='after')` instead of `@root_validator`
+- Always add `@classmethod` decorator for field validators
+- Use `model_dump()` and `model_validate()` methods (Pydantic v2)
 
 ### Plugin Implementation Patterns
 
@@ -79,7 +91,7 @@ def register_capability(self) -> CapabilityInfo:
         name="{{ display_name }}",
         version="0.3.0",
         description="{{ description }}",
-        capabilities=[CapabilityType.TEXT],  # Add available_capabilities as needed
+        capabilities=[CapabilityType.TEXT],  # Add capabilities as needed
         tags=["{{ plugin_name }}", "custom"],
         config_schema={
             # JSON schema for configuration validation
@@ -128,10 +140,10 @@ def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
         )
 ```
 
-#### 4. AI Function Support
+#### 4. AI Function Support (Modern Typing)
 ```python
 @hookimpl
-def get_ai_functions(self) -> list[AIFunction]:
+def get_ai_functions(self) -> list[AIFunction]:  # Use list, not List
     return [
         AIFunction(
             name="function_name",
@@ -149,6 +161,12 @@ def get_ai_functions(self) -> list[AIFunction]:
             handler=self._handle_function
         )
     ]
+
+async def _handle_function(self, param1: str, config: dict[str, Any] | None = None) -> str:
+    """Handle function with modern type annotations."""
+    # Use dict[str, Any] instead of Dict[str, Any]
+    settings: dict[str, Any] = config or {}
+    return f"Processed: {param1}"
 ```
 
 ### Error Handling
@@ -266,21 +284,116 @@ def get_state_schema(self) -> dict:
     }
 ```
 
-### Configuration Validation
+### Configuration Validation (Pydantic v2)
 ```python
+from pydantic import BaseModel, Field, field_validator
+from typing import Any
+
+class PluginConfig(BaseModel):
+    """Plugin configuration with validation."""
+    api_key: str = Field(..., description="API key")
+    timeout: int = Field(30, ge=1, le=300)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    
+    @field_validator("api_key")
+    @classmethod
+    def validate_api_key(cls, v: str) -> str:
+        if len(v) < 10:
+            raise ValueError("API key too short")
+        return v
+
 @hookimpl
-def validate_config(self, config: dict) -> ValidationResult:
-    errors = []
-    warnings = []
+def validate_config(self, config: dict[str, Any]) -> ValidationResult:
+    try:
+        PluginConfig(**config)
+        return ValidationResult(valid=True, errors=[], warnings=[])
+    except Exception as e:
+        return ValidationResult(valid=False, errors=[str(e)], warnings=[])
+```
 
-    if not config.get("api_key"):
-        errors.append("api_key is required")
+## Modern Plugin Architecture
 
-    return ValidationResult(
-        valid=len(errors) == 0,
-        errors=errors,
-        warnings=warnings
-    )
+### Required Import Structure
+```python
+from __future__ import annotations  # Enable modern type annotations
+
+from typing import Any, Literal, Union  # Only import non-built-in types
+from pydantic import BaseModel, Field, field_validator, model_validator
+from datetime import datetime
+
+# Use built-in types for collections
+def process_data(items: list[str], metadata: dict[str, Any]) -> dict[str, Any]:
+    """Example function with modern typing."""
+    results: list[dict[str, Any]] = []
+    for item in items:
+        results.append({"item": item, "processed": True})
+    return {"results": results, "count": len(results)}
+```
+
+### Data Validation Patterns
+```python
+class RequestModel(BaseModel):
+    """Input validation model."""
+    action: Literal["process", "analyze"]
+    data: dict[str, Any] = Field(default_factory=dict)
+    options: dict[str, str] = Field(default_factory=dict)
+    
+    @field_validator("data")
+    @classmethod
+    def validate_data(cls, v: dict[str, Any]) -> dict[str, Any]:
+        if not v:
+            raise ValueError("Data cannot be empty")
+        return v
+
+class ResponseModel(BaseModel):
+    """Output validation model."""
+    success: bool
+    result: str | dict[str, Any] | None = None
+    errors: list[str] = Field(default_factory=list)
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+```
+
+### Error Handling Best Practices
+```python
+class PluginError(Exception):
+    """Base plugin exception."""
+    def __init__(self, message: str, error_code: str = "PLUGIN_ERROR"):
+        self.error_code = error_code
+        super().__init__(message)
+
+async def safe_execute(self, context: CapabilityContext) -> CapabilityResult:
+    """Execute with comprehensive error handling."""
+    try:
+        # Validate input using Pydantic
+        request = RequestModel(**context.input_data)
+        
+        # Process request
+        result = await self._process_request(request)
+        
+        # Validate output
+        response = ResponseModel(success=True, result=result)
+        
+        return CapabilityResult(
+            content=response.model_dump_json(),  # Pydantic v2 method
+            success=True,
+            metadata={"response_type": "json"}
+        )
+        
+    except PluginError as e:
+        return CapabilityResult(
+            content=f"Plugin error: {e}",
+            success=False,
+            error=str(e),
+            metadata={"error_code": e.error_code}
+        )
+    except Exception as e:
+        logger.exception("Unexpected error in plugin")
+        return CapabilityResult(
+            content="Internal plugin error",
+            success=False,
+            error=str(e),
+            metadata={"error_code": "INTERNAL_ERROR"}
+        )
 ```
 
 ## Debugging Tips

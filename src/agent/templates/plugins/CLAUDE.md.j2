@@ -47,9 +47,36 @@ The plugin is registered via entry point in `pyproject.toml`:
 
 ### Code Style
 - Follow PEP 8 and Python best practices
-- Use type hints throughout the codebase
+- Use type hints throughout the codebase (following modern Python typing conventions)
 - Use async/await for I/O operations
 - Handle errors gracefully with proper A2A error responses
+
+### Modern Typing Conventions (Python 3.9+)
+- **Use built-in types**: `dict[str, Any]` instead of `typing.Dict[str, Any]`
+- **Use built-in types**: `list[str]` instead of `typing.List[str]`
+- **Use union syntax**: `str | None` instead of `Optional[str]` (Python 3.10+)
+- **Import selectively**: Only import from `typing` what's not available as built-ins
+  ```python
+  # ✅ CORRECT - Modern imports
+  from typing import Union, Literal, Any, TypeVar, Generic
+  from pydantic import BaseModel, Field, field_validator, model_validator
+  
+  # ❌ AVOID - Don't import these from typing
+  from typing import Dict, List, Optional, Tuple, Set
+  ```
+
+### Pydantic v2 Patterns
+- **Field validators**: Use `@field_validator` instead of deprecated `@validator`
+- **Model validators**: Use `@model_validator(mode='after')` instead of `@root_validator`
+- **Always add @classmethod**: Required for field validators in Pydantic v2
+  ```python
+  @field_validator("field_name")
+  @classmethod
+  def validate_field(cls, v: str) -> str:
+      if not v.strip():
+          raise ValueError("Field cannot be empty")
+      return v
+  ```
 
 ### Plugin Implementation Patterns
 
@@ -65,7 +92,25 @@ def register_capability(self) -> CapabilityInfo:
         capabilities=[CapabilityType.TEXT],  # Add capabilities as needed
         tags=["{{ plugin_name }}", "custom"],
         config_schema={
-            # JSON schema for configuration validation
+            # JSON schema for configuration validation using modern typing
+            "type": "object",
+            "properties": {
+                "api_key": {
+                    "type": "string",
+                    "description": "API key for external service"
+                },
+                "timeout": {
+                    "type": "integer",
+                    "default": 30,
+                    "minimum": 1,
+                    "maximum": 300
+                },
+                "enabled": {
+                    "type": "boolean",
+                    "default": True
+                }
+            },
+            "required": ["api_key"]
         }
     )
 ```
@@ -111,10 +156,10 @@ def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
         )
 ```
 
-#### 4. AI Function Support
+#### 4. AI Function Support (Modern Typing)
 ```python
 @hookimpl
-def get_ai_functions(self) -> list[AIFunction]:
+def get_ai_functions(self) -> list[AIFunction]:  # Note: list not List
     return [
         AIFunction(
             name="function_name",
@@ -125,6 +170,13 @@ def get_ai_functions(self) -> list[AIFunction]:
                     "param1": {
                         "type": "string",
                         "description": "Parameter description"
+                    },
+                    "config": {
+                        "type": "object",
+                        "description": "Optional configuration",
+                        "properties": {
+                            "timeout": {"type": "integer", "default": 30}
+                        }
                     }
                 },
                 "required": ["param1"]
@@ -132,6 +184,15 @@ def get_ai_functions(self) -> list[AIFunction]:
             handler=self._handle_function
         )
     ]
+
+async def _handle_function(self, param1: str, config: dict[str, Any] | None = None) -> str:
+    """Handle function call with modern typing annotations."""
+    # Use dict[str, Any] instead of Dict[str, Any]
+    settings: dict[str, Any] = config or {}
+    timeout: int = settings.get("timeout", 30)
+    
+    # Your function logic here
+    return f"Processed {param1} with timeout {timeout}"
 ```
 
 ### Error Handling
@@ -223,9 +284,10 @@ Access external services via AgentUp's service registry:
 
 ## Common Patterns
 
-### External API Integration
+### External API Integration (Modern Typing)
 ```python
-async def _call_external_api(self, data):
+async def _call_external_api(self, data: dict[str, Any]) -> dict[str, Any]:
+    """Call external API with proper typing annotations."""
     async with httpx.AsyncClient() as client:
         response = await client.post(
             "https://api.example.com/endpoint",
@@ -234,37 +296,234 @@ async def _call_external_api(self, data):
         )
         response.raise_for_status()
         return response.json()
+
+async def _batch_process(self, items: list[str]) -> list[dict[str, Any]]:
+    """Process multiple items with modern typing."""
+    results: list[dict[str, Any]] = []
+    
+    for item in items:
+        result = await self._call_external_api({"item": item})
+        results.append(result)
+    
+    return results
 ```
 
-### State Management
+### State Management (Modern Typing & Pydantic)
 ```python
+from pydantic import BaseModel
+from typing import Any
+
+class PluginState(BaseModel):
+    """Typed state model for plugin data."""
+    user_preferences: dict[str, Any] = Field(default_factory=dict)
+    session_data: dict[str, Any] = Field(default_factory=dict)
+    counters: dict[str, int] = Field(default_factory=dict)
+    last_updated: datetime = Field(default_factory=datetime.utcnow)
+
 @hookimpl
-def get_state_schema(self) -> dict:
-    return {
-        "type": "object",
-        "properties": {
-            "user_preferences": {"type": "object"},
-            "session_data": {"type": "object"}
-        }
-    }
+def get_state_schema(self) -> dict[str, Any]:
+    """Return JSON schema derived from Pydantic model."""
+    return PluginState.model_json_schema()  # Pydantic v2 method
+
+async def _update_state(self, context: CapabilityContext, updates: dict[str, Any]) -> None:
+    """Update plugin state with validation."""
+    current_state = context.state.get("plugin_state", {})
+    
+    # Validate state updates using Pydantic
+    state = PluginState(**current_state)
+    
+    # Apply updates
+    for key, value in updates.items():
+        if hasattr(state, key):
+            setattr(state, key, value)
+    
+    # Save back to context
+    context.state["plugin_state"] = state.model_dump()  # Pydantic v2 method
 ```
 
-### Configuration Validation
+### Configuration Validation (Pydantic v2 Style)
 ```python
+from pydantic import BaseModel, Field, field_validator
+from typing import Any
+
+class PluginConfig(BaseModel):
+    """Typed configuration model with validation."""
+    api_key: str = Field(..., description="API key for external service")
+    timeout: int = Field(30, ge=1, le=300, description="Request timeout in seconds")
+    enabled: bool = Field(True, description="Whether plugin is enabled")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    
+    @field_validator("api_key")
+    @classmethod
+    def validate_api_key(cls, v: str) -> str:
+        """Validate API key format."""
+        if not v or len(v) < 10:
+            raise ValueError("API key must be at least 10 characters")
+        return v
+
 @hookimpl
-def validate_config(self, config: dict) -> ValidationResult:
-    errors = []
-    warnings = []
-
-    if not config.get("api_key"):
-        errors.append("api_key is required")
-
-    return ValidationResult(
-        valid=len(errors) == 0,
-        errors=errors,
-        warnings=warnings
-    )
+def validate_config(self, config: dict[str, Any]) -> ValidationResult:
+    """Validate configuration using Pydantic models."""
+    try:
+        # Use Pydantic model for validation
+        validated_config = PluginConfig(**config)
+        return ValidationResult(
+            valid=True,
+            errors=[],
+            warnings=[]
+        )
+    except Exception as e:
+        return ValidationResult(
+            valid=False,
+            errors=[str(e)],
+            warnings=[]
+        )
 ```
+
+## Modern Implementation Guidelines
+
+### Data Model Best Practices
+1. **Create Plugin-Specific Models**: Define Pydantic models for all plugin data structures
+   ```python
+   # models.py - Separate file for data models
+   from pydantic import BaseModel, Field
+   from typing import Any, Literal
+   
+   class PluginRequest(BaseModel):
+       action: Literal["process", "analyze", "generate"]
+       data: dict[str, Any] = Field(default_factory=dict)
+       options: dict[str, Any] = Field(default_factory=dict)
+   
+   class PluginResponse(BaseModel):
+       success: bool
+       result: str | dict[str, Any] | None = None
+       metadata: dict[str, str] = Field(default_factory=dict)
+   ```
+
+2. **Use Type Guards**: Implement runtime type checking for external data
+   ```python
+   def is_valid_request(data: Any) -> bool:
+       """Type guard for plugin requests."""
+       try:
+           PluginRequest.model_validate(data)
+           return True
+       except Exception:
+           return False
+   ```
+
+3. **Environment Configuration**: Support environment variable overrides
+   ```python
+   class PluginConfig(BaseModel):
+       api_key: str = Field(..., description="API key")
+       base_url: str = Field("https://api.example.com", description="Base API URL")
+       
+       @classmethod
+       def from_env(cls) -> "PluginConfig":
+           """Load configuration from environment variables."""
+           import os
+           return cls(
+               api_key=os.getenv("{{ plugin_name_upper }}_API_KEY", ""),
+               base_url=os.getenv("{{ plugin_name_upper }}_BASE_URL", "https://api.example.com")
+           )
+   ```
+
+### Error Handling Patterns
+1. **Structured Error Types**: Define specific error types for different failure modes
+   ```python
+   class PluginError(Exception):
+       """Base plugin error."""
+       pass
+   
+   class ConfigurationError(PluginError):
+       """Configuration validation error."""
+       pass
+   
+   class APIError(PluginError):
+       """External API error."""
+       def __init__(self, status_code: int, message: str):
+           self.status_code = status_code
+           super().__init__(f"API Error {status_code}: {message}")
+   ```
+
+2. **Graceful Degradation**: Handle partial failures gracefully
+   ```python
+   async def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
+       try:
+           result = await self._process_request(context)
+           return CapabilityResult(content=result, success=True)
+       except APIError as e:
+           # Log error but return partial result
+           logger.warning(f"API error: {e}")
+           return CapabilityResult(
+               content="Service temporarily unavailable",
+               success=False,
+               error=str(e),
+               metadata={"error_type": "api_error", "recoverable": True}
+           )
+       except Exception as e:
+           # Unexpected error
+           logger.error(f"Unexpected error: {e}")
+           return CapabilityResult(
+               content="An unexpected error occurred",
+               success=False,
+               error=str(e),
+               metadata={"error_type": "unexpected", "recoverable": False}
+           )
+   ```
+
+### Performance Optimization
+1. **Connection Pooling**: Reuse HTTP connections
+   ```python
+   import httpx
+   
+   class {{ plugin_name_class }}:
+       def __init__(self):
+           self._client: httpx.AsyncClient | None = None
+       
+       async def _get_client(self) -> httpx.AsyncClient:
+           """Get or create HTTP client with connection pooling."""
+           if self._client is None:
+               self._client = httpx.AsyncClient(
+                   timeout=30.0,
+                   limits=httpx.Limits(max_keepalive_connections=10)
+               )
+           return self._client
+       
+       async def cleanup(self):
+           """Cleanup resources."""
+           if self._client:
+               await self._client.aclose()
+   ```
+
+2. **Caching**: Implement intelligent caching
+   ```python
+   from functools import lru_cache
+   from datetime import datetime, timedelta
+   
+   class CachedResult(BaseModel):
+       data: Any
+       expires_at: datetime
+       
+       @property
+       def is_expired(self) -> bool:
+           return datetime.utcnow() > self.expires_at
+   
+   class {{ plugin_name_class }}:
+       def __init__(self):
+           self._cache: dict[str, CachedResult] = {}
+       
+       async def _get_cached_or_fetch(self, key: str, fetch_func) -> Any:
+           """Get from cache or fetch fresh data."""
+           if key in self._cache and not self._cache[key].is_expired:
+               return self._cache[key].data
+           
+           data = await fetch_func()
+           self._cache[key] = CachedResult(
+               data=data,
+               expires_at=datetime.utcnow() + timedelta(minutes=5)
+           )
+           return data
+   ```
 
 ## Debugging Tips
 
