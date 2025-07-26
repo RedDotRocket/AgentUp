@@ -181,7 +181,7 @@ def config_file(temp_dir: Path, sample_agent_config: dict[str, Any]) -> Path:
     return config_file
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def env_vars():
     """Set up test environment variables."""
     test_env = {
