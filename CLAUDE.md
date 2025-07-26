@@ -148,14 +148,191 @@ Tests are organized with pytest markers:
 
 Run specific test categories: `uv run pytest -m "unit and not slow"`
 
-## Configuration
+## Configuration Structure
 
-Agent configuration uses YAML files with these key sections:
-- `agent`: Basic agent metadata and description
-- `plugins`: Plugin capabilities with scope-based permissions
-- `security`: Authentication and authorization settings
-- `middleware`: Rate limiting, caching, retry configuration
-- `state_management`: Conversation state backends and TTL
-- `mcp`: Model Context Protocol server/client configuration
+AgentUp uses a comprehensive YAML-based configuration system with Pydantic v2 models for validation. The main configuration file is `agentup.yml` in the project root.
 
-Environment variables can override configuration using the `ENV_VARS` mapping defined in `src/agent/config/constants.py`.
+### Core Configuration Sections
+
+#### Agent Metadata
+```yaml
+name: My Agent                    # Project name (alias for project_name)
+description: AI Agent Description # Agent description
+version: 1.0.0                   # Semantic version (required format: x.y.z)
+environment: development         # development, staging, or production
+```
+
+#### Plugin System
+```yaml
+plugins:
+  - plugin_id: hello             # Unique plugin identifier
+    name: Hello Plugin           # Display name
+    description: Plugin description
+    enabled: true                # Enable/disable plugin
+    capabilities:                # Plugin capabilities list
+      - capability_id: hello
+        name: Hello Capability
+        description: Capability description
+        required_scopes: ["api:read"]  # Required permission scopes
+        enabled: true
+    default_scopes: []           # Default scopes for all capabilities
+    middleware: []               # Plugin-specific middleware
+    config: {}                   # Plugin configuration dictionary
+```
+
+#### AI Provider Configuration
+```yaml
+ai_provider:
+  provider: openai              # openai, anthropic, ollama
+  api_key: ${OPENAI_API_KEY}   # Environment variable substitution
+  model: gpt-4o-mini           # Model name
+  temperature: 0.7             # Model parameters
+```
+
+#### Security & Authentication
+```yaml
+security:
+  enabled: true                # Enable security features
+  auth:
+    api_key:
+      header_name: "X-API-Key"
+      keys:
+        - key: "admin-key-123"
+          scopes: ["system:read"]
+  scope_hierarchy:             # Permission inheritance
+    admin: ["*"]               # Universal access
+    files:admin: ["files:write", "files:read"]
+    files:write: ["files:read"]
+```
+
+#### API Server
+```yaml
+api:
+  enabled: true                # Enable API server
+  host: "127.0.0.1"           # Server host
+  port: 8000                   # Server port
+  workers: 1                   # Number of workers
+  reload: false                # Auto-reload in development
+  debug: false                 # Debug mode
+  max_request_size: 16777216   # Max request size in bytes
+  request_timeout: 30          # Request timeout in seconds
+  cors_enabled: true           # Enable CORS
+  cors_origins: ["*"]          # Allowed origins
+  cors_methods: ["GET", "POST", "PUT", "DELETE"]
+```
+
+#### Middleware Configuration
+```yaml
+middleware:
+  enabled: true
+  rate_limiting:
+    enabled: true
+    requests_per_minute: 10
+    burst_size: 12
+  caching:
+    enabled: true
+    backend: memory            # memory, redis
+    default_ttl: 300          # Cache TTL in seconds
+    max_size: 1000            # Max cache entries
+  retry:
+    enabled: true
+    max_attempts: 3
+    initial_delay: 1.0
+    max_delay: 60.0
+```
+
+#### MCP (Model Context Protocol)
+```yaml
+mcp:
+  enabled: false               # Enable MCP support
+  client_enabled: true         # Enable MCP client
+  client_timeout: 30           # Client timeout in seconds
+  server_enabled: false        # Enable MCP server
+  server_host: "localhost"     # Server host
+  server_port: 8080           # Server port
+  servers:                     # MCP server configurations
+    - name: "filesystem-server"
+      type: "stdio"
+      command: "uvx"
+      args: ["mcp-server-filesystem", "/tmp"]
+      tool_scopes:             # Tool-specific scopes
+        read_file: ["files:read"]
+        write_file: ["files:write"]
+```
+
+#### State Management
+```yaml
+state_management:
+  enabled: true
+  backend: memory              # memory, redis, database
+  ttl: 3600                   # State TTL in seconds
+  config: {}                  # Backend-specific configuration
+```
+
+#### Logging Configuration
+```yaml
+logging:
+  enabled: true
+  level: "INFO"               # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  format: "text"              # text, json
+  console:
+    enabled: true
+    colors: true              # Enable colored output
+  file:
+    enabled: false
+    path: "logs/agent.log"
+  correlation_id: false       # Enable correlation ID tracking
+  request_logging: false      # Log HTTP requests
+  uvicorn:
+    access_log: false
+    disable_default_handlers: true
+```
+
+#### Push Notifications
+```yaml
+push_notifications:
+  enabled: true
+  backend: memory             # memory, webhook
+  validate_urls: false        # Validate webhook URLs
+  config: {}                  # Backend-specific settings
+```
+
+### Environment Variable Overrides
+
+Configuration values can be overridden using environment variables with the `AGENTUP_` prefix:
+
+- `AGENTUP_API_HOST` → `api.host`
+- `AGENTUP_API_PORT` → `api.port`
+- `AGENTUP_LOG_LEVEL` → `logging.level`
+- `AGENTUP_DEBUG` → `api.debug`
+- `AGENTUP_SECRET_KEY` → Application secret key
+
+**Supported Environment Variables** (from `src/agent/config/constants.py`):
+- `OPENAI_API_KEY` - OpenAI API key
+- `ANTHROPIC_API_KEY` - Anthropic API key
+- `OLLAMA_BASE_URL` - Ollama server URL
+- `VALKEY_URL` - Redis/Valkey connection URL
+- `DATABASE_URL` - Database connection URL
+- `AGENT_CONFIG_PATH` - Custom config file path
+- `SERVER_HOST` - API server host
+- `SERVER_PORT` - API server port
+
+### Configuration Validation
+
+The configuration system uses Pydantic v2 models with comprehensive validation:
+
+- **Semantic Versioning**: Version must follow `x.y.z` format
+- **Port Validation**: Ports must be between 1-65535
+- **Plugin ID Format**: Alphanumeric with hyphens, underscores, dots
+- **Scope Hierarchy**: Automatic permission inheritance validation
+- **Environment Consistency**: MCP settings validated for consistency
+
+### Configuration Loading
+
+Configuration is loaded in this order (later values override earlier ones):
+1. Default values from Pydantic models
+2. `agentup.yml` file in project root
+3. Environment variables with `AGENTUP_` prefix
+4. Command-line arguments (where applicable)
+
+Use `uv run agentup validate` to validate your configuration file.
