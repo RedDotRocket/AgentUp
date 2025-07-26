@@ -35,14 +35,16 @@ class OpenAIProvider(BaseLLMService):
         self.base_url = config.get("base_url", DEFAULT_API_ENDPOINTS["openai"])
         self.organization = config.get("organization")
         self.timeout = config.get("timeout", DEFAULT_HTTP_TIMEOUT)
+        self._available = False  # Track availability status
 
     async def initialize(self) -> None:
         """Initialize the OpenAI service."""
         if not self.api_key:
             logger.error(
-                f"OpenAI service '{self.name}' initialization failed: API key not found. Check that 'api_key' is set in configuration and OPENAI_API_KEY environment variable is available."
+                f"OpenAI service '{self.name}' initialization failed: API key not found. Check that 'api_key' is set in configuration and OPENAI_API_KEY environment variable is available. Service will be unavailable."
             )
-            raise LLMProviderConfigError(f"API key required for OpenAI service {self.name}")
+            self._available = False
+            return
 
         logger.info(f"Initializing OpenAI service '{self.name}' with model '{self.model}'")
 
@@ -61,9 +63,11 @@ class OpenAIProvider(BaseLLMService):
         try:
             await self.health_check()
             self._initialized = True
+            self._available = True
             logger.info(f"OpenAI service {self.name} initialized successfully")
         except Exception as e:
             logger.error(f"OpenAI service {self.name} initialization failed: {e}")
+            self._available = False
             raise LLMProviderError(f"Failed to initialize OpenAI service: {e}") from e
 
     async def close(self) -> None:
@@ -71,6 +75,11 @@ class OpenAIProvider(BaseLLMService):
         if self.client:
             await self.client.aclose()
         self._initialized = False
+        self._available = False
+
+    def is_available(self) -> bool:
+        """Check if the OpenAI service is available for use."""
+        return self._available
 
     async def health_check(self) -> dict[str, Any]:
         """Check OpenAI service health."""
@@ -98,6 +107,9 @@ class OpenAIProvider(BaseLLMService):
         """Generate chat completion from messages."""
         if not self._initialized:
             await self.initialize()
+
+        if not self._available:
+            raise LLMProviderConfigError(f"OpenAI service '{self.name}' is not available. Check API key configuration.")
 
         # Prepare payload
         payload = {

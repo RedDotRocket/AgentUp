@@ -12,7 +12,6 @@ from agent.llm_providers.base import (
     ChatMessage,
     FunctionCall,
     LLMProviderAPIError,
-    LLMProviderConfigError,
     LLMProviderError,
     LLMResponse,
 )
@@ -101,14 +100,15 @@ class TestOpenAIProviderServiceManagement:
 
     @pytest.mark.asyncio
     async def test_initialize_missing_api_key(self):
-        """Test initialization fails without API key."""
+        """Test initialization handles missing API key gracefully."""
         config = {"model": "gpt-4"}  # Missing api_key
         provider = OpenAIProvider("test", config)
 
-        with pytest.raises(LLMProviderConfigError, match="API key required"):
-            await provider.initialize()
+        # Should not raise exception, but should mark as unavailable
+        await provider.initialize()
 
         assert not provider._initialized
+        assert not provider.is_available()
 
     @pytest.mark.asyncio
     async def test_initialize_health_check_fails(self):
@@ -209,6 +209,7 @@ class TestOpenAIProviderChatCompletion:
         self.config = {"api_key": "test-key", "model": "gpt-4"}
         self.provider = OpenAIProvider("test", self.config)
         self.provider._initialized = True
+        self.provider._available = True  # Mark as available for tests
         self.provider.client = AsyncMock()
 
     @pytest.mark.asyncio
@@ -355,6 +356,7 @@ class TestOpenAIProviderFunctionCalling:
         self.config = {"api_key": "test-key", "model": "gpt-4"}
         self.provider = OpenAIProvider("test", self.config)
         self.provider._initialized = True
+        self.provider._available = True  # Mark as available for tests
         self.provider.client = AsyncMock()
 
         self.functions = [
@@ -497,6 +499,7 @@ class TestOpenAIProviderEmbeddings:
         self.config = {"api_key": "test-key", "model": "text-embedding-3-small"}
         self.provider = OpenAIProvider("test", self.config)
         self.provider._initialized = True
+        self.provider._available = True  # Mark as available for tests
         self.provider.client = AsyncMock()
 
     @pytest.mark.asyncio
@@ -556,6 +559,7 @@ class TestOpenAIProviderStreaming:
         self.config = {"api_key": "test-key", "model": "gpt-4"}
         self.provider = OpenAIProvider("test", self.config)
         self.provider._initialized = True
+        self.provider._available = True  # Mark as available for tests
         self.provider.client = AsyncMock()
 
     @pytest.mark.asyncio

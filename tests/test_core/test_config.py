@@ -103,11 +103,10 @@ class TestProcessEnvVars:
         assert result == "default_value"
 
     def test_process_env_vars_no_default_missing(self):
-        """Test error when environment variable is missing and no default."""
-        with pytest.raises(ValueError) as excinfo:
-            _process_env_vars("${NONEXISTENT_VAR}")
-
-        assert "Environment variable NONEXISTENT_VAR not set" in str(excinfo.value)
+        """Test graceful handling when environment variable is missing and no default."""
+        # Should return empty string instead of raising exception
+        result = _process_env_vars("${NONEXISTENT_VAR}")
+        assert result == ""
 
     def test_process_env_vars_nested_dict(self, env_vars):
         """Test processing environment variables in nested dictionaries."""
@@ -149,11 +148,10 @@ class TestProcessEnvVars:
         assert result["missing_brace"] == "${VAR"
 
     def test_process_env_vars_empty_var_name(self):
-        """Test handling of empty environment variable name."""
-        with pytest.raises(ValueError) as excinfo:
-            _process_env_vars("${}")
-
-        assert "Environment variable  not set" in str(excinfo.value)
+        """Test graceful handling of empty environment variable name."""
+        # Should return empty string instead of raising exception
+        result = _process_env_vars("${}")
+        assert result == ""
 
     def test_process_env_vars_complex_nested(self, env_vars):
         """Test processing environment variables in complex nested structures."""

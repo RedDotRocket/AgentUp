@@ -25,13 +25,15 @@ class AnthropicProvider(BaseLLMService):
         self.base_url = config.get("base_url", "https://api.anthropic.com")
         self.timeout = config.get("timeout", 60.0)
         self.anthropic_version = config.get("anthropic_version", "2023-06-01")
+        self._available = False  # Track availability status
 
     async def initialize(self) -> None:
         if not self.api_key:
             logger.error(
-                f"Anthropic service '{self.name}' initialization failed: API key not found. Check that 'api_key' is set in configuration and ANTHROPIC_API_KEY environment variable is available."
+                f"Anthropic service '{self.name}' initialization failed: API key not found. Check that 'api_key' is set in configuration and ANTHROPIC_API_KEY environment variable is available. Service will be unavailable."
             )
-            raise LLMProviderConfigError(f"API key required for Anthropic service {self.name}")
+            self._available = False
+            return
 
         logger.info(f"Initializing Anthropic service '{self.name}' with model '{self.model}'")
 
@@ -48,9 +50,11 @@ class AnthropicProvider(BaseLLMService):
         try:
             await self.health_check()
             self._initialized = True
+            self._available = True
             logger.info(f"Anthropic service {self.name} initialized successfully")
         except Exception as e:
             logger.error(f"Anthropic service {self.name} initialization failed: {e}")
+            self._available = False
             raise LLMProviderError(f"Failed to initialize Anthropic service: {e}") from e
 
     async def close(self) -> None:
@@ -58,6 +62,11 @@ class AnthropicProvider(BaseLLMService):
         if self.client:
             await self.client.aclose()
         self._initialized = False
+        self._available = False
+
+    def is_available(self) -> bool:
+        """Check if the Anthropic service is available for use."""
+        return self._available
 
     async def health_check(self) -> dict[str, Any]:
         """Check Anthropic service health."""
@@ -88,6 +97,11 @@ class AnthropicProvider(BaseLLMService):
         """Generate chat completion from messages."""
         if not self._initialized:
             await self.initialize()
+
+        if not self._available:
+            raise LLMProviderConfigError(
+                f"Anthropic service '{self.name}' is not available. Check API key configuration."
+            )
 
         # Anthropic uses system parameter separately
         system_content = None
