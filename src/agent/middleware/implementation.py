@@ -18,7 +18,6 @@ import structlog
 from .model import (
     CacheBackendType,
     CacheConfig,
-    MiddlewareError,
     RateLimitConfig,
     RetryConfig,
 )
@@ -28,7 +27,7 @@ logger = structlog.get_logger(__name__)
 
 class RateLimitExceeded(Exception):
     """Raised when rate limit is exceeded."""
-    
+
     def __init__(self, message: str):
         super().__init__(message)
         self.message = message
