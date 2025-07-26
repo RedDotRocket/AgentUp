@@ -7,6 +7,7 @@ for type safety and validation.
 
 from __future__ import annotations
 
+import tempfile
 from datetime import datetime
 from enum import Enum
 from typing import Any
@@ -118,7 +119,10 @@ class CacheConfig(BaseModel):
     valkey_connection_timeout: int = Field(5, description="Connection timeout", gt=0)
 
     # File cache specific
-    file_cache_dir: str = Field("/tmp/agentup_cache", description="File cache directory")
+    file_cache_dir: str = Field(
+        default_factory=lambda: tempfile.mkdtemp(prefix="agentup_cache_"),
+        description="File cache directory"
+    )
     file_max_size_mb: int = Field(100, description="Max file cache size in MB", gt=0)
 
     # Cache policies
@@ -496,8 +500,20 @@ class CacheConfigValidator(BaseValidator[CacheConfig]):
 
         # Validate file cache directory
         if model.backend_type == CacheBackendType.FILE:
-            if not model.file_cache_dir.startswith("/tmp/") and not model.file_cache_dir.startswith("/var/cache/"):
-                result.add_warning("File cache directory should be in appropriate temporary location")
+            import os
+            import stat
+
+            # Check if directory exists and has secure permissions
+            if os.path.exists(model.file_cache_dir):
+                dir_stat = os.stat(model.file_cache_dir)
+                # Check that directory is not world-writable (secure)
+                if dir_stat.st_mode & stat.S_IWOTH:
+                    result.add_warning("File cache directory has world-writable permissions - potential security risk")
+
+                # Warn about insecure temporary directory usage
+                # Bandit false positive: We are warning about /tmp usage, not creating it
+                if model.file_cache_dir.startswith("/tmp/"): # nosec
+                    result.add_warning("Using /tmp/ directly can be insecure - consider using tempfile.mkdtemp() for secure temporary directories")
 
         return result
 

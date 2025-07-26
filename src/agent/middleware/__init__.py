@@ -8,7 +8,6 @@ including rate limiting, caching, retry logic, and other middleware capabilities
 import structlog
 
 from .implementation import (
-    MiddlewareError,
     RateLimiter,
     RateLimitError,
     RateLimitExceeded,
@@ -33,6 +32,7 @@ from .model import (
     CacheBackendType,
     CacheConfig,
     MiddlewareConfig,
+    MiddlewareError,
     MiddlewareRegistry,
     MiddlewareType,
     RateLimitConfig,
