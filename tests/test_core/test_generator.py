@@ -365,19 +365,30 @@ class TestConfigurationGeneration:
     def test_build_middleware_config(self, temp_dir: Path):
         """Test middleware configuration building."""
         config = create_test_config("middleware-test", "standard", ["middleware"])
-        config["feature_config"] = {"middleware": ["rate_limit", "cache", "logging", "retry"]}
+        config["feature_config"] = {"middleware": ["rate_limit", "cache", "retry"]}
         generator = ProjectGenerator(temp_dir, config)
 
         middleware_config = generator._build_middleware_config()
 
-        # Should always include basic middleware
-        middleware_names = [mw["name"] for mw in middleware_config]
-        assert "timed" in middleware_names
+        # Should have the correct nested structure
+        assert "enabled" in middleware_config
+        assert middleware_config["enabled"] is True
 
-        # Should include feature-specific middleware
-        assert "cached" in middleware_names
-        assert "rate_limited" in middleware_names
-        assert "retryable" in middleware_names
+        # Should have rate limiting configuration
+        assert "rate_limiting" in middleware_config
+        assert middleware_config["rate_limiting"]["enabled"] is True
+        assert "requests_per_minute" in middleware_config["rate_limiting"]
+
+        # Should have caching configuration
+        assert "caching" in middleware_config
+        assert middleware_config["caching"]["enabled"] is True
+        assert "backend" in middleware_config["caching"]
+        assert "default_ttl" in middleware_config["caching"]
+
+        # Should have retry configuration
+        assert "retry" in middleware_config
+        assert middleware_config["retry"]["enabled"] is True
+        assert "max_attempts" in middleware_config["retry"]
 
     def test_build_mcp_config(self, temp_dir: Path):
         """Test MCP configuration building."""

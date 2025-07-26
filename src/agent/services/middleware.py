@@ -37,12 +37,13 @@ class MiddlewareManager(Service):
         """Register all available middleware factories."""
         try:
             from agent.middleware import cached, rate_limited, retryable, timed
+            from agent.middleware.model import CacheConfig, RateLimitConfig, RetryConfig
 
             self._middleware_factories = {
                 "timed": lambda params: timed(),
-                "cached": lambda params: cached(**params) if params else cached(),
-                "rate_limited": lambda params: rate_limited(**params) if params else rate_limited(),
-                "retryable": lambda params: retryable(**params) if params else retryable(),
+                "cached": lambda params: cached(CacheConfig(**params)) if params else cached(),
+                "rate_limited": lambda params: rate_limited(RateLimitConfig(**params)) if params else rate_limited(),
+                "retryable": lambda params: retryable(RetryConfig(**params)) if params else retryable(),
             }
 
             self.logger.debug(f"Registered {len(self._middleware_factories)} middleware types")

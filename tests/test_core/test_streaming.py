@@ -75,7 +75,7 @@ class TestStreamingEndpoint:
                 "message": {
                     "role": "user",
                     "parts": [{"kind": "text", "text": "test"}],
-                    "messageId": "msg-test",
+                    "message_id": "msg-test",
                     "kind": "message",
                 }
             },
@@ -98,7 +98,7 @@ class TestStreamingEndpoint:
                 "message": {
                     "role": "user",
                     "parts": [{"kind": "text", "text": "test"}],
-                    "messageId": "msg-test",
+                    "message_id": "msg-test",
                     "kind": "message",
                 }
             },
@@ -178,7 +178,7 @@ class TestStreamingEndpoint:
                 "message": {
                     "role": "user",
                     "parts": [{"kind": "text", "text": "test message"}],
-                    "messageId": "msg-test",
+                    "message_id": "msg-test",
                     "kind": "message",
                 }
             },
@@ -303,7 +303,7 @@ class TestStreamingValidation:
                 "message": {
                     "role": "user",
                     "parts": [{"kind": "text", "text": "test"}],
-                    "messageId": "msg-123",
+                    "message_id": "msg-123",
                     "kind": "message",
                 }
             },
@@ -331,7 +331,7 @@ class TestStreamingValidation:
                         "parts": [{"kind": "text", "text": "Response"}],
                     }
                 ],
-                "contextId": "context-123",
+                "context_id": "context-123",
             },
             "id": "req-123",
         }

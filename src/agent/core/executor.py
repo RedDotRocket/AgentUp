@@ -25,7 +25,7 @@ from a2a.utils import (
 )
 from a2a.utils.errors import ServerError
 
-from agent.config.models import BaseAgent
+from agent.config.a2a import BaseAgent
 
 logger = structlog.get_logger(__name__)
 
@@ -85,7 +85,7 @@ class GenericAgentExecutor(AgentExecutor):
             task = new_task(context.message)
             await event_queue.enqueue_event(task)
 
-        updater = TaskUpdater(event_queue, task.id, task.contextId)
+        updater = TaskUpdater(event_queue, task.id, task.context_id)
 
         try:
             # Transition to working state
@@ -93,7 +93,7 @@ class GenericAgentExecutor(AgentExecutor):
                 TaskState.working,
                 new_agent_text_message(
                     f"Processing request with for task {task.id} using {self.agent_name}.",
-                    task.contextId,
+                    task.context_id,
                     task.id,
                 ),
                 final=False,
@@ -105,7 +105,7 @@ class GenericAgentExecutor(AgentExecutor):
                     TaskState.input_required,
                     new_agent_text_message(
                         "I need more information to proceed. Please provide additional details.",
-                        task.contextId,
+                        task.context_id,
                         task.id,
                     ),
                     final=False,
@@ -140,7 +140,7 @@ class GenericAgentExecutor(AgentExecutor):
                     TaskState.rejected,
                     new_agent_text_message(
                         f"This operation is not supported: {str(e)}",
-                        task.contextId,
+                        task.context_id,
                         task.id,
                     ),
                     final=True,
@@ -151,7 +151,7 @@ class GenericAgentExecutor(AgentExecutor):
                 TaskState.failed,
                 new_agent_text_message(
                     f"I encountered an error processing your request: {str(e)}",
-                    task.contextId,
+                    task.context_id,
                     task.id,
                 ),
                 final=True,
@@ -255,7 +255,7 @@ class GenericAgentExecutor(AgentExecutor):
 
                     update_event = TaskArtifactUpdateEvent(
                         taskId=task.id,
-                        contextId=task.contextId,
+                        context_id=task.context_id,
                         artifact=artifact,
                         append=True,
                         lastChunk=False,
@@ -275,7 +275,7 @@ class GenericAgentExecutor(AgentExecutor):
 
                     update_event = TaskArtifactUpdateEvent(
                         taskId=task.id,
-                        contextId=task.contextId,
+                        context_id=task.context_id,
                         artifact=artifact,
                         append=True,
                         lastChunk=False,
@@ -308,7 +308,7 @@ class GenericAgentExecutor(AgentExecutor):
                 TaskState.completed,
                 new_agent_text_message(
                     "Task completed successfully.",
-                    task.contextId,
+                    task.context_id,
                     task.id,
                 ),
                 final=True,
@@ -370,12 +370,12 @@ class GenericAgentExecutor(AgentExecutor):
                 await self.dispatcher.cancel_task(task.id)
 
                 # Update task status
-                updater = TaskUpdater(event_queue, task.id, task.contextId)
+                updater = TaskUpdater(event_queue, task.id, task.context_id)
                 await updater.update_status(
                     TaskState.canceled,
                     new_agent_text_message(
                         "Task has been canceled by user request.",
-                        task.contextId,
+                        task.context_id,
                         task.id,
                     ),
                     final=True,

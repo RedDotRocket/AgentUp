@@ -16,7 +16,7 @@ from .models import (
     CapabilityResult,
     PluginInfo,
     PluginStatus,
-    ValidationResult,
+    PluginValidationResult,
 )
 
 logger = structlog.get_logger(__name__)
@@ -121,7 +121,7 @@ class PluginManager:
                 except Exception as e:
                     logger.error(f"Failed to load entry point {entry_point.name}: {e}")
                     self.plugins[entry_point.name] = PluginInfo(
-                        name=entry_point.name, version="unknown", status=PluginStatus.ERROR, error=str(e)
+                        name=entry_point.name, version="0.0.0", status=PluginStatus.ERROR, error=str(e)
                     )
         except Exception as e:
             logger.error(f"Error loading entry point plugins: {e}")
@@ -372,10 +372,10 @@ class PluginManager:
                 logger.error(f"Error getting AI functions from capability {capability_id}: {e}")
         return []
 
-    def validate_config(self, capability_id: str, config: dict) -> ValidationResult:
+    def validate_config(self, capability_id: str, config: dict) -> PluginValidationResult:
         """Validate capability configuration."""
         if capability_id not in self.capability_hooks:
-            return ValidationResult(valid=False, errors=[f"Capability '{capability_id}' not found"])
+            return PluginValidationResult(valid=False, errors=[f"Capability '{capability_id}' not found"])
 
         plugin = self.capability_hooks[capability_id]
         if hasattr(plugin, "validate_config"):
@@ -383,8 +383,8 @@ class PluginManager:
                 return plugin.validate_config(config)
             except Exception as e:
                 logger.error(f"Error validating config for capability {capability_id}: {e}")
-                return ValidationResult(valid=False, errors=[f"Validation error: {str(e)}"])
-        return ValidationResult(valid=True)  # Default to valid if no validator
+                return PluginValidationResult(valid=False, errors=[f"Validation error: {str(e)}"])
+        return PluginValidationResult(valid=True)  # Default to valid if no validator
 
     def configure_services(self, capability_id: str, services: dict) -> None:
         """Configure services for a capability."""

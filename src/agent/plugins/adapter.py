@@ -133,7 +133,7 @@ class PluginAdapter:
 
             services = get_services()
         except Exception:
-            services = {}
+            services = None
 
         # Get plugin configuration from agent config
         plugin_config = self._get_plugin_config_for_task(task)
@@ -208,7 +208,7 @@ class PluginAdapter:
 
             services = get_services()
         except Exception:
-            services = {}
+            services = None
 
         # Get plugin configuration for the specific capability
         plugin_config = self._get_plugin_config_for_capability(capability_id)

@@ -227,7 +227,7 @@ class TestServiceRegistry:
     def test_service_registry_initialization_empty(self):
         """Test ServiceRegistry initialization with empty config."""
         with patch("agent.services.registry.load_config") as mock_load:
-            mock_load.return_value = {"agent": {"name": "test"}, "services": {}}
+            mock_load.return_value = {"project_name": "test", "services": {}}
 
             registry = ServiceRegistry()
 
@@ -240,7 +240,7 @@ class TestServiceRegistry:
     def test_service_registry_llm_provider_mapping(self):
         """Test LLM provider mapping in ServiceRegistry."""
         with patch("agent.services.registry.load_config") as mock_load:
-            mock_load.return_value = {"agent": {"name": "test"}, "services": {}}
+            mock_load.return_value = {"project_name": "test", "services": {}}
 
             registry = ServiceRegistry()
 
@@ -256,7 +256,7 @@ class TestServiceRegistry:
     def test_register_service_type(self):
         """Test registering a custom service type."""
         with patch("agent.services.registry.load_config") as mock_load:
-            mock_load.return_value = {"agent": {"name": "test"}, "services": {}}
+            mock_load.return_value = {"project_name": "test", "services": {}}
 
             registry = ServiceRegistry()
 
@@ -275,7 +275,7 @@ class TestServiceRegistry:
     def test_create_llm_service_openai(self):
         """Test creating an OpenAI LLM service."""
         with patch("agent.services.registry.load_config") as mock_load:
-            mock_load.return_value = {"agent": {"name": "test"}, "services": {}}
+            mock_load.return_value = {"project_name": "test", "services": {}}
 
             registry = ServiceRegistry()
 
@@ -289,7 +289,7 @@ class TestServiceRegistry:
     def test_create_llm_service_missing_provider(self):
         """Test creating an LLM service without provider."""
         with patch("agent.services.registry.load_config") as mock_load:
-            mock_load.return_value = {"agent": {"name": "test"}, "services": {}}
+            mock_load.return_value = {"project_name": "test", "services": {}}
 
             registry = ServiceRegistry()
 
@@ -301,7 +301,7 @@ class TestServiceRegistry:
     def test_create_llm_service_unknown_provider(self):
         """Test creating an LLM service with unknown provider."""
         with patch("agent.services.registry.load_config") as mock_load:
-            mock_load.return_value = {"agent": {"name": "test"}, "services": {}}
+            mock_load.return_value = {"project_name": "test", "services": {}}
 
             registry = ServiceRegistry()
 
@@ -313,7 +313,7 @@ class TestServiceRegistry:
     def test_initialize_all_services(self):
         """Test initializing all services from config."""
         config_data = {
-            "agent": {"name": "test"},
+            "project_name": "test",
             "services": {
                 "valkey": {"type": "cache", "settings": {"url": "valkey://localhost:6379"}},
             },
@@ -339,7 +339,7 @@ class TestServiceRegistryIntegration:
     def test_full_service_registry_flow_with_mocks(self):
         """Test complete service registry flow with mocked services."""
         config_data = {
-            "agent": {"name": "integration-test"},
+            "project_name": "integration-test",
             "services": {
                 "valkey": {"type": "cache", "settings": {"url": "valkey://localhost:6379"}},
                 "custom_api": {"type": "web_api", "settings": {"base_url": "https://api.example.com"}},
@@ -366,7 +366,7 @@ class TestServiceRegistryIntegration:
     def test_llm_service_creation_separately(self):
         """Test LLM service creation using _create_llm_service method."""
         with patch("agent.services.registry.load_config") as mock_load:
-            mock_load.return_value = {"agent": {"name": "test"}, "services": {}}
+            mock_load.return_value = {"project_name": "test", "services": {}}
 
             registry = ServiceRegistry()
 

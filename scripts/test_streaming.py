@@ -50,7 +50,7 @@ class StreamingTestClient:
                 "message": {
                     "role": "user",
                     "parts": [{"kind": "text", "text": message_text}],
-                    "messageId": message_id,
+                    "message_id": message_id,
                     "kind": "message"
                 }
             },

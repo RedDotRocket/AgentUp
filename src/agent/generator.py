@@ -8,7 +8,7 @@ import structlog
 import yaml
 from jinja2 import Environment, FileSystemLoader
 
-from agent.config.models import PluginConfig
+from agent.config.model import PluginConfig
 
 from .templates import get_template_features
 
@@ -308,6 +308,11 @@ class ProjectGenerator:
         else:
             context["feature_config"] = {}
 
+        # Add cache backend configuration
+        feature_config = self.config.get("feature_config", {})
+        cache_backend = feature_config.get("cache_backend", "memory")
+        context["cache_backend"] = cache_backend
+
         # Add deployment-specific context variables
         context["has_env_file"] = True  # Most agents will have .env file
 
@@ -349,12 +354,10 @@ class ProjectGenerator:
     def _build_agent_config(self) -> dict[str, Any]:
         """Build agentup.yml content."""
         config = {
-            # Agent Information
-            "agent": {
-                "name": self.project_name,
-                "description": self.config.get("description", ""),
-                "version": "0.3.0",
-            },
+            # Agent Information (flat structure)
+            "name": self.project_name,
+            "description": self.config.get("description", ""),
+            "version": "0.3.0",
             "plugins": self._build_plugins_config(),
         }
 
@@ -553,35 +556,66 @@ Always be helpful, accurate, and maintain a friendly tone. You are designed to a
 
         return mcp_config
 
-    def _build_middleware_config(self) -> list[dict[str, Any]]:
+    def _build_middleware_config(self) -> dict[str, Any]:
         """Build context-aware middleware configuration for AgentUp Security Framework."""
-        middleware = []
+        # Check if middleware feature is enabled
+        middleware_enabled = "middleware" in self.features
+        feature_config = self.config.get("feature_config", {})
+        selected_middleware = feature_config.get("middleware", []) if middleware_enabled else []
 
-        # Always include basic middleware for A2A
-        middleware.extend(
-            [
-                {"name": "timed", "params": {}},
-            ]
-        )
+        # Build rate limiting configuration
+        rate_limit_enabled = "rate_limit" in selected_middleware
+        base_rpm = 60 if self.template_name == "minimal" else 120 if self.template_name == "full" else 60
+        burst_size = 144 if self.template_name == "full" else 72  # Ensure burst_size > requests_per_minute
 
-        # Add feature-specific middleware with context-aware configurations
-        if "middleware" in self.features:
-            feature_config = self.config.get("feature_config", {})
-            selected_middleware = feature_config.get("middleware", [])
+        # Build caching configuration
+        cache_enabled = "cache" in selected_middleware
+        cache_backend = feature_config.get("cache_backend", "memory")
+        base_ttl = 300 if self.template_name != "full" else 600
+        max_size = 2000 if self.template_name == "full" else 1000
 
-            if "cache" in selected_middleware:
-                cache_config = self._build_context_aware_cache_config()
-                middleware.append(cache_config)
+        # Build retry configuration
+        retry_enabled = "retry" in selected_middleware
+        max_attempts = 5 if self.template_name == "full" else 3
+        max_delay = 60.0 if self.template_name == "full" else 30.0
 
-            if "rate_limit" in selected_middleware:
-                rate_limit_config = self._build_context_aware_rate_limit_config()
-                middleware.append(rate_limit_config)
+        return {
+            "enabled": middleware_enabled,
+            "rate_limiting": {
+                "enabled": rate_limit_enabled,
+                "requests_per_minute": base_rpm,
+                "burst_size": burst_size,
+            },
+            "caching": self._build_caching_config(cache_enabled, cache_backend, base_ttl, max_size),
+            "retry": {
+                "enabled": retry_enabled,
+                "max_attempts": max_attempts,
+                "initial_delay": 1.0,
+                "max_delay": max_delay,
+            },
+        }
 
-            if "retry" in selected_middleware:
-                retry_config = self._build_context_aware_retry_config()
-                middleware.append(retry_config)
+    def _build_caching_config(self, enabled: bool, backend: str, default_ttl: int, max_size: int) -> dict[str, Any]:
+        """Build caching configuration with connection details for distributed backends."""
+        config = {
+            "enabled": enabled,
+            "backend": backend,
+            "default_ttl": default_ttl,
+            "max_size": max_size,
+        }
 
-        return middleware
+        # Add Valkey connection configuration if using Valkey backend
+        if backend == "valkey":
+            config.update(
+                {
+                    "valkey_url": "${VALKEY_URL:valkey://localhost:6379}",
+                    "valkey_db": 1,  # Use DB 1 for cache (DB 0 for state)
+                    "valkey_max_connections": 20 if self.template_name == "full" else 10,
+                    "valkey_connection_timeout": 5,
+                }
+            )
+
+        return config
 
     def _build_context_aware_cache_config(self) -> dict[str, Any]:
         """Build context-aware cache configuration."""

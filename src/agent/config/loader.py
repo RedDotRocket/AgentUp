@@ -22,6 +22,10 @@ def load_config(config_path: str = "agentup.yml", configure_logging: bool = True
     with open(path) as f:
         config = yaml.safe_load(f)
 
+    # Handle empty files - yaml.safe_load returns None for empty files
+    if config is None:
+        config = {}
+
     # Process environment variables
     config = _process_env_vars(config)
 

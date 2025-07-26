@@ -23,7 +23,7 @@ def configure_cli_logging():
     # Try to configure structlog if available
     try:
         from agent.config.logging import setup_logging
-        from agent.config.models import LoggingConfig
+        from agent.config.model import LoggingConfig
 
         # Create CLI-appropriate logging config
         cli_logging_config = LoggingConfig(

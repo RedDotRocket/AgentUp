@@ -17,7 +17,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from structlog.types import EventDict, Processor
 from uvicorn.protocols.utils import get_path_with_query_string
 
-from .models import LoggingConfig
+from .model import LoggingConfig
 
 # Optional import for correlation ID support
 try:
@@ -129,8 +129,8 @@ def setup_logging(config: LoggingConfig | None = None, json_logs: bool | None = 
     else:
         # Use default ConsoleRenderer with standard structlog colors
         log_renderer = structlog.dev.ConsoleRenderer(
-            colors=config.console.get("colors", True),
-            pad_event=25,  # Consistent padding
+            colors=config.console.colors,
+            pad_event=25,  # Consistent padding``
         )
 
     formatter = structlog.stdlib.ProcessorFormatter(

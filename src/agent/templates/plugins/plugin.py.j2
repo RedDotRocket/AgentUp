@@ -5,7 +5,7 @@
 """
 
 import pluggy
-from agent.plugins import CapabilityInfo, CapabilityContext, CapabilityResult, ValidationResult, CapabilityType{% if template == "ai" %}, AIFunction{% endif %}
+from agent.plugins import CapabilityInfo, CapabilityContext, CapabilityResult, PluginValidationResult, CapabilityType{% if template == "ai" %}, AIFunction{% endif %}
 
 hookimpl = pluggy.HookimplMarker("agentup")
 
@@ -55,7 +55,7 @@ class Plugin:
         )
 
     @hookimpl
-    def validate_config(self, config: dict) -> ValidationResult:
+    def validate_config(self, config: dict) -> PluginValidationResult:
         """Validate capability configuration."""
         {% if template == "advanced" %}errors = []
         warnings = []

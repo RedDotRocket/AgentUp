@@ -1,11 +1,7 @@
-# Dummy Version of AgentUp Configuration File
-# This is a minimal template for an AgentUp integration testing.
-
 #  Agent Information
-agent:
-  name: My Agent
-  description: AI Agent My Agent Project.
-  version: 0.3.0
+name: My Agent
+description: AI Agent My Agent Project.
+version: 0.3.0
 
 # Core plugins configuration with capability-based structure
 plugins:
@@ -18,43 +14,93 @@ plugins:
         description: Simple greeting capability
         required_scopes: ["api:read"]
         enabled: true
+  - plugin_id: sys_tools
+    name: System Tools
+    description: System tools for basic operations
+    input_mode: text
+    output_mode: text
+    keywords: [hello, hi, greetings]
+    patterns: ['^hello', '^hi', 'greetings']
+    priority: 50
+    capabilities:
+      - capability_id: file_read
+        enabled: true
+        required_scopes: ["files:read"]
+      - capability_id: file_write
+        enabled: true
+        required_scopes: ["files:write"]
+      - capability_id: file_exists
+        enabled: true
+        required_scopes: ["files:read"]
+      - capability_id: file_info
+        enabled: true
+        required_scopes: ["files:read"]
+      - capability_id: list_directory
+        enabled: true
+        required_scopes: ["files:read"]
+      - capability_id: create_directory
+        enabled: true
+        required_scopes: ["files:write"]
+      - capability_id: delete_file
+        enabled: true
+        required_scopes: ["files:admin"]
+      - capability_id: system_info
+        enabled: true
+        required_scopes: ["system:read"]
+      - capability_id: working_directory
+        enabled: true
+        required_scopes: ["system:read"]
+      - capability_id: execute_command
+        enabled: true
+        required_scopes: ["system:admin"]
+      - capability_id: file_hash
+        enabled: true
+        required_scopes: ["files:read"]
 
-# Security configuration
+# AI Provider configuration
+ai_provider:
+  provider: openai
+  api_key: ${OPENAI_API_KEY}
+  model: gpt-4o-mini
+  temperature: 0.7
+
+# Security configuration (simplified for new model)
 security:
-  enabled: false
-  type: "api_key"
-  api_key:
-    header_name: "X-API-Key"
-    location: "header"
-    keys:
-      - "some_rnadomly_generated_key_sdr3w33s"
+  enabled: true
+  auth:
+    api_key:
+      header_name: "X-API-Key"
+      keys:
+        # Simple format - key with scopes list
+        - key: "admin-key-123"
+          scopes: ["system:read"]  # Has all permissions via hierarchy
 
-  # Scope hierarchy for capability access control
+  # Scope hierarchy for permission inheritance
   scope_hierarchy:
-    # Universal admin
-    admin: ["*"]
-
-    # File system scopes
-    files:admin: ["files:write", "files:read", "files:sensitive"]
+    admin: ["*"]  # Universal access
+    files:admin: ["files:write", "files:read"]
     files:write: ["files:read"]
-
-    # System scopes
     system:admin: ["system:write", "system:read"]
     system:write: ["system:read"]
-
-    # Data scopes
-    data:admin: ["data:write", "data:read", "data:export"]
-    data:write: ["data:read"]
-
-    # MCP scopes
-    mcp:admin: ["mcp:server", "mcp:client", "mcp:access"]
-    mcp:server: ["mcp:access"]
-    mcp:client: ["mcp:access"]
+    web:admin: ["web:search"]
 
 # Middleware configuration
 middleware:
-  - name: timed
-    params: {}
+  enabled: true
+  rate_limiting:
+    enabled: true
+    requests_per_minute: 10  # Use this instead of separate rate_limiting section
+    burst_size: 12
+  caching:
+    enabled: true
+    backend: memory
+    default_ttl: 300
+    max_size: 1000
+  retry:
+    enabled: true
+    max_attempts: 3
+    initial_delay: 1.0
+    max_delay: 60.0
 
 # Push notifications configuration
 push_notifications:
@@ -65,49 +111,37 @@ push_notifications:
 # State management
 state_management:
   enabled: true
-  backend: memory           # Simple memory state for minimal template
-  ttl: 3600  # 1 hour
+  backend: memory
+  ttl: 3600
   config: {}
-
-# Rate limiting configuration for testing
-rate_limiting:
-  enabled: true
-  endpoint_limits:
-    "/":
-      rpm: 10  # Very low limit for testing
-      burst: 12
-    "/health":
-      rpm: 200
-      burst: 240
-    "default":
-      rpm: 10
-      burst: 12
 
 # MCP (Model Context Protocol) configuration
 mcp:
-  client:
-    enabled: false
-    servers:
-      - name: "filesystem-server"
-        type: "stdio"
-        command: "uvx"
-        args: ["mcp-server-filesystem", "/tmp"]
-        tool_scopes:
-          read_file: ["files:read"]
-          write_file: ["files:write"]
-          delete_file: ["files:admin"]
-          list_directory: ["files:read"]
+  enabled: false
+  client_enabled: false
+  servers:
+    - name: "filesystem-server"
+      type: "stdio"
+      command: "uvx"
+      args: ["mcp-server-filesystem", "/tmp"]
+      tool_scopes:
+        read_file: ["files:read"]
+        write_file: ["files:write"]
+        delete_file: ["files:admin"]
+        list_directory: ["files:read"]
 
-      - name: "database-server"
-        type: "http"
-        url: "http://localhost:3001/mcp"
-        tool_scopes:
-          query_database: ["data:read"]
-          update_database: ["data:write"]
-          backup_database: ["data:admin"]
-
-# Logging configuration for debugging
+# Logging configuration
 logging:
-  level: DEBUG
-  format: pretty
-  correlation_id: true
+  enabled: true
+  level: "INFO"
+  format: "text"
+  console:
+    enabled: true
+    colors: true
+  file:
+    enabled: false
+  correlation_id: false
+  request_logging: false
+  uvicorn:
+    access_log: false
+    disable_default_handlers: true

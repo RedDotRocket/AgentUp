@@ -1,8 +1,7 @@
 # Agent Information
-agent:
-  name: {{ project_name }}
-  description: {{ description }}
-  version: 0.3.0
+name: {{ project_name }}
+description: {{ description }}
+version: 0.3.0
 
 # Core plugins configuration with AgentUp Security Framework integration
 plugins:
@@ -178,23 +177,6 @@ ai:
 {% endif %}
 
 {% if has_middleware and 'cache' in feature_config.get('middleware', []) %}
-# Cache configuration
-cache:
-{% if feature_config.get('cache_backend') == 'valkey' %}
-  type: valkey
-  config:
-    url: '${VALKEY_CACHE_URL:valkey://localhost:6379}'
-    db: 1
-    max_connections: {{ cache_max_connections | default(10) }}
-    retry_on_timeout: true
-    default_ttl: {{ cache_ttl | default(300) }}
-{% else %}
-  type: memory
-  config:
-    max_size: {{ cache_max_size | default(1000) }}
-    default_ttl: {{ cache_ttl | default(300) }}
-{% endif %}
-{% endif %}
 
 # External services configuration
 services:{{ ' ' + services | tojson if services else ' {}' }}
@@ -234,40 +216,52 @@ mcp:
     port: {{ mcp_server_port | default(8001) }}
 {% endif %}
 
-# Context-aware middleware configuration
-# Middleware is automatically selected based on plugin classification
+# Middleware configuration
 middleware:
-  - name: timed
-    params: {}
-{% if has_middleware %}
-{% if 'cache' in feature_config.get('middleware', []) %}
-  - name: cached
-    params:
-      ttl: {{ middleware_cache_ttl | default(300) }}
-      # Context-aware caching based on plugin types
-      plugin_specific_ttl:
-        local: {{ middleware_cache_ttl | default(300) }}      # Standard cache for local plugins
-        network: {{ (middleware_cache_ttl | default(300)) * 2 }}  # Longer cache for network plugins
-        hybrid: {{ middleware_cache_ttl | default(300) }}     # Standard cache for hybrid plugins
-        ai_function: 60  # Shorter cache for AI functions (fresh responses)
+  enabled: {{ has_middleware | default(true) }}
+{% if has_middleware and 'rate_limit' in feature_config.get('middleware', []) %}
+  rate_limiting:
+    enabled: true
+    requests_per_minute: {{ rate_limit_rpm | default(60) }}
+    burst_size: {{ rate_limit_burst | default(72) }}
+{% else %}
+  rate_limiting:
+    enabled: false
+    requests_per_minute: 60
+    burst_size: 72
 {% endif %}
-{% if 'rate_limit' in feature_config.get('middleware', []) %}
-  - name: rate_limited
-    params:
-      requests_per_minute: {{ rate_limit_rpm | default(60) }}
+{% if has_middleware and 'cache' in feature_config.get('middleware', []) %}
+  caching:
+    enabled: true
+    backend: {{ cache_backend | default('memory') }}
+    default_ttl: {{ middleware_cache_ttl | default(300) }}
+    max_size: {{ cache_max_size | default(1000) }}
+{% if cache_backend == 'valkey' %}
+    # Valkey connection configuration
+    valkey_url: "${VALKEY_URL:valkey://localhost:6379}"
+    valkey_db: 1  # Use DB 1 for cache (DB 0 for state)
+    valkey_max_connections: 10
+    valkey_connection_timeout: 5
 {% endif %}
-{% if 'retry' in feature_config.get('middleware', []) %}
-  - name: retryable
-    params:
-      max_retries: {{ retry_max_attempts | default(3) }}
-      backoff_factor: {{ retry_backoff | default(2) }}
-      # Plugin-specific retry configuration
-      plugin_compatibility:
-        local: false    # Local plugins rarely need retries
-        network: true   # Network plugins benefit from retries
-        hybrid: true    # Hybrid plugins may need retries for network portions
-        ai_function: false  # AI functions need specialized retry logic
+{% else %}
+  caching:
+    enabled: false
+    backend: memory
+    default_ttl: 300
+    max_size: 1000
 {% endif %}
+{% if has_middleware and 'retry' in feature_config.get('middleware', []) %}
+  retry:
+    enabled: true
+    max_attempts: {{ retry_max_attempts | default(3) }}
+    initial_delay: {{ retry_initial_delay | default(1.0) }}
+    max_delay: {{ retry_max_delay | default(60.0) }}
+{% else %}
+  retry:
+    enabled: false
+    max_attempts: 3
+    initial_delay: 1.0
+    max_delay: 60.0
 {% endif %}
 
 # Push notifications configuration

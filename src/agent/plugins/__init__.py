@@ -1,7 +1,8 @@
 """
 AgentUp Plugin System
 
-A modern plugin architecture using pluggy for extensible AI agent skills.
+This relies on the `pluggy` library to manage plugins and their capabilities.
+It provides a structured way to define, manage, and validate plugins and their capabilities.
 """
 
 from .hookspecs import CapabilitySpec, hookspec
@@ -13,7 +14,7 @@ from .models import (
     CapabilityResult,
     CapabilityType,
     PluginInfo,
-    ValidationResult,
+    PluginValidationResult,
 )
 
 __all__ = [
@@ -30,5 +31,5 @@ __all__ = [
     "CapabilityType",
     "PluginInfo",
     "AIFunction",
-    "ValidationResult",
+    "PluginValidationResult",
 ]

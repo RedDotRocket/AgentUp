@@ -8,7 +8,7 @@ from typing import Any
 
 import numpy as np
 import structlog
-from a2a.types import DataPart, Part
+from a2a.types import DataPart, FilePart, FileWithBytes, Part
 from PIL import Image
 
 logger = structlog.get_logger(__name__)
@@ -281,6 +281,35 @@ class MultiModalProcessor:
             return None
 
     @classmethod
+    def create_file_part(cls, file_path: str | Path, name: str | None = None) -> FilePart | None:
+        """Create A2A FilePart from file."""
+        try:
+            file_path = Path(file_path)
+
+            if not file_path.exists():
+                logger.error(f"File not found: {file_path}")
+                return None
+
+            # Determine mime type
+            mime_type, _ = mimetypes.guess_type(str(file_path))
+            if not mime_type:
+                mime_type = "application/octet-stream"
+
+            # Read file bytes
+            with open(file_path, "rb") as f:
+                file_bytes = f.read()
+
+            # Create FileWithBytes object
+            file_with_bytes = FileWithBytes(name=name or file_path.name, mimeType=mime_type, bytes=file_bytes)
+
+            # Create FilePart
+            return FilePart(file=file_with_bytes)
+
+        except Exception as e:
+            logger.error(f"Failed to create FilePart from file: {e}")
+            return None
+
+    @classmethod
     def extract_all_content(cls, parts: list[Part]) -> dict[str, list[Any]]:
         """Extract all content from message parts organized by type."""
         content = {"text": [], "images": [], "documents": [], "other": []}
@@ -412,6 +441,10 @@ class MultiModalService:
     def create_data_part(self, file_path: str | Path, name: str | None = None) -> DataPart | None:
         """Create DataPart from file."""
         return MultiModalProcessor.create_data_part(file_path, name)
+
+    def create_file_part(self, file_path: str | Path, name: str | None = None) -> FilePart | None:
+        """Create A2A FilePart from file."""
+        return MultiModalProcessor.create_file_part(file_path, name)
 
     def validate_file_size(self, data: str, file_type: str = "default") -> bool:
         """Validate file size against limits."""

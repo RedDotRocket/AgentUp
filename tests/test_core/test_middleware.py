@@ -9,7 +9,7 @@ from agent.middleware import (
     MiddlewareError,
     MiddlewareRegistry,
     RateLimiter,
-    RateLimitError,
+    RateLimitExceeded,
     RetryConfig,
     apply_caching,
     apply_rate_limiting,
@@ -263,7 +263,7 @@ class TestMiddlewareDecorators:
         await test_func()
 
         # Second immediate call should fail
-        with pytest.raises(RateLimitError):
+        with pytest.raises(RateLimitExceeded):
             await test_func()
 
     @pytest.mark.asyncio
@@ -454,15 +454,16 @@ class TestMiddlewareExceptions:
 
     def test_middleware_error(self):
         """Test MiddlewareError exception."""
-        error = MiddlewareError("Test error")
-        assert str(error) == "Test error"
-        assert isinstance(error, Exception)
+        error = MiddlewareError(error_type="MiddlewareError", message="Test error")
+        assert error.message == "Test error"
+        assert error.error_type == "MiddlewareError"
 
     def test_rate_limit_error(self):
-        """Test RateLimitError exception."""
-        error = RateLimitError("Rate limit exceeded")
+        """Test RateLimitExceeded exception."""
+        error = RateLimitExceeded("Rate limit exceeded")
+        assert error.message == "Rate limit exceeded"
         assert str(error) == "Rate limit exceeded"
-        assert isinstance(error, MiddlewareError)
+        assert isinstance(error, Exception)
 
 
 class TestCacheKeyGeneration:

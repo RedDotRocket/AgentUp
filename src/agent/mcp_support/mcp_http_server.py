@@ -101,12 +101,12 @@ class MCPHTTPServer:
                 # Create proper A2A message structure
                 text_part = TextPart(text=message_content)
                 part = Part(root=text_part)
-                message = Message(messageId=f"mcp_{uuid.uuid4().hex[:8]}", role=Role.user, parts=[part])
+                message = Message(message_id=f"mcp_{uuid.uuid4().hex[:8]}", role=Role.user, parts=[part])
 
                 # Create task with metadata from arguments
                 task = Task(
                     id=f"mcp_task_{uuid.uuid4().hex[:8]}",
-                    contextId=f"mcp_context_{uuid.uuid4().hex[:8]}",
+                    context_id=f"mcp_context_{uuid.uuid4().hex[:8]}",
                     history=[message],
                     status=TaskStatus(state=TaskState.submitted, timestamp=datetime.now().isoformat()),
                     metadata=arguments,  # Pass all arguments as metadata

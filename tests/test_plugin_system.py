@@ -32,8 +32,8 @@ class TestPluginSystem:
         plugin = ExamplePlugin()
 
         # Create test context
-        task = MockTask("Hello, world!")
-        context = CapabilityContext(task=task)
+        mock_task = MockTask("Hello, world!")
+        context = CapabilityContext(task=mock_task._task)
 
         # Execute capability
         result = plugin.execute_capability(context)
@@ -47,14 +47,14 @@ class TestPluginSystem:
         plugin = ExamplePlugin()
 
         # Test with matching keywords
-        task1 = MockTask("This is an example test")
-        context1 = CapabilityContext(task=task1)
+        mock_task1 = MockTask("This is an example test")
+        context1 = CapabilityContext(task=mock_task1._task)
         confidence1 = plugin.can_handle_task(context1)
         assert confidence1 > 0
 
         # Test without matching keywords
-        task2 = MockTask("Unrelated content")
-        context2 = CapabilityContext(task=task2)
+        mock_task2 = MockTask("Unrelated content")
+        context2 = CapabilityContext(task=mock_task2._task)
         confidence2 = plugin.can_handle_task(context2)
         assert confidence2 == 0
 
@@ -100,8 +100,8 @@ class TestPluginSystem:
         manager._register_plugin_capability("example_plugin", plugin)
 
         # Execute capability
-        task = MockTask("Test input")
-        context = CapabilityContext(task=task)
+        mock_task = MockTask("Test input")
+        context = CapabilityContext(task=mock_task._task)
         result = manager.execute_capability("example", context)
 
         assert result.success

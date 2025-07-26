@@ -352,7 +352,62 @@ class CapabilityRegistry(Service):
             return plugin_config["middleware_override"]
 
         # Use global middleware configuration
-        return self.config.get("middleware", [])
+        middleware_config = self.config.get("middleware", {})
+
+        # If it's already a list (old format), return as-is
+        if isinstance(middleware_config, list):
+            return middleware_config
+
+        # Convert new dictionary format to list format expected by with_middleware
+        middleware_list = []
+
+        if isinstance(middleware_config, dict):
+            # Check if middleware is enabled
+            if not middleware_config.get("enabled", True):
+                return []
+
+            # Convert rate_limiting config
+            if middleware_config.get("rate_limiting", {}).get("enabled", False):
+                rate_config = middleware_config["rate_limiting"]
+                middleware_list.append(
+                    {
+                        "name": "rate_limited",
+                        "params": {
+                            "requests_per_minute": rate_config.get("requests_per_minute", 60),
+                            "burst_limit": rate_config.get("burst_size", None),
+                        },
+                    }
+                )
+
+            # Convert caching config
+            if middleware_config.get("caching", {}).get("enabled", False):
+                cache_config = middleware_config["caching"]
+                middleware_list.append(
+                    {
+                        "name": "cached",
+                        "params": {
+                            "backend_type": cache_config.get("backend", "memory"),
+                            "default_ttl": cache_config.get("default_ttl", 300),
+                            "max_size": cache_config.get("max_size", 1000),
+                        },
+                    }
+                )
+
+            # Convert retry config
+            if middleware_config.get("retry", {}).get("enabled", False):
+                retry_config = middleware_config["retry"]
+                middleware_list.append(
+                    {
+                        "name": "retryable",
+                        "params": {
+                            "max_attempts": retry_config.get("max_attempts", 3),
+                            "backoff_factor": retry_config.get("initial_delay", 1.0),
+                            "max_delay": retry_config.get("max_delay", 60.0),
+                        },
+                    }
+                )
+
+        return middleware_list
 
     def _get_state_config(self, capability_id: str) -> dict[str, Any]:
         """Get state configuration for a capability."""

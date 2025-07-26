@@ -2,6 +2,8 @@ import asyncio
 from typing import Any
 from unittest.mock import Mock
 
+from a2a.types import Task, TaskState, TaskStatus
+
 from src.agent.plugins.models import CapabilityContext, CapabilityInfo, CapabilityResult
 
 
@@ -10,9 +12,26 @@ class MockTask:
 
     def __init__(self, user_input: str = "", task_id: str = "test-123"):
         """Initialize mock task."""
-        self.id = task_id
-        self.history = [Mock(parts=[Mock(text=user_input)])]
-        self.metadata = {}
+        # Create a proper Task object that's compatible with Pydantic
+        self._task = Task(
+            id=task_id,
+            context_id="test-context",
+            status=TaskStatus(state=TaskState.submitted),
+        )
+        self._task.history = [Mock(parts=[Mock(text=user_input)])]
+        self._task.metadata = {}
+
+    def __getattr__(self, name):
+        """Delegate attribute access to the Task object."""
+        return getattr(self._task, name)
+
+    def model_dump(self, **kwargs):
+        """Delegate model_dump to the Task object."""
+        return self._task.model_dump(**kwargs)
+
+    def model_validate(self, obj, **kwargs):
+        """Delegate model_validate to the Task object."""
+        return self._task.model_validate(obj, **kwargs)
 
 
 class PluginTestCase:
@@ -27,9 +46,9 @@ class PluginTestCase:
         metadata: dict[str, Any] | None = None,
     ) -> CapabilityContext:
         """Create a test context."""
-        task = MockTask(user_input)
+        mock_task = MockTask(user_input)
         return CapabilityContext(
-            task=task,
+            task=mock_task._task,  # Pass the actual Task object
             config=config or {},
             services=services or {},
             state=state or {},
@@ -102,8 +121,8 @@ class PluginTestRunner:
         """Test skill execution."""
         try:
             for user_input in test_inputs:
-                task = MockTask(user_input)
-                context = CapabilityContext(task=task)
+                mock_task = MockTask(user_input)
+                context = CapabilityContext(task=mock_task._task)
                 result = self.plugin.execute_capability(context)
                 assert isinstance(result, CapabilityResult)
             return True
@@ -115,8 +134,8 @@ class PluginTestRunner:
         """Test skill routing."""
         try:
             for user_input, expected in test_cases:
-                task = MockTask(user_input)
-                context = CapabilityContext(task=task)
+                mock_task = MockTask(user_input)
+                context = CapabilityContext(task=mock_task._task)
                 result = self.plugin.can_handle_task(context)
 
                 if isinstance(expected, bool):
@@ -158,9 +177,9 @@ def create_test_plugin(skill_id: str, name: str) -> type:
             )
 
         def validate_config(self, config: dict) -> Any:
-            from src.agent.plugins.models import ValidationResult
+            from src.agent.plugins.models import PluginValidationResult
 
-            return ValidationResult(valid=True)
+            return PluginValidationResult(valid=True)
 
         def can_handle_task(self, context: CapabilityContext) -> bool:
             return True
@@ -202,8 +221,8 @@ async def test_plugin_async(plugin_instance) -> dict[str, Any]:
     execution_results = []
     for user_input in test_inputs:
         try:
-            task = MockTask(user_input)
-            context = CapabilityContext(task=task)
+            mock_task = MockTask(user_input)
+            context = CapabilityContext(task=mock_task._task)
 
             # Handle both sync and async execute methods
             if asyncio.iscoroutinefunction(plugin_instance.execute_capability):

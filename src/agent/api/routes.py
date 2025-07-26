@@ -19,7 +19,7 @@ from a2a.types import (
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from agent.config.models import (
+from agent.config.a2a import (
     AgentCapabilities,
     AgentCard,
     AgentExtension,

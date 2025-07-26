@@ -182,7 +182,7 @@ class ServiceAgentExecutor(AgentExecutor):
             await event_queue.enqueue_event(task)
             self.logger.debug(f"Created new task: {task.id}")
 
-        updater = TaskUpdater(event_queue, task.id, task.contextId)
+        updater = TaskUpdater(event_queue, task.id, task.context_id)
 
         try:
             # Update to working status (A2A task lifecycle)
@@ -190,7 +190,7 @@ class ServiceAgentExecutor(AgentExecutor):
                 TaskState.working,
                 new_agent_text_message(
                     f"Processing request for task {task.id}",
-                    task.contextId,
+                    task.context_id,
                     task.id,
                 ),
                 final=False,
@@ -207,7 +207,7 @@ class ServiceAgentExecutor(AgentExecutor):
             # Send successful completion (A2A terminal state)
             await updater.update_status(
                 TaskState.completed,
-                new_agent_text_message(result, task.contextId, task.id),
+                new_agent_text_message(result, task.context_id, task.id),
                 final=True,
             )
             self.logger.info(f"Task {task.id} completed successfully")
@@ -217,7 +217,7 @@ class ServiceAgentExecutor(AgentExecutor):
             self.logger.error(f"Validation error for task {task.id}: {e}")
             await updater.update_status(
                 TaskState.failed,
-                new_agent_text_message(f"Invalid request: {str(e)}", task.contextId, task.id),
+                new_agent_text_message(f"Invalid request: {str(e)}", task.context_id, task.id),
                 final=True,
             )
 
@@ -226,7 +226,7 @@ class ServiceAgentExecutor(AgentExecutor):
             self.logger.error(f"Execution failed for task {task.id}: {e}")
             await updater.update_status(
                 TaskState.failed,
-                new_agent_text_message(f"Internal error: {str(e)}", task.contextId, task.id),
+                new_agent_text_message(f"Internal error: {str(e)}", task.context_id, task.id),
                 final=True,
             )
 

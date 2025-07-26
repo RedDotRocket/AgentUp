@@ -4,7 +4,14 @@ Belongs in tree as used for unit tests
 
 import pluggy
 
-from .models import AIFunction, CapabilityContext, CapabilityInfo, CapabilityResult, CapabilityType, ValidationResult
+from .models import (
+    AIFunction,
+    CapabilityContext,
+    CapabilityInfo,
+    CapabilityResult,
+    CapabilityType,
+    PluginValidationResult,
+)
 
 # Hook implementation marker
 hookimpl = pluggy.HookimplMarker("agentup")
@@ -38,7 +45,7 @@ class ExamplePlugin:
         )
 
     @hookimpl
-    def validate_config(self, config: dict) -> ValidationResult:
+    def validate_config(self, config: dict) -> PluginValidationResult:
         """Validate the configuration."""
         errors = []
         warnings = []
@@ -50,7 +57,7 @@ class ExamplePlugin:
         elif len(greeting) < 2:
             warnings.append("Greeting is very short")
 
-        return ValidationResult(valid=len(errors) == 0, errors=errors, warnings=warnings)
+        return PluginValidationResult(valid=len(errors) == 0, errors=errors, warnings=warnings)
 
     @hookimpl
     def can_handle_task(self, context: CapabilityContext) -> float:

@@ -5,7 +5,7 @@ from .models import (
     CapabilityContext,
     CapabilityInfo,
     CapabilityResult,
-    ValidationResult,
+    PluginValidationResult,
 )
 
 # Create the hook specification marker
@@ -30,7 +30,7 @@ class CapabilitySpec:
         """
 
     @hookspec
-    def validate_config(self, config: dict) -> ValidationResult:
+    def validate_config(self, config: dict) -> PluginValidationResult:
         """
         Validate capability configuration.
 
@@ -41,7 +41,7 @@ class CapabilitySpec:
             config: Configuration dictionary for the capability
 
         Returns:
-            ValidationResult: Validation result with any errors or warnings
+            PluginValidationResult: Validation result with any errors or warnings
         """
 
     @hookspec(firstresult=True)

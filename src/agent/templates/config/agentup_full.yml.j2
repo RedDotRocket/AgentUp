@@ -1,8 +1,7 @@
 # Agent Information
-agent:
-  name: {{ project_name }}
-  description: {{ description }}
-  version: 0.3.0
+name: {{ project_name }}
+description: {{ description }}
+version: 0.3.0
 
 # Enterprise plugins configuration with AgentUp Security Framework
 plugins:
@@ -196,24 +195,6 @@ ai:
   enabled: false
 {% endif %}
 
-# Cache configuration
-{% if has_middleware and 'cache' in feature_config.get('middleware', []) %}
-cache:
-{% if feature_config.get('cache_backend') == 'valkey' %}
-  type: valkey
-  config:
-    url: '${VALKEY_CACHE_URL:valkey://localhost:6379}'
-    db: 1                    # Use DB 1 for cache (DB 0 for state)
-    max_connections: 20
-    retry_on_timeout: true
-    default_ttl: 300         # Default TTL for cache items in seconds (5 minutes)
-{% else %}
-  type: memory
-  config:
-    max_size: 1000           # Maximum number of items in memory cache
-    default_ttl: 300         # Default TTL for cache items in seconds (5 minutes)
-{% endif %}
-{% endif %}
 
 
 # Model Context Protocol configuration - Full enterprise setup
@@ -235,42 +216,52 @@ mcp:
     port: 8001
 
 
-# Enterprise context-aware middleware configuration
+# Middleware configuration
 middleware:
-  - name: timed
-    params: {}
-{% if has_middleware and 'cache' in feature_config.get('middleware', []) %}
-  - name: cached
-    params:
-      ttl: 600  # 10 minutes for enterprise
-      cache_errors: false  # Don't cache errors in production
-      # Enterprise context-aware caching
-      plugin_specific_ttl:
-        local: 300        # 5 minutes for local plugins
-        network: 1800     # 30 minutes for network plugins (longer for enterprise)
-        hybrid: 600       # 10 minutes for hybrid plugins
-        ai_function: 120  # 2 minutes for AI functions (fresher responses)
-        core: 3600        # 1 hour for core functions
-{% endif %}
+  enabled: {{ has_middleware | default(true) }}
 {% if has_middleware and 'rate_limit' in feature_config.get('middleware', []) %}
-  - name: rate_limited
-    params:
-      requests_per_minute: 120  # Higher rate for enterprise
-      burst_size: 30           # Allow burst traffic
+  rate_limiting:
+    enabled: true
+    requests_per_minute: {{ rate_limit_rpm | default(120) }}  # Higher rate for enterprise
+    burst_size: {{ rate_limit_burst | default(144) }}         # Allow burst traffic
+{% else %}
+  rate_limiting:
+    enabled: false
+    requests_per_minute: 120
+    burst_size: 144
+{% endif %}
+{% if has_middleware and 'cache' in feature_config.get('middleware', []) %}
+  caching:
+    enabled: true
+    backend: {{ cache_backend | default('memory') }}
+    default_ttl: {{ middleware_cache_ttl | default(600) }}   # 10 minutes for enterprise
+    max_size: {{ cache_max_size | default(2000) }}           # Larger cache for enterprise
+{% if cache_backend == 'valkey' %}
+    # Valkey connection configuration for enterprise
+    valkey_url: "${VALKEY_URL:valkey://localhost:6379}"
+    valkey_db: 1  # Use DB 1 for cache (DB 0 for state)
+    valkey_max_connections: 20  # Higher connection pool for enterprise
+    valkey_connection_timeout: 5
+{% endif %}
+{% else %}
+  caching:
+    enabled: false
+    backend: memory
+    default_ttl: 600
+    max_size: 2000
 {% endif %}
 {% if has_middleware and 'retry' in feature_config.get('middleware', []) %}
-  - name: retryable
-    params:
-      max_retries: 5         # More retries for enterprise reliability
-      backoff_factor: 2.0    # Exponential backoff
-      max_delay: 60.0        # Max 60 seconds between retries
-      # Enterprise plugin-specific retry configuration
-      plugin_compatibility:
-        local: false           # Local plugins rarely need retries
-        network: true          # Network plugins benefit from retries
-        hybrid: true           # Hybrid plugins may need retries
-        ai_function: false     # AI functions need specialized retry logic
-        core: false            # Core functions should be reliable
+  retry:
+    enabled: true
+    max_attempts: {{ retry_max_attempts | default(5) }}      # More retries for enterprise reliability
+    initial_delay: {{ retry_initial_delay | default(1.0) }}
+    max_delay: {{ retry_max_delay | default(60.0) }}         # Max 60 seconds between retries
+{% else %}
+  retry:
+    enabled: false
+    max_attempts: 5
+    initial_delay: 1.0
+    max_delay: 60.0
 {% endif %}
 
 # Push notifications configuration

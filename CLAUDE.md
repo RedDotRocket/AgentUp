@@ -17,6 +17,7 @@ AgentUp is a Python framework for creating AI agents with production-ready featu
 ## Technology Stack
 
 - **Python**: >=3.11 required
+- **Pydantic**: v2 for data validation and settings management
 - **Web Framework**: FastAPI with Uvicorn ASGI server
 - **Package Manager**: UV (preferred) for dependency management
 - **Plugin System**: Pluggy-based architecture with middleware inheritance
@@ -102,6 +103,8 @@ src/agent/
 
 **Capability Registration**: AI functions are automatically discovered and registered with optional middleware (rate limiting, caching, retry logic) and state management.
 
+**Pydantic v2**: Utilizes Pydantic v2 features like `@field_validator` and `@model_validator` for data validation, with a focus on modern typing conventions and use of Pydantic Models for configuration.
+
 ## Code Style and Conventions
 
 - **Formatting**: Ruff with 120-character line length, double quotes, 4-space indentation
@@ -116,8 +119,10 @@ src/agent/
 ### Typing Guidelines
 - ✅ **Use**: `dict[str, Any]`, `list[str]`, `str | None`
 - ❌ **Avoid**: `Dict[str, Any]`, `List[str]`, `Optional[str]`
+- ❌ **Avoid**: `hasinstance` checks for types; use `isinstance` with Pydantic models
 - **Import from typing**: Only `Union`, `Literal`, `Any`, `TypeVar`, `Generic`, `Protocol`
 - **See**: `docs/MODERN_TYPING_GUIDE.md` for complete typing conventions
+
 
 ## Task Completion Workflow
 

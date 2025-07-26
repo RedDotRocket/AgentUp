@@ -72,12 +72,12 @@ def with_state(state_configs: list[dict[str, Any]]):
         backend_config = primary_config.get("config", {})
 
         def context_id_generator(task: Task) -> str:
-            # Check metadata for context_id first, then contextId, then fall back to task id
+            # Check metadata for context_id first, then context_id, then fall back to task id
             context_id = task.id
             if hasattr(task, "metadata") and task.metadata:
-                context_id = task.metadata.get("context_id", getattr(task, "contextId", task.id))
+                context_id = task.metadata.get("context_id", getattr(task, "context_id", task.id))
             else:
-                context_id = getattr(task, "contextId", task.id)
+                context_id = getattr(task, "context_id", task.id)
             return context_id
 
         return _create_state_wrapper(func, backend, backend_config, context_id_generator, "State management")
@@ -90,12 +90,12 @@ def stateful_conversation(backend: str = "memory", **backend_config):
 
     def decorator(func: Callable) -> Callable:
         def context_id_generator(task: Task) -> str:
-            # Check metadata for conversation_id first, then contextId, then fall back to task.id
+            # Check metadata for conversation_id first, then context_id, then fall back to task.id
             conversation_id = None
             if hasattr(task, "metadata") and task.metadata:
                 conversation_id = task.metadata.get("conversation_id")
             if not conversation_id:
-                conversation_id = getattr(task, "contextId", task.id)
+                conversation_id = getattr(task, "context_id", task.id)
             return f"conversation:{conversation_id}"
 
         return _create_state_wrapper(func, backend, backend_config, context_id_generator, "Conversation state")
@@ -140,12 +140,12 @@ def stateful(storage: str = "memory", **storage_kwargs):
 
     def decorator(func: Callable) -> Callable:
         def context_id_generator(task: Task) -> str:
-            # Check metadata for context_id first, then contextId, then fall back to task id
+            # Check metadata for context_id first, then context_id, then fall back to task id
             context_id = task.id
             if hasattr(task, "metadata") and task.metadata:
-                context_id = task.metadata.get("context_id", getattr(task, "contextId", task.id))
+                context_id = task.metadata.get("context_id", getattr(task, "context_id", task.id))
             else:
-                context_id = getattr(task, "contextId", task.id)
+                context_id = getattr(task, "context_id", task.id)
             return context_id
 
         return _create_state_wrapper(func, storage, storage_kwargs, context_id_generator, "State management")

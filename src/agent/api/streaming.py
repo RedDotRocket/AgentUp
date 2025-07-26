@@ -47,7 +47,7 @@ class StreamingHandler:
                 return
 
             # Get context and prepare conversation
-            context_id = getattr(task, "contextId", task.id)
+            context_id = getattr(task, "context_id", task.id)
             conversation = self.conversation_manager.get_conversation_history(context_id)
             messages = await self.conversation_manager.prepare_llm_conversation(user_input, conversation)
 

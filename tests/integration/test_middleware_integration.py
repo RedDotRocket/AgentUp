@@ -80,7 +80,7 @@ async def send_message(client: httpx.AsyncClient, content: str, skill_id: str = 
             "message": {
                 "role": "user",
                 "parts": [{"kind": "text", "text": content}],
-                "messageId": f"msg_{int(time.time() * 1000)}",
+                "message_id": f"msg_{int(time.time() * 1000)}",
             }
         },
         "id": f"test_{int(time.time() * 1000)}",
@@ -395,7 +395,7 @@ class TestMiddlewareStressTest:
                 "message": {
                     "role": "user",
                     "parts": [{"kind": "text", "text": content}],
-                    "messageId": f"stress_msg_{int(time.time() * 1000000)}",
+                    "message_id": f"stress_msg_{int(time.time() * 1000000)}",
                 }
             },
             "id": f"stress_{int(time.time() * 1000000)}",

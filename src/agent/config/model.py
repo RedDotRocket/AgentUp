@@ -12,10 +12,11 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
 from pydantic_settings import BaseSettings
 
-from ..types import ConfigDict, FilePath, LogLevel, ModulePath, ServiceName, ServiceType, Version
+from ..types import ConfigDict as ConfigDictType
+from ..types import FilePath, LogLevel, ModulePath, ServiceName, ServiceType, Version
 
 
 class EnvironmentVariable(BaseModel):
@@ -119,7 +120,7 @@ class ServiceConfig(BaseModel):
     type: ServiceType = Field(..., description="Service type identifier")
     enabled: bool = Field(True, description="Whether service is enabled")
     init_path: ModulePath | None = Field(None, description="Custom initialization module path")
-    settings: ConfigDict = Field(default_factory=dict, description="Service-specific settings")
+    settings: ConfigDictType = Field(default_factory=dict, description="Service-specific settings")
     priority: int = Field(50, description="Service initialization priority (lower = earlier)")
 
     # Health check configuration
@@ -145,6 +146,35 @@ class ServiceConfig(BaseModel):
         if not 0 <= v <= 100:
             raise ValueError("Priority must be between 0 and 100")
         return v
+
+    @computed_field  # Modern Pydantic v2 computed property
+    @property
+    def is_high_priority(self) -> bool:
+        """Check if service has high priority (early initialization)."""
+        return self.priority <= 20
+
+    @computed_field
+    @property
+    def is_resilient(self) -> bool:
+        """Check if service has resilience features enabled."""
+        return self.health_check_enabled and self.max_retries > 1
+
+    @computed_field
+    @property
+    def initialization_score(self) -> float:
+        """Calculate initialization reliability score (0.0 to 1.0)."""
+        score = 0.5  # Base score
+
+        # Health check contribution (0.0 to 0.3)
+        if self.health_check_enabled:
+            score += 0.2
+            # Frequent health checks are better
+            score += min(0.1, (60 - self.health_check_interval) / 60 * 0.1)
+
+        # Retry configuration contribution (0.0 to 0.2)
+        score += min(0.2, self.max_retries / 5 * 0.2)
+
+        return min(1.0, score)
 
 
 class MCPServerConfig(BaseModel):
@@ -225,7 +255,7 @@ class PluginCapabilityConfig(BaseModel):
     description: str | None = Field(None, description="Capability description")
     required_scopes: list[str] = Field(default_factory=list, description="Required scopes")
     enabled: bool = Field(True, description="Whether capability is enabled")
-    config: ConfigDict = Field(default_factory=dict, description="Capability-specific config")
+    config: ConfigDictType = Field(default_factory=dict, description="Capability-specific config")
     middleware_override: list[dict[str, Any]] | None = Field(None, description="Override middleware configuration")
 
 
@@ -244,7 +274,7 @@ class PluginConfig(BaseModel):
     # Default settings applied to all capabilities
     default_scopes: list[str] = Field(default_factory=list, description="Default scopes")
     middleware: list[dict[str, Any]] | None = Field(None, description="Middleware configuration")
-    config: ConfigDict = Field(default_factory=dict, description="Plugin configuration")
+    config: ConfigDictType = Field(default_factory=dict, description="Plugin configuration")
 
     @field_validator("plugin_id")
     @classmethod
@@ -254,30 +284,70 @@ class PluginConfig(BaseModel):
             raise ValueError("Plugin ID must be alphanumeric with hyphens, underscores, and dots")
         return v
 
+    @computed_field  # Modern Pydantic v2 computed property
+    @property
+    def has_capabilities(self) -> bool:
+        """Check if plugin has any capabilities defined."""
+        return len(self.capabilities) > 0
+
+    @computed_field
+    @property
+    def enabled_capabilities_count(self) -> int:
+        """Count of enabled capabilities."""
+        return sum(1 for cap in self.capabilities if cap.enabled)
+
+    @computed_field
+    @property
+    def display_name(self) -> str:
+        """Get display name (name or plugin_id as fallback)."""
+        return self.name or self.plugin_id
+
+    @computed_field
+    @property
+    def has_middleware(self) -> bool:
+        """Check if plugin has middleware configuration."""
+        return self.middleware is not None and len(self.middleware) > 0
+
+    @computed_field
+    @property
+    def total_required_scopes(self) -> set[str]:
+        """Get all required scopes (default + capability-specific)."""
+        scopes = set(self.default_scopes)
+        for cap in self.capabilities:
+            scopes.update(cap.required_scopes)
+        return scopes
+
+    @computed_field
+    @property
+    def complexity_score(self) -> float:
+        """Calculate plugin complexity score (0.0 to 1.0)."""
+        score = 0.0
+
+        # Capability count contribution (0.0 to 0.4)
+        score += min(0.4, len(self.capabilities) / 10 * 0.4)
+
+        # Middleware complexity (0.0 to 0.2)
+        if self.has_middleware:
+            score += min(0.2, len(self.middleware) / 5 * 0.2)
+
+        # Scope count (0.0 to 0.2)
+        total_scopes = len(self.total_required_scopes)
+        score += min(0.2, total_scopes / 10 * 0.2)
+
+        # Configuration complexity (0.0 to 0.2)
+        config_size = len(str(self.config))
+        score += min(0.2, config_size / 1000 * 0.2)
+
+        return min(1.0, score)
+
 
 class PluginsConfig(BaseModel):
     """Plugins system configuration."""
 
     enabled: bool = Field(True, description="Enable plugin system")
-    auto_discovery: bool = Field(True, description="Enable automatic plugin discovery")
-    search_paths: list[FilePath] = Field(
-        default_factory=lambda: ["plugins/", "~/.agentup/plugins/"], description="Plugin search paths"
-    )
 
     # Plugin configurations
     plugins: list[PluginConfig] = Field(default_factory=list, description="Plugin configurations")
-
-    # Global plugin settings
-    max_plugins: int = Field(100, description="Maximum number of plugins")
-    load_timeout: int = Field(30, description="Plugin load timeout in seconds")
-
-    @field_validator("max_plugins")
-    @classmethod
-    def validate_max_plugins(cls, v: int) -> int:
-        """Validate maximum plugins limit."""
-        if not 1 <= v <= 1000:
-            raise ValueError("max_plugins must be between 1 and 1000")
-        return v
 
 
 class MiddlewareConfig(BaseModel):
@@ -345,10 +415,17 @@ class APIConfig(BaseModel):
 class AgentConfig(BaseModel):
     """Main agent configuration."""
 
+    # agent: dict[str, Any] = Field(default_factory=dict, description="Agent metadata")
     # Basic agent information
-    project_name: str = Field("AgentUp", description="Project name")
+    project_name: str = Field("AgentUp", description="Project name", alias="name")
     description: str = Field("AI agent powered by AgentUp", description="Agent description")
     version: Version = Field("1.0.0", description="Agent version")
+
+    # Add property for backward compatibility
+    @property
+    def name(self) -> str:
+        """Get project name (backward compatibility)."""
+        return self.project_name
 
     # Module paths for dynamic loading
     dispatcher_path: ModulePath | None = Field(None, description="Function dispatcher module path")
@@ -364,24 +441,34 @@ class AgentConfig(BaseModel):
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     api: APIConfig = Field(default_factory=APIConfig)
     security: SecurityConfig = Field(default_factory=SecurityConfig)
-    plugins: PluginsConfig = Field(default_factory=PluginsConfig)
+    plugins: list[PluginConfig] = Field(default_factory=list, description="Plugin configurations")
     middleware: MiddlewareConfig = Field(default_factory=MiddlewareConfig)
     mcp: MCPConfig = Field(default_factory=MCPConfig)
 
+    # AI configuration
+    ai: dict[str, Any] = Field(default_factory=dict, description="AI settings")
+    ai_provider: dict[str, Any] = Field(default_factory=dict, description="AI provider configuration")
     # Services configuration
     services: dict[ServiceName, ServiceConfig] = Field(default_factory=dict, description="Service configurations")
 
     # Custom configuration sections
-    custom: ConfigDict = Field(default_factory=dict, description="Custom configuration")
+    custom: ConfigDictType = Field(default_factory=dict, description="Custom configuration")
 
+    # Push Notification settings
+    push_notifications: dict[str, Any] = Field(default_factory=dict, description="Push notifications config")
     # Environment-specific settings
+    state_management: dict[str, Any] = Field(default_factory=dict, description="State management config")
+    development: dict[str, Any] = Field(default_factory=dict, description="Development settings")
+
     environment: Literal["development", "staging", "production"] = Field(
         "development", description="Deployment environment"
     )
 
-    class Config:
-        extra = "forbid"  # Prevent unknown configuration fields
-        validate_assignment = True
+    model_config = ConfigDict(
+        extra="forbid",  # Prevent unknown configuration fields
+        validate_assignment=True,
+        populate_by_name=True,  # Allow using both field name and alias
+    )
 
     @field_validator("project_name")
     @classmethod
@@ -400,6 +487,42 @@ class AgentConfig(BaseModel):
         if not re.match(r"^\d+\.\d+\.\d+(?:-[\w.-]+)?$", v):
             raise ValueError("Version must follow semantic versioning (e.g., 1.0.0)")
         return v
+
+    @computed_field  # Modern Pydantic v2 computed property
+    @property
+    def is_production(self) -> bool:
+        """Check if running in production environment."""
+        return self.environment == "production"
+
+    @computed_field
+    @property
+    def is_development(self) -> bool:
+        """Check if running in development environment."""
+        return self.environment == "development"
+
+    @computed_field
+    @property
+    def enabled_services(self) -> list[str]:
+        """Get list of enabled service names."""
+        return [name for name, config in self.services.items() if config.enabled]
+
+    @computed_field
+    @property
+    def total_service_count(self) -> int:
+        """Total number of configured services."""
+        return len(self.services)
+
+    @computed_field
+    @property
+    def security_enabled(self) -> bool:
+        """Check if any security features are enabled."""
+        return self.security.enabled
+
+    @computed_field
+    @property
+    def full_name(self) -> str:
+        """Get full agent name with version."""
+        return f"{self.project_name} v{self.version}"
 
     @model_validator(mode="after")
     def validate_mcp_consistency(self) -> AgentConfig:
@@ -432,9 +555,7 @@ class ConfigurationSettings(BaseSettings):
     # Security settings
     SECRET_KEY: str | None = Field(None, description="Application secret key")
 
-    class Config:
-        env_prefix = "AGENTUP_"
-        case_sensitive = True
+    model_config = ConfigDict(env_prefix="AGENTUP_", case_sensitive=True)
 
     def create_directories(self) -> None:
         """Create necessary directories if they don't exist."""

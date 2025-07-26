@@ -17,13 +17,13 @@ from src.agent.state.decorators import (
 
 def create_test_task(task_id: str = "test-123", context_id: str = "context-123") -> Task:
     """Create a test Task with all required fields."""
-    return Task(id=task_id, contextId=context_id, status=TaskStatus(state=TaskState.submitted), history=[])
+    return Task(id=task_id, context_id=context_id, status=TaskStatus(state=TaskState.submitted), history=[])
 
 
 def create_test_message(role: Role = Role.user, text: str = "Hello") -> Message:
     """Create a test Message with all required fields."""
     text_part = Part(root=TextPart(text=text))
-    return Message(messageId="msg-123", role=role, parts=[text_part])
+    return Message(message_id="msg-123", role=role, parts=[text_part])
 
 
 class TestPreserveAIAttributes:
@@ -353,7 +353,7 @@ class TestStatefulConversationDecorator:
             # Apply decorator (this triggers _create_state_wrapper)
             _decorated_func = decorator(test_function)
 
-            # Verify context ID generation falls back to contextId
+            # Verify context ID generation falls back to context_id
             assert captured_generator is not None
             context_id = captured_generator(task)
             assert context_id == "conversation:context-123"

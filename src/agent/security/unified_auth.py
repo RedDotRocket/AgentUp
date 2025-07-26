@@ -443,9 +443,6 @@ class UnifiedAuthenticationManager:
         if scope_service._hierarchy:  # Service is initialized
             result = scope_service.validate_scope_access(user_scopes, required_scope)
             return result.has_access
-        else:
-            # Fallback to legacy hierarchy for backwards compatibility
-            return self.scope_hierarchy.validate_scope(user_scopes, required_scope)
 
     def get_scope_summary(self) -> dict[str, Any]:
         """Get summary of scope hierarchy for debugging."""
@@ -453,14 +450,6 @@ class UnifiedAuthenticationManager:
         if scope_service._hierarchy:
             # Use optimized service summary (safe for logging)
             return scope_service.get_hierarchy_summary()
-        else:
-            # Fallback to legacy hierarchy
-            hierarchy = self.scope_hierarchy.hierarchy
-            return {
-                "hierarchy_size": len(hierarchy),
-                "total_scopes": len(hierarchy),
-                "wildcard_scopes_count": len([scope for scope, children in hierarchy.items() if "*" in children]),
-            }
 
 
 # Global manager instance

@@ -60,7 +60,7 @@ class MessageProcessor:
                                     break
 
                     # Return dict format for backwards compatibility
-                    return {"role": "user", "content": content, "messageId": getattr(message, "messageId", "unknown")}
+                    return {"role": "user", "content": content, "message_id": getattr(message, "message_id", "unknown")}
         return None
 
     @staticmethod

@@ -68,7 +68,7 @@ class TestLoadConfig:
         config_file.write_text("")
 
         loaded_config = load_config(str(config_file))
-        assert loaded_config is None
+        assert loaded_config == {}
 
     def test_load_config_with_env_vars(self, temp_dir: Path, env_vars):
         """Test configuration loading with environment variable substitution."""

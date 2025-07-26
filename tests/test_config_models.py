@@ -453,8 +453,17 @@ class TestModelSerialization:
         """Test agent config serialization."""
         config = AgentConfig(project_name="TestAgent", version="1.2.3", mcp_enabled=True)
 
-        # Serialize to dict
-        config_dict = config.dict()
+        # Serialize to dict (modern Pydantic v2 way) - exclude computed fields for round-trip
+        config_dict = config.model_dump(
+            exclude={
+                "is_production",
+                "is_development",
+                "enabled_services",
+                "total_service_count",
+                "security_enabled",
+                "full_name",
+            }
+        )
         assert config_dict["project_name"] == "TestAgent"
         assert config_dict["version"] == "1.2.3"
         assert config_dict["mcp_enabled"] is True
@@ -465,6 +474,17 @@ class TestModelSerialization:
         assert restored_config.project_name == "TestAgent"
         assert restored_config.version == "1.2.3"
         assert restored_config.mcp_enabled is True
+
+        # Test computed fields are accessible and work correctly
+        assert restored_config.is_development is True  # computed field works
+        assert restored_config.full_name == "TestAgent v1.2.3"  # computed field works
+
+        # Test full serialization includes computed fields
+        full_dict = config.model_dump()
+        assert "is_development" in full_dict  # computed fields included in full dump
+        assert "full_name" in full_dict
+        assert full_dict["is_development"] is True
+        assert full_dict["full_name"] == "TestAgent v1.2.3"
 
     def test_json_serialization(self):
         """Test JSON serialization."""

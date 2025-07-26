@@ -277,9 +277,6 @@ services:
       base_path: ./data             # Relative to agent root
 
 plugins:
-  search_paths:
-    - ./plugins                     # Local plugins
-    - ~/.agentup/plugins           # User plugins
 ```
 
 ---

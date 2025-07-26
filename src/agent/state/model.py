@@ -11,9 +11,10 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Generic, Literal, TypeVar
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
-from ..types import TTL, ConfigDict, FilePath, SessionId, Timestamp, UserId
+from ..types import TTL, FilePath, SessionId, Timestamp, UserId
+from ..types import ConfigDict as ConfigDictType
 
 # Generic type for state variables
 T = TypeVar("T")
@@ -82,8 +83,7 @@ class StateVariable(BaseModel, Generic[T]):
         self.updated_at = datetime.utcnow()
         self.version += 1
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class ConversationRole(str, Enum):
@@ -352,7 +352,7 @@ class StateBackendConfig(BaseModel):
     password: str | None = Field(None, description="Password")
 
     # Redis-specific settings
-    redis_settings: ConfigDict = Field(default_factory=dict, description="Redis-specific config")
+    redis_settings: ConfigDictType = Field(default_factory=dict, description="Redis-specific config")
 
     # File-specific settings
     file_path: FilePath | None = Field(None, description="File storage path")
@@ -380,6 +380,72 @@ class StateBackendConfig(BaseModel):
         if v is not None and not (1 <= v <= 65535):
             raise ValueError("Port must be between 1 and 65535")
         return v
+
+    @computed_field  # Modern Pydantic v2 computed property
+    @property
+    def is_memory_backend(self) -> bool:
+        """Check if this is a memory backend."""
+        return self.type == StateBackendType.MEMORY
+
+    @computed_field
+    @property
+    def is_persistent_backend(self) -> bool:
+        """Check if this backend persists data."""
+        return self.type in (StateBackendType.REDIS, StateBackendType.FILE, StateBackendType.DATABASE)
+
+    @computed_field
+    @property
+    def requires_authentication(self) -> bool:
+        """Check if backend requires authentication."""
+        return self.username is not None or self.password is not None
+
+    @computed_field
+    @property
+    def connection_url(self) -> str | None:
+        """Build connection URL from components."""
+        if self.connection_string:
+            return self.connection_string
+
+        if self.type == StateBackendType.REDIS and self.host:
+            auth = f"{self.username}:{self.password}@" if self.requires_authentication else ""
+            port = f":{self.port}" if self.port else ":6379"
+            return f"redis://{auth}{self.host}{port}"
+
+        if self.type == StateBackendType.DATABASE and self.host:
+            auth = f"{self.username}:{self.password}@" if self.requires_authentication else ""
+            port = f":{self.port}" if self.port else ""
+            db = f"/{self.database}" if self.database else ""
+            return f"postgresql://{auth}{self.host}{port}{db}"
+
+        return None
+
+    @computed_field
+    @property
+    def performance_score(self) -> float:
+        """Calculate performance score based on configuration (0.0 to 1.0)."""
+        score = 0.0
+
+        # Backend type score (0.0 to 0.4)
+        if self.type == StateBackendType.MEMORY:
+            score += 0.4  # Fastest
+        elif self.type == StateBackendType.REDIS:
+            score += 0.3  # Very fast
+        elif self.type == StateBackendType.FILE:
+            score += 0.2  # Moderate
+        else:  # DATABASE
+            score += 0.1  # Slower
+
+        # Pool size score (0.0 to 0.3)
+        score += min(0.3, self.connection_pool_size / 50 * 0.3)
+
+        # TTL score (0.0 to 0.2) - shorter TTL = better performance
+        score += max(0.0, 0.2 - (self.ttl / 7200 * 0.2))
+
+        # Compression penalty (0.0 to 0.1)
+        if not self.compression:
+            score += 0.1
+
+        return min(1.0, score)
 
 
 class StateOperationType(str, Enum):

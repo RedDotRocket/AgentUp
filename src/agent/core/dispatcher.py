@@ -227,17 +227,6 @@ class FunctionRegistry:
                 audit_logger.log_configuration_error(
                     f"plugin_{plugin_id}", "legacy_config_no_scope_enforcement", {"plugin_id": plugin_id}
                 )
-                plugin_capabilities = plugin_adapter.get_plugin_capabilities(plugin_id)
-                for capability_id in plugin_capabilities:
-                    ai_functions = plugin_adapter.get_ai_functions(capability_id)
-                    for ai_function in ai_functions:
-                        tool_spec = {
-                            "name": ai_function.name,
-                            "description": ai_function.description,
-                            "parameters": ai_function.parameters,
-                        }
-                        tools.append(tool_spec)
-
         return tools
 
     def _get_mcp_tools(self, scope_service, user_scopes: set[str]) -> list[dict[str, Any]]:
@@ -440,12 +429,12 @@ class FunctionDispatcher:
 
             # Get conversation context
             try:
-                # Use contextId if available, otherwise use task ID
+                # Use context_id if available, otherwise use task ID
                 # This allows for better conversation management across tasks
-                logger.debug(f"Using context ID: {getattr(task, 'contextId', task.id)}")
-                context_id = getattr(task, "contextId", task.id)
+                logger.debug(f"Using context ID: {getattr(task, 'context_id', task.id)}")
+                context_id = getattr(task, "context_id", task.id)
             except AttributeError:
-                logger.warning("Task does not have contextId, using task ID instead")
+                logger.warning("Task does not have context_id, using task ID instead")
                 context_id = task.id
 
             try:
@@ -576,9 +565,9 @@ class FunctionDispatcher:
             context = get_context_manager(backend, **backend_config)
 
             # Extract context ID from task
-            context_id = getattr(task, "contextId", None) or getattr(task, "context_id", None) or task.id
+            context_id = getattr(task, "context_id", None) or getattr(task, "context_id", None) or task.id
             logger.info(
-                f"AI processing: Using context_id={context_id} (contextId={getattr(task, 'contextId', 'missing')}, task.id={task.id})"
+                f"AI processing: Using context_id={context_id} (context_id={getattr(task, 'context_id', 'missing')}, task.id={task.id})"
             )
 
             return context, context_id
@@ -651,7 +640,7 @@ class FunctionDispatcher:
                         return {
                             "role": "user",
                             "parts": message.parts,  # Keep full A2A parts for multi-modal
-                            "messageId": getattr(message, "messageId", "unknown"),
+                            "message_id": getattr(message, "message_id", "unknown"),
                         }
 
         # Fallback to text extraction

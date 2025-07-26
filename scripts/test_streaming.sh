@@ -219,7 +219,7 @@ generate_request() {
         "message": {
             "role": "user",
             "parts": [{"kind": "text", "text": "$message"}],
-            "messageId": "$message_id",
+            "message_id": "$message_id",
             "kind": "message"
         }
     },

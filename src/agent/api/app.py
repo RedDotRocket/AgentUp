@@ -8,8 +8,8 @@ from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.server.tasks import InMemoryTaskStore
 from fastapi import FastAPI
 
+from agent.config.a2a import JSONRPCError
 from agent.config.constants import DEFAULT_SERVER_HOST, DEFAULT_SERVER_PORT
-from agent.config.models import JSONRPCError
 from agent.core.executor import GenericAgentExecutor as AgentExecutorImpl
 from agent.push.notifier import EnhancedPushNotifier
 from agent.services import AgentBootstrapper, ConfigurationManager

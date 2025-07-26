@@ -11,7 +11,16 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel, Field, SecretStr, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SecretStr,
+    computed_field,
+    field_serializer,
+    field_validator,
+    model_validator,
+)
 
 from agent.types import (
     CookieName,
@@ -67,8 +76,7 @@ class Scope(BaseModel):
             return self.name == other.name
         return False
 
-    class Config:
-        frozen = True  # Scopes are immutable
+    model_config = ConfigDict(frozen=True)  # Scopes are immutable
 
 
 class APIKeyData(BaseModel):
@@ -126,12 +134,62 @@ class APIKeyData(BaseModel):
                 raise ValueError("Expiration must be after creation time")
         return self
 
+    @computed_field  # Modern Pydantic v2 computed property
     @property
     def is_expired(self) -> bool:
         """Check if the key has expired."""
         if not self.expires_at:
             return False
         return datetime.utcnow() > self.expires_at
+
+    @computed_field
+    @property
+    def is_valid(self) -> bool:
+        """Check if the API key is valid (not expired)."""
+        return not self.is_expired
+
+    @computed_field
+    @property
+    def scope_names(self) -> set[str]:
+        """Get all scope names as a set for efficient lookup."""
+        return {scope.name for scope in self.scopes}
+
+    @computed_field
+    @property
+    def days_until_expiry(self) -> int | None:
+        """Days until expiry, None if no expiration set."""
+        if self.expires_at is None:
+            return None
+        delta = self.expires_at - datetime.utcnow()
+        return max(0, delta.days)
+
+    @computed_field
+    @property
+    def strength_score(self) -> float:
+        """Calculate key strength score (0.0 to 1.0)."""
+        key_str = self.key.get_secret_value()
+        if key_str.startswith("${") and key_str.endswith("}"):
+            return 1.0  # Assume env vars are strong
+
+        score = 0.0
+        # Length score (0.0 to 0.4)
+        score += min(0.4, len(key_str) / 64 * 0.4)
+
+        # Character diversity score (0.0 to 0.6)
+        import string
+
+        char_types = 0
+        if any(c in string.ascii_lowercase for c in key_str):
+            char_types += 1
+        if any(c in string.ascii_uppercase for c in key_str):
+            char_types += 1
+        if any(c in string.digits for c in key_str):
+            char_types += 1
+        if any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in key_str):
+            char_types += 1
+        score += (char_types / 4) * 0.6
+
+        return min(1.0, score)
 
     def has_scope(self, scope: str | Scope) -> bool:
         """Check if key has a specific scope or any parent scope."""
@@ -154,7 +212,7 @@ class APIKeyConfig(BaseModel):
     location: Literal["header", "query", "cookie"] = Field("header", description="Where to look for the API key")
     query_param: QueryParam = Field("api_key", description="Query parameter name if location is 'query'")
     cookie_name: CookieName = Field("api_key", description="Cookie name if location is 'cookie'")
-    keys: list[APIKeyData] = Field(..., min_items=1, description="List of valid API keys")
+    keys: list[APIKeyData] = Field(..., min_length=1, description="List of valid API keys")
 
     @field_validator("header_name")
     @classmethod
@@ -396,9 +454,9 @@ class AuthContext(BaseModel):
         """Check if context has all specified scopes."""
         return all(self.has_scope(scope) for scope in scopes)
 
-    class Config:
-        # Allow set type for scopes
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True  # Allow set type for scopes
+    )
 
 
 class AuditAction(str, Enum):
@@ -482,9 +540,12 @@ class AuditLogEntry(BaseModel):
 
         return " ".join(parts)
 
-    class Config:
-        # Allow JSON serialization of datetime
-        json_encoders = {datetime: lambda v: v.isoformat()}
+    model_config = ConfigDict()
+
+    @field_serializer("timestamp")
+    def serialize_timestamp(self, value: datetime) -> str:
+        """Serialize datetime to ISO format."""
+        return value.isoformat()
 
 
 class PermissionCheck(BaseModel):
