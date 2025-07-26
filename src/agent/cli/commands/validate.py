@@ -40,7 +40,7 @@ def validate(config: str, check_env: bool, check_handlers: bool, strict: bool):
 
     # Validate structure
     validate_required_fields(config_data, errors, warnings)
-    validate_agent_section(config_data.get("agent", {}), errors, warnings)
+    validate_agent_section(config_data, errors, warnings)
     validate_plugins_section(config_data.get("plugins", []), errors, warnings)
 
     # Validate AI configuration against plugins requirements
@@ -104,17 +104,28 @@ def load_yaml_config(config_path: str, errors: list[str]) -> dict[str, Any] | No
 
 def validate_required_fields(config: dict[str, Any], errors: list[str], warnings: list[str]):
     """Validate required top-level fields."""
-    required_fields = ["agent", "plugins"]
+    # Check for new flat format (name, description at top level) or old nested format (agent section)
+    has_old_format = "agent" in config
+    has_new_format = "name" in config and "description" in config
 
-    for field in required_fields:
-        if field not in config:
-            errors.append(f"Missing required field: '{field}'")
-        elif not config[field]:
-            errors.append(f"Required field '{field}' is empty")
+    if not has_old_format and not has_new_format:
+        errors.append("Missing required fields: either 'agent' section or top-level 'name' and 'description'")
+
+    # Plugins are always required
+    if "plugins" not in config:
+        errors.append("Missing required field: 'plugins'")
+    elif not config["plugins"]:
+        errors.append("Required field 'plugins' is empty")
 
     # Check for unknown top-level fields
     known_fields = {
+        # Old nested format
         "agent",
+        # New flat format - top-level agent info
+        "name",
+        "description",
+        "version",
+        # Common sections
         "plugins",
         "services",
         "security",
@@ -136,26 +147,37 @@ def validate_required_fields(config: dict[str, Any], errors: list[str], warnings
         warnings.append(f"Unknown configuration fields: {', '.join(unknown_fields)}")
 
 
-def validate_agent_section(agent: dict[str, Any], errors: list[str], warnings: list[str]):
-    """Validate agent section."""
-    if not agent:
-        return
+def validate_agent_section(config: dict[str, Any], errors: list[str], warnings: list[str]):
+    """Validate agent information (either in 'agent' section or top-level)."""
+    # Check if using old nested format
+    if "agent" in config:
+        agent = config["agent"]
+        if not agent:
+            return
+        required_agent_fields = ["name", "description"]
+        for field in required_agent_fields:
+            if field not in agent:
+                errors.append(f"Missing required agent field: '{field}'")
+            elif not agent[field] or not str(agent[field]).strip():
+                errors.append(f"Agent field '{field}' is empty")
+    else:
+        # New flat format - check top-level fields
+        required_fields = ["name", "description"]
+        for field in required_fields:
+            if field not in config:
+                errors.append(f"Missing required field: '{field}'")
+            elif not config[field] or not str(config[field]).strip():
+                errors.append(f"Field '{field}' is empty")
 
-    required_agent_fields = ["name", "description"]
+    # Validate version format if present (check both old and new formats)
+    version = None
+    if "agent" in config and "version" in config["agent"]:
+        version = config["agent"]["version"]
+    elif "version" in config:
+        version = config["version"]
 
-    for field in required_agent_fields:
-        if field not in agent:
-            errors.append(f"Missing required agent field: 'agent.{field}'")
-        elif not agent[field]:
-            errors.append(f"Agent field 'agent.{field}' is empty")
-
-    # Validate version format if present
-    if "version" in agent:
-        version = agent["version"]
-        if not re.match(r"^\d+\.\d+\.\d+", str(version)):
-            warnings.append(f"Agent version '{version}' doesn't follow semantic versioning (x.y.z)")
-
-    click.echo(f"{click.style('✓', fg='green')} Agent configuration valid")
+    if version and not re.match(r"^\d+\.\d+\.\d+", str(version)):
+        warnings.append(f"Version '{version}' doesn't follow semantic versioning (x.y.z)")
 
 
 def validate_plugins_section(plugins: list[dict[str, Any]], errors: list[str], warnings: list[str]):
@@ -571,10 +593,49 @@ def validate_plugin_system_prompts(plugins: list[dict[str, Any]], errors: list[s
         click.echo(f"{click.style('✓', fg='green')} No plugin system prompts found")
 
 
-def validate_middleware_section(middleware: list[dict[str, Any]], errors: list[str], warnings: list[str]):
-    """Validate global middleware configuration."""
+def validate_middleware_section(
+    middleware: dict[str, Any] | list[dict[str, Any]], errors: list[str], warnings: list[str]
+):
+    """Validate global middleware configuration (supports both old list format and new object format)."""
+    # Handle new object-based format
+    if isinstance(middleware, dict):
+        valid_middleware_sections = {
+            "enabled",
+            "rate_limiting",
+            "caching",
+            "cache",
+            "retry",
+            "logging",
+            "timeout_seconds",
+            "enable_metrics",
+            "debug_mode",
+            "custom_middleware",
+        }
+
+        for section_name, section_config in middleware.items():
+            if section_name not in valid_middleware_sections:
+                warnings.append(f"Unknown middleware section: '{section_name}'")
+
+            # Special validation for enabled field
+            if section_name == "enabled":
+                if not isinstance(section_config, bool):
+                    errors.append("Middleware 'enabled' field must be a boolean")
+                continue
+
+            # Other fields that are not objects
+            if section_name in {"timeout_seconds", "enable_metrics", "debug_mode"}:
+                continue
+
+            # Validate nested objects
+            if section_name in {"rate_limiting", "caching", "cache", "retry", "logging"} and not isinstance(
+                section_config, dict
+            ):
+                errors.append(f"Middleware section '{section_name}' must be an object")
+        return
+
+    # Handle old list-based format
     if not isinstance(middleware, list):
-        errors.append("Middleware section must be a list")
+        errors.append("Middleware section must be a list or object")
         return
 
     valid_middleware_names = {"timed", "cached", "rate_limited", "retryable"}
