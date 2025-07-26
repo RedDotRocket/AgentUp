@@ -120,8 +120,7 @@ class CacheConfig(BaseModel):
 
     # File cache specific
     file_cache_dir: str = Field(
-        default_factory=lambda: tempfile.mkdtemp(prefix="agentup_cache_"),
-        description="File cache directory"
+        default_factory=lambda: tempfile.mkdtemp(prefix="agentup_cache_"), description="File cache directory"
     )
     file_max_size_mb: int = Field(100, description="Max file cache size in MB", gt=0)
 
@@ -512,8 +511,10 @@ class CacheConfigValidator(BaseValidator[CacheConfig]):
 
                 # Warn about insecure temporary directory usage
                 # Bandit false positive: We are warning about /tmp usage, not creating it
-                if model.file_cache_dir.startswith("/tmp/"): # nosec
-                    result.add_warning("Using /tmp/ directly can be insecure - consider using tempfile.mkdtemp() for secure temporary directories")
+                if model.file_cache_dir.startswith("/tmp/"):  # nosec
+                    result.add_warning(
+                        "Using /tmp/ directly can be insecure - consider using tempfile.mkdtemp() for secure temporary directories"
+                    )
 
         return result
 
