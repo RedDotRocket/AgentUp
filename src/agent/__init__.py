@@ -1,5 +1,16 @@
 """AgentUp - A2A-compliant AI agent framework."""
 
+import warnings
+
+# Suppress a2a-sdk deprecation warnings for camelCase field aliases
+# These warnings are from the a2a-sdk library itself and will be fixed in version 0.3.0
+warnings.filterwarnings(
+    "ignore",
+    category=DeprecationWarning,
+    message=r"Setting field .* via its camelCase alias is deprecated.*",
+    module=r"a2a\..*",
+)
+
 __version__ = "0.3.0"
 
 # Lazy imports to avoid loading config when using CLI

@@ -309,19 +309,39 @@ def _load_middleware_config() -> list[dict[str, Any]]:
                             }
                         )
 
-                    # Convert caching config
+                    # Convert caching config - use shared global cache config
                     if middleware_config.get("caching", {}).get("enabled", False):
-                        cache_config = middleware_config["caching"]
-                        _middleware_config.append(
-                            {
-                                "name": "cached",
-                                "params": {
-                                    "backend_type": cache_config.get("backend", "memory"),
-                                    "default_ttl": cache_config.get("default_ttl", 300),
-                                    "max_size": cache_config.get("max_size", 1000),
-                                },
-                            }
-                        )
+                        # Import and use the global cache configuration
+                        try:
+                            from agent.middleware.implementation import get_global_cache_config
+
+                            shared_cache_config = get_global_cache_config()
+
+                            _middleware_config.append(
+                                {
+                                    "name": "cached",
+                                    "params": {
+                                        "backend_type": shared_cache_config.backend_type,
+                                        "default_ttl": shared_cache_config.default_ttl,
+                                        "max_size": shared_cache_config.max_size,
+                                        "key_prefix": shared_cache_config.key_prefix,
+                                    },
+                                }
+                            )
+                        except Exception as e:
+                            logger.warning(f"Could not use global cache config, falling back to local config: {e}")
+                            # Fallback to original behavior
+                            cache_config = middleware_config["caching"]
+                            _middleware_config.append(
+                                {
+                                    "name": "cached",
+                                    "params": {
+                                        "backend_type": cache_config.get("backend", "memory"),
+                                        "default_ttl": cache_config.get("default_ttl", 300),
+                                        "max_size": cache_config.get("max_size", 1000),
+                                    },
+                                }
+                            )
 
                     # Convert retry config
                     if middleware_config.get("retry", {}).get("enabled", False):

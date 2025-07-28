@@ -13,7 +13,6 @@ from a2a.types import (
     Task,
     TaskArtifactUpdateEvent,
     TaskState,
-    TaskStatus,
     TextPart,
     UnsupportedOperationError,
 )
@@ -381,8 +380,7 @@ class GenericAgentExecutor(AgentExecutor):
                     final=True,
                 )
 
-                # Return updated task
-                task.status = TaskStatus(state=TaskState.canceled)
+                # Return original task - status already updated via updater
                 return task
 
             except Exception as e:
