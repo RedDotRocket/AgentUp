@@ -74,7 +74,7 @@ Perfect for simple text processing and straightforward tasks.
 Include state management, external API integration, and middleware.
 
 ### AI Plugins
-Provide LLM-callable functions for  agent interactions.
+Provide LLM-callable functions for agent interactions.
 
 ## Documentation Sections
 
@@ -82,12 +82,9 @@ Provide LLM-callable functions for  agent interactions.
 2. **[Plugin Development](development.md)** - Comprehensive development guide
 3. **[AI Function Integration](ai-functions.md)** - Build LLM-callable functions
 4. **[Scopes and Security](scopes-and-security.md)** - Plugin security and access control
-5. **[System Prompts](../plugin-system-prompts.md)** - Customize AI behavior with skill-specific system prompts
+5. **[System Prompts](plugin-system-prompts.md)** - Customize AI behavior with capability-specific system prompts
 6. **[Testing Plugins](testing.md)** - Test your plugins thoroughly
-7. **[Publishing](publishing.md)** - Share your plugins with the community
-8. **[CLI Reference](cli-reference.md)** - Complete CLI command documentation
-9. **[API Reference](api-reference.md)** - Plugin API and hook specifications
-10. **[Examples](examples.md)** - Real-world plugin examples
+7. **[CLI Reference](cli-reference.md)** - Complete CLI command documentation
 
 ## Why Use Plugins?
 

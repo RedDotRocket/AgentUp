@@ -69,7 +69,7 @@ A plugin that provides Time Plugin functionality
 """
 
 import pluggy
-from agent.plugins import SkillInfo, SkillContext, SkillResult, ValidationResult, SkillCapability
+from agent.plugins import CapabilityInfo, CapabilityContext, CapabilityResult, PluginValidationResult, CapabilityType
 
 hookimpl = pluggy.HookimplMarker("agentup")
 
@@ -81,27 +81,27 @@ class Plugin:
         self.name = "time-plugin"
 
     @hookimpl
-    def register_skill(self) -> SkillInfo:
-        """Register the skill with AgentUp."""
-        return SkillInfo(
+    def register_capability(self) -> CapabilityInfo:
+        """Register the capability with AgentUp."""
+        return CapabilityInfo(
             id="time_plugin",
             name="Time Plugin",
             version="0.1.0",
             description="A plugin that provides Time Plugin functionality",
-            capabilities=[SkillCapability.TEXT],
+            capabilities=[CapabilityType.TEXT],
             tags=["time-plugin", "custom"],
         )
 
     @hookimpl
-    def execute_skill(self, context: SkillContext) -> SkillResult:
-        """Execute the skill logic."""
+    def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
+        """Execute the capability logic."""
         # Extract user input from the task
         user_input = self._extract_user_input(context)
 
         # Your skill logic here
         response = f"Processed by Time Plugin: {user_input}"
 
-        return SkillResult(
+        return CapabilityResult(
             content=response,
             success=True,
             metadata={"skill": "time_plugin"},
@@ -127,7 +127,7 @@ import datetime
 import re
 
 @hookimpl
-def execute_skill(self, context: SkillContext) -> SkillResult:
+def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
     """Execute the time skill logic."""
     # Extract user input from the task
     user_input = self._extract_user_input(context).lower()
@@ -149,14 +149,14 @@ def execute_skill(self, context: SkillContext) -> SkillResult:
             # Default response
             response = f"Current time: {now.strftime('%I:%M %p on %A, %B %d, %Y')}"
 
-        return SkillResult(
+        return CapabilityResult(
             content=response,
             success=True,
-            metadata={"skill": "time_plugin", "timestamp": now.isoformat()},
+            metadata={"capability": "time_plugin", "timestamp": now.isoformat()},
         )
 
     except Exception as e:
-        return SkillResult(
+        return CapabilityResult(
             content=f"Sorry, I couldn't get the time information: {str(e)}",
             success=False,
             error=str(e),
@@ -169,8 +169,8 @@ Update the `can_handle_task` method to better detect time-related requests:
 
 ```python
 @hookimpl
-def can_handle_task(self, context: SkillContext) -> float:
-    """Check if this skill can handle the task."""
+def can_handle_task(self, context: CapabilityContext) -> float:
+    """Check if this capability can handle the task."""
     user_input = self._extract_user_input(context).lower()
 
     # Define time-related keywords with their confidence scores
@@ -427,12 +427,12 @@ async def _get_time_function(self, task, context: SkillContext) -> SkillResult:
         if timezone != "local":
             time_str += f" ({timezone})"
 
-        return SkillResult(
+        return CapabilityResult(
             content=f"Current time: {time_str}",
             success=True,
         )
     except Exception as e:
-        return SkillResult(
+        return CapabilityResult(
             content=f"Error getting time: {str(e)}",
             success=False,
             error=str(e),
@@ -453,12 +453,12 @@ async def _get_date_function(self, task, context: SkillContext) -> SkillResult:
         else:  # long
             date_str = now.strftime("%A, %B %d, %Y")
 
-        return SkillResult(
+        return CapabilityResult(
             content=f"Current date: {date_str}",
             success=True,
         )
     except Exception as e:
-        return SkillResult(
+        return CapabilityResult(
             content=f"Error getting date: {str(e)}",
             success=False,
             error=str(e),
@@ -468,7 +468,7 @@ async def _get_date_function(self, task, context: SkillContext) -> SkillResult:
 Don't forget to import `AIFunction`:
 
 ```python
-from agent.plugins import SkillInfo, SkillContext, SkillResult, ValidationResult, SkillCapability, AIFunction
+from agent.plugins import CapabilityInfo, CapabilityContext, CapabilityResult, PluginValidationResult, CapabilityType, AIFunction
 ```
 
 ## Step 8: Test AI Functions

@@ -71,7 +71,7 @@ import httpx
 import responses
 
 from weather_plugin.plugin import Plugin
-from agent.plugins import SkillContext, SkillInfo, SkillResult
+from agent.plugins import CapabilityContext, CapabilityInfo, CapabilityResult
 
 
 class TestWeatherPlugin:
@@ -118,11 +118,11 @@ class TestWeatherPlugin:
 
     def test_plugin_registration(self, plugin):
         """Test that the plugin registers correctly."""
-        skill_info = plugin.register_skill()
+        capability_info = plugin.register_capability()
         
-        assert isinstance(skill_info, SkillInfo)
-        assert skill_info.id == "weather"
-        assert skill_info.name == "Weather Information"
+        assert isinstance(capability_info, CapabilityInfo)
+        assert capability_info.id == "weather"
+        assert capability_info.name == "Weather Information"
         assert skill_info.version == "1.0.0"
         assert "text" in [cap.value for cap in skill_info.capabilities]
         assert "ai_function" in [cap.value for cap in skill_info.capabilities]
@@ -166,7 +166,7 @@ class TestWeatherPlugin:
         
         for query in high_confidence_queries:
             task = self._create_mock_task(query)
-            context = SkillContext(task=task)
+            context = CapabilityContext(task=task)
             confidence = plugin.can_handle_task(context)
             assert confidence >= 0.8, f"Low confidence for: {query}"
 
@@ -180,7 +180,7 @@ class TestWeatherPlugin:
         
         for query in low_confidence_queries:
             task = self._create_mock_task(query)
-            context = SkillContext(task=task)
+            context = CapabilityContext(task=task)
             confidence = plugin.can_handle_task(context)
             assert confidence < 0.3, f"High confidence for non-weather query: {query}"
 
@@ -283,7 +283,7 @@ class TestWeatherPlugin:
         """Test successful skill execution."""
         # Setup mocks
         task = self._create_mock_task("Weather in Boston")
-        context = SkillContext(
+        context = CapabilityContext(
             task=task,
             config=plugin.config,
             state={}
@@ -296,7 +296,7 @@ class TestWeatherPlugin:
         plugin.http_client.get.return_value = mock_response
         plugin.cache.get.return_value = None
         
-        result = plugin.execute_skill(context)
+        result = plugin.execute_capability(context)
         
         assert result.success
         assert "Boston" in result.content
@@ -307,13 +307,13 @@ class TestWeatherPlugin:
     async def test_execute_skill_missing_api_key(self, plugin):
         """Test skill execution without API key."""
         task = self._create_mock_task("Weather in Boston")
-        context = SkillContext(
+        context = CapabilityContext(
             task=task,
             config={},  # No API key
             state={}
         )
         
-        result = plugin.execute_skill(context)
+        result = plugin.execute_capability(context)
         
         assert not result.success
         assert "not configured" in result.content.lower()
@@ -452,7 +452,7 @@ class TestWeatherAIFunctions:
         
         # Create test context
         task = Mock()
-        context = SkillContext(
+        context = CapabilityContext(
             task=task,
             metadata={
                 "parameters": {
@@ -476,7 +476,7 @@ class TestWeatherAIFunctions:
         plugin.config = {}  # Missing API key
         
         task = Mock()
-        context = SkillContext(
+        context = CapabilityContext(
             task=task,
             metadata={"parameters": {"location": "Boston"}}
         )
@@ -493,7 +493,7 @@ class TestWeatherAIFunctions:
         plugin.config = {"api_key": "test_key"}
         
         task = Mock()
-        context = SkillContext(
+        context = CapabilityContext(
             task=task,
             metadata={"parameters": {}}  # Missing location
         )
@@ -557,7 +557,7 @@ class TestWeatherPluginIntegration:
         manager.pm.register(plugin, name="weather_plugin")
         
         # Register skill info
-        skill_info = plugin.register_skill()
+        capability_info = plugin.register_capability()
         manager.skills[skill_info.id] = skill_info
         manager.skill_to_plugin[skill_info.id] = "weather_plugin"
         manager.skill_hooks[skill_info.id] = plugin
@@ -599,7 +599,7 @@ class TestWeatherPluginIntegration:
         task.history[0].parts = [Mock()]
         task.history[0].parts[0].text = "Weather in Seattle"
         
-        context = SkillContext(
+        context = CapabilityContext(
             task=task,
             config={"api_key": "test_key"},
             state={}
@@ -724,7 +724,7 @@ class TestWeatherPluginPerformance:
             task.history[0].parts = [Mock()]
             task.history[0].parts[0].text = f"Weather in City{i}"
             
-            context = SkillContext(task=task)
+            context = CapabilityContext(task=task)
             plugin.can_handle_task(context)
         
         current, peak = tracemalloc.get_traced_memory()
@@ -758,7 +758,7 @@ class TestWeatherPluginE2E:
         task.history[0].parts = [Mock()]
         task.history[0].parts[0].text = user_request
         
-        context = SkillContext(task=task)
+        context = CapabilityContext(task=task)
         confidence = plugin.can_handle_task(context)
         assert confidence > 0.8  # Should be routed to weather plugin
         
@@ -780,7 +780,7 @@ class TestWeatherPluginE2E:
         context.config = plugin.config
         context.state = {}
         
-        result = plugin.execute_skill(context)
+        result = plugin.execute_capability(context)
         
         # 4. Verify response
         assert result.success
@@ -797,7 +797,7 @@ class TestWeatherPluginE2E:
         
         # Simulate LLM function call
         task = Mock()
-        context = SkillContext(
+        context = CapabilityContext(
             task=task,
             metadata={
                 "parameters": {

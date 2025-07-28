@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document provides a comprehensive analysis of the AgentUp framework's system architecture, detailing the complete flow from skill configuration in `agent_config.yaml` to handler execution. The analysis covers routing mechanisms, middleware auto-application, authentication, state management, and plugin integration.
+This document provides a comprehensive analysis of the AgentUp framework's system architecture, detailing the complete flow from plugin configuration in `agentup.yml` to handler execution. The analysis covers routing mechanisms, middleware auto-application, authentication, state management, and plugin integration.
 
 ## System Flow Diagram
 
@@ -18,7 +18,7 @@ graph TD
     G -->|Direct Routing| H[Pattern/Keyword Matching]
     G -->|AI Routing| I[LLM Function Calling]
     
-    H --> J[get_handler by skill_id]
+    H --> J[get_handler by plugin_id]
     I --> K[FunctionDispatcher.process_task]
     K --> L[FunctionExecutor.execute_function_call]
     L --> J
@@ -35,23 +35,23 @@ graph TD
     end
     
     subgraph "Middleware Resolution"
-        T[Global middleware config] --> U{skill_id has middleware_override?}
-        U -->|Yes| V[Use skill-specific config]
+        T[Global middleware config] --> U{plugin_id has middleware_override?}
+        U -->|Yes| V[Use plugin-specific config]
         U -->|No| W[Use global config]
         V --> Q
         W --> Q
     end
     
     subgraph "State Management Resolution"
-        X[Global state_management config] --> Y{skill_id has state_override?}
-        Y -->|Yes| Z[Use skill-specific config]
+        X[Global state_management config] --> Y{plugin has state config?}
+        Y -->|Yes| Z[Use plugin-specific config]
         Y -->|No| AA[Use global config]
         Z --> R
         AA --> R
     end
     
     subgraph "Plugin System"
-        BB[Plugin Discovery] --> CC[register_skill hook]
+        BB[Plugin Discovery] --> CC[register_plugin hook]
         CC --> DD[Plugin Handler Wrapper]
         DD --> O
     end
@@ -68,15 +68,15 @@ graph TD
     II --> JJ[A2A Artifact Result]
     JJ --> KK[JSON-RPC Response]
     
-    subgraph "agent_config.yaml Structure"
-        LL[skills: list of skill definitions]
+    subgraph "agentup.yml Structure"
+        LL[plugins: list of plugin definitions]
         MM[middleware: global middleware config]
         NN[state_management: global state config]
         OO[security: authentication config]
         
-        LL --> PP[skill_id, routing_mode, keywords, patterns]
-        LL --> QQ[middleware_override per skill]
-        LL --> RR[state_override per skill]
+        LL --> PP[plugin_id, keywords, patterns, priority]
+        LL --> QQ[middleware_override per plugin]
+        LL --> RR[capabilities with scopes per plugin]
         
         PP --> G
         QQ --> U
@@ -87,11 +87,11 @@ graph TD
     end
 ```
 
-## Configuration Loading and Skill Definition
+## Configuration Loading and Plugin Definition
 
-The AgentUp framework begins with the loading of the `agent_config.yaml` file, which serves as the central configuration source for all system behavior. Skills are defined within this configuration file with comprehensive metadata that controls both routing behavior and cross-cutting concerns. Each skill entry contains a `skill_id` that serves as the unique identifier for handler registration and routing decisions, along with optional `keywords` and `patterns` arrays that enable direct pattern-based routing when the skill's `routing_mode` is set to "direct". The configuration also supports `middleware_override` and `state_override` sections that allow individual skills to customize their middleware chain and state management behavior, overriding the global defaults specified in the top-level `middleware` and `state_management` sections.
+The AgentUp framework begins with the loading of the `agentup.yml` file, which serves as the central configuration source for all system behavior. Plugins are defined within this configuration file with comprehensive metadata that controls both routing behavior and cross-cutting concerns. Each plugin entry contains a `plugin_id` that serves as the unique identifier for handler registration and routing decisions, along with optional `keywords` and `patterns` arrays that enable direct pattern-based routing. The configuration also supports `middleware_override` and per-capability configurations that allow individual plugins to customize their middleware chain and security requirements, overriding the global defaults specified in the top-level `middleware` and `security` sections.
 
-The configuration loader in `src/agent/config/loader.py` processes environment variable substitutions using the `${VAR_NAME:default}` syntax, enabling dynamic configuration based on deployment environment. The loaded configuration gets transformed into strongly-typed models defined in `src/agent/config/models.py`, providing validation and type safety throughout the system. These models include `SkillConfig`, `MiddlewareConfig`, and `StateManagementConfig` classes that encapsulate the various configuration options and their relationships, ensuring that invalid configurations are caught early in the system startup process.
+The configuration loader in `src/agent/config/loader.py` processes environment variable substitutions using the `${VAR_NAME:default}` syntax, enabling dynamic configuration based on deployment environment. The loaded configuration gets transformed into strongly-typed models defined in `src/agent/config/model.py`, providing validation and type safety throughout the system. These models include `PluginConfig`, `MiddlewareConfig`, and `StateManagementConfig` classes that encapsulate the various configuration options and their relationships, ensuring that invalid configurations are caught early in the system startup process.
 
 ## Request Entry Point and Authentication Flow
 

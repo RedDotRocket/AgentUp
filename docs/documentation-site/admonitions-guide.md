@@ -12,7 +12,7 @@ Use three exclamation marks (`!!!`) for admonitions that are always visible:
 !!! note "Optional Custom Title"
     This is the content of the admonition.
     All content lines must be indented with exactly 4 spaces.
-    
+
     You can include multiple paragraphs, lists, and even code blocks.
 ```
 
@@ -116,15 +116,15 @@ Maintain the 4-space indentation for all lines:
 ```markdown
 !!! example "Complete Example"
     Here's a multi-line example with various content:
-    
+
     - First list item
     - Second list item
-    
+
     ```python
     def hello():
         print("Hello, World!")
     ```
-    
+
     And some final text.
 ```
 
@@ -134,16 +134,16 @@ You can include any markdown content inside admonitions:
 ```markdown
 !!! note "Nested Content Example"
     You can include:
-    
+
     **Bold text**, *italic text*, and `inline code`
-    
+
     > Blockquotes work too!
-    
+
     1. Numbered lists
     2. With multiple items
-    
+
     Even tables:
-    
+
     | Column 1 | Column 2 |
     |----------|----------|
     | Data 1   | Data 2   |
@@ -171,7 +171,7 @@ You can include any markdown content inside admonitions:
 ```markdown
 ??? failure "Installation Failed?"
     If you encounter installation errors:
-    
+
     1. Check your Python version: `python --version`
     2. Update pip: `pip install --upgrade pip`
     3. Try installing in a virtual environment
@@ -182,10 +182,10 @@ You can include any markdown content inside admonitions:
 ???+ example "API Usage Example"
     ```python
     from agentup import Agent
-    
+
     # Create a new agent
     agent = Agent(name="MyAgent")
-    
+
     # Start the agent
     agent.start()
     ```

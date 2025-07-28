@@ -303,12 +303,12 @@ class PluginConfig(BaseModel):
         return v
 
 @hookimpl
-def validate_config(self, config: dict[str, Any]) -> ValidationResult:
+def validate_config(self, config: dict[str, Any]) -> PluginValidationResult:
     try:
         PluginConfig(**config)
-        return ValidationResult(valid=True, errors=[], warnings=[])
+        return PluginValidationResult(valid=True, errors=[], warnings=[])
     except Exception as e:
-        return ValidationResult(valid=False, errors=[str(e)], warnings=[])
+        return PluginValidationResult(valid=False, errors=[str(e)], warnings=[])
 ```
 
 ## Modern Plugin Architecture

@@ -106,42 +106,29 @@ def get_plugin_characteristics(self) -> PluginCharacteristics:
 
 ## Security Context
 
-### Enhanced Capability Context
+### Capability Context
 
-The `EnhancedCapabilityContext` provides plugins with comprehensive security information:
+The `CapabilityContext` provides plugins with comprehensive security information:
 
 ```python
 @dataclass
-class EnhancedCapabilityContext:
-    # Existing fields
+class CapabilityContext:
+    # Core fields
     task: Task
     config: dict[str, Any]
     services: dict[str, Any]
     state: dict[str, Any]
     metadata: dict[str, Any]
 
-    # Security fields
-    auth: AuthContext
-    user_scopes: list[str]
-    plugin_classification: PluginCharacteristics
-    request_id: str
-
-    # Helper methods
-    def require_scope(self, scope: str) -> None:
-        """Require specific scope for operation."""
-
-    def has_scope(self, scope: str) -> bool:
-        """Check if user has specific scope."""
-
-    def get_user_id(self) -> str:
-        """Get authenticated user ID."""
+    # Note: Security features like auth, user_scopes, etc. are available
+    # through the AgentUp security system and middleware
 ```
 
 ### Using Security Context
 
 ```python
 @hookimpl
-def execute_capability(self, context: EnhancedCapabilityContext) -> CapabilityResult:
+def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
     # Check basic authentication
     if not context.auth:
         raise UnauthorizedError("Authentication required")
@@ -210,7 +197,7 @@ def get_required_scopes(self, capability_id: str) -> list[str]:
 
 ```python
 @hookimpl
-def validate_access(self, context: EnhancedCapabilityContext) -> bool:
+def validate_access(self, context: CapabilityContext) -> bool:
     """Custom authorization logic beyond scope checking."""
 
     # Example: Time-based access control
@@ -280,7 +267,7 @@ def get_middleware_preferences(self, capability_id: str) -> dict[str, Any]:
 
 ```python
 @hookimpl
-def execute_capability(self, context: EnhancedCapabilityContext) -> CapabilityResult:
+def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
     """Execute capability with comprehensive security checks."""
 
     try:
@@ -327,7 +314,7 @@ def execute_capability(self, context: EnhancedCapabilityContext) -> CapabilityRe
             error=str(e)
         )
 
-def _log_access(self, context: EnhancedCapabilityContext):
+def _log_access(self, context: CapabilityContext):
     """Log successful access for audit trail."""
     logger.info(
         "Capability access granted",
@@ -337,7 +324,7 @@ def _log_access(self, context: EnhancedCapabilityContext):
         request_id=context.request_id
     )
 
-def _log_security_violation(self, context: EnhancedCapabilityContext, error: str):
+def _log_security_violation(self, context: CapabilityContext, error: str):
     """Log security violations for monitoring."""
     logger.warning(
         "Security violation detected",
@@ -455,7 +442,7 @@ Always validate security context before performing operations:
 
 ```python
 @hookimpl
-def execute_capability(self, context: EnhancedCapabilityContext) -> CapabilityResult:
+def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
     # ✓ Good: Comprehensive security checks
     if not context.auth:
         raise UnauthorizedError("Authentication required")
@@ -546,7 +533,7 @@ class FileSystemPlugin:
         }.get(capability_id, ["files:read"])
 
     @hookimpl
-    def validate_access(self, context: EnhancedCapabilityContext) -> bool:
+    def validate_access(self, context: CapabilityContext) -> bool:
         """Additional file-specific authorization."""
         file_path = context.metadata.get("file_path", "")
 
@@ -562,7 +549,7 @@ class FileSystemPlugin:
         return True
 
     @hookimpl
-    def execute_capability(self, context: EnhancedCapabilityContext) -> CapabilityResult:
+    def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
         capability_id = context.metadata.get("capability_id")
         file_path = context.metadata.get("file_path")
 
@@ -651,7 +638,7 @@ class WeatherAPIPlugin:
         }
 
     @hookimpl
-    def validate_access(self, context: EnhancedCapabilityContext) -> bool:
+    def validate_access(self, context: CapabilityContext) -> bool:
         """Custom authorization for weather API."""
         # Check if user has remaining API quota
         user_id = context.get_user_id()
@@ -710,7 +697,7 @@ def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
 
 # After (enhanced)
 @hookimpl
-def execute_capability(self, context: EnhancedCapabilityContext) -> CapabilityResult:
+def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
     # Add security validation
     if not context.auth:
         raise UnauthorizedError("Authentication required")
@@ -725,20 +712,20 @@ Start with minimal security and gradually enhance:
 
 ```python
 # Phase 1: Basic authentication check
-def execute_capability(self, context: EnhancedCapabilityContext) -> CapabilityResult:
+def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
     if not context.auth:
         raise UnauthorizedError("Authentication required")
     return self._do_operation(context)
 
 # Phase 2: Add scope checking
-def execute_capability(self, context: EnhancedCapabilityContext) -> CapabilityResult:
+def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
     if not context.auth:
         raise UnauthorizedError("Authentication required")
     context.require_scope("your_domain:read")
     return self._do_operation(context)
 
 # Phase 3: Add custom authorization
-def execute_capability(self, context: EnhancedCapabilityContext) -> CapabilityResult:
+def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
     if not context.auth:
         raise UnauthorizedError("Authentication required")
     context.require_scope("your_domain:read")
@@ -785,7 +772,7 @@ Check the request context:
 
 ```python
 @hookimpl
-def execute_capability(self, context: EnhancedCapabilityContext) -> CapabilityResult:
+def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
     logger.debug(f"User: {context.get_user_id()}")
     logger.debug(f"Scopes: {context.user_scopes}")
     logger.debug(f"Required scopes: {self.get_required_scopes(context.metadata.get('capability_id'))}")

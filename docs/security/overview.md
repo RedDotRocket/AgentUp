@@ -1,12 +1,12 @@
-# Authentication Guide
+# Security Overview
 
-This document covers the robust authentication system in AgentUp. The system has been completely redesigned with a modular security architecture that provides enterprise-grade security while maintaining ease of use and A2A protocol compliance.
+AgentUp provides a comprehensive security framework with unified authentication, scope-based authorization, and audit logging. The system is designed to provide enterprise-grade security while maintaining ease of use and A2A protocol compliance.
 
 ## Security Module Architecture
 
 AgentUp now features a comprehensive security module (`src/agent/security/`) that provides:
 
-- **Multiple Authentication Types**: API Key, Bearer Token, OAuth2 (future)
+- **Multiple Authentication Types**: API Key, Bearer Token, OAuth2 (with JWT and JWKS support)
 - **Secure Operations**: Constant-time comparisons, input validation, audit logging
 - **Extensible Design**: Easy to add custom authenticators
 - **Thread-Safe**: Designed for high-concurrency environments
@@ -32,12 +32,52 @@ AgentUp includes a flexible authentication system that supports multiple authent
 
 ## Configuration
 
-### Simple Working Format
+### Unified Security Configuration
+
+AgentUp uses a unified security configuration that supports multiple authentication methods simultaneously:
+
 ```yaml
 security:
   enabled: true
-  type: "api_key"
-  api_key: "sk-strong-api-key-abcd1234xyz"  # Must be strong (8+ chars, no weak patterns)
+  auth:
+    # API Key Authentication
+    api_key:
+      header_name: "X-API-Key"
+      keys:
+        - key: "sk-admin-key-123"
+          scopes: ["admin"]
+        - key: "sk-read-only-456"
+          scopes: ["api:read", "files:read"]
+    
+    # Bearer Token Authentication
+    bearer:
+      header_name: "Authorization"
+      tokens:
+        - token: "bearer-token-789"
+          scopes: ["api:write", "files:write"]
+    
+    # OAuth2 Authentication
+    oauth2:
+      enabled: true
+      validation_strategy: "jwt"
+      jwks_url: "https://oauth-provider.com/.well-known/jwks.json"
+      jwt_algorithm: "RS256"
+      jwt_issuer: "https://oauth-provider.com"
+      jwt_audience: "your-agent-id"
+  
+  # Scope hierarchy (permission inheritance)
+  scope_hierarchy:
+    admin: ["*"]                    # Admin has all permissions
+    api:write: ["api:read"]         # Write includes read
+    files:admin: ["files:write", "files:read"]
+    files:write: ["files:read"]
+  
+  # Audit logging
+  audit:
+    enabled: true
+    log_level: "INFO"
+    include_request_body: false
+    include_response_body: false
 ```
 
 ### Alternative Formats (Also Supported)
@@ -594,3 +634,190 @@ security:
 - [ ] Missing headers: Returns appropriate 401 errors
 - [ ] Malformed tokens: Returns appropriate 400 errors
 - [ ] Security manager not initialized: Returns 500 errors
+
+---
+
+## Scope-Based Authorization
+
+AgentUp implements a hierarchical scope-based authorization system that provides fine-grained access control across all agent capabilities.
+
+### Understanding Scopes
+
+Scopes are permission strings that control access to specific capabilities. They follow a hierarchical pattern:
+
+- `admin` - Full system access (wildcard `*`)
+- `api:read` - Read access to API endpoints
+- `api:write` - Write access to API endpoints (inherits `api:read`)
+- `files:read` - Read file operations
+- `files:write` - Write file operations (inherits `files:read`)
+- `files:delete` - Delete file operations
+- `plugins:read` - List and inspect plugins
+- `plugins:write` - Install and configure plugins
+- `mcp:use` - Use MCP tools
+
+### Scope Hierarchy Configuration
+
+The `scope_hierarchy` section defines which scopes inherit permissions from others:
+
+```yaml
+security:
+  scope_hierarchy:
+    # Universal access
+    admin: ["*"]
+    
+    # API access levels
+    api:admin: ["api:write", "api:read"]
+    api:write: ["api:read"]
+    
+    # File system access
+    files:admin: ["files:delete", "files:write", "files:read"]
+    files:write: ["files:read"]
+    
+    # Plugin management
+    plugins:admin: ["plugins:write", "plugins:read"]
+    plugins:write: ["plugins:read"]
+    
+    # MCP access
+    mcp:admin: ["mcp:write", "mcp:read"]
+    mcp:write: ["mcp:read"]
+```
+
+### Plugin Capability Authorization
+
+Each plugin capability can require specific scopes:
+
+```yaml
+plugins:
+  - plugin_id: "file_system"
+    capabilities:
+      - capability_id: "read_file"
+        required_scopes: ["files:read"]
+        enabled: true
+      - capability_id: "write_file"
+        required_scopes: ["files:write"]
+        enabled: true
+      - capability_id: "delete_file"
+        required_scopes: ["files:delete", "files:write"]
+        enabled: true
+```
+
+### MCP Tool Security
+
+MCP tools are mapped to AgentUp scopes for fine-grained security:
+
+```yaml
+mcp:
+  servers:
+    - name: "filesystem"
+      type: "stdio"
+      command: "mcp-server-filesystem"
+      args: ["/workspace"]
+      # Map each MCP tool to required scopes
+      tool_scopes:
+        read_file: ["files:read"]
+        write_file: ["files:write"]
+        list_directory: ["files:read"]
+        create_directory: ["files:write"]
+        delete_file: ["files:delete"]
+        
+    - name: "github"
+      type: "http"
+      url: "https://api.github.com/mcp"
+      tool_scopes:
+        list_repos: ["github:read"]
+        create_repo: ["github:write"]
+        delete_repo: ["github:admin"]
+        create_issue: ["github:write"]
+        close_issue: ["github:write"]
+```
+
+### User Access Control
+
+Users are granted specific scopes through their authentication tokens:
+
+```yaml
+security:
+  auth:
+    api_key:
+      keys:
+        # Admin user with full access
+        - key: "sk-admin-key-123"
+          scopes: ["admin"]
+        
+        # Developer with file and API access
+        - key: "sk-dev-key-456"
+          scopes: ["api:write", "files:write", "plugins:read"]
+        
+        # Read-only user
+        - key: "sk-readonly-789"
+          scopes: ["api:read", "files:read"]
+    
+    oauth2:
+      # OAuth2 tokens can carry scopes from the provider
+      required_scopes: ["agent:access"]  # Minimum required
+      allowed_scopes: ["agent:read", "agent:write", "agent:admin"]
+```
+
+### Scope Validation Process
+
+1. **Request Received**: Agent receives request with authentication
+2. **Token Validation**: Authentication method validates the token/key
+3. **Scope Extraction**: System extracts user's granted scopes
+4. **Scope Expansion**: Hierarchy rules expand scopes (e.g., `api:write` → `["api:write", "api:read"]`)
+5. **Permission Check**: Required scopes for the operation are checked against user's expanded scopes
+6. **Access Decision**: Request allowed if user has all required scopes
+
+### Example: File Operation Flow
+
+```yaml
+# User request to write a file
+# 1. User authenticated with scopes: ["files:write"]
+# 2. Scope expansion: ["files:write"] → ["files:write", "files:read"]
+# 3. Plugin capability requires: ["files:write"]
+# 4. Check: user has "files:write" ✓
+# 5. Access granted
+```
+
+### Audit Logging
+
+All scope-based authorization decisions are logged:
+
+```json
+{
+  "timestamp": "2024-01-15T10:30:00Z",
+  "level": "INFO",
+  "event": "authorization_check",
+  "user_id": "api-key-hash",
+  "required_scopes": ["files:write"],
+  "user_scopes": ["files:write", "files:read"],
+  "result": "allowed",
+  "resource": "file_system.write_file"
+}
+```
+
+### Best Practices
+
+1. **Principle of Least Privilege**: Grant only necessary scopes
+2. **Scope Naming**: Use consistent, hierarchical naming (e.g., `service:action`)
+3. **Regular Audits**: Review user scopes periodically
+4. **Scope Documentation**: Document what each scope allows
+5. **Testing**: Test with restricted users to ensure proper enforcement
+
+### Common Scope Patterns
+
+```yaml
+# Service-based scopes
+database:read: ["db:query", "db:select"]
+database:write: ["db:insert", "db:update", "database:read"]
+database:admin: ["db:schema", "database:write"]
+
+# Resource-based scopes
+files:user: ["files:read"]  # User's own files
+files:shared: ["files:read", "files:user"]  # Shared files
+files:system: ["files:admin", "files:shared"]  # System files
+
+# Operation-based scopes
+api:public: []  # Public endpoints
+api:authenticated: ["api:read"]  # Authenticated endpoints
+api:privileged: ["api:write", "api:authenticated"]  # Privileged operations
+```

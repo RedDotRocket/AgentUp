@@ -37,7 +37,7 @@ Edit `src/calculator_plugin/plugin.py`:
 import math
 import pluggy
 from agent.plugins import (
-    SkillInfo, SkillContext, SkillResult, AIFunction, SkillCapability
+    CapabilityInfo, CapabilityContext, CapabilityResult, AIFunction, CapabilityType
 )
 
 hookimpl = pluggy.HookimplMarker("agentup")
@@ -46,14 +46,14 @@ class Plugin:
     """Calculator plugin with AI functions."""
 
     @hookimpl
-    def register_skill(self) -> SkillInfo:
-        """Register the calculator skill."""
-        return SkillInfo(
+    def register_capability(self) -> CapabilityInfo:
+        """Register the calculator capability."""
+        return CapabilityInfo(
             id="calculator",
             name="Calculator",
             version="1.0.0",
             description="Perform mathematical calculations",
-            capabilities=[SkillCapability.TEXT, SkillCapability.AI_FUNCTION],
+            capabilities=[CapabilityType.TEXT, CapabilityType.AI_FUNCTION],
             tags=["math", "calculator", "computation"],
         )
 
@@ -134,7 +134,7 @@ class Plugin:
 ### Step 3: Implement Function Handlers
 
 ```python
-async def _calculate_function(self, task, context: SkillContext) -> SkillResult:
+async def _calculate_function(self, task, context: CapabilityContext) -> CapabilityResult:
     """Handle basic calculations."""
     params = context.metadata.get("parameters", {})
     expression = params.get("expression", "")
@@ -155,7 +155,7 @@ async def _calculate_function(self, task, context: SkillContext) -> SkillResult:
         
         response = f"{expression} = {formatted_result}"
         
-        return SkillResult(
+        return CapabilityResult(
             content=response,
             success=True,
             metadata={
@@ -166,7 +166,7 @@ async def _calculate_function(self, task, context: SkillContext) -> SkillResult:
         )
         
     except Exception as e:
-        return SkillResult(
+        return CapabilityResult(
             content=f"Error calculating '{expression}': {str(e)}",
             success=False,
             error=str(e),
@@ -190,7 +190,7 @@ def _sanitize_expression(self, expression: str) -> str:
     
     return expression
 
-async def _convert_units_function(self, task, context: SkillContext) -> SkillResult:
+async def _convert_units_function(self, task, context: CapabilityContext) -> CapabilityResult:
     """Handle unit conversions."""
     params = context.metadata.get("parameters", {})
     value = params.get("value")
@@ -202,7 +202,7 @@ async def _convert_units_function(self, task, context: SkillContext) -> SkillRes
         
         response = f"{value} {from_unit} = {converted_value:.4g} {to_unit}"
         
-        return SkillResult(
+        return CapabilityResult(
             content=response,
             success=True,
             metadata={
@@ -215,7 +215,7 @@ async def _convert_units_function(self, task, context: SkillContext) -> SkillRes
         )
         
     except Exception as e:
-        return SkillResult(
+        return CapabilityResult(
             content=f"Error converting {value} {from_unit} to {to_unit}: {str(e)}",
             success=False,
             error=str(e),
@@ -262,7 +262,7 @@ def _perform_unit_conversion(self, value: float, from_unit: str, to_unit: str) -
     
     raise ValueError(f"Unsupported conversion: {from_unit} to {to_unit}")
 
-async def _solve_equation_function(self, task, context: SkillContext) -> SkillResult:
+async def _solve_equation_function(self, task, context: CapabilityContext) -> CapabilityResult:
     """Handle equation solving."""
     params = context.metadata.get("parameters", {})
     equation = params.get("equation", "")
@@ -279,7 +279,7 @@ async def _solve_equation_function(self, task, context: SkillContext) -> SkillRe
             solutions_str = ", ".join(str(s) for s in solutions)
             response = f"Solutions: {variable} = {solutions_str}"
         
-        return SkillResult(
+        return CapabilityResult(
             content=response,
             success=True,
             metadata={
@@ -291,7 +291,7 @@ async def _solve_equation_function(self, task, context: SkillContext) -> SkillRe
         )
         
     except Exception as e:
-        return SkillResult(
+        return CapabilityResult(
             content=f"Error solving equation '{equation}': {str(e)}",
             success=False,
             error=str(e),
@@ -375,14 +375,14 @@ AIFunction(
     handler=self._statistical_analysis_function,
 )
 
-async def _statistical_analysis_function(self, task, context: SkillContext) -> SkillResult:
+async def _statistical_analysis_function(self, task, context: CapabilityContext) -> CapabilityResult:
     """Perform comprehensive statistical analysis."""
     params = context.metadata.get("parameters", {})
     data = params.get("data", [])
     analyses = params.get("analyses", ["mean", "median", "std_dev"])
     
     if not data:
-        return SkillResult(
+        return CapabilityResult(
             content="No data provided for analysis",
             success=False,
             error="Empty dataset",
@@ -414,7 +414,7 @@ async def _statistical_analysis_function(self, task, context: SkillContext) -> S
         
         response = "Statistical Analysis Results:\n" + "\n".join(formatted_results)
         
-        return SkillResult(
+        return CapabilityResult(
             content=response,
             success=True,
             metadata={
@@ -425,7 +425,7 @@ async def _statistical_analysis_function(self, task, context: SkillContext) -> S
         )
         
     except Exception as e:
-        return SkillResult(
+        return CapabilityResult(
             content=f"Error performing statistical analysis: {str(e)}",
             success=False,
             error=str(e),
@@ -459,7 +459,7 @@ AIFunction(
     handler=self._currency_convert_function,
 )
 
-async def _currency_convert_function(self, task, context: SkillContext) -> SkillResult:
+async def _currency_convert_function(self, task, context: CapabilityContext) -> CapabilityResult:
     """Convert currencies using live exchange rates."""
     params = context.metadata.get("parameters", {})
     amount = params.get("amount")
@@ -473,7 +473,7 @@ async def _currency_convert_function(self, task, context: SkillContext) -> Skill
         
         response = f"{amount} {from_currency} = {converted_amount:.2f} {to_currency}"
         
-        return SkillResult(
+        return CapabilityResult(
             content=response,
             success=True,
             metadata={
@@ -487,7 +487,7 @@ async def _currency_convert_function(self, task, context: SkillContext) -> Skill
         )
         
     except Exception as e:
-        return SkillResult(
+        return CapabilityResult(
             content=f"Error converting {amount} {from_currency} to {to_currency}: {str(e)}",
             success=False,
             error=str(e),
@@ -646,7 +646,7 @@ async def test_calculate_function():
     
     # Mock task and context
     task = Mock()
-    context = SkillContext(
+    context = CapabilityContext(
         task=task,
         metadata={
             "parameters": {
@@ -669,7 +669,7 @@ async def test_unit_conversion_function():
     plugin = Plugin()
     
     task = Mock()
-    context = SkillContext(
+    context = CapabilityContext(
         task=task,
         metadata={
             "parameters": {
@@ -736,14 +736,14 @@ async def test_function_with_llm_integration(llm_mock):
 ### Graceful Error Responses
 
 ```python
-async def _calculate_function(self, task, context: SkillContext) -> SkillResult:
+async def _calculate_function(self, task, context: CapabilityContext) -> CapabilityResult:
     """Handle calculations with comprehensive error handling."""
     params = context.metadata.get("parameters", {})
     expression = params.get("expression", "")
     
     # Validate input
     if not expression.strip():
-        return SkillResult(
+        return CapabilityResult(
             content="Please provide a mathematical expression to calculate.",
             success=False,
             error="Empty expression",
@@ -755,42 +755,42 @@ async def _calculate_function(self, task, context: SkillContext) -> SkillResult:
         
         # Check for special values
         if math.isnan(result):
-            return SkillResult(
+            return CapabilityResult(
                 content=f"The expression '{expression}' resulted in an undefined value (NaN).",
                 success=False,
                 error="Undefined result",
             )
         
         if math.isinf(result):
-            return SkillResult(
+            return CapabilityResult(
                 content=f"The expression '{expression}' resulted in infinity.",
                 success=False,
                 error="Infinite result",
             )
         
         # Successful calculation
-        return SkillResult(
+        return CapabilityResult(
             content=f"{expression} = {result}",
             success=True,
             metadata={"expression": expression, "result": result},
         )
         
     except ZeroDivisionError:
-        return SkillResult(
+        return CapabilityResult(
             content=f"Cannot divide by zero in expression: {expression}",
             success=False,
             error="Division by zero",
         )
     
     except SyntaxError:
-        return SkillResult(
+        return CapabilityResult(
             content=f"Invalid mathematical expression: {expression}",
             success=False,
             error="Syntax error",
         )
     
     except Exception as e:
-        return SkillResult(
+        return CapabilityResult(
             content=f"Error calculating '{expression}': Please check the expression format.",
             success=False,
             error=str(e),
@@ -825,7 +825,7 @@ def _validate_equation(self, equation: str) -> tuple[bool, str]:
 ### Caching Function Results
 
 ```python
-async def _expensive_calculation_function(self, task, context: SkillContext) -> SkillResult:
+async def _expensive_calculation_function(self, task, context: CapabilityContext) -> CapabilityResult:
     """Function with result caching."""
     params = context.metadata.get("parameters", {})
     
@@ -837,7 +837,7 @@ async def _expensive_calculation_function(self, task, context: SkillContext) -> 
     if self.cache:
         cached_result = await self.cache.get(cache_key)
         if cached_result:
-            return SkillResult(
+            return CapabilityResult(
                 content=f"{cached_result} (cached)",
                 success=True,
                 metadata={"cached": True},
@@ -860,13 +860,13 @@ async def _expensive_calculation_function(self, task, context: SkillContext) -> 
 ### Parallel Function Execution
 
 ```python
-async def _multi_calculation_function(self, task, context: SkillContext) -> SkillResult:
+async def _multi_calculation_function(self, task, context: CapabilityContext) -> CapabilityResult:
     """Function that performs multiple calculations in parallel."""
     params = context.metadata.get("parameters", {})
     expressions = params.get("expressions", [])
     
     if not expressions:
-        return SkillResult(
+        return CapabilityResult(
             content="No expressions provided",
             success=False,
             error="Empty input",
@@ -919,7 +919,7 @@ async def _calculate_single_expression(self, expression: str) -> float:
 For long-running calculations, you can stream intermediate results:
 
 ```python
-async def _monte_carlo_simulation(self, task, context: SkillContext) -> SkillResult:
+async def _monte_carlo_simulation(self, task, context: CapabilityContext) -> CapabilityResult:
     """Run Monte Carlo simulation with progress updates."""
     params = context.metadata.get("parameters", {})
     iterations = params.get("iterations", 10000)
@@ -954,7 +954,7 @@ async def _monte_carlo_simulation(self, task, context: SkillContext) -> SkillRes
 AI Functions can call other functions:
 
 ```python
-async def _comprehensive_analysis_function(self, task, context: SkillContext) -> SkillResult:
+async def _comprehensive_analysis_function(self, task, context: CapabilityContext) -> CapabilityResult:
     """Perform comprehensive analysis by calling multiple functions."""
     params = context.metadata.get("parameters", {})
     data = params.get("data", [])

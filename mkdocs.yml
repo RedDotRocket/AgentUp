@@ -70,7 +70,6 @@ markdown_extensions:
   - admonition
   - pymdownx.details
 
-
 nav:
   - Home: index.md
   - Getting Started: 
@@ -79,11 +78,45 @@ nav:
     - First Agent: getting-started/first-agent.md
     - AI Agent: getting-started/ai-agent.md
     - Core Concepts: getting-started/core-concepts.md
-  - Configuration:
-    - Logging: configuration/logging.md
-    - Middleware: configuration/middleware.md
-    - State Management: configuration/state-management.md
-    - Routing: configuration/routing.md
+  - Middleware:
+    - middleware/index.md
+    - Logging: middleware/logging.md
+    - State Management: middleware/state-management.md
+    - Cache Management: middleware/cache-management.md
+    - Rate Limiting: middleware/rate-limiting.md
+  - Plugins and MCP:
+
+  - Security:
+    - security/index.md
+    - API Keys: security/api-keys.md
+    - JWT: security/jwt.md
+    - OAuth2: security/oauth2.md
+    - OAuth2 Provider Configuration: security/oauth2-provider-configuration.md
+  - Plugin Development:
+    - plugins/index.md
+    - Creating Plugins: plugins/creating-plugins.md
+    - Plugin Types: plugins/plugin-types.md
+    - Plugin Configuration: plugins/plugin-configuration.md
+    - Plugin Development: plugins/plugin-development.md
+  - AgentUp Development:
+    - Overview: development/overview.md
+    - Architecture: development/architecture.md
+    - Testing: development/testing.md
+    - Contributing: development/contributing.md
+  - Advanced:
+    - Configuration: advanced/configuration.md
+    - Performance Tuning: advanced/performance-tuning.md
+    - Debugging: advanced/debugging.md
+  - Architecture:
+    - Overview: architecture/overview.md
+    - Components: architecture/components.md
+    - Data Flow: architecture/data-flow.md
+  - Documentation:
+    - MkDocs: documentation/mkdocs.md
+    - Sphinx: documentation/sphinx.md
+  - API Reference: api/index.md
+  - Changelog: changelog.md
+  
 
 
 copyright: Copyright &copy; 2025 Red Dot Rocket

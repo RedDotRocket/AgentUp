@@ -10,24 +10,24 @@ AgentUp plugins use the pluggy library's hook system. Each hook represents a spe
 
 ```python
 import pluggy
-from agent.plugins import SkillInfo, SkillContext, SkillResult
+from agent.plugins import CapabilityInfo, CapabilityContext, CapabilityResult
 
 hookimpl = pluggy.HookimplMarker("agentup")
 
 class MyPlugin:
     @hookimpl
-    def register_skill(self) -> SkillInfo:
-        """Called during plugin discovery to register your skill."""
+    def register_capability(self) -> CapabilityInfo:
+        """Called during plugin discovery to register your capability."""
         pass
 
     @hookimpl
-    def can_handle_task(self, context: SkillContext) -> bool | float:
+    def can_handle_task(self, context: CapabilityContext) -> bool | float:
         """Called to determine if your plugin can handle a task."""
         pass
 
     @hookimpl
-    def execute_skill(self, context: SkillContext) -> SkillResult:
-        """Called to execute your skill logic."""
+    def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
+        """Called to execute your capability logic."""
         pass
 ```
 
@@ -73,14 +73,14 @@ First, define what configuration your plugin needs:
 
 ```python
 @hookimpl
-def register_skill(self) -> SkillInfo:
-    """Register the weather skill."""
-    return SkillInfo(
+def register_capability(self) -> CapabilityInfo:
+    """Register the weather capability."""
+    return CapabilityInfo(
         id="weather",
         name="Weather Information",
         version="1.0.0",
         description="Provides current weather and forecasts",
-        capabilities=[SkillCapability.TEXT, SkillCapability.AI_FUNCTION, SkillCapability.STATEFUL],
+        capabilities=[CapabilityType.TEXT, CapabilityType.AI_FUNCTION, CapabilityType.STATEFUL],
         tags=["weather", "api", "forecast"],
         system_prompt="""You are a weather information assistant with access to current weather data and forecasts.
 

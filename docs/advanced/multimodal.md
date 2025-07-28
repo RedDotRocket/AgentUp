@@ -1,10 +1,10 @@
-# Multi-Modal Implementation Summary
+# Multi-Modal Support in AgentUp
 
-## What We Accomplished
+## Overview
 
-This document summarizes the comprehensive multi-modal support implementation for AgentUp, transforming it from a text-only framework to a fully capable multi-modal AI agent platform.
+AgentUp provides comprehensive multi-modal support, enabling your agents to process and understand various content types including images, documents, and mixed media. This capability transforms your agents from text-only processors to fully capable multi-modal AI assistants.
 
-## ✓ Features Implemented
+## Supported Features
 
 ### 1. **Multi-Provider Support**
 - **OpenAI** - Full vision API support with structured content arrays
@@ -48,6 +48,7 @@ A2A Message → _extract_message_content() → _process_message_parts() → Prov
 ```python
 # Vision model detection and content formatting
 def _is_vision_model() -> bool:
+    # Detects vision-capable models like llava, bakllava
     vision_models = ["llava", "bakllava", "llava-llama3", "llava-phi3", "llava-code"]
     return any(vision_model in self.model.lower() for vision_model in vision_models)
 
@@ -131,6 +132,190 @@ class AnthropicProvider(BaseLLMService):
 ```
 
 ### New Content Types
+
+---
+
+# Multi-Modal Usage Guide
+
+## Configuration
+
+Multi-modal support is automatically enabled based on your AI provider and model:
+
+### Vision-Enabled Models
+
+```yaml
+# OpenAI with vision
+ai_provider:
+  provider: "openai"
+  model: "gpt-4o"           # Vision-enabled
+  api_key: "${OPENAI_API_KEY}"
+
+# Ollama with LLaVA
+ai_provider:
+  provider: "ollama"
+  model: "llava:latest"     # Vision-enabled local model
+  base_url: "http://localhost:11434"
+
+# Anthropic with vision
+ai_provider:
+  provider: "anthropic"
+  model: "claude-3-sonnet-20240229"  # Vision-enabled
+  api_key: "${ANTHROPIC_API_KEY}"
+```
+
+## Sending Multi-Modal Content
+
+### Via API (Images + Text)
+
+```bash
+curl -X POST http://localhost:8000/ \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-api-key" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "message/send",
+    "params": {
+      "message": {
+        "role": "user",
+        "parts": [
+          {
+            "kind": "text",
+            "text": "What do you see in this screenshot?"
+          },
+          {
+            "kind": "file",
+            "path": "/path/to/screenshot.png",
+            "mimeType": "image/png"
+          }
+        ]
+      }
+    }
+  }'
+```
+
+### Via API (Documents)
+
+```bash
+curl -X POST http://localhost:8000/ \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-api-key" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "message/send",
+    "params": {
+      "message": {
+        "role": "user",
+        "parts": [
+          {
+            "kind": "text",
+            "text": "Review this configuration and suggest improvements"
+          },
+          {
+            "kind": "file",
+            "path": "/path/to/config.yaml",
+            "mimeType": "application/yaml"
+          }
+        ]
+      }
+    }
+  }'
+```
+
+## Supported Content Types
+
+### Images
+- PNG (`image/png`)
+- JPEG (`image/jpeg`, `image/jpg`)
+- WebP (`image/webp`)
+- GIF (`image/gif`)
+
+### Documents
+- Plain text (`text/plain`)
+- Markdown (`text/markdown`)
+- JSON (`application/json`)
+- YAML (`application/yaml`, `text/yaml`)
+- XML (`application/xml`, `text/xml`)
+- CSV (`text/csv`)
+- HTML (`text/html`)
+
+## Error Handling
+
+### Text-Only Model with Images
+
+When using a text-only model with image content, the agent provides a helpful message:
+
+```json
+{
+  "result": {
+    "content": "I notice you've shared an image, but I'm currently using a text-only model. Please describe the image or configure a vision-enabled model like 'gpt-4o' or 'llava'."
+  }
+}
+```
+
+### Unsupported File Types
+
+```json
+{
+  "error": {
+    "code": -32000,
+    "message": "Unsupported file type for binary.exe",
+    "data": {
+      "supported_types": ["image/*", "text/*", "application/json", "application/yaml"]
+    }
+  }
+}
+```
+
+## Best Practices
+
+1. **Model Selection**: Use vision-enabled models for image analysis
+2. **File Size**: Keep images under provider limits (typically 20MB)
+3. **Context Awareness**: Multi-modal content uses more tokens
+4. **Security**: Validate file paths to prevent unauthorized access
+5. **Format Consistency**: Use appropriate MIME types for better processing
+
+## Example Use Cases
+
+### Code Review with Screenshots
+```json
+{
+  "message": {
+    "parts": [
+      {"kind": "text", "text": "Review this code and the error screenshot:"},
+      {"kind": "file", "path": "code.py", "mimeType": "text/plain"},
+      {"kind": "file", "path": "error.png", "mimeType": "image/png"}
+    ]
+  }
+}
+```
+
+### Data Analysis with Charts
+```json
+{
+  "message": {
+    "parts": [
+      {"kind": "text", "text": "Analyze this data and chart:"},
+      {"kind": "file", "path": "data.csv", "mimeType": "text/csv"},
+      {"kind": "file", "path": "chart.png", "mimeType": "image/png"}
+    ]
+  }
+}
+```
+
+### Configuration Review
+```json
+{
+  "message": {
+    "parts": [
+      {"kind": "text", "text": "Check these configs for security issues:"},
+      {"kind": "file", "path": "app.yaml", "mimeType": "application/yaml"},
+      {"kind": "file", "path": "secrets.json", "mimeType": "application/json"}
+    ]
+  }
+}
+```
 Adding support for new content types (audio, video, etc.) requires only:
 1. MIME type detection updates
 2. Content processing logic

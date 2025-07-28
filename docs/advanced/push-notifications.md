@@ -27,12 +27,12 @@ AgentUp fully implements the A2A specification for push notifications, supportin
 
 - `tasks/pushNotificationConfig/set` - Configure webhook for a task
 - `tasks/pushNotificationConfig/get` - Retrieve webhook configuration
-- `tasks/pushNotificationConfig/list` - list all webhooks for a task
+- `tasks/pushNotificationConfig/list` - List all webhooks for a task
 - `tasks/pushNotificationConfig/delete` - Remove webhook configuration
 
 ## Configuration
 
-Push notifications are configured in your `agent_config.yaml` file. The system supports two storage backends: memory (for development) and Valkey (for production).
+Push notifications are configured in your `agentup.yml` file. The system supports webhook-based notifications with comprehensive security and validation features.
 
 ### Quick Start Configuration
 
@@ -42,7 +42,7 @@ For immediate testing and development:
 # Minimal configuration for development
 push_notifications:
   enabled: true
-  backend: memory
+  backend: webhook      # or memory for testing
   validate_urls: false  # Disable for localhost testing
 ```
 
@@ -54,59 +54,68 @@ Standard development configuration:
 # Push notifications configuration
 push_notifications:
   enabled: true
-  backend: memory             # Options: memory, valkey
+  backend: memory             # Options: memory, webhook
   validate_urls: true         # Enable webhook URL validation for security
+  config: {}                  # Backend-specific configuration
 ```
 
-### Production Configuration with Valkey Backend
+### Production Configuration
 
-For production deployments with persistence and security:
+For production deployments with webhook delivery:
 
 ```yaml
-# External services configuration - Required for Valkey backend
-services:
-  valkey:
-    type: cache
-    config:
-      url: "${VALKEY_URL:valkey://localhost:6379}"
-      db: 0                   # Valkey database number
-      max_connections: 20
-      retry_on_timeout: true
-
 # Push notifications configuration
 push_notifications:
   enabled: true
-  backend: valkey             # Persistent storage
-  key_prefix: "agentup:push:" # Valkey key prefix for configurations
+  backend: webhook            # HTTP webhook delivery
   validate_urls: true         # URL validation for security
-
-# Agent capabilities - Push notifications are automatically enabled
-# when push_notifications.enabled is true
+  config:
+    # Webhook delivery settings
+    timeout: 10               # Request timeout in seconds
+    max_retries: 3           # Retry failed webhooks
+    retry_delay: 1.0         # Initial retry delay
+    
+    # Security settings
+    allowed_domains:         # Restrict webhook domains
+      - "*.mycompany.com"
+      - "webhook.site"      # For testing
+      - "localhost"         # For local development
+    
+    # Default headers for all webhooks
+    default_headers:
+      User-Agent: "AgentUp/1.0"
+      X-Agent-ID: "${AGENT_ID}"
 ```
 
-### Environment Variables
+### Security Considerations
 
-Set these environment variables for production:
+1. **URL Validation**: When `validate_urls: true`, the system validates webhook URLs:
+   - Must be valid HTTP/HTTPS URLs
+   - Cannot be private IP addresses (unless explicitly allowed)
+   - Domain restrictions can be enforced
 
-```bash
-# Valkey connection
-export VALKEY_URL="valkey://localhost:6379"
+2. **Authentication**: Webhooks support multiple authentication methods:
+   - Bearer tokens in Authorization header
+   - Custom headers
+   - Basic authentication
 
-# Optional: Valkey authentication
-export VALKEY_URL="valkey://:password@localhost:6379"
-
-# Optional: Valkey cluster
-export VALKEY_URL="valkey://node1:6379,node2:6379,node3:6379"
-```
+3. **Secure Delivery**: All webhook requests include:
+   - Task ID and correlation ID
+   - Timestamp and signature (if configured)
+   - Custom headers from configuration
 
 ### Configuration Options
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `enabled` | boolean | `true` | Enable/disable push notifications |
-| `backend` | string | `memory` | Storage backend: `memory` or `valkey` |
-| `key_prefix` | string | `"agentup:push:"` | Valkey key prefix for configurations (Valkey backend only) |
+| `backend` | string | `memory` | Storage backend: `memory` or `webhook` |
 | `validate_urls` | boolean | `true` | Enable webhook URL security validation |
+| `config.timeout` | integer | `10` | HTTP request timeout in seconds |
+| `config.max_retries` | integer | `3` | Maximum retry attempts for failed webhooks |
+| `config.retry_delay` | float | `1.0` | Initial retry delay in seconds |
+| `config.allowed_domains` | array | `[]` | List of allowed webhook domains (glob patterns) |
+| `config.default_headers` | object | `{}` | Headers to include in all webhook requests |
 
 **Note**: The timeout and retry configuration is handled by the HTTP client. The default timeout is 30 seconds per webhook request.
 

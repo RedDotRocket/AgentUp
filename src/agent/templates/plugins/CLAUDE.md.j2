@@ -35,6 +35,11 @@ The plugin uses pluggy hooks to integrate with AgentUp:
 - `@hookimpl def get_ai_functions()` - Optional - Provides AI-callable functions
 - `@hookimpl def configure_services()` - Optional - Configures external services
 - `@hookimpl def get_middleware_config()` - Optional - Requests middleware
+- `@hookimpl def get_state_schema()` - Optional - Defines state schema for stateful capabilities
+- `@hookimpl def wrap_execution()` - Optional - Wraps capability execution with custom logic
+- `@hookimpl def on_install()` - Optional - Called when plugin is installed
+- `@hookimpl def on_uninstall()` - Optional - Called when plugin is being uninstalled
+- `@hookimpl def get_health_status()` - Optional - Reports health status for monitoring
 
 ### Entry Point
 The plugin is registered via entry point in `pyproject.toml`:
@@ -261,6 +266,78 @@ Access external services via AgentUp's service registry:
 - Database connections
 - Cache backends
 - Message queues
+
+### Advanced Plugin Hooks
+
+#### Execution Wrapping
+```python
+@hookimpl
+def wrap_execution(self, context: CapabilityContext, next_handler) -> CapabilityResult:
+    """Wrap capability execution with custom pre/post processing."""
+    # Pre-processing
+    start_time = time.time()
+    logger.info(f"Starting execution for {context.capability_id}")
+    
+    try:
+        # Call the next handler in the chain
+        result = next_handler(context)
+        
+        # Post-processing
+        execution_time = time.time() - start_time
+        result.metadata["execution_time"] = execution_time
+        
+        return result
+    except Exception as e:
+        logger.error(f"Execution failed after {time.time() - start_time}s: {e}")
+        raise
+```
+
+#### Lifecycle Management
+```python
+@hookimpl
+def on_install(self, install_path: str) -> None:
+    """Called when plugin is installed - perform one-time setup."""
+    # Create necessary directories
+    (Path(install_path) / "data").mkdir(exist_ok=True)
+    
+    # Download models or resources
+    self._download_required_resources(install_path)
+    
+    # Initialize configuration
+    self._setup_default_config(install_path)
+
+@hookimpl
+def on_uninstall(self) -> None:
+    """Called when plugin is uninstalled - cleanup resources."""
+    # Clean up temporary files
+    self._cleanup_temp_files()
+    
+    # Close connections
+    if hasattr(self, '_client'):
+        self._client.close()
+```
+
+#### Health Monitoring
+```python
+@hookimpl
+def get_health_status(self) -> dict[str, Any]:
+    """Report plugin health for monitoring and debugging."""
+    return {
+        "status": "healthy" if self._is_operational() else "unhealthy",
+        "version": "{{ version }}",
+        "uptime": time.time() - self._start_time,
+        "requests_processed": self._request_count,
+        "last_error": self._last_error,
+        "dependencies": {
+            "api_accessible": self._check_api_health(),
+            "database_connected": self._check_db_health(),
+        },
+        "resources": {
+            "memory_usage": self._get_memory_usage(),
+            "active_connections": len(self._connections),
+        }
+    }
+```
 
 ## Best Practices
 

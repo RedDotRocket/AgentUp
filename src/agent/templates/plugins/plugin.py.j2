@@ -71,15 +71,15 @@ class Plugin:
         elif timeout > 300:
             warnings.append("timeout is very high (> 5 minutes)")
 
-        return ValidationResult(
+        return PluginValidationResult(
             valid=len(errors) == 0,
             errors=errors,
             warnings=warnings,
         )
         {% elif template == "ai" %}# AI capabilities typically don't need much config
-        return ValidationResult(valid=True)
+        return PluginValidationResult(valid=True)
         {% else %}# Add your validation logic here
-        return ValidationResult(valid=True)
+        return PluginValidationResult(valid=True)
         {% endif %}
 
     {% if template == "advanced" or template == "ai" %}@hookimpl

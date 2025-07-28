@@ -148,11 +148,13 @@ services:
       retry_on_timeout: true
       socket_keepalive: true
 
-state:
+state_management:
+  enabled: true
   backend: valkey
-  url: "${VALKEY_STATE_URL:valkey://valkey-state:6379}"
-  key_prefix: "${STATE_KEY_PREFIX:agentup:state:}"
   ttl: 7200  # 2 hours
+  config:
+    url: "${VALKEY_STATE_URL:valkey://valkey-state:6379}"
+    key_prefix: "${STATE_KEY_PREFIX:agentup:state:}"
 ```
 
 #### Multi-Valkey Setup
@@ -176,11 +178,13 @@ services:
       url: "valkey://persistent-valkey:6379"
       db: 0
 
-state:
+state_management:
+  enabled: true
   backend: valkey
-  url: "valkey://persistent-valkey:6379"
-  key_prefix: "agentup:state:"
-  ttl: 86400                  # 24 hours
+  ttl: 86400  # 24 hours
+  config:
+    url: "valkey://persistent-valkey:6379"
+    key_prefix: "agentup:state:"
 ```
 
 ### File Storage Configuration
@@ -217,17 +221,17 @@ state_management:
 - No TTL support (garbage collected with process)
 - Fast performance for development/testing
 
-## Using State Management in Skills
+## Using State Management in Plugins
 
-### Automatic State Application (NEW)
+### Automatic State Application
 
-**With the new auto-application system, handlers automatically receive state management capabilities based on configuration. No manual decorators required!**
+**With the auto-application system, all plugin handlers automatically receive state management capabilities based on configuration. No manual decorators required!**
 
 ```python
 from src.agent.handlers import register_handler
 from a2a.types import Task
 
-@register_handler("ai_assistant")
+# In your plugin code
 async def handle_ai_assistant(task: Task, context=None, context_id=None):
     """This handler automatically gets state management if enabled in config."""
     
@@ -268,17 +272,16 @@ plugins:
         key_prefix: "agentup:ai:"
 ```
 
-### Manual @stateful Decorator (Legacy)
+### Direct State Management Access
 
-For backward compatibility, you can still use the manual decorator:
+You can also access state management directly in your plugin code:
 
 ```python
-from src.agent.context import stateful
+from src.agent.state.context import ConversationContext
 from a2a.types import Task
 
-@stateful(storage='valkey', url='valkey://localhost:6379', key_prefix='agentup:state:', ttl=3600)
-async def my_stateful_skill(task: Task, context, context_id):
-    """A skill that uses state management."""
+async def my_stateful_handler(task: Task, context: ConversationContext, context_id: str):
+    """A plugin handler that uses state management."""
     
     # Get conversation history
     history = await context.get_history(context_id, limit=10)
