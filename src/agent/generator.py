@@ -7,7 +7,18 @@ from typing import Any
 import structlog
 from jinja2 import Environment, FileSystemLoader
 
+from .config.model import AgentConfig, MiddlewareConfig
+
 logger = structlog.get_logger(__name__)
+
+# Default values from configuration models
+_default_agent_config = AgentConfig()
+_default_middleware_config = MiddlewareConfig()
+
+DEFAULT_AUTH_TYPE = "api_key"
+DEFAULT_CACHE_BACKEND = _default_middleware_config.caching["backend"]
+DEFAULT_STATE_BACKEND = DEFAULT_CACHE_BACKEND  # Use same default as cache
+DEFAULT_ENVIRONMENT = _default_agent_config.environment
 
 
 class ProjectGenerator:
@@ -209,7 +220,7 @@ class ProjectGenerator:
     def _build_security_context(self) -> dict[str, Any]:
         """Build security and authentication context."""
         auth_enabled = "auth" in self.features
-        auth_type = self.config.get("feature_config", {}).get("auth", "api_key")
+        auth_type = self.config.get("feature_config", {}).get("auth", DEFAULT_AUTH_TYPE)
         scope_config = self.config.get("feature_config", {}).get("scope_config", {})
         oauth2_provider = self.config.get("feature_config", {}).get("oauth2_provider")
 
@@ -232,14 +243,14 @@ class ProjectGenerator:
         feature_config = self.config.get("feature_config", {})
 
         # Cache backend
-        cache_backend = feature_config.get("cache_backend", "memory")
+        cache_backend = feature_config.get("cache_backend", DEFAULT_CACHE_BACKEND)
 
         # State backend
         state_backend = None
         if "state_backend" in feature_config:
             state_backend = feature_config["state_backend"]
         elif "state_management" in self.features:
-            state_backend = "memory"  # Default to memory backend
+            state_backend = DEFAULT_STATE_BACKEND
 
         return {
             "cache_backend": cache_backend,
