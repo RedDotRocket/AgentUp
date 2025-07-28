@@ -121,7 +121,6 @@ def project_config() -> dict[str, Any]:
     return {
         "name": "test-project",
         "description": "Test Project Description",
-        "template": "standard",
         "features": ["services", "middleware", "auth", "ai_provider", "mcp"],
         "services": ["valkey"],
         "ai_provider_config": {"provider": "openai"},
@@ -219,26 +218,6 @@ def mock_file_system(temp_dir: Path):
         (src_dir / filename).write_text(f"# Mock {filename}\npass\n")
 
     return {"temp_dir": temp_dir, "src_dir": src_dir, "files": ["__init__.py", "main.py", "config.py", "api.py"]}
-
-
-@pytest.fixture(scope="session")
-def agent_templates():
-    """Load agent template information for testing."""
-    return {
-        "minimal": {"features": [], "description": "Basic agent without AI or advanced features"},
-        "standard": {
-            "features": ["services", "middleware", "mcp"],
-            "description": "AI-powered agent with MCP integration",
-        },
-        "full": {
-            "features": ["services", "middleware", "auth", "state_management", "mcp", "monitoring"],
-            "description": "All features enabled including database, cache, monitoring",
-        },
-        "demo": {
-            "features": ["services", "middleware", "mcp"],
-            "description": "Pre-configured demo plugins for testing",
-        },
-    }
 
 
 @pytest.fixture

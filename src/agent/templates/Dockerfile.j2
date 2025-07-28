@@ -12,7 +12,7 @@ COPY pyproject.toml ./
 # Install dependencies using uv for faster builds
 RUN pip install uv && uv sync --frozen
 
-# Production stage - minimal distroless image
+# Minimal distroless image
 FROM cgr.dev/chainguard/python:latest
 
 WORKDIR /app

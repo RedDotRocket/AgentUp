@@ -217,7 +217,7 @@ async def _handle_function(self, param1: str, config: dict[str, Any] | None = No
 
 ### Local Development
 1. Install in development mode: `pip install -e .`
-2. Create test agent: `agentup agent create test-agent --template minimal`
+2. Create test agent: `agentup agent create test-agent --quick`
 3. Configure plugin in agent's `agentup.yml`
 4. Test with: `agentup agent serve`
 
@@ -564,7 +564,7 @@ def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
 - Leverage AgentUp's built-in features
 - Use provided utilities and helpers
 - Follow established patterns from other plugins
-- Maintain compatibility with different agent templates
+- Maintain compatibility with different agent configurations
 
 ### Community Guidelines
 - Write clear documentation

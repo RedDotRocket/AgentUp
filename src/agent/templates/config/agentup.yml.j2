@@ -19,7 +19,6 @@ plugins:
       - capability_id: hello
         required_scopes: ["api:read"]
         enabled: true
-
 {% for plugin in selected_plugins %}
 {% if plugin == 'ai_assistant' %}
   - plugin_id: ai_assistant
@@ -85,6 +84,7 @@ plugins:
 {% endif %}
 {% endfor %}
 
+
 # Unified Security Configuration
 security:
   enabled: {{ security_enabled | default(false) }}
@@ -95,6 +95,7 @@ security:
       header_name: {{ auth_header_name | default('X-API-Key') }}
       location: {{ auth_location | default('header') }}
       keys:
+        # Note, the following key is randomly generated during AgentUp project creation
         - key: "{{ generate_api_key() }}"
           scopes: ["api:read", "files:read"]
 {% if generate_multiple_keys %}
@@ -103,22 +104,67 @@ security:
 {% endif %}
 {% elif auth_type == 'jwt' %}
     jwt:
+      # Note: The secret key is randomly generated during AgentUp project creation
       secret_key: '{{ generate_jwt_secret() }}'
       algorithm: HS256
       issuer: {{ project_name_snake }}
       audience: a2a-clients
 {% elif auth_type == 'oauth2' %}
     oauth2:
+{% if oauth2_provider == 'github' %}
+      # GitHub OAuth2 configuration (token introspection-based)
+      client_id: "${GITHUB_CLIENT_ID}"
+      client_secret: "${GITHUB_CLIENT_SECRET}"
+      authorization_url: "https://github.com/login/oauth/authorize"
+      token_url: "https://github.com/login/oauth/access_token"
+      redirect_uri: "${GITHUB_REDIRECT_URI:http://localhost:8000/auth/callback}"
+      scopes: ["user", "user:email"]
+      validation_strategy: "introspection"
+      introspection_endpoint: "https://api.github.com/applications/${GITHUB_CLIENT_ID}/token"
+{% elif oauth2_provider == 'google' %}
+      # Google OAuth2 configuration (JWT-based)
+      client_id: "${GOOGLE_CLIENT_ID}"
+      client_secret: "${GOOGLE_CLIENT_SECRET}"
+      authorization_url: "https://accounts.google.com/o/oauth2/v2/auth"
+      token_url: "https://oauth2.googleapis.com/token"
+      redirect_uri: "${GOOGLE_REDIRECT_URI:http://localhost:8000/auth/callback}"
+      scopes: ["openid", "email", "profile"]
       validation_strategy: "jwt"
-      jwks_url: "${JWKS_URL:https://your-provider.com/.well-known/jwks.json}"
+      jwks_url: "https://www.googleapis.com/oauth2/v3/certs"
       jwt_algorithm: "RS256"
-      jwt_issuer: "${JWT_ISSUER:https://your-provider.com}"
-      jwt_audience: "${JWT_AUDIENCE:{{ project_name_snake }}}"
+      jwt_issuer: "https://accounts.google.com"
+      jwt_audience: "${GOOGLE_CLIENT_ID}"
+{% elif oauth2_provider == 'keycloak' %}
+      # Keycloak OAuth2 configuration (JWT-based)
+      client_id: "${KEYCLOAK_CLIENT_ID}"
+      client_secret: "${KEYCLOAK_CLIENT_SECRET}"
+      authorization_url: "${KEYCLOAK_BASE_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/auth"
+      token_url: "${KEYCLOAK_BASE_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token"
+      redirect_uri: "${KEYCLOAK_REDIRECT_URI:http://localhost:8000/auth/callback}"
+      scopes: ["openid", "profile", "email"]
+      validation_strategy: "jwt"
+      jwks_url: "${KEYCLOAK_BASE_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/certs"
+      jwt_algorithm: "RS256"
+      jwt_issuer: "${KEYCLOAK_BASE_URL}/realms/${KEYCLOAK_REALM}"
+      jwt_audience: "${KEYCLOAK_CLIENT_ID}"
+{% else %}
+      # Generic OAuth2 configuration
+      client_id: "${OAUTH2_CLIENT_ID}"
+      client_secret: "${OAUTH2_CLIENT_SECRET}"
+      authorization_url: "${OAUTH2_AUTHORIZATION_URL:https://your-provider.com/oauth/authorize}"
+      token_url: "${OAUTH2_TOKEN_URL:https://your-provider.com/oauth/token}"
+      redirect_uri: "${OAUTH2_REDIRECT_URI:http://localhost:8000/auth/callback}"
+      scopes: ["openid", "profile", "email"]
+      validation_strategy: "jwt"
+      jwks_url: "${OAUTH2_JWKS_URL:https://your-provider.com/.well-known/jwks.json}"
+      jwt_algorithm: "RS256"
+      jwt_issuer: "${OAUTH2_JWT_ISSUER:https://your-provider.com}"
+      jwt_audience: "${OAUTH2_JWT_AUDIENCE:{{ project_name_snake }}}"
+{% endif %}
 {% endif %}
   # Scope hierarchy for fine-grained authorization
   scope_hierarchy:
 {% if auth_type == 'oauth2' %}
-    admin: ["*"]
     api:admin: ["api:write", "api:read"]
     api:write: ["api:read"]
     api:read: []
@@ -129,16 +175,16 @@ security:
     system:write: ["system:read"]
     system:read: []
 {% else %}
-    admin: ["*"]  # Admin has all permissions
     api:write: ["api:read"]
     api:read: []
     files:write: ["files:read"]
     files:read: []
     system:read: []
 {% endif %}
-{% endif %}
+{% endif -%}
+{%- if ai_provider_config %}
 
-{% if ai_provider_config %}
+
 # AI Provider configuration
 ai_provider:
   provider: {{ ai_provider_config.provider }}
@@ -155,7 +201,9 @@ ai_provider:
   temperature: {{ ai_temperature | default(0.7) }}
   max_tokens: {{ ai_max_tokens | default(1000) }}
   top_p: {{ ai_top_p | default(1.0) }}
-{% endif %}
+{% endif -%}
+{%- if ai_enabled %}
+
 
 # AI system prompt and configuration
 ai:
@@ -175,13 +223,16 @@ ai:
 
     Always be helpful, accurate, and maintain a friendly tone.
 {% endif %}
+{% endif %}
 
-{% if has_middleware and 'cache' in feature_config.get('middleware', []) %}
 
 # External services configuration
 services:{{ ' ' + services | tojson if services else ' {}' }}
 
-{% if has_mcp %}
+
+{%- if has_mcp %}
+
+
 # Model Context Protocol
 mcp:
   enabled: true
@@ -215,6 +266,7 @@ mcp:
     expose_resources: [agent_status, agent_capabilities]
     port: {{ mcp_server_port | default(8001) }}
 {% endif %}
+
 
 # Middleware configuration
 middleware:
@@ -264,6 +316,7 @@ middleware:
     max_delay: 60.0
 {% endif %}
 
+
 # Push notifications configuration
 push_notifications:
   enabled: {{ push_enabled | default(true) }}
@@ -275,7 +328,10 @@ push_notifications:
   retry_attempts: {{ push_retry_attempts | default(3) }}
   timeout: {{ push_timeout | default(30) }}
 
-{% if has_state_management %}
+
+{%- if has_state_management %}
+
+
 # State management configuration
 state_management:
   enabled: true
@@ -305,6 +361,7 @@ state_management:
 {% endif %}
 {% endif %}
 
+
 # Logging configuration
 logging:
   enabled: {{ logging_enabled | default(true) }}
@@ -319,7 +376,6 @@ logging:
   # Advanced features
   correlation_id: {{ correlation_id | default(false) }}
   request_logging: {{ request_logging | default(false) }}
-
 {% if log_modules %}
   # Module-specific log levels
   modules:
@@ -327,31 +383,29 @@ logging:
     {{ module }}: "{{ level }}"
 {% endfor %}
 {% endif %}
-
   # Uvicorn integration
   uvicorn:
     access_log: {{ uvicorn_access_log | default(false) }}
     disable_default_handlers: true
     use_colors: {{ uvicorn_colors | default(console_colors | default(true)) }}
 
+
 # Development configuration
 # WARNING: These features can be security risks and should NEVER be enabled in production
 development:
-  enabled: false  # Master switch for ALL development features
+  enabled: {{ development_enabled | default(false) }}  # Master switch for ALL development features
+{% if development_enabled %}
   
   # Filesystem plugin loading -
   # This allows loading arbitrary Python code from the filesystem, NEVER enable in production
   filesystem_plugins:
-    enabled: false  # Default: disabled for security
+    enabled: {{ filesystem_plugins_enabled | default(false) }}  # Default: disabled for security
+{% if filesystem_plugins_enabled %}
     allowed_directories:
-      - ~/.agentup/plugins  # Directories to scan for plugins
-    # Future security enhancements:
-    # require_signature: true  # Require cryptographic signatures
-    # allowed_plugins: []      # Whitelist specific plugin files
-    
-  # Other development features can be added here
-  # debug_mode: false
-  # hot_reload: false
-  # unsafe_features:
-  #   allow_eval: false
-  #   allow_exec: false
+{% if plugin_directory %}
+      - {{ plugin_directory }}  # Custom plugin directory
+{% else %}
+      - ~/.agentup/plugins  # Default plugin directory
+{% endif %}
+{% endif %}
+{% endif %}

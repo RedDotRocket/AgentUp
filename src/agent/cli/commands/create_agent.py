@@ -7,11 +7,7 @@ import questionary
 from questionary import Style
 
 from agent.generator import ProjectGenerator
-from agent.templates import (
-    get_feature_choices,
-    get_template_choices,
-    get_template_features,
-)
+from agent.templates import get_feature_choices
 
 
 def initialize_git_repo(project_path: Path) -> bool:
@@ -61,17 +57,13 @@ custom_style = Style(
 
 @click.command()
 @click.argument("name", required=False)
-@click.option("--template", "-t", help="Project template to use")
 @click.option("--quick", "-q", is_flag=True, help="Quick setup with minimal features (basic handlers only)")
-@click.option("--minimal", is_flag=True, help="Create with minimal features (basic handlers only)")
 @click.option("--output-dir", "-o", type=click.Path(), help="Output directory")
 @click.option("--config", "-c", type=click.Path(exists=True), help="Use existing agentup.yml as template")
 @click.option("--no-git", is_flag=True, help="Skip git repository initialization")
 def create_agent(
     name: str | None,
-    template: str | None,
     quick: bool,
-    minimal: bool,
     output_dir: str | None,
     config: str | None,
     no_git: bool,
@@ -85,9 +77,8 @@ def create_agent(
         agentup agent create                    # Interactive mode with git init
         agentup agent create my-agent           # Interactive with name
         agentup agent create --quick my-agent   # Quick setup with minimal features
-        agentup agent create --minimal my-agent # Minimal setup (basic handlers only)
         agentup agent create --no-git my-agent  # Skip git initialization
-        agentup agent create --template chatbot my-chatbot
+        agentup agent create --quick my-chatbot
     """
     click.echo(click.style("-" * 40, fg="white", dim=True))
     click.echo(click.style("Create your AI agent:", fg="white", dim=True))
@@ -125,61 +116,27 @@ def create_agent(
                 click.echo("Cancelled.")
                 return
 
-    # Quick mode - use specified template or default to minimal
+    # Quick mode - use minimal features
     if quick:
-        selected_template = template or "minimal"
-        project_config["template"] = selected_template
         project_config["description"] = f"AI Agent {name} Project."
-        # Use template's features
-        template_features = get_template_features()
-        project_config["features"] = template_features.get(selected_template, {}).get("features", [])
-
-        # Set default state backend for quick mode based on template
-        feature_config = {}
-        if "state_management" in project_config["features"]:
-            if selected_template == "minimal":
-                feature_config["state_backend"] = "memory"
-            elif selected_template == "full":
-                feature_config["state_backend"] = "valkey"
-            else:  # minimal
-                feature_config["state_backend"] = "memory"
-        project_config["feature_config"] = feature_config
-    # Minimal mode - use minimal template with no features
-    elif minimal:
-        project_config["template"] = "minimal"
-        project_config["description"] = f"AI Agent {name} Project."
-        project_config["features"] = []
+        project_config["features"] = []  # Empty features for quick mode
         project_config["feature_config"] = {}
     else:
         # Project description
         description = questionary.text("Description:", default=f"AI Agent {name} Project.", style=custom_style).ask()
         project_config["description"] = description
 
-        # Template selection (interactive mode when no template is specified)
-        if not template:
-            template_choices = get_template_choices()
-            template = questionary.select("Select template:", choices=template_choices, style=custom_style).ask()
-            if not template:
-                click.echo("Cancelled.")
-                return
-
-        project_config["template"] = template
-
-        # Use template's default features
-        template_features = get_template_features()
-        project_config["features"] = template_features.get(template, {}).get("features", [])
+        # Start with empty features
+        project_config["features"] = []
 
         # Ask if user wants to customize features
         if questionary.confirm("Would you like to customize the features?", default=False, style=custom_style).ask():
             # Get all available feature choices
             feature_choices = get_feature_choices()
 
-            # Mark current template features as checked
+            # All features unchecked by default
             for choice in feature_choices:
-                if choice.value in project_config["features"]:
-                    choice.checked = True
-                else:
-                    choice.checked = False
+                choice.checked = False
 
             # Let user modify selection
             selected_features = questionary.checkbox(
@@ -255,7 +212,7 @@ def create_agent(
         click.echo("\nNext steps:")
         click.echo(f"  1. cd {output_dir.name}")
         click.echo("  2. uv sync                    # Install dependencies")
-        click.echo("  3. agentup agent serve                # Start development server")
+        click.echo("  3. agentup agent serve        # Start development server")
 
     except Exception as e:
         click.echo(f"{click.style('✗ Error:', fg='red')} {str(e)}")
@@ -309,9 +266,9 @@ def configure_features(features: list) -> dict[str, Any]:
         auth_choice = questionary.select(
             "Select authentication method:",
             choices=[
-                questionary.Choice("API Key (simple, good for development)", value="api_key"),
-                questionary.Choice("JWT Bearer (production-ready with scopes)", value="jwt"),
-                questionary.Choice("OAuth2 (enterprise-grade with provider integration)", value="oauth2"),
+                questionary.Choice("API Key (simple, but less secure)", value="api_key"),
+                questionary.Choice("JWT Bearer", value="jwt"),
+                questionary.Choice("OAuth2 (with provider integration)", value="oauth2"),
             ],
             style=custom_style,
         ).ask()

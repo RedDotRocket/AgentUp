@@ -76,7 +76,7 @@ def _setup_request_handler(app: FastAPI) -> None:
 
 
 def create_app() -> FastAPI:
-    """Create FastAPI application with minimal configuration."""
+    """Create FastAPI application."""
     agent_card = create_agent_card()
 
     # Create FastAPI app

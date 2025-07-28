@@ -70,11 +70,10 @@ class TestTestFoundation:
     def test_project_config_fixture(self, project_config: dict[str, Any]):
         """Test the project configuration fixture."""
         assert "name" in project_config, "Should have project name"
-        assert "template" in project_config, "Should have template"
+        # Template removed - no longer required
         assert "features" in project_config, "Should have features"
         assert "services" in project_config, "Should have services"
 
-        assert project_config["template"] == "standard"
         assert "services" in project_config["features"]
         assert "ai_provider" in project_config["features"]
         assert "valkey" in project_config["services"]
@@ -85,10 +84,9 @@ class TestTestHelpers:
 
     def test_create_test_config(self):
         """Test the create_test_config helper."""
-        config = create_test_config("my-test", "standard", ["services"], ["openai"])
+        config = create_test_config("my-test", ["services"], ["openai"])
 
         assert config["name"] == "my-test"
-        assert config["template"] == "standard"
         assert config["features"] == ["services"]
         assert config["services"] == ["openai"]
 
@@ -218,27 +216,7 @@ class TestMockServices:
         assert os.environ.get("VALKEY_URL") == "valkey://localhost:6379"
 
 
-class TestAgentTemplates:
-    """Test the agent templates fixture."""
-
-    def test_agent_templates_fixture(self, agent_templates):
-        """Test the agent templates fixture."""
-        assert "minimal" in agent_templates
-        assert "standard" in agent_templates
-        assert "full" in agent_templates
-        assert "demo" in agent_templates
-
-        # Test template structure
-        for _, template_info in agent_templates.items():
-            assert "features" in template_info
-            assert "description" in template_info
-            assert isinstance(template_info["features"], list)
-            assert isinstance(template_info["description"], str)
-
-        # Test specific templates
-        assert agent_templates["minimal"]["features"] == []
-        assert "services" in agent_templates["standard"]["features"]
-        assert len(agent_templates["full"]["features"]) > len(agent_templates["standard"]["features"])
+# Template system removed - tests no longer needed
 
 
 if __name__ == "__main__":

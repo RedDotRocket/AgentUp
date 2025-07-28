@@ -37,6 +37,11 @@ class OpenAIProvider(BaseLLMService):
         self.timeout = config.get("timeout", DEFAULT_HTTP_TIMEOUT)
         self._available = False  # Track availability status
 
+        # Default LLM parameters from config
+        self.default_temperature = config.get("temperature", 0.7)
+        self.default_max_tokens = config.get("max_tokens", 1000)
+        self.default_top_p = config.get("top_p", 1.0)
+
     async def initialize(self) -> None:
         """Initialize the OpenAI service."""
         if not self.api_key:
@@ -115,9 +120,9 @@ class OpenAIProvider(BaseLLMService):
         payload = {
             "model": self.model,
             "messages": [self._chat_message_to_dict(msg) for msg in messages],
-            "temperature": kwargs.get("temperature", 0.7),
-            "max_tokens": kwargs.get("max_tokens", 1000),
-            "top_p": kwargs.get("top_p", 1.0),
+            "temperature": kwargs.get("temperature", self.default_temperature),
+            "max_tokens": kwargs.get("max_tokens", self.default_max_tokens),
+            "top_p": kwargs.get("top_p", self.default_top_p),
             "frequency_penalty": kwargs.get("frequency_penalty", 0),
             "presence_penalty": kwargs.get("presence_penalty", 0),
         }
@@ -161,8 +166,8 @@ class OpenAIProvider(BaseLLMService):
             "messages": [self._chat_message_to_dict(msg) for msg in messages],
             "functions": functions,
             "function_call": kwargs.get("function_call", "auto"),
-            "temperature": kwargs.get("temperature", 0.7),
-            "max_tokens": kwargs.get("max_tokens", 1000),
+            "temperature": kwargs.get("temperature", self.default_temperature),
+            "max_tokens": kwargs.get("max_tokens", self.default_max_tokens),
         }
 
         try:
@@ -282,8 +287,8 @@ class OpenAIProvider(BaseLLMService):
             "model": self.model,
             "messages": [self._chat_message_to_dict(msg) for msg in messages],
             "stream": True,
-            "temperature": kwargs.get("temperature", 0.7),
-            "max_tokens": kwargs.get("max_tokens", 1000),
+            "temperature": kwargs.get("temperature", self.default_temperature),
+            "max_tokens": kwargs.get("max_tokens", self.default_max_tokens),
         }
 
         try:

@@ -9,36 +9,23 @@ def agent():
 
 @agent.command()
 @click.argument("name", required=False)
-@click.option(
-    "--template",
-    "-t",
-    default="minimal",
-    type=click.Choice(["minimal", "full"], case_sensitive=False),
-    help="Project template (default: minimal)",
-)
 @click.option("--quick", "-q", is_flag=True, help="Quick setup with minimal features (non-interactive)")
 @click.option("--output-dir", "-o", type=click.Path(), help="Output directory")
 @click.option("--config", "-c", type=click.Path(exists=True), help="Use existing agentup.yml as template")
 @click.option("--no-git", is_flag=True, help="Skip git repository initialization")
-def create(name, template, quick, output_dir, config, no_git):
+def create(name, quick, output_dir, config, no_git):
     """Create a new agent project.
 
-    \b
-    Templates:
-      minimal  - Barebone agent (no AI, no external dependencies)
-      full     - Enterprise agent with all features
-
-    \b
     Examples:
-      agentup agent create                      # Interactive mode (minimal template)
-      agentup agent create my-bot               # Minimal template with name
-      agentup agent create --template minimal   # Minimal template
-      agentup agent create --template full      # Full template with all features
+      agentup agent create                        # Interactive mode
+      agentup agent create <agent-name>           # Interactive mode with name
+      agentup agent create --quick <agent-name>   # Quick setup with minimal features
+      agentup agent create --no-git <agent-name>  # Skip git initialization
     """
     # Import and call the original create_agent functionality
     from . import create_agent
 
-    return create_agent.create_agent.callback(name, template, quick, False, output_dir, config, no_git)
+    return create_agent.create_agent.callback(name, quick, output_dir, config, no_git)
 
 
 @agent.command()

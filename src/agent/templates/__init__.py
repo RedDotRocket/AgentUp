@@ -1,16 +1,4 @@
-from typing import Any
-
 import questionary
-
-
-def get_template_choices() -> list[questionary.Choice]:
-    """Get available project templates."""
-    return [
-        questionary.Choice(
-            "Minimal - Barebone agent (no AI, no external dependencies)", value="minimal", shortcut_key="m"
-        ),
-        questionary.Choice("Full - Enterprise agent with all features", value="full", shortcut_key="f"),
-    ]
 
 
 def get_feature_choices() -> list[questionary.Choice]:
@@ -27,25 +15,3 @@ def get_feature_choices() -> list[questionary.Choice]:
         questionary.Choice("Development Features (filesystem plugins, debug mode)", value="development"),
         questionary.Choice("Deployment (Docker, Helm Charts)", value="deployment"),
     ]
-
-
-def get_template_features(template: str = None) -> dict[str, dict[str, Any]]:
-    """Get features included in each template."""
-    return {
-        "minimal": {
-            "features": ["auth"],  # Minimal now includes basic AgentUp Security Framework
-            "description": "Secure agent with AgentUp Security Framework - minimal features, maximum security",
-        },
-        "full": {
-            "features": [
-                "auth",
-                "middleware",
-                "state_management",
-                "ai_provider",
-                "mcp",
-                "push_notifications",
-                "deployment",
-            ],
-            "description": "Enterprise-ready agent with AgentUp Security Framework and all advanced features",
-        },
-    }

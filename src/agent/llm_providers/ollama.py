@@ -23,6 +23,11 @@ class OllamaProvider(BaseLLMService):
         self.base_url = config.get("base_url", "http://localhost:11434")
         self.timeout = config.get("timeout", 120.0)  # Longer timeout for local models
 
+        # Default LLM parameters from config
+        self.default_temperature = config.get("temperature", 0.7)
+        self.default_max_tokens = config.get("max_tokens", 1000)  # Maps to num_predict
+        self.default_top_p = config.get("top_p", 1.0)
+
     async def initialize(self) -> None:
         logger.info(f"Initializing Ollama service '{self.name}' with model '{self.model}'")
 
@@ -105,10 +110,10 @@ class OllamaProvider(BaseLLMService):
             "prompt": prompt,
             "stream": False,
             "options": {
-                "temperature": kwargs.get("temperature", 0.7),
-                "top_p": kwargs.get("top_p", 1.0),
+                "temperature": kwargs.get("temperature", self.default_temperature),
+                "top_p": kwargs.get("top_p", self.default_top_p),
                 "top_k": kwargs.get("top_k", 40),
-                "num_predict": kwargs.get("max_tokens", 1000),
+                "num_predict": kwargs.get("max_tokens", self.default_max_tokens),
             },
         }
 
@@ -210,10 +215,10 @@ class OllamaProvider(BaseLLMService):
             "messages": ollama_messages,
             "stream": False,
             "options": {
-                "temperature": kwargs.get("temperature", 0.7),
-                "top_p": kwargs.get("top_p", 1.0),
+                "temperature": kwargs.get("temperature", self.default_temperature),
+                "top_p": kwargs.get("top_p", self.default_top_p),
                 "top_k": kwargs.get("top_k", 40),
-                "num_predict": kwargs.get("max_tokens", 1000),
+                "num_predict": kwargs.get("max_tokens", self.default_max_tokens),
             },
         }
 
@@ -280,10 +285,10 @@ class OllamaProvider(BaseLLMService):
             "messages": ollama_messages,
             "stream": True,
             "options": {
-                "temperature": kwargs.get("temperature", 0.7),
-                "top_p": kwargs.get("top_p", 1.0),
+                "temperature": kwargs.get("temperature", self.default_temperature),
+                "top_p": kwargs.get("top_p", self.default_top_p),
                 "top_k": kwargs.get("top_k", 40),
-                "num_predict": kwargs.get("max_tokens", 1000),
+                "num_predict": kwargs.get("max_tokens", self.default_max_tokens),
             },
         }
 

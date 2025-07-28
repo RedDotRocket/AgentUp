@@ -34,25 +34,9 @@ class TestCreateAgentCommand:
             yield mock_q
 
     @pytest.fixture
-    def mock_template_features(self):
-        """Mock all template functions."""
-        with (
-            patch("agent.cli.commands.create_agent.get_template_features") as mock_features,
-            patch("agent.cli.commands.create_agent.get_template_choices") as mock_choices,
-            patch("agent.cli.commands.create_agent.get_feature_choices") as mock_feature_choices,
-        ):
-            mock_features.return_value = {
-                "minimal": {"features": []},
-                "full": {"features": ["services", "middleware", "auth", "state_management", "mcp", "monitoring"]},
-                "demo": {"features": ["services", "middleware", "mcp"]},
-            }
-
-            mock_choices.return_value = [
-                {"name": "Minimal", "value": "minimal"},
-                {"name": "Full", "value": "full"},
-                {"name": "Demo", "value": "demo"},
-            ]
-
+    def mock_feature_choices(self):
+        """Mock feature choices."""
+        with patch("agent.cli.commands.create_agent.get_feature_choices") as mock_feature_choices:
             # Mock feature choices with questionary.Choice objects
             from questionary import Choice
 
@@ -65,9 +49,9 @@ class TestCreateAgentCommand:
                 Choice("Monitoring", value="monitoring"),
             ]
 
-            yield mock_features
+            yield mock_feature_choices
 
-    def test_create_agent_with_name_argument(self, runner, mock_generator, temp_dir, mock_template_features):
+    def test_create_agent_with_name_argument(self, runner, mock_generator, temp_dir, mock_feature_choices):
         """Test creating an agent with name provided as argument."""
         with (
             patch("pathlib.Path.cwd", return_value=temp_dir),
@@ -89,7 +73,7 @@ class TestCreateAgentCommand:
         assert call_args[1]["name"] == "test-agent"
 
     def test_create_agent_interactive_mode(
-        self, runner, mock_generator, mock_questionary, temp_dir, mock_template_features
+        self, runner, mock_generator, mock_questionary, temp_dir, mock_feature_choices
     ):
         """Test creating an agent in interactive mode."""
         # Mock questionary responses
@@ -97,7 +81,7 @@ class TestCreateAgentCommand:
             "my-interactive-agent",  # Agent name
             "My awesome interactive agent",  # Description
         ]
-        mock_questionary.select.return_value.ask.return_value = "standard"  # Template
+        # No template selection needed
         mock_questionary.confirm.return_value.ask.side_effect = [
             False,  # Don't customize features
             False,  # Directory exists confirmation (if needed)
@@ -118,7 +102,7 @@ class TestCreateAgentCommand:
         assert config["name"] == "my-interactive-agent"
         assert config["description"] == "My awesome interactive agent"
 
-    def test_create_agent_quick_mode(self, runner, mock_generator, temp_dir, mock_template_features):
+    def test_create_agent_quick_mode(self, runner, mock_generator, temp_dir, mock_feature_choices):
         """Test creating an agent with --quick flag."""
         with (
             patch("pathlib.Path.cwd", return_value=temp_dir),
@@ -138,23 +122,10 @@ class TestCreateAgentCommand:
         assert config["name"] == "quick-agent"
         assert "features" in config  # Should use template features
 
-    def test_create_agent_minimal_mode(self, runner, mock_generator, temp_dir, mock_template_features):
-        """Test creating an agent with --minimal flag."""
-        with patch("pathlib.Path.cwd", return_value=temp_dir):
-            result = runner.invoke(create_agent, ["--minimal", "minimal-agent", "--no-git"])
+    # Removed test_create_agent_minimal_mode since --minimal flag was removed
 
-        assert result.exit_code == 0
-        assert "✓ Project created successfully!" in result.output
-
-        # Verify minimal mode configuration
-        call_args = mock_generator.call_args[0]
-        config = call_args[1]
-        assert config["name"] == "minimal-agent"
-        assert config["template"] == "minimal"
-        assert config["features"] == []  # No features for minimal
-
-    def test_create_agent_with_template_option(self, runner, mock_generator, temp_dir, mock_template_features):
-        """Test creating an agent with specific template."""
+    def test_create_agent_with_features_option(self, runner, mock_generator, temp_dir, mock_feature_choices):
+        """Test creating an agent with specific features."""
         with (
             patch("pathlib.Path.cwd", return_value=temp_dir),
             patch("agent.cli.commands.create_agent.questionary") as mock_q,
@@ -162,16 +133,16 @@ class TestCreateAgentCommand:
             # Mock service selection
             mock_q.checkbox.return_value.ask.return_value = ["openai"]
 
-            result = runner.invoke(create_agent, ["--quick", "demo-agent", "--template", "demo", "--no-git"])
+            result = runner.invoke(create_agent, ["--quick", "demo-agent", "--no-git"])
 
         assert result.exit_code == 0
 
-        # Verify template was used
+        # Verify features configuration
         call_args = mock_generator.call_args[0]
         config = call_args[1]
-        assert config["template"] == "demo"
+        assert "features" in config
 
-    def test_create_agent_with_output_dir(self, runner, mock_generator, temp_dir, mock_template_features):
+    def test_create_agent_with_output_dir(self, runner, mock_generator, temp_dir, mock_feature_choices):
         """Test creating an agent with custom output directory."""
         custom_dir = temp_dir / "custom_output"
 
@@ -189,7 +160,7 @@ class TestCreateAgentCommand:
         call_args = mock_generator.call_args[0]
         assert call_args[0] == custom_dir
 
-    def test_create_agent_directory_exists_cancel(self, runner, mock_questionary, temp_dir, mock_template_features):
+    def test_create_agent_directory_exists_cancel(self, runner, mock_questionary, temp_dir, mock_feature_choices):
         """Test canceling when directory already exists (interactive mode)."""
         # Create existing directory
         existing_dir = temp_dir / "existing-agent"
@@ -204,7 +175,7 @@ class TestCreateAgentCommand:
         assert result.exit_code == 0
         assert "Cancelled." in result.output
 
-    def test_create_agent_directory_exists_quick_mode(self, runner, mock_generator, temp_dir, mock_template_features):
+    def test_create_agent_directory_exists_quick_mode(self, runner, mock_generator, temp_dir, mock_feature_choices):
         """Test quick mode automatically continues when directory exists."""
         # Create existing directory
         existing_dir = temp_dir / "existing-agent"
@@ -223,7 +194,7 @@ class TestCreateAgentCommand:
         assert "Directory" in result.output and "already exists. Continuing in quick mode" in result.output
         assert "✓ Project created successfully!" in result.output
 
-    def test_create_agent_git_initialization(self, runner, mock_generator, temp_dir, mock_template_features):
+    def test_create_agent_git_initialization(self, runner, mock_generator, temp_dir, mock_feature_choices):
         """Test agent creation with git initialization."""
         with (
             patch("pathlib.Path.cwd", return_value=temp_dir),
@@ -240,7 +211,7 @@ class TestCreateAgentCommand:
         assert "Git repository initialized" in result.output
         mock_git.assert_called_once()
 
-    def test_create_agent_git_initialization_failure(self, runner, mock_generator, temp_dir, mock_template_features):
+    def test_create_agent_git_initialization_failure(self, runner, mock_generator, temp_dir, mock_feature_choices):
         """Test agent creation when git initialization fails."""
         with (
             patch("pathlib.Path.cwd", return_value=temp_dir),
@@ -255,7 +226,7 @@ class TestCreateAgentCommand:
         assert result.exit_code == 0
         assert "Warning: Could not initialize git repository" in result.output
 
-    def test_create_agent_error_handling(self, runner, mock_generator, temp_dir, mock_template_features):
+    def test_create_agent_error_handling(self, runner, mock_generator, temp_dir, mock_feature_choices):
         """Test error handling during agent creation."""
         # Make generator raise an exception
         mock_generator.return_value.generate.side_effect = Exception("Generation failed")
@@ -294,44 +265,52 @@ class TestServiceSelection:
             yield mock_q
 
     @pytest.fixture
-    def mock_template_features(self):
-        with patch("agent.cli.commands.create_agent.get_template_features") as mock_features:
-            mock_features.return_value = {"standard": {"features": ["services", "middleware", "mcp"]}}
+    def mock_feature_choices(self):
+        with patch("agent.cli.commands.create_agent.get_feature_choices") as mock_features:
             yield mock_features
 
     def test_service_selection_with_ollama(
-        self, runner, mock_generator, mock_questionary, temp_dir, mock_template_features
+        self, runner, mock_generator, mock_questionary, temp_dir, mock_feature_choices
     ):
-        """Test service selection when Ollama is chosen (critical test)."""
+        """Test service selection when services feature is enabled and Ollama is chosen."""
         # Mock questionary responses
         mock_questionary.text.return_value.ask.side_effect = ["ollama-service-test", "Test Ollama service selection"]
-        mock_questionary.select.return_value.ask.return_value = "standard"
-        mock_questionary.confirm.return_value.ask.return_value = False  # Don't customize
+        # Enable feature customization and select services feature
+        mock_questionary.confirm.return_value.ask.return_value = True  # Yes, customize features
 
-        # Mock service selection - user selects Ollama
-        mock_questionary.checkbox.return_value.ask.return_value = ["ollama"]
-
-        with patch("pathlib.Path.cwd", return_value=temp_dir):
-            result = runner.invoke(create_agent, ["--no-git"])
-
-        assert result.exit_code == 0
-
-        # Verify Ollama was selected in configuration
-        call_args = mock_generator.call_args[0]
-        config = call_args[1]
-        assert config["services"] == ["ollama"]
-
-    def test_service_selection_with_anthropic(
-        self, runner, mock_generator, mock_questionary, temp_dir, mock_template_features
-    ):
-        """Test service selection when Anthropic is chosen."""
-        mock_questionary.text.return_value.ask.side_effect = [
-            "anthropic-service-test",
-            "Test Anthropic service selection",
+        # Mock feature selection to include services
+        mock_questionary.checkbox.return_value.ask.side_effect = [
+            ["services"],  # Feature selection - include services
+            ["valkey"],  # Service selection within services feature
         ]
-        mock_questionary.select.return_value.ask.return_value = "standard"
-        mock_questionary.confirm.return_value.ask.return_value = False
-        mock_questionary.checkbox.return_value.ask.return_value = ["anthropic"]
+
+        with patch("pathlib.Path.cwd", return_value=temp_dir):
+            result = runner.invoke(create_agent, ["--no-git"])
+
+        assert result.exit_code == 0
+
+        # Verify service was selected in configuration
+        call_args = mock_generator.call_args[0]
+        config = call_args[1]
+        assert "services" in config
+        assert config["services"] == ["valkey"]
+
+    def test_service_selection_with_custom(
+        self, runner, mock_generator, mock_questionary, temp_dir, mock_feature_choices
+    ):
+        """Test service selection when Custom API is chosen."""
+        mock_questionary.text.return_value.ask.side_effect = [
+            "custom-service-test",
+            "Test Custom service selection",
+        ]
+        # Enable feature customization and select services feature
+        mock_questionary.confirm.return_value.ask.return_value = True  # Yes, customize features
+
+        # Mock feature and service selection
+        mock_questionary.checkbox.return_value.ask.side_effect = [
+            ["services"],  # Feature selection - include services
+            ["custom"],  # Service selection within services feature
+        ]
 
         with patch("pathlib.Path.cwd", return_value=temp_dir):
             result = runner.invoke(create_agent, ["--no-git"])
@@ -340,16 +319,21 @@ class TestServiceSelection:
 
         call_args = mock_generator.call_args[0]
         config = call_args[1]
-        assert config["services"] == ["anthropic"]
+        assert config["services"] == ["custom"]
 
     def test_service_selection_multiple_services(
-        self, runner, mock_generator, mock_questionary, temp_dir, mock_template_features
+        self, runner, mock_generator, mock_questionary, temp_dir, mock_feature_choices
     ):
         """Test selecting multiple services."""
         mock_questionary.text.return_value.ask.side_effect = ["multi-service-test", "Test multiple services"]
-        mock_questionary.select.return_value.ask.return_value = "standard"
-        mock_questionary.confirm.return_value.ask.return_value = False
-        mock_questionary.checkbox.return_value.ask.return_value = ["openai", "valkey"]
+        # Enable feature customization and select services feature
+        mock_questionary.confirm.return_value.ask.return_value = True  # Yes, customize features
+
+        # Mock feature and service selection
+        mock_questionary.checkbox.return_value.ask.side_effect = [
+            ["services"],  # Feature selection - include services
+            ["valkey", "custom"],  # Service selection within services feature
+        ]
 
         with patch("pathlib.Path.cwd", return_value=temp_dir):
             result = runner.invoke(create_agent, ["--no-git"])
@@ -358,16 +342,21 @@ class TestServiceSelection:
 
         call_args = mock_generator.call_args[0]
         config = call_args[1]
-        assert set(config["services"]) == {"openai", "valkey"}
+        assert set(config["services"]) == {"valkey", "custom"}
 
     def test_service_selection_no_services(
-        self, runner, mock_generator, mock_questionary, temp_dir, mock_template_features
+        self, runner, mock_generator, mock_questionary, temp_dir, mock_feature_choices
     ):
-        """Test when user selects no services."""
+        """Test when services feature is enabled but user selects no services."""
         mock_questionary.text.return_value.ask.side_effect = ["no-service-test", "Test no services"]
-        mock_questionary.select.return_value.ask.return_value = "standard"
-        mock_questionary.confirm.return_value.ask.return_value = False
-        mock_questionary.checkbox.return_value.ask.return_value = []  # No services
+        # Enable feature customization and select services feature
+        mock_questionary.confirm.return_value.ask.return_value = True  # Yes, customize features
+
+        # Mock feature and service selection
+        mock_questionary.checkbox.return_value.ask.side_effect = [
+            ["services"],  # Feature selection - include services
+            [],  # Service selection - no services selected
+        ]
 
         with patch("pathlib.Path.cwd", return_value=temp_dir):
             result = runner.invoke(create_agent, ["--no-git"])
@@ -378,22 +367,20 @@ class TestServiceSelection:
         config = call_args[1]
         assert config["services"] == []
 
-    def test_service_selection_always_runs_when_services_in_features(
-        self, runner, mock_generator, mock_questionary, temp_dir, mock_template_features
+    def test_service_selection_not_run_without_feature(
+        self, runner, mock_generator, mock_questionary, temp_dir, mock_feature_choices
     ):
-        """Test that service selection runs even when not customizing features (critical fix)."""
+        """Test that service selection does not run when services feature is not selected."""
         mock_questionary.text.return_value.ask.side_effect = [
-            "service-always-test",
-            "Test service selection always runs",
+            "no-services-feature-test",
+            "Test no services feature",
         ]
-        mock_questionary.select.return_value.ask.return_value = "standard"
 
-        # Key test: User says NO to customizing features
+        # User says NO to customizing features (so services feature is not selected)
         mock_questionary.confirm.return_value.ask.return_value = False
 
-        # But service selection should still run
+        # Service selection should not run
         mock_checkbox = Mock()
-        mock_checkbox.ask.return_value = ["ollama"]
         mock_questionary.checkbox.return_value = mock_checkbox
 
         with patch("pathlib.Path.cwd", return_value=temp_dir):
@@ -401,13 +388,13 @@ class TestServiceSelection:
 
         assert result.exit_code == 0
 
-        # Verify checkbox was called for service selection
-        mock_checkbox.ask.assert_called_once()
+        # Verify checkbox was NOT called for service selection
+        mock_checkbox.ask.assert_not_called()
 
-        # Verify Ollama was set in config
+        # Verify services are not in config since feature was not selected
         call_args = mock_generator.call_args[0]
         config = call_args[1]
-        assert config["services"] == ["ollama"]
+        assert "services" not in config or config.get("services") is None
 
 
 class TestFeatureCustomization:
@@ -432,7 +419,7 @@ class TestFeatureCustomization:
     def test_feature_customization_flow(self, runner, mock_generator, mock_questionary, temp_dir):
         """Test customizing features during agent creation."""
         with (
-            patch("agent.cli.commands.create_agent.get_template_features") as mock_features,
+            patch("agent.cli.commands.create_agent.get_feature_choices") as mock_features,
             patch("agent.cli.commands.create_agent.get_feature_choices") as mock_choices,
         ):
             mock_features.return_value = {"standard": {"features": ["services", "middleware"]}}
@@ -448,7 +435,7 @@ class TestFeatureCustomization:
             ]
 
             mock_questionary.text.return_value.ask.side_effect = ["custom-features-test", "Test custom features"]
-            mock_questionary.select.return_value.ask.return_value = "standard"
+            # No template selection needed
             mock_questionary.confirm.return_value.ask.side_effect = [
                 True,  # Yes, customize features
                 False,  # For any directory confirmation
@@ -518,12 +505,11 @@ class TestProjectNameHandling:
             yield mock_gen
 
     @pytest.fixture
-    def mock_template_features(self):
-        with patch("agent.cli.commands.create_agent.get_template_features") as mock_features:
-            mock_features.return_value = {"standard": {"features": ["services", "middleware", "mcp"]}}
+    def mock_feature_choices(self):
+        with patch("agent.cli.commands.create_agent.get_feature_choices") as mock_features:
             yield mock_features
 
-    def test_project_name_normalization(self, runner, mock_generator, temp_dir, mock_template_features):
+    def test_project_name_normalization(self, runner, mock_generator, temp_dir, mock_feature_choices):
         """Test that project names are normalized for directory names."""
         test_cases = [
             ("My Agent", "my_agent"),
@@ -574,12 +560,11 @@ class TestCliOutput:
             yield mock_q
 
     @pytest.fixture
-    def mock_template_features(self):
-        with patch("agent.cli.commands.create_agent.get_template_features") as mock_features:
-            mock_features.return_value = {"standard": {"features": ["services", "middleware", "mcp"]}}
+    def mock_feature_choices(self):
+        with patch("agent.cli.commands.create_agent.get_feature_choices") as mock_features:
             yield mock_features
 
-    def test_cli_output_formatting(self, runner, mock_generator, temp_dir, mock_template_features):
+    def test_cli_output_formatting(self, runner, mock_generator, temp_dir, mock_feature_choices):
         """Test that CLI output is properly formatted."""
         with (
             patch("pathlib.Path.cwd", return_value=temp_dir),

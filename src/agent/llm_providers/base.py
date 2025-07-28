@@ -9,23 +9,23 @@ logger = structlog.get_logger(__name__)
 
 
 @dataclass
-class LLMResponse:
-    """Standardized LLM response format."""
-
-    content: str
-    finish_reason: str = "stop"
-    usage: dict[str, int] | None = None
-    function_calls: list[dict[str, Any]] | None = None
-    model: str | None = None
-
-
-@dataclass
 class FunctionCall:
     """Function call from LLM."""
 
     name: str
     arguments: dict[str, Any]
     call_id: str | None = None
+
+
+@dataclass
+class LLMResponse:
+    """Standardized LLM response format."""
+
+    content: str
+    finish_reason: str = "stop"
+    usage: dict[str, int] | None = None
+    function_calls: list[FunctionCall] | None = None
+    model: str | None = None
 
 
 @dataclass

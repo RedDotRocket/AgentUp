@@ -27,6 +27,11 @@ class AnthropicProvider(BaseLLMService):
         self.anthropic_version = config.get("anthropic_version", "2023-06-01")
         self._available = False  # Track availability status
 
+        # Default LLM parameters from config
+        self.default_temperature = config.get("temperature", 0.7)
+        self.default_max_tokens = config.get("max_tokens", 1000)
+        self.default_top_p = config.get("top_p", 1.0)
+
     async def initialize(self) -> None:
         if not self.api_key:
             logger.error(
@@ -116,10 +121,10 @@ class AnthropicProvider(BaseLLMService):
         # Prepare payload
         payload = {
             "model": self.model,
-            "max_tokens": kwargs.get("max_tokens", 1000),
+            "max_tokens": kwargs.get("max_tokens", self.default_max_tokens),
             "messages": user_messages,
-            "temperature": kwargs.get("temperature", 0.7),
-            "top_p": kwargs.get("top_p", 1.0),
+            "temperature": kwargs.get("temperature", self.default_temperature),
+            "top_p": kwargs.get("top_p", self.default_top_p),
         }
 
         if system_content:
@@ -173,11 +178,11 @@ class AnthropicProvider(BaseLLMService):
 
         payload = {
             "model": self.model,
-            "max_tokens": kwargs.get("max_tokens", 1000),
+            "max_tokens": kwargs.get("max_tokens", self.default_max_tokens),
             "messages": user_messages,
             "stream": True,
-            "temperature": kwargs.get("temperature", 0.7),
-            "top_p": kwargs.get("top_p", 1.0),
+            "temperature": kwargs.get("temperature", self.default_temperature),
+            "top_p": kwargs.get("top_p", self.default_top_p),
         }
 
         if system_content:

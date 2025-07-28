@@ -11,7 +11,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
-from agent.config import _process_env_vars, load_config, merge_configs
+from src.agent.config import _process_env_vars, load_config, merge_configs
 from tests.utils.test_helpers import (
     assert_config_has_service,
     build_ollama_config,
@@ -377,7 +377,7 @@ class TestConfigIntegration:
         """Test loading and processing a full configuration."""
         full_config = {
             "agent": {"name": "integration-test", "description": "Integration test agent", "version": "0.3.0"},
-            "routing": {"default_mode": "ai", "fallback_capability": "ai_assistant", "fallback_enabled": True},
+            "routing": {"default_mode": "ai", "fallback_capability": "ai_assistant"},
             "skills": [
                 {
                     "skill_id": "ai_assistant",

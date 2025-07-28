@@ -7,7 +7,6 @@ import yaml
 
 def create_test_config(
     name: str = "test-agent",
-    template: str = "standard",
     features: list[str] | None = None,
     services: list[str] | None = None,
     **kwargs,
@@ -21,7 +20,6 @@ def create_test_config(
     config = {
         "name": name,
         "description": f"Test agent {name}",
-        "template": template,
         "features": features,
         "services": services,
         **kwargs,
@@ -35,7 +33,7 @@ def create_test_agent_config(
     """Create a test agent configuration YAML structure."""
     config = {
         "agent": {"name": agent_name, "description": f"Test agent {agent_name}", "version": "0.3.0"},
-        "routing": {"default_mode": "ai", "fallback_capability": "ai_assistant", "fallback_enabled": True},
+        "routing": {"default_mode": "ai", "fallback_capability": "ai_assistant"},
         "skills": [
             {
                 "skill_id": "ai_assistant",
@@ -163,7 +161,6 @@ def mock_questionary_responses(responses: dict[str, Any]):
 
 def create_mock_generator_context(
     project_name: str = "test-project",
-    template: str = "standard",
     features: list[str] | None = None,
     services: list[str] | None = None,
 ) -> dict[str, Any]:
@@ -179,7 +176,6 @@ def create_mock_generator_context(
         "project_name_title": project_name.replace("-", " ").title(),
         "description": f"Test project {project_name}",
         "features": features,
-        "template_name": template,
         "has_middleware": "middleware" in features,
         "has_services": "services" in features,
         "has_state_management_management": "state_management" in features,
@@ -193,7 +189,7 @@ def create_mock_generator_context(
     }
 
 
-def validate_generated_config(config_path: Path, expected_template: str, expected_services: list[str]):
+def validate_generated_config(config_path: Path, expected_services: list[str]):
     """Validate a generated agent configuration file."""
     assert config_path.exists(), f"Generated config file does not exist: {config_path}"
 
@@ -204,10 +200,9 @@ def validate_generated_config(config_path: Path, expected_template: str, expecte
     assert "skills" in config, "Generated config missing 'skills' section"
     assert "routing" in config, "Generated config missing 'routing' section"
 
-    # Template-specific validation
-    if expected_template != "minimal":
-        assert "ai" in config, f"Template '{expected_template}' should have AI configuration"
-        assert "services" in config, f"Template '{expected_template}' should have services configuration"
+    # Feature-specific validation
+    if expected_services:
+        assert "services" in config, "Services should be configured when expected"
 
     # Service validation
     for service in expected_services:
