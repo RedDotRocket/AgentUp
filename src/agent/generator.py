@@ -52,7 +52,6 @@ class ProjectGenerator:
         """Get enabled features from config."""
         return self.config.get("features", [])
 
-
     # ============================================================================
     # FILE GENERATION
     # ============================================================================
@@ -206,7 +205,6 @@ class ProjectGenerator:
                 "ai_enabled": False,
                 "has_ai_provider": False,
             }
-
 
     def _build_security_context(self) -> dict[str, Any]:
         """Build security and authentication context."""
