@@ -40,10 +40,3 @@ jobs:
     - name: Test agent validation
       run: |
         uv run agentup agent validate --config ./test-agents/minimal/agentup.yml
-
-    - name: Upload created agents
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-      if: always()
-      with:
-        name: test-agents
-        path: test-agents/
