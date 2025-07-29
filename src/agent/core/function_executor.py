@@ -9,14 +9,11 @@ logger = structlog.get_logger(__name__)
 
 
 class FunctionExecutor:
-    """Handles execution of local and MCP functions."""
-
     def __init__(self, function_registry, task: Task):
         self.function_registry = function_registry
         self.task = task
 
     async def execute_function_calls(self, llm_response: str) -> str:
-        """Execute function calls parsed from LLM response."""
         lines = llm_response.split("\n")
         function_results = []
         natural_response = []
@@ -50,7 +47,6 @@ class FunctionExecutor:
             return " ".join(natural_response)
 
     async def _execute_single_function_call(self, function_call: str) -> str:
-        """Execute a single function call (legacy method for backward compatibility)."""
         # Simple parsing - in production, would use proper parsing
 
         # Extract function name and parameters
@@ -76,7 +72,6 @@ class FunctionExecutor:
         return await self.execute_function_call(function_name, params)
 
     async def execute_function_call(self, function_name: str, arguments: dict[str, Any]) -> str:
-        """Execute a single function call (local handler or MCP tool)."""
         try:
             # Check if this is an MCP tool
             if self.function_registry.is_mcp_tool(function_name):
@@ -114,7 +109,6 @@ class FunctionExecutor:
             return "I'm unable to perform that action due to insufficient permissions."
 
     async def _execute_with_state_management(self, handler, task, function_name: str):
-        """Execute handler with state management and AI-compatible middleware if applicable."""
         try:
             # Apply AI-compatible middleware first
             wrapped_handler = await self._apply_ai_middleware(handler, function_name)
@@ -152,7 +146,6 @@ class FunctionExecutor:
             raise
 
     async def _apply_ai_middleware(self, handler, function_name: str):
-        """Apply AI-compatible middleware to the handler."""
         try:
             from agent.middleware import execute_ai_function_with_middleware, get_ai_compatible_middleware
 

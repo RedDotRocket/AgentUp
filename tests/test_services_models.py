@@ -23,10 +23,7 @@ from src.agent.services.model import (
 
 
 class TestServiceStatus:
-    """Test ServiceStatus enum."""
-
     def test_service_status_values(self):
-        """Test service status enum values."""
         assert ServiceStatus.HEALTHY == "healthy"
         assert ServiceStatus.DEGRADED == "degraded"
         assert ServiceStatus.UNHEALTHY == "unhealthy"
@@ -34,10 +31,7 @@ class TestServiceStatus:
 
 
 class TestServiceType:
-    """Test ServiceType enum."""
-
     def test_service_type_values(self):
-        """Test service type enum values."""
         assert ServiceType.LLM == "llm"
         assert ServiceType.CACHE == "cache"
         assert ServiceType.DATABASE == "database"
@@ -49,10 +43,7 @@ class TestServiceType:
 
 
 class TestServiceRegistration:
-    """Test ServiceRegistration model."""
-
     def test_service_registration_creation(self):
-        """Test basic service registration creation."""
         registration = ServiceRegistration(
             name="test-service",
             service_type=ServiceType.LLM,
@@ -70,7 +61,6 @@ class TestServiceRegistration:
         assert registration.priority == 50
 
     def test_service_registration_url_validation(self):
-        """Test URL validation in service registration."""
         # Valid URLs
         registration = ServiceRegistration(
             name="test-service",
@@ -90,7 +80,6 @@ class TestServiceRegistration:
         assert "URL must start with http:// or https://" in str(exc_info.value)
 
     def test_service_registration_version_validation(self):
-        """Test semantic version validation."""
         # Valid versions
         valid_versions = ["1.0.0", "2.1.3", "1.0.0-alpha", "1.0.0-beta.1", "1.0.0+build.123"]
         for version in valid_versions:
@@ -104,7 +93,6 @@ class TestServiceRegistration:
                 ServiceRegistration(name="test-service", service_type=ServiceType.LLM, version=version)
 
     def test_service_registration_name_validation(self):
-        """Test service name validation."""
         # Valid names
         valid_names = ["service1", "my-service", "my_service", "Service123"]
         for name in valid_names:
@@ -118,7 +106,6 @@ class TestServiceRegistration:
                 ServiceRegistration(name=name, service_type=ServiceType.LLM, version="1.0.0")
 
     def test_service_registration_priority_validation(self):
-        """Test priority validation."""
         # Valid priority
         registration = ServiceRegistration(
             name="test-service", service_type=ServiceType.LLM, version="1.0.0", priority=25
@@ -130,7 +117,6 @@ class TestServiceRegistration:
             ServiceRegistration(name="test-service", service_type=ServiceType.LLM, version="1.0.0", priority=150)
 
     def test_mcp_service_validation(self):
-        """Test MCP service requires endpoint."""
         # MCP service without endpoint should fail
         with pytest.raises(ValidationError) as exc_info:
             ServiceRegistration(name="mcp-service", service_type=ServiceType.MCP, version="1.0.0")
@@ -143,7 +129,6 @@ class TestServiceRegistration:
         assert registration.endpoint == "https://mcp.example.com"
 
     def test_health_check_url_validation(self):
-        """Test health check URL requires endpoint."""
         with pytest.raises(ValidationError) as exc_info:
             ServiceRegistration(
                 name="test-service",
@@ -155,10 +140,7 @@ class TestServiceRegistration:
 
 
 class TestServiceHealth:
-    """Test ServiceHealth model."""
-
     def test_service_health_creation(self):
-        """Test basic service health creation."""
         health = ServiceHealth(service_name="test-service", status=ServiceStatus.HEALTHY, response_time_ms=150.5)
 
         assert health.service_name == "test-service"
@@ -169,7 +151,6 @@ class TestServiceHealth:
         assert isinstance(health.last_check, datetime)
 
     def test_service_health_response_time_validation(self):
-        """Test response time validation."""
         # Valid response time
         health = ServiceHealth(service_name="test-service", status=ServiceStatus.HEALTHY, response_time_ms=1000.0)
         assert health.response_time_ms == 1000.0
@@ -188,7 +169,6 @@ class TestServiceHealth:
             ServiceHealth(service_name="test-service", status=ServiceStatus.HEALTHY, response_time_ms=-100.0)
 
     def test_unhealthy_status_validation(self):
-        """Test unhealthy status requires error message."""
         # Unhealthy without error message should fail
         with pytest.raises(ValidationError) as exc_info:
             ServiceHealth(service_name="test-service", status=ServiceStatus.UNHEALTHY)
@@ -201,7 +181,6 @@ class TestServiceHealth:
         assert health.error_message == "Connection timeout"
 
     def test_healthy_status_clears_error(self):
-        """Test healthy status clears error message."""
         health = ServiceHealth(
             service_name="test-service", status=ServiceStatus.HEALTHY, error_message="Previous error"
         )
@@ -209,10 +188,7 @@ class TestServiceHealth:
 
 
 class TestServiceMetrics:
-    """Test ServiceMetrics model."""
-
     def test_service_metrics_creation(self):
-        """Test basic service metrics creation."""
         metrics = ServiceMetrics(
             service_name="test-service",
             uptime_seconds=3600.0,
@@ -230,7 +206,6 @@ class TestServiceMetrics:
         assert metrics.peak_response_time_ms == 500.0
 
     def test_service_metrics_properties(self):
-        """Test calculated properties."""
         metrics = ServiceMetrics(service_name="test-service", request_count=100, error_count=5)
 
         assert metrics.error_rate == 5.0
@@ -242,7 +217,6 @@ class TestServiceMetrics:
         assert metrics_zero.availability_percent == 100.0
 
     def test_metrics_validation(self):
-        """Test metrics validation."""
         # Error count greater than request count
         with pytest.raises(ValidationError) as exc_info:
             ServiceMetrics(service_name="test-service", request_count=10, error_count=15)
@@ -254,7 +228,6 @@ class TestServiceMetrics:
         assert "Peak response time cannot be less than average" in str(exc_info.value)
 
     def test_negative_values_validation(self):
-        """Test negative values are rejected."""
         with pytest.raises(ValidationError):
             ServiceMetrics(service_name="test-service", uptime_seconds=-100.0)
 
@@ -266,10 +239,7 @@ class TestServiceMetrics:
 
 
 class TestServiceDependency:
-    """Test ServiceDependency model."""
-
     def test_service_dependency_creation(self):
-        """Test basic service dependency creation."""
         dependency = ServiceDependency(
             service_name="web-service", depends_on="database-service", dependency_type="required", timeout_seconds=30
         )
@@ -281,7 +251,6 @@ class TestServiceDependency:
         assert dependency.critical is True
 
     def test_dependency_type_validation(self):
-        """Test dependency type validation."""
         # Valid types
         valid_types = ["required", "optional", "weak", "strong"]
         for dep_type in valid_types:
@@ -296,7 +265,6 @@ class TestServiceDependency:
         assert "Dependency type must be one of" in str(exc_info.value)
 
     def test_timeout_validation(self):
-        """Test timeout validation."""
         # Valid timeout
         dependency = ServiceDependency(service_name="test-service", depends_on="other-service", timeout_seconds=60)
         assert dependency.timeout_seconds == 60
@@ -307,10 +275,7 @@ class TestServiceDependency:
 
 
 class TestServiceConfiguration:
-    """Test ServiceConfiguration model."""
-
     def test_service_configuration_creation(self):
-        """Test basic service configuration creation."""
         registration = ServiceRegistration(name="test-service", service_type=ServiceType.LLM, version="1.0.0")
 
         config = ServiceConfiguration(registration=registration)
@@ -321,7 +286,6 @@ class TestServiceConfiguration:
         assert len(config.dependencies) == 0
 
     def test_health_config_validation(self):
-        """Test health configuration validation."""
         registration = ServiceRegistration(name="test-service", service_type=ServiceType.LLM, version="1.0.0")
 
         # Invalid health config (negative check interval)
@@ -337,7 +301,6 @@ class TestServiceConfiguration:
         assert "Failure threshold must be positive" in str(exc_info.value)
 
     def test_metrics_config_validation(self):
-        """Test metrics configuration validation."""
         registration = ServiceRegistration(name="test-service", service_type=ServiceType.LLM, version="1.0.0")
 
         # Invalid metrics config (non-integer collection interval)
@@ -349,10 +312,7 @@ class TestServiceConfiguration:
 
 
 class TestServiceValidators:
-    """Test service validators."""
-
     def test_service_registration_validator(self):
-        """Test service registration validator."""
         validator = ServiceRegistrationValidator(ServiceRegistration)
 
         # Test reserved name rejection
@@ -384,7 +344,6 @@ class TestServiceValidators:
         assert "cannot depend on itself" in result.field_errors["dependencies"][0]
 
     def test_service_health_validator(self):
-        """Test service health validator."""
         validator = ServiceHealthValidator(ServiceHealth)
 
         # Test high consecutive failures warning
@@ -415,7 +374,6 @@ class TestServiceValidators:
         assert "over 1 hour old" in result.warnings[0]
 
     def test_service_configuration_validator(self):
-        """Test service configuration validator."""
         validator = ServiceConfigurationValidator(ServiceConfiguration)
 
         # Test with valid configuration
@@ -455,7 +413,6 @@ class TestServiceValidators:
         assert "long timeout" in result.warnings[0]
 
     def test_composite_service_validator(self):
-        """Test composite service validator."""
         composite_validator = create_service_validator()
 
         # Test with valid configuration
@@ -476,10 +433,7 @@ class TestServiceValidators:
 
 
 class TestModelSerialization:
-    """Test Pydantic v2 serialization methods."""
-
     def test_service_registration_serialization(self):
-        """Test service registration serialization."""
         registration = ServiceRegistration(
             name="test-service", service_type=ServiceType.LLM, version="1.0.0", endpoint="https://api.example.com"
         )
@@ -503,7 +457,6 @@ class TestModelSerialization:
         assert registration == registration3
 
     def test_service_health_serialization(self):
-        """Test service health serialization."""
         health = ServiceHealth(service_name="test-service", status=ServiceStatus.HEALTHY, response_time_ms=150.5)
 
         # Test model_dump with exclude_unset

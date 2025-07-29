@@ -30,10 +30,9 @@ def integrate_plugins_with_capabilities() -> dict[str, list[str]]:
 
     # Get configured plugins from the agent config
     try:
-        from agent.config import load_config
+        from agent.config import Config
 
-        config = load_config()
-        configured_plugins = config.get("plugins", [])
+        configured_plugins = Config.plugins
     except Exception as e:
         logger.warning(f"Could not load agent config, registering all plugins: {e}")
         configured_plugins = []
@@ -62,22 +61,22 @@ def integrate_plugins_with_capabilities() -> dict[str, list[str]]:
         )
     else:
         for plugin_config in configured_plugins:
-            plugin_id = plugin_config.get("plugin_id")
+            plugin_id = plugin_config.plugin_id
 
             # Check if this uses the new capability-based structure
-            if "capabilities" in plugin_config:
+            if plugin_config.capabilities:
                 # TODO: Bug here when no capabilities are defined in coniguration
-                if not plugin_config["capabilities"]:
+                if not plugin_config.capabilities:
                     logger.error(f"Plugin '{plugin_id}' has no capabilities defined in configuration")
                     logger.warning(
                         f"Plugin '{plugin_id}' must define capabilities in the configuration. "
                         f"Add 'capabilities' section with explicit scope requirements."
                     )
                     return  # Exit the entire function
-                for capability_config in plugin_config["capabilities"]:
-                    capability_id = capability_config["capability_id"]
-                    required_scopes = capability_config.get("required_scopes", [])
-                    enabled = capability_config.get("enabled", True)
+                for capability_config in plugin_config.capabilities:
+                    capability_id = capability_config.capability_id
+                    required_scopes = capability_config.required_scopes or []
+                    enabled = capability_config.enabled
 
                     if enabled:
                         logger.debug(f"Registering capability '{capability_id}' with scopes: {required_scopes}")
@@ -135,7 +134,6 @@ _plugin_adapter: list[PluginAdapter | None] = [None]
 
 
 def get_plugin_adapter() -> PluginAdapter | None:
-    """Get the plugin adapter instance."""
     return _plugin_adapter[0]
 
 

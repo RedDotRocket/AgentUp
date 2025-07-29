@@ -42,6 +42,7 @@ ServiceName = str
 ServiceType = str
 ServiceId = str
 
+
 # Plugin types
 PluginId = str
 CapabilityId = str
@@ -91,8 +92,6 @@ PrimaryKey = str | int
 
 # Common constants as types
 class HttpMethod:
-    """HTTP method constants."""
-
     GET = "GET"
     POST = "POST"
     PUT = "PUT"
@@ -103,8 +102,6 @@ class HttpMethod:
 
 
 class ContentType:
-    """Common content type constants."""
-
     JSON = "application/json"
     XML = "application/xml"
     TEXT = "text/plain"
@@ -115,8 +112,6 @@ class ContentType:
 
 
 class AuthScheme:
-    """Authentication scheme constants."""
-
     BEARER = "Bearer"
     BASIC = "Basic"
     API_KEY = "ApiKey"

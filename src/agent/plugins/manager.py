@@ -23,8 +23,6 @@ logger = structlog.get_logger(__name__)
 
 
 class PluginManager:
-    """Manages capability plugins for AgentUp."""
-
     # Hook implementation marker - shared across all plugin instances
     hookimpl = pluggy.HookimplMarker("agentup")
 
@@ -50,19 +48,17 @@ class PluginManager:
 
     @property
     def config(self) -> dict[str, Any]:
-        """Get configuration, loading if necessary."""
         if self._config is None:
             try:
-                from agent.config import load_config
+                from agent.config import Config
 
-                self._config = load_config(configure_logging=False)
+                self._config = Config.model_dump()
             except ImportError:
                 logger.warning("Could not load configuration, using empty config")
                 self._config = {}
         return self._config
 
     def discover_plugins(self) -> None:
-        """Discover and load all available plugins."""
         logger.debug("Plugin discovery started")
 
         # Load from entry points
@@ -74,7 +70,6 @@ class PluginManager:
         # Individual plugin discovery logs already show capability counts
 
     def _load_entry_point_plugins(self) -> None:
-        """Load plugins from Python entry points."""
         try:
             # Get all entry points in the agentup.capabilities group
             entry_points = importlib.metadata.entry_points()
@@ -152,7 +147,6 @@ class PluginManager:
         return True
 
     def _load_installed_plugins(self) -> None:
-        """Load plugins from installed plugins directory only if explicitly enabled in config."""
         # Check if filesystem plugin loading is enabled
         if not self._should_load_filesystem_plugins():
             logger.debug("Filesystem based plugin loading disabled (secure default)")
@@ -189,7 +183,6 @@ class PluginManager:
                         logger.error(f"Failed to load installed plugin from {plugin_dir}: {e}")
 
     def _load_installed_plugin(self, plugin_dir: Path, entry_file: str) -> None:
-        """Load a single installed plugin."""
         plugin_name = f"installed_{plugin_dir.name}"
         plugin_file = plugin_dir / entry_file
 
@@ -254,7 +247,6 @@ class PluginManager:
         logger.info(f"Discovered plugin '{plugin_name}' with {capability_count} capabilities")
 
     def _register_plugin_capability(self, plugin_name: str, plugin_instance: Any) -> None:
-        """Register capability or capabilities from a plugin."""
         try:
             # Get capability info from entry points care of pluggy hooks
             results = self.pm.hook.register_capability()
@@ -305,26 +297,21 @@ class PluginManager:
             logger.error(f"Failed to register capabilities from plugin {plugin_name}: {e}")
 
     def _get_package_version(self, package_name: str) -> str:
-        """Get version of an installed package."""
         try:
             return importlib.metadata.version(package_name)
         except Exception:
             return "unknown"
 
     def get_capability(self, capability_id: str) -> CapabilityInfo | None:
-        """Get capability information by ID."""
         return self.capabilities.get(capability_id)
 
     def list_capabilities(self) -> list[CapabilityInfo]:
-        """List all available capabilities."""
         return list(self.capabilities.values())
 
     def list_plugins(self) -> list[PluginInfo]:
-        """List all loaded plugins."""
         return list(self.plugins.values())
 
     def can_handle_task(self, capability_id: str, context: CapabilityContext) -> bool | float:
-        """Check if a capability can handle a task."""
         if capability_id not in self.capability_hooks:
             return False
 
@@ -338,7 +325,6 @@ class PluginManager:
         return True  # Default to true if no handler
 
     def execute_capability(self, capability_id: str, context: CapabilityContext) -> CapabilityResult:
-        """Execute a capability."""
         if capability_id not in self.capability_hooks:
             return CapabilityResult(
                 content=f"Capability '{capability_id}' not found", success=False, error="Capability not found"
@@ -359,7 +345,6 @@ class PluginManager:
             return CapabilityResult(content=f"Error executing capability: {str(e)}", success=False, error=str(e))
 
     def get_ai_functions(self, capability_id: str) -> list[AIFunction]:
-        """Get AI functions from a capability."""
         if capability_id not in self.capability_hooks:
             return []
 
@@ -373,7 +358,6 @@ class PluginManager:
         return []
 
     def validate_config(self, capability_id: str, config: dict) -> PluginValidationResult:
-        """Validate capability configuration."""
         if capability_id not in self.capability_hooks:
             return PluginValidationResult(valid=False, errors=[f"Capability '{capability_id}' not found"])
 
@@ -387,7 +371,6 @@ class PluginManager:
         return PluginValidationResult(valid=True)  # Default to valid if no validator
 
     def configure_services(self, capability_id: str, services: dict) -> None:
-        """Configure services for a capability."""
         if capability_id not in self.capability_hooks:
             return
 
@@ -399,7 +382,6 @@ class PluginManager:
                 logger.error(f"Error configuring services for capability {capability_id}: {e}")
 
     def find_capabilities_for_task(self, context: CapabilityContext) -> list[tuple[str, float]]:
-        """Find capabilities that can handle a task, sorted by confidence."""
         candidates = []
 
         for capability_id, _ in self.capabilities.items():
@@ -418,7 +400,6 @@ class PluginManager:
         return candidates
 
     def reload_plugin(self, plugin_name: str) -> bool:
-        """Reload a plugin (useful for development)."""
         try:
             # Unregister the old plugin
             if plugin_name in self.plugins:
@@ -459,15 +440,14 @@ _plugin_manager: PluginManager | None = None
 
 
 def get_plugin_manager() -> PluginManager:
-    """Get the global plugin manager instance."""
     global _plugin_manager
     if _plugin_manager is None:
         # Try to load configuration for the plugin manager
         config = None
         try:
-            from agent.config import load_config
+            from agent.config import Config
 
-            config = load_config(configure_logging=False)
+            config = Config.model_dump()
         except ImportError:
             logger.debug("Could not load configuration for plugin manager")
 
@@ -478,7 +458,6 @@ def get_plugin_manager() -> PluginManager:
 
 # Export the hookimpl for use by plugins
 def get_hookimpl():
-    """Get the hook implementation marker for AgentUp plugins."""
     return PluginManager.hookimpl
 
 

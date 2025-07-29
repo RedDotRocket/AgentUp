@@ -17,7 +17,6 @@ from .executors import (  # noqa: E402
 
 # Dynamic capability discovery and import
 def discover_and_import_capabilities():
-    """Dynamically discover and import all capability modules."""
     capabilities_dir = Path(__file__).parent
     discovered_modules = []
     failed_imports = []

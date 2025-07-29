@@ -10,8 +10,6 @@ logger = structlog.get_logger(__name__)
 
 
 class StreamingHandler:
-    """Handles streaming operations for LLM responses."""
-
     def __init__(self, function_registry, conversation_manager):
         self.function_registry = function_registry
         self.conversation_manager = conversation_manager
@@ -92,7 +90,6 @@ class StreamingHandler:
     async def _stream_with_functions(
         self, llm, messages: list[dict[str, str]], function_schemas: list[dict[str, Any]], task: Task
     ) -> AsyncIterator[str | dict[str, Any]]:
-        """Stream LLM responses with function calling support."""
         try:
             # This is a simplified version - actual implementation would depend on LLM provider
             # Which I will need to dig into more deeply

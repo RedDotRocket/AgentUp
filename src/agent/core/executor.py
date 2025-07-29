@@ -30,8 +30,6 @@ logger = structlog.get_logger(__name__)
 
 
 class GenericAgentExecutor(AgentExecutor):
-    """A2A-compliant AgentExecutor with streaming and multi-modal support."""
-
     def __init__(self, agent: BaseAgent | AgentCard):
         self.agent = agent
         self.supports_streaming = getattr(agent, "supports_streaming", False)
@@ -43,24 +41,22 @@ class GenericAgentExecutor(AgentExecutor):
             self.agent_name = agent.agent_name
 
         # Load config for routing
-        from agent.config import load_config
-
-        config = load_config()
+        from agent.config import Config
 
         # Parse plugins for direct routing based on keywords/patterns
         self.plugins = {}
-        for plugin_data in config.get("plugins", []):
-            if plugin_data.get("enabled", True):
-                plugin_id = plugin_data["plugin_id"]
-                keywords = plugin_data.get("keywords", [])
-                patterns = plugin_data.get("patterns", [])
+        for plugin_data in Config.plugins:
+            if plugin_data.enabled:
+                plugin_id = plugin_data.plugin_id
+                keywords = plugin_data.keywords or []
+                patterns = plugin_data.patterns or []
 
                 self.plugins[plugin_id] = {
                     "keywords": keywords,
                     "patterns": patterns,
-                    "name": plugin_data.get("name", plugin_id),
-                    "description": plugin_data.get("description", ""),
-                    "priority": plugin_data.get("priority", 100),
+                    "name": plugin_data.name or plugin_id,
+                    "description": plugin_data.description or "",
+                    "priority": plugin_data.priority or 100,
                 }
 
         # Initialize Function Dispatcher for AI routing (fallback)
@@ -157,7 +153,6 @@ class GenericAgentExecutor(AgentExecutor):
             )
 
     def _extract_user_message(self, task: Task) -> str:
-        """Extract user message from A2A task using A2A SDK structure."""
         try:
             if not (hasattr(task, "history") and task.history):
                 return ""
@@ -176,7 +171,6 @@ class GenericAgentExecutor(AgentExecutor):
             return ""
 
     def _find_direct_plugin(self, user_input: str) -> str | None:
-        """Find plugin for direct routing based on keywords/patterns."""
         if not user_input:
             return None
 
@@ -206,7 +200,6 @@ class GenericAgentExecutor(AgentExecutor):
         return None
 
     async def _process_direct_routing(self, task: Task, plugin_id: str) -> str:
-        """Process task using direct routing to a specific plugin."""
         logger.info(f"Direct routing to plugin: {plugin_id}")
 
         try:
@@ -231,7 +224,6 @@ class GenericAgentExecutor(AgentExecutor):
         updater: TaskUpdater,
         event_queue: EventQueue,
     ) -> None:
-        """Process task with streaming support."""
         try:
             # Start streaming
             stream = await self.dispatcher.process_task_streaming(task)
@@ -300,7 +292,6 @@ class GenericAgentExecutor(AgentExecutor):
         task: Task,
         updater: TaskUpdater,
     ) -> None:
-        """Create appropriate artifact based on result type."""
         if not result:
             # Empty response
             await updater.update_status(
@@ -340,7 +331,6 @@ class GenericAgentExecutor(AgentExecutor):
         await updater.complete()
 
     async def _requires_input(self, task: Task, context: RequestContext) -> bool:
-        """Check if task requires additional input from user."""
         # This could be enhanced with actual logic to detect incomplete requests
         # For now, return False to proceed with processing
         return False
@@ -349,7 +339,6 @@ class GenericAgentExecutor(AgentExecutor):
         return False
 
     async def cancel(self, request: RequestContext, event_queue: EventQueue) -> Task | None:
-        """Cancel a running task if supported."""
         task = request.current_task
 
         if not task:

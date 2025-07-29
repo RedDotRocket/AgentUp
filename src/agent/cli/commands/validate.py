@@ -76,7 +76,6 @@ def validate(config: str, check_env: bool, check_handlers: bool, strict: bool):
 
 
 def load_yaml_config(config_path: str, errors: list[str]) -> dict[str, Any] | None:
-    """Load and parse YAML configuration."""
     try:
         with open(config_path) as f:
             content = f.read()
@@ -103,7 +102,6 @@ def load_yaml_config(config_path: str, errors: list[str]) -> dict[str, Any] | No
 
 
 def validate_required_fields(config: dict[str, Any], errors: list[str], warnings: list[str]):
-    """Validate required top-level fields."""
     # Check for new flat format (name, description at top level) or old nested format (agent section)
     has_old_format = "agent" in config
     has_new_format = "name" in config and "description" in config
@@ -148,7 +146,6 @@ def validate_required_fields(config: dict[str, Any], errors: list[str], warnings
 
 
 def validate_agent_section(config: dict[str, Any], errors: list[str], warnings: list[str]):
-    """Validate agent information (either in 'agent' section or top-level)."""
     # Check if using old nested format
     if "agent" in config:
         agent = config["agent"]
@@ -181,7 +178,6 @@ def validate_agent_section(config: dict[str, Any], errors: list[str], warnings: 
 
 
 def validate_plugins_section(plugins: list[dict[str, Any]], errors: list[str], warnings: list[str]):
-    """Validate plugins section."""
     if not plugins:
         errors.append("No plugins defined. At least one plugin is required.")
         return
@@ -255,7 +251,6 @@ def validate_plugins_section(plugins: list[dict[str, Any]], errors: list[str], w
 def validate_middleware_config(
     middleware: list[dict[str, Any]], plugin_id: str, errors: list[str], warnings: list[str]
 ):
-    """Validate middleware configuration."""
     if not isinstance(middleware, list):
         errors.append(f"Plugin '{plugin_id}' middleware must be a list")
         return
@@ -294,7 +289,6 @@ def validate_middleware_config(
 
 
 def validate_services_section(services: dict[str, Any], errors: list[str], warnings: list[str]):
-    """Validate services configuration."""
     if not isinstance(services, dict):
         errors.append("Services must be a dictionary")
         return
@@ -323,7 +317,6 @@ def validate_services_section(services: dict[str, Any], errors: list[str], warni
 
 
 def validate_security_section(security: dict[str, Any], errors: list[str], warnings: list[str]):
-    """Validate security configuration."""
     if not isinstance(security, dict):
         errors.append("Security must be a dictionary")
         return
@@ -368,7 +361,6 @@ def validate_security_section(security: dict[str, Any], errors: list[str], warni
 
 
 def validate_api_key_auth(api_key_config: dict[str, Any], errors: list[str], warnings: list[str]):
-    """Validate API key authentication configuration."""
     if "keys" not in api_key_config:
         errors.append("API key auth missing 'keys' field")
         return
@@ -389,7 +381,6 @@ def validate_api_key_auth(api_key_config: dict[str, Any], errors: list[str], war
 
 
 def validate_jwt_auth(jwt_config: dict[str, Any], errors: list[str], warnings: list[str]):
-    """Validate JWT authentication configuration."""
     if "secret_key" not in jwt_config:
         errors.append("JWT auth missing 'secret_key' field")
 
@@ -400,7 +391,6 @@ def validate_jwt_auth(jwt_config: dict[str, Any], errors: list[str], warnings: l
 
 
 def validate_oauth2_auth(oauth2_config: dict[str, Any], errors: list[str], warnings: list[str]):
-    """Validate OAuth2 authentication configuration."""
     if "validation_strategy" not in oauth2_config:
         errors.append("OAuth2 auth missing 'validation_strategy' field")
 
@@ -412,7 +402,6 @@ def validate_oauth2_auth(oauth2_config: dict[str, Any], errors: list[str], warni
 
 
 def validate_scope_hierarchy(scope_hierarchy: dict[str, Any], errors: list[str], warnings: list[str]):
-    """Validate scope hierarchy configuration."""
     if not isinstance(scope_hierarchy, dict):
         errors.append("Scope hierarchy must be a dictionary")
         return
@@ -423,12 +412,10 @@ def validate_scope_hierarchy(scope_hierarchy: dict[str, Any], errors: list[str],
 
 
 def check_environment_variables(config: dict[str, Any], errors: list[str], warnings: list[str]):
-    """Check for environment variables referenced in the configuration."""
     env_var_pattern = re.compile(r"\$\{([^:}]+)(?::([^}]+))?\}")
     missing_vars = []
 
     def check_value(value: Any, path: str = ""):
-        """Recursively check for environment variables."""
         if isinstance(value, str):
             matches = env_var_pattern.findall(value)
             for var_name, default in matches:
@@ -452,7 +439,6 @@ def check_environment_variables(config: dict[str, Any], errors: list[str], warni
 
 
 def check_handler_implementations(plugins: list[dict[str, Any]], errors: list[str], warnings: list[str]):
-    """Check if handler implementations exist."""
     handlers_path = Path("src/agent/handlers.py")
 
     if not handlers_path.exists():
@@ -485,7 +471,6 @@ def check_handler_implementations(plugins: list[dict[str, Any]], errors: list[st
 
 
 def validate_ai_requirements(config: dict[str, Any], errors: list[str], warnings: list[str]):
-    """Validate AI configuration if present."""
     ai_provider = config.get("ai_provider", {})
 
     # If AI is configured, validate the configuration
@@ -517,7 +502,6 @@ def validate_ai_requirements(config: dict[str, Any], errors: list[str], warnings
 
 
 def validate_system_prompt_section(ai_config: dict[str, Any], errors: list[str], warnings: list[str]):
-    """Validate system prompt configuration."""
     if not isinstance(ai_config, dict):
         return
 
@@ -557,7 +541,6 @@ def validate_system_prompt_section(ai_config: dict[str, Any], errors: list[str],
 
 
 def validate_plugin_system_prompts(plugins: list[dict[str, Any]], errors: list[str], warnings: list[str]):
-    """Validate plugin system prompts."""
     plugin_prompt_count = 0
 
     for i, plugin in enumerate(plugins):
@@ -596,7 +579,6 @@ def validate_plugin_system_prompts(plugins: list[dict[str, Any]], errors: list[s
 def validate_middleware_section(
     middleware: dict[str, Any] | list[dict[str, Any]], errors: list[str], warnings: list[str]
 ):
-    """Validate global middleware configuration (supports both old list format and new object format)."""
     # Handle new object-based format
     if isinstance(middleware, dict):
         valid_middleware_sections = {
@@ -671,7 +653,6 @@ def validate_middleware_section(
 
 
 def display_results(errors: list[str], warnings: list[str], strict: bool = False):
-    """Display validation results."""
     click.echo(f"\n{click.style('Validation Results:', fg='bright_blue', bold=True)}")
 
     if errors:

@@ -9,7 +9,7 @@
 
 # @register_handler("stateful_echo")
 # async def handle_stateful_echo(task: Task, context=None, context_id=None) -> str:
-#     """Echo handler that demonstrates state management."""
+#
 
 #     # Extract user message
 #     user_message = "No message"
@@ -58,7 +58,7 @@
 
 # @register_handler("stateful_counter")
 # async def handle_stateful_counter(task: Task, context=None, context_id=None) -> str:
-#     """Simple counter that persists state."""
+#
 
 #     if not context or not context_id:
 #         return "Counter: No state management available"
@@ -82,7 +82,7 @@
 
 # @register_handler("state_info")
 # async def handle_state_info(task: Task, context=None, context_id=None) -> str:
-#     """Show state management information."""
+#
 
 #     if not context or not context_id:
 #         return "State Info: No state management available"

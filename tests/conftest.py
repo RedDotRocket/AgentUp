@@ -1,5 +1,3 @@
-"""Pytest configuration and shared fixtures for AgentUp tests."""
-
 import os
 import tempfile
 from collections.abc import Generator
@@ -16,25 +14,23 @@ TEST_DATA_DIR = Path(__file__).parent / "fixtures"
 
 @pytest.fixture
 def temp_dir() -> Generator[Path, None, None]:
-    """Create a temporary directory for test files."""
     with tempfile.TemporaryDirectory() as tmp_dir:
         yield Path(tmp_dir)
 
 
 @pytest.fixture
 def sample_agent_config() -> dict[str, Any]:
-    """Sample agent configuration for testing."""
     return {
-        "agent": {"name": "test-agent", "description": "Test Agent for Unit Testing", "version": "0.3.0"},
+        "name": "test-agent",  # Use new format
+        "description": "Test Agent for Unit Testing",
+        "version": "0.3.0",
         "plugins": [
             {
                 "plugin_id": "ai_assistant",
                 "name": "AI Assistant",
                 "description": "General purpose AI assistant",
-                "tags": ["ai", "assistant", "helper"],
-                # No keywords or patterns defined, only available via AI routing
-                "input_mode": "text",
-                "output_mode": "text",
+                "enabled": True,
+                "capabilities": [],
                 "priority": 100,
             }
         ],
@@ -43,26 +39,35 @@ def sample_agent_config() -> dict[str, Any]:
             "api_key": "${OPENAI_API_KEY}",
             "model": "gpt-4o-mini",
             "temperature": 0.7,
-            "max_tokens": 1000,
-            "top_p": 1.0,
         },
-        "services": {},
-        "security": {"enabled": False, "type": "api_key"},
-        "middleware": [{"name": "logged", "params": {"log_level": 20}}, {"name": "timed", "params": {}}],
-        "push_notifications": {"enabled": True, "backend": "memory", "validate_urls": True},
-        "cache": {"backend": "memory", "default_ttl": 1800, "max_size": 1000, "enabled": True},
+        "services": {
+            "openai": {
+                "type": "llm",
+                "settings": {
+                    "provider": "openai",
+                    "api_key": "${OPENAI_API_KEY}",
+                    "base_url": "https://api.openai.com",
+                },
+            }
+        },
+        "security": {"enabled": False, "auth": {}},
+        "middleware": {
+            "enabled": True,
+            "rate_limiting": {"enabled": False},
+            "caching": {"enabled": False},
+            "retry": {"enabled": False},
+        },
+        "push_notifications": {"enabled": True, "backend": "memory"},
         "state_management": {
             "enabled": True,
-            "backend": "file",
+            "backend": "memory",
             "ttl": 3600,
-            "config": {"storage_dir": "./conversation_states"},
         },
     }
 
 
 @pytest.fixture
 def minimal_agent_config() -> dict[str, Any]:
-    """Minimal agent configuration for testing."""
     return {
         "agent": {"name": "minimal-test", "description": "Minimal Test Agent", "version": "0.3.0"},
         "plugins": [
@@ -83,7 +88,6 @@ def minimal_agent_config() -> dict[str, Any]:
 
 @pytest.fixture
 def ollama_agent_config() -> dict[str, Any]:
-    """Ollama-specific agent configuration for testing."""
     return {
         "agent": {"name": "ollama-test", "description": "Ollama Test Agent", "version": "0.3.0"},
         "ai_provider": {
@@ -100,7 +104,6 @@ def ollama_agent_config() -> dict[str, Any]:
 
 @pytest.fixture
 def anthropic_agent_config() -> dict[str, Any]:
-    """Anthropic-specific agent configuration for testing."""
     return {
         "agent": {"name": "anthropic-test", "description": "Anthropic Test Agent", "version": "0.3.0"},
         "ai_provider": {
@@ -117,7 +120,6 @@ def anthropic_agent_config() -> dict[str, Any]:
 
 @pytest.fixture
 def project_config() -> dict[str, Any]:
-    """Sample project configuration for generator testing."""
     return {
         "name": "test-project",
         "description": "Test Project Description",
@@ -130,7 +132,6 @@ def project_config() -> dict[str, Any]:
 
 @pytest.fixture
 def mock_llm_service():
-    """Mock LLM service for testing."""
     mock_service = AsyncMock()
     mock_service.generate_response.return_value.content = "Mock response"
     mock_service.generate_response.return_value.usage = {"tokens": 100}
@@ -139,7 +140,6 @@ def mock_llm_service():
 
 @pytest.fixture
 def mock_openai_client():
-    """Mock OpenAI client for testing."""
     mock_client = Mock()
     mock_response = Mock()
     mock_response.choices = [Mock()]
@@ -151,7 +151,6 @@ def mock_openai_client():
 
 @pytest.fixture
 def mock_anthropic_client():
-    """Mock Anthropic client for testing."""
     mock_client = AsyncMock()
     mock_response = Mock()
     mock_response.content = [Mock()]
@@ -164,7 +163,6 @@ def mock_anthropic_client():
 
 @pytest.fixture
 def mock_ollama_client():
-    """Mock Ollama client for testing."""
     mock_client = AsyncMock()
     mock_response = {"message": {"content": "Mock Ollama response"}, "done": True}
     mock_client.chat.return_value = mock_response
@@ -173,7 +171,6 @@ def mock_ollama_client():
 
 @pytest.fixture
 def config_file(temp_dir: Path, sample_agent_config: dict[str, Any]) -> Path:
-    """Create a temporary config file."""
     config_file = temp_dir / "agentup.yml"
     with open(config_file, "w") as f:
         yaml.dump(sample_agent_config, f, default_flow_style=False)
@@ -182,13 +179,7 @@ def config_file(temp_dir: Path, sample_agent_config: dict[str, Any]) -> Path:
 
 @pytest.fixture(autouse=True)
 def env_vars():
-    """Set up test environment variables."""
-    test_env = {
-        "OPENAI_API_KEY": "test_openai_key",
-        "ANTHROPIC_API_KEY": "test_anthropic_key",
-        "OLLAMA_BASE_URL": "http://localhost:11434",
-        "VALKEY_URL": "valkey://localhost:6379",
-    }
+    test_env = {}
 
     # Store original values
     original_env = {}
@@ -208,7 +199,6 @@ def env_vars():
 
 @pytest.fixture
 def mock_file_system(temp_dir: Path):
-    """Mock file system operations for testing."""
     # Create mock directory structure
     src_dir = temp_dir / "src" / "agent"
     src_dir.mkdir(parents=True)
@@ -222,7 +212,6 @@ def mock_file_system(temp_dir: Path):
 
 @pytest.fixture
 def cli_runner():
-    """Click CLI test runner."""
     from click.testing import CliRunner
 
     return CliRunner()
@@ -231,7 +220,6 @@ def cli_runner():
 # Async test support
 @pytest.fixture(scope="session")
 def event_loop():
-    """Create an instance of the default event loop for the test session."""
     import asyncio
 
     loop = asyncio.get_event_loop_policy().new_event_loop()

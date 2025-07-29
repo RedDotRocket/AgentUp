@@ -28,10 +28,7 @@ from src.agent.middleware.model import (
 
 
 class TestRateLimitConfig:
-    """Test RateLimitConfig model."""
-
     def test_valid_rate_limit_config_creation(self):
-        """Test creating a valid rate limit configuration."""
         config = RateLimitConfig(
             enabled=True,
             requests_per_minute=120,
@@ -48,7 +45,6 @@ class TestRateLimitConfig:
         assert config.has_burst_capability is True
 
     def test_rate_limit_key_strategy_validation(self):
-        """Test rate limit key strategy validation."""
         # Valid strategies
         valid_strategies = ["function_name", "user_id", "ip_address", "session_id", "custom"]
         for strategy in valid_strategies:
@@ -61,7 +57,6 @@ class TestRateLimitConfig:
         assert "Key strategy must be one of" in str(exc_info.value)
 
     def test_rate_limit_enforcement_mode_validation(self):
-        """Test enforcement mode validation."""
         # Valid modes
         valid_modes = ["strict", "soft", "log_only"]
         for mode in valid_modes:
@@ -74,7 +69,6 @@ class TestRateLimitConfig:
         assert "Enforcement mode must be one of" in str(exc_info.value)
 
     def test_burst_limit_validation(self):
-        """Test burst limit validation."""
         # Burst limit greater than requests_per_minute should be valid
         config = RateLimitConfig(requests_per_minute=60, burst_limit=100)
         assert config.burst_limit == 100
@@ -85,7 +79,6 @@ class TestRateLimitConfig:
         assert "Burst limit must be greater than requests_per_minute" in str(exc_info.value)
 
     def test_custom_limits_validation(self):
-        """Test custom limits validation."""
         # Valid custom limits
         config = RateLimitConfig(custom_limits={"critical_function": 200, "normal_function": 60})
         assert config.custom_limits["critical_function"] == 200
@@ -97,7 +90,6 @@ class TestRateLimitConfig:
         assert "Custom limit for 'invalid_function' must be positive" in str(exc_info.value)
 
     def test_rate_limit_properties(self):
-        """Test rate limit configuration properties."""
         config = RateLimitConfig(
             requests_per_minute=120,
             burst_limit=180,
@@ -113,7 +105,6 @@ class TestRateLimitConfig:
         assert config_no_burst.has_burst_capability is False
 
     def test_rate_limit_serialization(self):
-        """Test rate limit configuration serialization."""
         config = RateLimitConfig(
             requests_per_minute=100,
             burst_limit=150,
@@ -133,10 +124,7 @@ class TestRateLimitConfig:
 
 
 class TestCacheConfig:
-    """Test CacheConfig model."""
-
     def test_valid_cache_config_creation(self):
-        """Test creating a valid cache configuration."""
         config = CacheConfig(
             enabled=True,
             backend_type=CacheBackendType.MEMORY,
@@ -152,7 +140,6 @@ class TestCacheConfig:
         assert config.is_persistent is False
 
     def test_cache_backend_types(self):
-        """Test different cache backend types."""
         # Memory cache
         memory_config = CacheConfig(backend_type=CacheBackendType.MEMORY)
         assert memory_config.is_distributed is False
@@ -169,7 +156,6 @@ class TestCacheConfig:
         assert file_config.is_persistent is True
 
     def test_serialization_format_validation(self):
-        """Test serialization format validation."""
         # Valid formats
         valid_formats = ["json", "pickle", "msgpack"]
         for fmt in valid_formats:
@@ -182,7 +168,6 @@ class TestCacheConfig:
         assert "Serialization format must be one of" in str(exc_info.value)
 
     def test_eviction_policy_validation(self):
-        """Test eviction policy validation."""
         # Valid policies
         valid_policies = ["lru", "lfu", "fifo", "random", "ttl"]
         for policy in valid_policies:
@@ -195,7 +180,6 @@ class TestCacheConfig:
         assert "Eviction policy must be one of" in str(exc_info.value)
 
     def test_cache_miss_strategy_validation(self):
-        """Test cache miss strategy validation."""
         # Valid strategies
         valid_strategies = ["passthrough", "fail_fast", "log_and_continue"]
         for strategy in valid_strategies:
@@ -208,7 +192,6 @@ class TestCacheConfig:
         assert "Cache miss strategy must be one of" in str(exc_info.value)
 
     def test_valkey_url_validation(self):
-        """Test Valkey/Redis URL validation."""
         # Valid URLs
         valid_urls = [
             "redis://localhost:6379",
@@ -225,7 +208,6 @@ class TestCacheConfig:
         assert "Valkey URL must start with redis://, rediss://, or unix://" in str(exc_info.value)
 
     def test_cache_config_consistency_validation(self):
-        """Test cache configuration consistency validation."""
         # TTL validation
         with pytest.raises(ValidationError) as exc_info:
             CacheConfig(default_ttl=100000)  # > 24 hours
@@ -241,7 +223,6 @@ class TestCacheConfig:
         assert config.max_size == config.memory_max_size
 
     def test_estimated_memory_usage(self):
-        """Test estimated memory usage calculation."""
         # Memory cache should estimate usage
         memory_config = CacheConfig(
             backend_type=CacheBackendType.MEMORY,
@@ -255,7 +236,6 @@ class TestCacheConfig:
         assert valkey_config.estimated_memory_usage_mb == 0.0
 
     def test_cache_config_serialization(self):
-        """Test cache configuration serialization."""
         config = CacheConfig(
             backend_type=CacheBackendType.VALKEY,
             default_ttl=300,
@@ -276,10 +256,7 @@ class TestCacheConfig:
 
 
 class TestRetryConfig:
-    """Test RetryConfig model."""
-
     def test_valid_retry_config_creation(self):
-        """Test creating a valid retry configuration."""
         config = RetryConfig(
             enabled=True,
             max_attempts=5,
@@ -294,7 +271,6 @@ class TestRetryConfig:
         assert config.backoff_strategy == "exponential"
 
     def test_backoff_strategy_validation(self):
-        """Test backoff strategy validation."""
         # Valid strategies
         valid_strategies = ["exponential", "linear", "fixed", "fibonacci"]
         for strategy in valid_strategies:
@@ -307,7 +283,6 @@ class TestRetryConfig:
         assert "Backoff strategy must be one of" in str(exc_info.value)
 
     def test_retry_attempts_validation(self):
-        """Test retry attempts validation."""
         # Valid attempts (2-10) - 1 is special case tested separately
         for attempts in [2, 5, 10]:
             config = RetryConfig(max_attempts=attempts)
@@ -325,7 +300,6 @@ class TestRetryConfig:
             RetryConfig(max_attempts=15)
 
     def test_retry_config_consistency_validation(self):
-        """Test retry configuration consistency validation."""
         # Single attempt with retries enabled should fail
         with pytest.raises(ValidationError) as exc_info:
             RetryConfig(enabled=True, max_attempts=1)
@@ -337,7 +311,6 @@ class TestRetryConfig:
         assert "Total retry delay may exceed 10 minutes" in str(exc_info.value)
 
     def test_delay_calculation(self):
-        """Test delay calculation for different strategies."""
         # Exponential backoff
         exp_config = RetryConfig(backoff_strategy="exponential", backoff_factor=2.0, max_delay=60.0)
         assert exp_config.calculate_delay(0) == 2.0  # 2.0 * 2^0
@@ -359,7 +332,6 @@ class TestRetryConfig:
         assert capped_config.calculate_delay(5) == 20.0  # Capped at max_delay
 
     def test_total_delay_calculation(self):
-        """Test maximum total delay calculation."""
         config = RetryConfig(
             max_attempts=3,
             backoff_strategy="linear",
@@ -373,7 +345,6 @@ class TestRetryConfig:
         assert total_delay == expected
 
     def test_exception_filtering_properties(self):
-        """Test exception filtering properties."""
         # Config with exception filtering
         config_with_filtering = RetryConfig(
             retry_on_exceptions=["ConnectionError", "TimeoutError"],
@@ -389,7 +360,6 @@ class TestRetryConfig:
         assert config_no_filtering.has_exception_filtering is False
 
     def test_retry_config_serialization(self):
-        """Test retry configuration serialization."""
         config = RetryConfig(
             max_attempts=4,
             backoff_strategy="exponential",
@@ -409,10 +379,7 @@ class TestRetryConfig:
 
 
 class TestMiddlewareConfig:
-    """Test MiddlewareConfig model."""
-
     def test_valid_middleware_config_creation(self):
-        """Test creating a valid middleware configuration."""
         config = MiddlewareConfig(
             enabled=True,
             middleware_order=[
@@ -428,7 +395,6 @@ class TestMiddlewareConfig:
         assert config.active_middleware_count == 3
 
     def test_middleware_order_validation(self):
-        """Test middleware execution order validation."""
         # Authentication should be first
         with pytest.raises(ValidationError) as exc_info:
             MiddlewareConfig(
@@ -451,7 +417,6 @@ class TestMiddlewareConfig:
         assert "Duplicate middleware types" in str(exc_info.value)
 
     def test_middleware_config_consistency_validation(self):
-        """Test middleware configuration consistency validation."""
         # Rate limiting in order but disabled should fail
         rate_limit_config = RateLimitConfig(enabled=False)
         with pytest.raises(ValidationError) as exc_info:
@@ -471,7 +436,6 @@ class TestMiddlewareConfig:
         assert "Caching is in execution order but disabled" in str(exc_info.value)
 
     def test_middleware_properties(self):
-        """Test middleware configuration properties."""
         config = MiddlewareConfig(
             middleware_order=[
                 MiddlewareType.AUTHENTICATION,
@@ -489,7 +453,6 @@ class TestMiddlewareConfig:
         assert config_no_custom.has_custom_middleware is False
 
     def test_estimated_overhead_calculation(self):
-        """Test middleware overhead estimation."""
         # Memory cache config
         cache_config = CacheConfig(backend_type=CacheBackendType.MEMORY)
         config = MiddlewareConfig(
@@ -516,7 +479,6 @@ class TestMiddlewareConfig:
         assert valkey_overhead >= 10.0
 
     def test_middleware_config_serialization(self):
-        """Test middleware configuration serialization."""
         config = MiddlewareConfig(
             enabled=True,
             middleware_order=[MiddlewareType.AUTHENTICATION, MiddlewareType.RATE_LIMIT],
@@ -536,16 +498,12 @@ class TestMiddlewareConfig:
 
 
 class TestMiddlewareRegistry:
-    """Test MiddlewareRegistry model."""
-
     def test_middleware_registry_creation(self):
-        """Test creating a middleware registry."""
         registry = MiddlewareRegistry()
         assert registry.middleware_count == 0
         assert isinstance(registry.last_updated, datetime)
 
     def test_middleware_registration(self):
-        """Test middleware registration."""
         registry = MiddlewareRegistry()
         old_updated = registry.last_updated
 
@@ -561,7 +519,6 @@ class TestMiddlewareRegistry:
         assert "test_middleware" in registry.middleware
 
     def test_middleware_unregistration(self):
-        """Test middleware unregistration."""
         registry = MiddlewareRegistry()
         registry.register_middleware("test_middleware", {"type": "custom"})
 
@@ -575,7 +532,6 @@ class TestMiddlewareRegistry:
         assert result is False
 
     def test_middleware_retrieval(self):
-        """Test middleware retrieval."""
         registry = MiddlewareRegistry()
         config = {"type": "rate_limit", "enabled": True}
         registry.register_middleware("rate_limiter", config)
@@ -589,7 +545,6 @@ class TestMiddlewareRegistry:
         assert none_result is None
 
     def test_middleware_listing(self):
-        """Test middleware listing."""
         registry = MiddlewareRegistry()
         registry.register_middleware("rate_limiter", {"type": "rate_limit"})
         registry.register_middleware("cache", {"type": "cache"})
@@ -607,7 +562,6 @@ class TestMiddlewareRegistry:
         assert "cache" not in rate_limit_middleware
 
     def test_middleware_registry_serialization(self):
-        """Test middleware registry serialization."""
         registry = MiddlewareRegistry()
         registry.register_middleware("test", {"type": "custom", "priority": 1})
 
@@ -622,10 +576,7 @@ class TestMiddlewareRegistry:
 
 
 class TestMiddlewareError:
-    """Test MiddlewareError model."""
-
     def test_valid_middleware_error_creation(self):
-        """Test creating a valid middleware error."""
         error = MiddlewareError(
             error_type="RateLimitError",
             message="Rate limit exceeded for user",
@@ -641,7 +592,6 @@ class TestMiddlewareError:
         assert error.should_retry is False  # Rate limit errors shouldn't retry
 
     def test_error_type_validation(self):
-        """Test error type validation."""
         # Valid error types
         valid_types = ["ValidationError", "AuthenticationError", "TimeoutError", "CustomError"]
         for error_type in valid_types:
@@ -654,7 +604,6 @@ class TestMiddlewareError:
         assert "Error type must be CamelCase ending with 'Error'" in str(exc_info.value)
 
     def test_error_classification_properties(self):
-        """Test error classification properties."""
         # Timeout error
         timeout_error = MiddlewareError(
             error_type="TimeoutError",
@@ -681,7 +630,6 @@ class TestMiddlewareError:
         assert fatal_error.should_retry is False
 
     def test_middleware_error_serialization(self):
-        """Test middleware error serialization."""
         error = MiddlewareError(
             error_type="ValidationError",
             message="Invalid input parameters",
@@ -701,10 +649,7 @@ class TestMiddlewareError:
 
 
 class TestMiddlewareValidators:
-    """Test middleware model validators."""
-
     def test_rate_limit_config_validator(self):
-        """Test rate limit configuration validator."""
         validator = RateLimitConfigValidator(RateLimitConfig)
 
         # Very high rate limit should generate warning
@@ -723,7 +668,6 @@ class TestMiddlewareValidators:
         assert any("Log-only mode should only be used for testing" in s for s in result.suggestions)
 
     def test_cache_config_validator(self):
-        """Test cache configuration validator."""
         validator = CacheConfigValidator(CacheConfig)
 
         # Large memory cache should generate warning
@@ -749,7 +693,6 @@ class TestMiddlewareValidators:
         assert any("Consider enabling compression" in s for s in result.suggestions)
 
     def test_retry_config_validator(self):
-        """Test retry configuration validator."""
         validator = RetryConfigValidator(RetryConfig)
 
         # High retry attempts should generate warning
@@ -771,7 +714,6 @@ class TestMiddlewareValidators:
         assert any("Consider specifying which exceptions" in s for s in result.suggestions)
 
     def test_middleware_config_validator(self):
-        """Test middleware configuration validator."""
         validator = MiddlewareConfigValidator(MiddlewareConfig)
 
         # Test with problematic sub-configs
@@ -788,7 +730,6 @@ class TestMiddlewareValidators:
         assert any("Short global timeout" in w for w in result.warnings)
 
     def test_composite_middleware_validator(self):
-        """Test composite middleware validator."""
         validator = create_middleware_validator()
 
         # Test with valid config
@@ -802,10 +743,7 @@ class TestMiddlewareValidators:
 
 
 class TestMiddlewareModelSerialization:
-    """Test middleware model serialization and deserialization."""
-
     def test_complete_middleware_config_json_round_trip(self):
-        """Test complete middleware configuration JSON round trip."""
         config = MiddlewareConfig(
             enabled=True,
             middleware_order=[

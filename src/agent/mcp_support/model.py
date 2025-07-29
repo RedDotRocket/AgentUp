@@ -18,8 +18,6 @@ from ..utils.validation import BaseValidator, CompositeValidator, ValidationResu
 
 
 class MCPResourceType(str, Enum):
-    """MCP resource type enumeration."""
-
     TEXT = "text"
     JSON = "json"
     BINARY = "binary"
@@ -29,16 +27,12 @@ class MCPResourceType(str, Enum):
 
 
 class MCPToolType(str, Enum):
-    """MCP tool type enumeration."""
-
     FUNCTION = "function"
     RESOURCE = "resource"
     PROMPT = "prompt"
 
 
 class MCPMessageType(str, Enum):
-    """MCP message type enumeration."""
-
     REQUEST = "request"
     RESPONSE = "response"
     NOTIFICATION = "notification"
@@ -46,8 +40,6 @@ class MCPMessageType(str, Enum):
 
 
 class MCPSessionState(str, Enum):
-    """MCP session state enumeration."""
-
     INITIALIZING = "initializing"
     CONNECTED = "connected"
     READY = "ready"
@@ -56,8 +48,6 @@ class MCPSessionState(str, Enum):
 
 
 class MCPResource(BaseModel):
-    """MCP resource definition model."""
-
     name: str = Field(..., description="Resource name", min_length=1, max_length=128)
     uri: str = Field(..., description="Resource URI")
     description: str | None = Field(None, description="Resource description")
@@ -73,7 +63,6 @@ class MCPResource(BaseModel):
     @field_validator("uri")
     @classmethod
     def validate_uri(cls, v: str) -> str:
-        """Validate resource URI format."""
         if not v.startswith(("file://", "http://", "https://", "agent://", "mcp://")):
             raise ValueError("URI must use supported scheme (file, http, https, agent, mcp)")
         return v
@@ -81,14 +70,12 @@ class MCPResource(BaseModel):
     @field_validator("mime_type")
     @classmethod
     def validate_mime_type(cls, v: str) -> str:
-        """Validate MIME type format."""
         if "/" not in v:
             raise ValueError("MIME type must be in format 'type/subtype'")
         return v
 
     @model_validator(mode="after")
     def validate_resource_content(self) -> MCPResource:
-        """Validate resource content consistency."""
         if self.resource_type == MCPResourceType.TEXT and not self.text:
             raise ValueError("Text resources must have text content")
 
@@ -106,7 +93,6 @@ class MCPResource(BaseModel):
 
     @property
     def is_binary(self) -> bool:
-        """Check if resource is binary."""
         return self.resource_type in (
             MCPResourceType.BINARY,
             MCPResourceType.IMAGE,
@@ -116,7 +102,6 @@ class MCPResource(BaseModel):
 
     @property
     def human_readable_size(self) -> str:
-        """Get human-readable size string."""
         if not self.size_bytes:
             return "0 bytes"
 
@@ -129,8 +114,6 @@ class MCPResource(BaseModel):
 
 
 class MCPTool(BaseModel):
-    """MCP tool definition model."""
-
     name: str = Field(..., description="Tool name", min_length=1, max_length=64)
     description: str = Field(..., description="Tool description", min_length=1, max_length=1024)
     tool_type: MCPToolType = Field(MCPToolType.FUNCTION, description="Tool type")
@@ -146,7 +129,6 @@ class MCPTool(BaseModel):
     @field_validator("name")
     @classmethod
     def validate_tool_name(cls, v: str) -> str:
-        """Validate tool name format."""
         import re
 
         if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_-]*$", v):
@@ -156,7 +138,6 @@ class MCPTool(BaseModel):
     @field_validator("input_schema", "output_schema")
     @classmethod
     def validate_schema(cls, v: dict[str, Any]) -> dict[str, Any]:
-        """Validate JSON schema format."""
         if v and "type" not in v:
             raise ValueError("Schema must have 'type' property if provided")
         return v
@@ -164,7 +145,6 @@ class MCPTool(BaseModel):
     @field_validator("version")
     @classmethod
     def validate_version(cls, v: str) -> str:
-        """Validate semantic version format."""
         import re
 
         if not re.match(r"^\d+\.\d+\.\d+(-[\w\.-]+)?(\+[\w\.-]+)?$", v):
@@ -173,12 +153,10 @@ class MCPTool(BaseModel):
 
     @property
     def has_required_scopes(self) -> bool:
-        """Check if tool requires specific permissions."""
         return len(self.required_scopes) > 0
 
     @property
     def security_level(self) -> str:
-        """Get tool security level based on required scopes."""
         if not self.required_scopes:
             return "public"
         elif len(self.required_scopes) <= 2:
@@ -190,8 +168,6 @@ class MCPTool(BaseModel):
 
 
 class MCPMessage(BaseModel):
-    """MCP protocol message model."""
-
     id: str | int = Field(..., description="Message ID")
     message_type: MCPMessageType = Field(..., description="Message type")
     method: str | None = Field(None, description="Method name for requests")
@@ -204,14 +180,12 @@ class MCPMessage(BaseModel):
     @field_validator("jsonrpc")
     @classmethod
     def validate_jsonrpc(cls, v: str) -> str:
-        """Validate JSON-RPC version."""
         if v != "2.0":
             raise ValueError("Only JSON-RPC 2.0 is supported")
         return v
 
     @model_validator(mode="after")
     def validate_message_consistency(self) -> MCPMessage:
-        """Validate message type and content consistency."""
         if self.message_type == MCPMessageType.REQUEST:
             if not self.method:
                 raise ValueError("Request messages must have method")
@@ -234,23 +208,18 @@ class MCPMessage(BaseModel):
 
     @property
     def is_request(self) -> bool:
-        """Check if message is a request."""
         return self.message_type == MCPMessageType.REQUEST
 
     @property
     def is_response(self) -> bool:
-        """Check if message is a response."""
         return self.message_type == MCPMessageType.RESPONSE
 
     @property
     def is_error(self) -> bool:
-        """Check if message represents an error."""
         return self.message_type == MCPMessageType.ERROR or self.error is not None
 
 
 class MCPSession(BaseModel):
-    """MCP session state management model."""
-
     session_id: str = Field(..., description="Session identifier", min_length=1, max_length=128)
     server_name: str = Field(..., description="MCP server name")
     state: MCPSessionState = Field(MCPSessionState.INITIALIZING, description="Session state")
@@ -266,7 +235,6 @@ class MCPSession(BaseModel):
     @field_validator("session_id")
     @classmethod
     def validate_session_id(cls, v: str) -> str:
-        """Validate session ID format."""
         import re
 
         if not re.match(r"^[a-zA-Z0-9_-]+$", v):
@@ -275,7 +243,6 @@ class MCPSession(BaseModel):
 
     @model_validator(mode="after")
     def validate_session_consistency(self) -> MCPSession:
-        """Validate session state consistency."""
         if self.state == MCPSessionState.ERROR and not self.error_message:
             raise ValueError("Error state requires error message")
 
@@ -286,12 +253,10 @@ class MCPSession(BaseModel):
 
     @property
     def is_active(self) -> bool:
-        """Check if session is active."""
         return self.state in (MCPSessionState.CONNECTED, MCPSessionState.READY)
 
     @property
     def is_healthy(self) -> bool:
-        """Check if session is healthy."""
         if self.state == MCPSessionState.ERROR:
             return False
 
@@ -301,22 +266,17 @@ class MCPSession(BaseModel):
 
     @property
     def tool_count(self) -> int:
-        """Get number of available tools."""
         return len(self.available_tools)
 
     @property
     def resource_count(self) -> int:
-        """Get number of available resources."""
         return len(self.available_resources)
 
     def update_activity(self) -> None:
-        """Update last activity timestamp."""
         self.last_activity = datetime.utcnow()
 
 
 class MCPCapability(BaseModel):
-    """MCP capability definition model."""
-
     name: str = Field(..., description="Capability name", min_length=1, max_length=64)
     version: str = Field("1.0.0", description="Capability version")
     description: str | None = Field(None, description="Capability description")
@@ -330,7 +290,6 @@ class MCPCapability(BaseModel):
     @field_validator("name")
     @classmethod
     def validate_capability_name(cls, v: str) -> str:
-        """Validate capability name format."""
         import re
 
         if not re.match(r"^[a-zA-Z][a-zA-Z0-9_-]*$", v):
@@ -340,7 +299,6 @@ class MCPCapability(BaseModel):
     @field_validator("version", "required_client_version")
     @classmethod
     def validate_version(cls, v: str | None) -> str | None:
-        """Validate semantic version format."""
         if v is None:
             return v
 
@@ -352,24 +310,19 @@ class MCPCapability(BaseModel):
 
     @property
     def is_stable(self) -> bool:
-        """Check if capability is stable (not experimental or deprecated)."""
         return not self.experimental and not self.deprecated
 
     @property
     def method_count(self) -> int:
-        """Get number of supported methods."""
         return len(self.supported_methods)
 
     @property
     def notification_count(self) -> int:
-        """Get number of supported notifications."""
         return len(self.supported_notifications)
 
 
 # MCP Validators using validation framework
 class MCPResourceValidator(BaseValidator[MCPResource]):
-    """Business rule validator for MCP resources."""
-
     def validate(self, model: MCPResource) -> ValidationResult:
         result = ValidationResult(valid=True)
 
@@ -389,8 +342,6 @@ class MCPResourceValidator(BaseValidator[MCPResource]):
 
 
 class MCPToolValidator(BaseValidator[MCPTool]):
-    """Business rule validator for MCP tools."""
-
     def validate(self, model: MCPTool) -> ValidationResult:
         result = ValidationResult(valid=True)
 
@@ -417,8 +368,6 @@ class MCPToolValidator(BaseValidator[MCPTool]):
 
 
 class MCPSessionValidator(BaseValidator[MCPSession]):
-    """Business rule validator for MCP sessions."""
-
     def validate(self, model: MCPSession) -> ValidationResult:
         result = ValidationResult(valid=True)
 
@@ -441,8 +390,6 @@ class MCPSessionValidator(BaseValidator[MCPSession]):
 
 
 class MCPCapabilityValidator(BaseValidator[MCPCapability]):
-    """Business rule validator for MCP capabilities."""
-
     def validate(self, model: MCPCapability) -> ValidationResult:
         result = ValidationResult(valid=True)
 
@@ -463,7 +410,6 @@ class MCPCapabilityValidator(BaseValidator[MCPCapability]):
 
 # Composite validator for MCP models
 def create_mcp_validator() -> CompositeValidator[MCPResource]:
-    """Create a comprehensive MCP validator."""
     validators = [
         MCPResourceValidator(MCPResource),
     ]

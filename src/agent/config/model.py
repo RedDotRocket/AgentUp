@@ -20,8 +20,6 @@ from ..types import FilePath, LogLevel, ModulePath, ServiceName, ServiceType, Ve
 
 
 class EnvironmentVariable(BaseModel):
-    """Model for environment variable references."""
-
     name: str = Field(..., description="Environment variable name")
     default: str | None = Field(None, description="Default value if not set")
     required: bool = Field(True, description="Whether variable is required")
@@ -29,22 +27,17 @@ class EnvironmentVariable(BaseModel):
     @field_validator("name")
     @classmethod
     def validate_env_name(cls, v: str) -> str:
-        """Validate environment variable name format."""
         if not v or not v.replace("_", "").isalnum():
             raise ValueError("Environment variable name must be alphanumeric with underscores")
         return v.upper()
 
 
 class LogFormat(str, Enum):
-    """Logging format options."""
-
     TEXT = "text"
     JSON = "json"
 
 
 class LoggingConsoleConfig(BaseModel):
-    """Console logging configuration."""
-
     enabled: bool = Field(True, description="Enable console logging")
     colors: bool = Field(True, description="Enable colored output")
     show_time: bool = Field(True, description="Show timestamps")
@@ -52,8 +45,6 @@ class LoggingConsoleConfig(BaseModel):
 
 
 class LoggingFileConfig(BaseModel):
-    """File logging configuration."""
-
     enabled: bool = Field(False, description="Enable file logging")
     path: FilePath = Field("logs/agentup.log", description="Log file path")
     max_size: int = Field(10 * 1024 * 1024, description="Max file size in bytes")
@@ -62,8 +53,6 @@ class LoggingFileConfig(BaseModel):
 
 
 class LoggingConfig(BaseModel):
-    """Comprehensive logging configuration."""
-
     enabled: bool = Field(True, description="Enable logging system")
     level: LogLevel = Field("INFO", description="Global log level")
     format: LogFormat = Field(LogFormat.TEXT, description="Log output format")
@@ -92,7 +81,6 @@ class LoggingConfig(BaseModel):
     @field_validator("level")
     @classmethod
     def validate_log_level(cls, v: str) -> str:
-        """Validate log level values."""
         valid_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
         if isinstance(v, str):
             v = v.upper()
@@ -103,7 +91,6 @@ class LoggingConfig(BaseModel):
     @field_validator("modules")
     @classmethod
     def validate_module_log_levels(cls, v: dict[str, str]) -> dict[str, str]:
-        """Validate module log level values."""
         valid_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
         for module, level in v.items():
             if isinstance(level, str):
@@ -115,8 +102,6 @@ class LoggingConfig(BaseModel):
 
 
 class ServiceConfig(BaseModel):
-    """Base service configuration."""
-
     type: ServiceType = Field(..., description="Service type identifier")
     enabled: bool = Field(True, description="Whether service is enabled")
     init_path: ModulePath | None = Field(None, description="Custom initialization module path")
@@ -134,7 +119,6 @@ class ServiceConfig(BaseModel):
     @field_validator("type")
     @classmethod
     def validate_service_type(cls, v: str) -> str:
-        """Validate service type format."""
         if not v or not v.replace("_", "").replace("-", "").isalnum():
             raise ValueError("Service type must be alphanumeric with hyphens/underscores")
         return v.lower()
@@ -142,7 +126,6 @@ class ServiceConfig(BaseModel):
     @field_validator("priority")
     @classmethod
     def validate_priority(cls, v: int) -> int:
-        """Validate priority range."""
         if not 0 <= v <= 100:
             raise ValueError("Priority must be between 0 and 100")
         return v
@@ -150,19 +133,16 @@ class ServiceConfig(BaseModel):
     @computed_field  # Modern Pydantic v2 computed property
     @property
     def is_high_priority(self) -> bool:
-        """Check if service has high priority (early initialization)."""
         return self.priority <= 20
 
     @computed_field
     @property
     def is_resilient(self) -> bool:
-        """Check if service has resilience features enabled."""
         return self.health_check_enabled and self.max_retries > 1
 
     @computed_field
     @property
     def initialization_score(self) -> float:
-        """Calculate initialization reliability score (0.0 to 1.0)."""
         score = 0.5  # Base score
 
         # Health check contribution (0.0 to 0.3)
@@ -178,8 +158,6 @@ class ServiceConfig(BaseModel):
 
 
 class MCPServerConfig(BaseModel):
-    """MCP server configuration."""
-
     name: str = Field(..., description="Server name")
     type: Literal["stdio", "http"] = Field(..., description="Connection type")
 
@@ -201,7 +179,6 @@ class MCPServerConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_server_config(self) -> MCPServerConfig:
-        """Validate server configuration based on type."""
         if self.type == "stdio":
             if not self.command:
                 raise ValueError("command is required for stdio server")
@@ -214,8 +191,6 @@ class MCPServerConfig(BaseModel):
 
 
 class MCPConfig(BaseModel):
-    """MCP (Model Context Protocol) configuration."""
-
     enabled: bool = Field(False, description="Enable MCP support")
 
     # Client configuration
@@ -234,22 +209,63 @@ class MCPConfig(BaseModel):
     @field_validator("server_port")
     @classmethod
     def validate_port(cls, v: int) -> int:
-        """Validate port number."""
         if not 1 <= v <= 65535:
             raise ValueError("Port must be between 1 and 65535")
         return v
 
 
-class SecurityConfig(BaseModel):
-    """Security configuration reference."""
+# Authentication Configuration Models
 
+
+class ApiKeyEntry(BaseModel):
+    key: str = Field(..., description="The API key value")
+    scopes: list[str] = Field(default_factory=list, description="Scopes granted to this key")
+
+
+class ApiKeyConfig(BaseModel):
+    header_name: str = Field("X-API-Key", description="HTTP header name for API key")
+    location: Literal["header", "query", "cookie"] = Field("header", description="Where to look for the API key")
+    keys: list[str | ApiKeyEntry] = Field(..., description="List of valid API keys")
+
+
+class BearerConfig(BaseModel):
+    bearer_token: str | None = Field(None, description="Static bearer token")
+    jwt_secret: str | None = Field(None, description="JWT secret for token validation")
+
+
+class JWTConfig(BaseModel):
+    secret_key: str = Field(..., description="Secret key for JWT validation")
+    algorithm: str = Field("HS256", description="JWT algorithm")
+
+    @field_validator("algorithm")
+    @classmethod
+    def validate_algorithm(cls, v: str) -> str:
+        valid_algorithms = {"HS256", "HS384", "HS512", "RS256", "RS384", "RS512"}
+        if v not in valid_algorithms:
+            raise ValueError(f"Invalid JWT algorithm. Must be one of: {valid_algorithms}")
+        return v
+
+
+class OAuth2Config(BaseModel):
+    validation_strategy: Literal["jwt", "introspection", "both"] = Field("jwt", description="Token validation strategy")
+    jwt_secret: str | None = Field(None, description="JWT secret for token validation")
+    jwks_url: str | None = Field(None, description="JWKS URL for JWT validation")
+    introspection_endpoint: str | None = Field(None, description="Token introspection endpoint")
+    client_id: str | None = Field(None, description="OAuth2 client ID")
+    client_secret: str | None = Field(None, description="OAuth2 client secret")
+    jwt_algorithm: str = Field("RS256", description="JWT algorithm for OAuth2")
+    required_scopes: list[str] = Field(default_factory=list, description="Required OAuth2 scopes")
+
+
+class SecurityConfig(BaseModel):
     enabled: bool = Field(True, description="Enable security features")
-    # Note: Detailed security config is in security/model.py to avoid circular imports
+    auth: dict[str, ApiKeyConfig | BearerConfig | JWTConfig | OAuth2Config] = Field(
+        default_factory=dict, description="Authentication configuration by type"
+    )
+    scope_hierarchy: dict[str, list[str]] = Field(default_factory=dict, description="Scope hierarchy configuration")
 
 
 class PluginCapabilityConfig(BaseModel):
-    """Plugin capability configuration."""
-
     capability_id: str = Field(..., description="Capability identifier")
     name: str | None = Field(None, description="Human-readable name")
     description: str | None = Field(None, description="Capability description")
@@ -260,17 +276,16 @@ class PluginCapabilityConfig(BaseModel):
 
 
 class PluginConfig(BaseModel):
-    """Individual plugin configuration."""
-
     plugin_id: str = Field(..., description="Plugin identifier")
     name: str | None = Field(None, description="Plugin name")
     description: str | None = Field(None, description="Plugin description")
     enabled: bool = Field(True, description="Whether plugin is enabled")
     version: Version | None = Field(None, description="Plugin version constraint")
-
+    keywords: list[str] = Field(default_factory=list, description="Keywords for plugin search")
+    patterns: list[str] = Field(default_factory=list, description="File patterns to match for plugin files")
     # Capability configuration
     capabilities: list[PluginCapabilityConfig] = Field(default_factory=list, description="Plugin capabilities")
-
+    priority: int = Field(50, description="Plugin initialization priority (lower = earlier)")
     # Default settings applied to all capabilities
     default_scopes: list[str] = Field(default_factory=list, description="Default scopes")
     middleware: list[dict[str, Any]] | None = Field(None, description="Middleware configuration")
@@ -279,7 +294,6 @@ class PluginConfig(BaseModel):
     @field_validator("plugin_id")
     @classmethod
     def validate_plugin_id(cls, v: str) -> str:
-        """Validate plugin ID format."""
         if not v or not v.replace("_", "").replace("-", "").replace(".", "").isalnum():
             raise ValueError("Plugin ID must be alphanumeric with hyphens, underscores, and dots")
         return v
@@ -287,31 +301,26 @@ class PluginConfig(BaseModel):
     @computed_field  # Modern Pydantic v2 computed property
     @property
     def has_capabilities(self) -> bool:
-        """Check if plugin has any capabilities defined."""
         return len(self.capabilities) > 0
 
     @computed_field
     @property
     def enabled_capabilities_count(self) -> int:
-        """Count of enabled capabilities."""
         return sum(1 for cap in self.capabilities if cap.enabled)
 
     @computed_field
     @property
     def display_name(self) -> str:
-        """Get display name (name or plugin_id as fallback)."""
         return self.name or self.plugin_id
 
     @computed_field
     @property
     def has_middleware(self) -> bool:
-        """Check if plugin has middleware configuration."""
         return self.middleware is not None and len(self.middleware) > 0
 
     @computed_field
     @property
     def total_required_scopes(self) -> set[str]:
-        """Get all required scopes (default + capability-specific)."""
         scopes = set(self.default_scopes)
         for cap in self.capabilities:
             scopes.update(cap.required_scopes)
@@ -320,7 +329,6 @@ class PluginConfig(BaseModel):
     @computed_field
     @property
     def complexity_score(self) -> float:
-        """Calculate plugin complexity score (0.0 to 1.0)."""
         score = 0.0
 
         # Capability count contribution (0.0 to 0.4)
@@ -342,8 +350,6 @@ class PluginConfig(BaseModel):
 
 
 class PluginsConfig(BaseModel):
-    """Plugins system configuration."""
-
     enabled: bool = Field(True, description="Enable plugin system")
 
     # Plugin configurations
@@ -351,8 +357,6 @@ class PluginsConfig(BaseModel):
 
 
 class MiddlewareConfig(BaseModel):
-    """Middleware configuration."""
-
     enabled: bool = Field(True, description="Enable middleware system")
 
     # Rate limiting
@@ -372,8 +376,6 @@ class MiddlewareConfig(BaseModel):
 
 
 class APIConfig(BaseModel):
-    """API server configuration."""
-
     enabled: bool = Field(True, description="Enable API server")
     host: str = Field("127.0.0.1", description="Server host")
     port: int = Field(8000, description="Server port")
@@ -398,7 +400,6 @@ class APIConfig(BaseModel):
     @field_validator("port")
     @classmethod
     def validate_port(cls, v: int) -> int:
-        """Validate port number."""
         if not 1 <= v <= 65535:
             raise ValueError("Port must be between 1 and 65535")
         return v
@@ -406,16 +407,12 @@ class APIConfig(BaseModel):
     @field_validator("workers")
     @classmethod
     def validate_workers(cls, v: int) -> int:
-        """Validate worker count."""
         if not 1 <= v <= 32:
             raise ValueError("Workers must be between 1 and 32")
         return v
 
 
 class AgentConfig(BaseModel):
-    """Main agent configuration."""
-
-    # agent: dict[str, Any] = Field(default_factory=dict, description="Agent metadata")
     # Basic agent information
     project_name: str = Field("AgentUp", description="Project name", alias="name")
     description: str = Field("AI agent powered by AgentUp", description="Agent description")
@@ -424,7 +421,6 @@ class AgentConfig(BaseModel):
     # Add property for backward compatibility
     @property
     def name(self) -> str:
-        """Get project name (backward compatibility)."""
         return self.project_name
 
     # Module paths for dynamic loading
@@ -473,7 +469,6 @@ class AgentConfig(BaseModel):
     @field_validator("project_name")
     @classmethod
     def validate_project_name(cls, v: str) -> str:
-        """Validate project name format."""
         if not v or len(v) > 100:
             raise ValueError("Project name must be 1-100 characters")
         return v
@@ -481,7 +476,6 @@ class AgentConfig(BaseModel):
     @field_validator("version")
     @classmethod
     def validate_version(cls, v: str) -> str:
-        """Validate semantic version format."""
         import re
 
         if not re.match(r"^\d+\.\d+\.\d+(?:-[\w.-]+)?$", v):
@@ -491,42 +485,35 @@ class AgentConfig(BaseModel):
     @computed_field  # Modern Pydantic v2 computed property
     @property
     def is_production(self) -> bool:
-        """Check if running in production environment."""
         return self.environment == "production"
 
     @computed_field
     @property
     def is_development(self) -> bool:
-        """Check if running in development environment."""
         return self.environment == "development"
 
     @computed_field
     @property
     def enabled_services(self) -> list[str]:
-        """Get list of enabled service names."""
         return [name for name, config in self.services.items() if config.enabled]
 
     @computed_field
     @property
     def total_service_count(self) -> int:
-        """Total number of configured services."""
         return len(self.services)
 
     @computed_field
     @property
     def security_enabled(self) -> bool:
-        """Check if any security features are enabled."""
         return self.security.enabled
 
     @computed_field
     @property
     def full_name(self) -> str:
-        """Get full agent name with version."""
         return f"{self.project_name} v{self.version}"
 
     @model_validator(mode="after")
     def validate_mcp_consistency(self) -> AgentConfig:
-        """Ensure MCP configuration consistency."""
         if self.mcp_enabled:
             if not self.mcp.enabled:
                 self.mcp = MCPConfig(enabled=True)
@@ -534,8 +521,6 @@ class AgentConfig(BaseModel):
 
 
 class ConfigurationSettings(BaseSettings):
-    """Environment-based configuration settings."""
-
     # File paths
     CONFIG_FILE: FilePath = Field("agentup.yml", description="Main configuration file")
     CONFIG_DIR: FilePath = Field(".", description="Configuration directory")
@@ -558,7 +543,6 @@ class ConfigurationSettings(BaseSettings):
     model_config = ConfigDict(env_prefix="AGENTUP_", case_sensitive=True)
 
     def create_directories(self) -> None:
-        """Create necessary directories if they don't exist."""
         directories = [self.DATA_DIR, self.LOGS_DIR, self.PLUGINS_DIR]
         for directory in directories:
             Path(directory).mkdir(parents=True, exist_ok=True)
@@ -566,7 +550,6 @@ class ConfigurationSettings(BaseSettings):
 
 # Utility function for environment variable expansion
 def expand_env_vars(value: Any) -> Any:
-    """Expand environment variables in configuration values."""
     if isinstance(value, str):
         # Handle ${VAR} and ${VAR:default} patterns
         import re

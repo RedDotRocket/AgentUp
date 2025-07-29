@@ -40,7 +40,6 @@ logger = structlog.get_logger(__name__)
 )
 @click.version_option("1.0.0", prog_name="dev-server")
 def dev(config: Path, host: str, port: int, reload: bool):
-    """Start the development server."""
     logger.info(f"Using config: {config}")
     logger.info(f"Starting dev server at http://{host}:{port}  (reload={reload})")
 

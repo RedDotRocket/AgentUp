@@ -21,10 +21,7 @@ from src.agent.config.model import (
 
 
 class TestLoggingConfig:
-    """Test LoggingConfig model."""
-
     def test_default_logging_config(self):
-        """Test default logging configuration."""
         config = LoggingConfig()
 
         assert config.enabled is True
@@ -35,7 +32,6 @@ class TestLoggingConfig:
         assert config.request_logging is True
 
     def test_custom_logging_config(self):
-        """Test custom logging configuration."""
         config = LoggingConfig(level="DEBUG", format=LogFormat.JSON, modules={"security": "WARNING", "api": "DEBUG"})
 
         assert config.level == "DEBUG"
@@ -44,14 +40,12 @@ class TestLoggingConfig:
         assert config.modules["api"] == "DEBUG"
 
     def test_invalid_log_level(self):
-        """Test invalid log level validation."""
         with pytest.raises(ValidationError) as exc_info:
             LoggingConfig(level="INVALID")
 
         assert "Invalid log level" in str(exc_info.value)
 
     def test_log_level_case_insensitive(self):
-        """Test log level case insensitive validation."""
         config = LoggingConfig(level="debug")
         assert config.level == "DEBUG"
 
@@ -60,10 +54,7 @@ class TestLoggingConfig:
 
 
 class TestServiceConfig:
-    """Test ServiceConfig model."""
-
     def test_default_service_config(self):
-        """Test default service configuration."""
         config = ServiceConfig(type="llm")
 
         assert config.type == "llm"
@@ -73,7 +64,6 @@ class TestServiceConfig:
         assert config.max_retries == 3
 
     def test_custom_service_config(self):
-        """Test custom service configuration."""
         config = ServiceConfig(
             type="custom-service", enabled=False, priority=10, settings={"api_key": "secret", "timeout": 30}
         )
@@ -85,7 +75,6 @@ class TestServiceConfig:
         assert config.settings["timeout"] == 30
 
     def test_service_type_validation(self):
-        """Test service type validation."""
         # Valid types
         ServiceConfig(type="llm")
         ServiceConfig(type="database")
@@ -100,7 +89,6 @@ class TestServiceConfig:
             ServiceConfig(type="invalid service!")
 
     def test_priority_validation(self):
-        """Test priority validation."""
         ServiceConfig(type="test", priority=0)
         ServiceConfig(type="test", priority=100)
 
@@ -112,10 +100,7 @@ class TestServiceConfig:
 
 
 class TestAPIConfig:
-    """Test APIConfig model."""
-
     def test_default_api_config(self):
-        """Test default API configuration."""
         config = APIConfig()
 
         assert config.enabled is True
@@ -126,7 +111,6 @@ class TestAPIConfig:
         assert "*" in config.cors_origins
 
     def test_custom_api_config(self):
-        """Test custom API configuration."""
         config = APIConfig(
             host="0.0.0.0", port=9000, workers=4, cors_origins=["https://example.com", "https://app.example.com"]
         )
@@ -137,7 +121,6 @@ class TestAPIConfig:
         assert "https://example.com" in config.cors_origins
 
     def test_port_validation(self):
-        """Test port number validation."""
         APIConfig(port=1)
         APIConfig(port=65535)
 
@@ -148,7 +131,6 @@ class TestAPIConfig:
             APIConfig(port=65536)
 
     def test_workers_validation(self):
-        """Test workers count validation."""
         APIConfig(workers=1)
         APIConfig(workers=32)
 
@@ -160,10 +142,7 @@ class TestAPIConfig:
 
 
 class TestMCPConfig:
-    """Test MCP configuration models."""
-
     def test_mcp_server_config_stdio(self):
-        """Test MCP server config for stdio type."""
         config = MCPServerConfig(
             name="test-server", type="stdio", command="python", args=["-m", "mcp_server"], env={"DEBUG": "1"}
         )
@@ -175,7 +154,6 @@ class TestMCPConfig:
         assert config.env["DEBUG"] == "1"
 
     def test_mcp_server_config_http(self):
-        """Test MCP server config for http type."""
         config = MCPServerConfig(
             name="http-server",
             type="http",
@@ -191,7 +169,6 @@ class TestMCPConfig:
         assert config.timeout == 60
 
     def test_mcp_server_config_validation(self):
-        """Test MCP server config validation."""
         # stdio without command should fail
         with pytest.raises(ValidationError) as exc_info:
             MCPServerConfig(name="test", type="stdio")
@@ -208,7 +185,6 @@ class TestMCPConfig:
         assert "must start with http" in str(exc_info.value)
 
     def test_mcp_config(self):
-        """Test complete MCP configuration."""
         config = MCPConfig(
             enabled=True,
             client_enabled=True,
@@ -224,10 +200,7 @@ class TestMCPConfig:
 
 
 class TestPluginConfig:
-    """Test plugin configuration models."""
-
     def test_plugin_capability_config(self):
-        """Test plugin capability configuration."""
         capability = PluginCapabilityConfig(
             capability_id="text_processor",
             name="Text Processing",
@@ -242,7 +215,6 @@ class TestPluginConfig:
         assert capability.config["max_length"] == 1000
 
     def test_plugin_config(self):
-        """Test plugin configuration."""
         plugin = PluginConfig(
             plugin_id="my.text.plugin",
             name="Text Plugin",
@@ -258,7 +230,6 @@ class TestPluginConfig:
         assert "basic" in plugin.default_scopes
 
     def test_plugin_id_validation(self):
-        """Test plugin ID validation."""
         # Valid IDs
         PluginConfig(plugin_id="simple")
         PluginConfig(plugin_id="my-plugin")
@@ -275,10 +246,7 @@ class TestPluginConfig:
 
 
 class TestAgentConfig:
-    """Test main agent configuration."""
-
     def test_default_agent_config(self):
-        """Test default agent configuration."""
         config = AgentConfig()
 
         assert config.project_name == "AgentUp"
@@ -290,7 +258,6 @@ class TestAgentConfig:
         assert isinstance(config.api, APIConfig)
 
     def test_custom_agent_config(self):
-        """Test custom agent configuration."""
         config = AgentConfig(
             project_name="MyAgent",
             description="Custom AI agent",
@@ -306,7 +273,6 @@ class TestAgentConfig:
         assert config.mcp_enabled is True
 
     def test_project_name_validation(self):
-        """Test project name validation."""
         AgentConfig(project_name="A")  # Minimum length
         AgentConfig(project_name="A" * 100)  # Maximum length
 
@@ -317,7 +283,6 @@ class TestAgentConfig:
             AgentConfig(project_name="A" * 101)
 
     def test_version_validation(self):
-        """Test semantic version validation."""
         # Valid versions
         AgentConfig(version="1.0.0")
         AgentConfig(version="10.20.30")
@@ -335,14 +300,12 @@ class TestAgentConfig:
             AgentConfig(version="1.0.0.0")
 
     def test_mcp_consistency_validation(self):
-        """Test MCP configuration consistency."""
         config = AgentConfig(mcp_enabled=True)
 
         # Should auto-enable MCP config
         assert config.mcp.enabled is True
 
     def test_services_configuration(self):
-        """Test services configuration."""
         config = AgentConfig(
             services={
                 "llm": ServiceConfig(type="openai", settings={"api_key": "secret"}),
@@ -357,10 +320,7 @@ class TestAgentConfig:
 
 
 class TestConfigurationSettings:
-    """Test environment-based configuration settings."""
-
     def test_default_settings(self):
-        """Test default configuration settings."""
         settings = ConfigurationSettings()
 
         assert settings.CONFIG_FILE == "agentup.yml"
@@ -371,7 +331,6 @@ class TestConfigurationSettings:
         assert settings.API_PORT == 8000
 
     def test_directory_creation(self):
-        """Test directory creation functionality."""
         settings = ConfigurationSettings(DATA_DIR="test_data", LOGS_DIR="test_logs", PLUGINS_DIR="test_plugins")
 
         # This would create directories in a real environment
@@ -384,10 +343,7 @@ class TestConfigurationSettings:
 
 
 class TestUtilityFunctions:
-    """Test utility functions."""
-
     def test_expand_env_vars_string(self):
-        """Test environment variable expansion in strings."""
         import os
 
         # Set test environment variable
@@ -409,7 +365,6 @@ class TestUtilityFunctions:
         del os.environ["TEST_VAR"]
 
     def test_expand_env_vars_dict(self):
-        """Test environment variable expansion in dictionaries."""
         import os
 
         os.environ["DB_HOST"] = "localhost"
@@ -429,7 +384,6 @@ class TestUtilityFunctions:
         del os.environ["DB_PORT"]
 
     def test_expand_env_vars_list(self):
-        """Test environment variable expansion in lists."""
         import os
 
         os.environ["PLUGIN1"] = "auth_plugin"
@@ -447,10 +401,7 @@ class TestUtilityFunctions:
 
 
 class TestModelSerialization:
-    """Test model serialization and deserialization."""
-
     def test_agent_config_serialization(self):
-        """Test agent config serialization."""
         config = AgentConfig(project_name="TestAgent", version="1.2.3", mcp_enabled=True)
 
         # Serialize to dict (modern Pydantic v2 way) - exclude computed fields for round-trip
@@ -487,7 +438,6 @@ class TestModelSerialization:
         assert full_dict["full_name"] == "TestAgent v1.2.3"
 
     def test_json_serialization(self):
-        """Test JSON serialization."""
         config = LoggingConfig(level="DEBUG", format=LogFormat.JSON)
 
         # Should be able to serialize to JSON

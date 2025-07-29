@@ -18,9 +18,12 @@ class SecurityService(Service):
 
         try:
             # Create security manager using existing implementation
+            from agent.config import Config
             from agent.security import create_security_manager, set_global_security_manager
 
-            self._security_manager = create_security_manager(self.config.config)
+            # Pass the full config as dictionary for backward compatibility
+            config_dict = Config.model_dump()
+            self._security_manager = create_security_manager(config_dict)
             set_global_security_manager(self._security_manager)
 
             if self._security_manager.is_auth_enabled():

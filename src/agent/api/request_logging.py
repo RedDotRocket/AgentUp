@@ -8,7 +8,6 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 # Import structlog lazily to avoid import-time configuration issues
 def get_logger():
-    """Get logger, importing structlog only when needed."""
     try:
         import structlog
 
@@ -21,15 +20,12 @@ def get_logger():
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
-    """Middleware for logging HTTP requests with correlation IDs."""
-
     def __init__(self, app, log_requests: bool = True, log_responses: bool = True):
         super().__init__(app)
         self.log_requests = log_requests
         self.log_responses = log_responses
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        """Process request with logging."""
         logger = get_logger()
 
         # Generate correlation ID
@@ -131,11 +127,9 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
 
 def add_correlation_id_to_logs(app):
-    """Add correlation ID middleware to FastAPI app."""
     app.add_middleware(RequestLoggingMiddleware)
 
 
 # Utility function to get correlation ID from request
 def get_correlation_id(request: Request) -> str:
-    """Get correlation ID from request state."""
     return getattr(request.state, "correlation_id", "unknown")

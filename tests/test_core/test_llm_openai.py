@@ -19,10 +19,7 @@ from agent.llm_providers.openai import OpenAIProvider
 
 
 class TestOpenAIProviderInitialization:
-    """Test OpenAI provider initialization."""
-
     def test_init_basic_config(self):
-        """Test basic initialization with minimal config."""
         config = {"api_key": "test-key", "model": "gpt-4"}
         provider = OpenAIProvider("test-openai", config)
 
@@ -36,7 +33,6 @@ class TestOpenAIProviderInitialization:
         assert not provider._initialized
 
     def test_init_full_config(self):
-        """Test initialization with all configuration options."""
         config = {
             "api_key": "test-key",
             "model": "gpt-3.5-turbo",
@@ -53,7 +49,6 @@ class TestOpenAIProviderInitialization:
         assert provider.timeout == 30.0
 
     def test_init_default_values(self):
-        """Test initialization with missing config values uses defaults."""
         config = {}
         provider = OpenAIProvider("default-openai", config)
 
@@ -64,11 +59,8 @@ class TestOpenAIProviderInitialization:
 
 
 class TestOpenAIProviderServiceManagement:
-    """Test service lifecycle management."""
-
     @pytest.mark.asyncio
     async def test_initialize_success(self):
-        """Test successful initialization."""
         config = {"api_key": "test-key", "model": "gpt-4"}
         provider = OpenAIProvider("test", config)
 
@@ -89,7 +81,6 @@ class TestOpenAIProviderServiceManagement:
 
     @pytest.mark.asyncio
     async def test_initialize_with_organization(self):
-        """Test initialization with organization header."""
         config = {"api_key": "test-key", "model": "gpt-4", "organization": "org-123"}
         provider = OpenAIProvider("test", config)
 
@@ -100,7 +91,6 @@ class TestOpenAIProviderServiceManagement:
 
     @pytest.mark.asyncio
     async def test_initialize_missing_api_key(self):
-        """Test initialization handles missing API key gracefully."""
         config = {"model": "gpt-4"}  # Missing api_key
         provider = OpenAIProvider("test", config)
 
@@ -112,7 +102,6 @@ class TestOpenAIProviderServiceManagement:
 
     @pytest.mark.asyncio
     async def test_initialize_health_check_fails(self):
-        """Test initialization fails when health check fails."""
         config = {"api_key": "test-key", "model": "gpt-4"}
         provider = OpenAIProvider("test", config)
 
@@ -124,7 +113,6 @@ class TestOpenAIProviderServiceManagement:
 
     @pytest.mark.asyncio
     async def test_close(self):
-        """Test closing the provider."""
         config = {"api_key": "test-key", "model": "gpt-4"}
         provider = OpenAIProvider("test", config)
 
@@ -142,11 +130,8 @@ class TestOpenAIProviderServiceManagement:
 
 
 class TestOpenAIProviderHealthCheck:
-    """Test health check functionality."""
-
     @pytest.mark.asyncio
     async def test_health_check_success(self):
-        """Test successful health check."""
         config = {"api_key": "test-key", "model": "gpt-4"}
         provider = OpenAIProvider("test", config)
 
@@ -168,7 +153,6 @@ class TestOpenAIProviderHealthCheck:
 
     @pytest.mark.asyncio
     async def test_health_check_unhealthy_status(self):
-        """Test health check with unhealthy status code."""
         config = {"api_key": "test-key", "model": "gpt-4"}
         provider = OpenAIProvider("test", config)
 
@@ -187,7 +171,6 @@ class TestOpenAIProviderHealthCheck:
 
     @pytest.mark.asyncio
     async def test_health_check_exception(self):
-        """Test health check with network exception."""
         config = {"api_key": "test-key", "model": "gpt-4"}
         provider = OpenAIProvider("test", config)
 
@@ -202,10 +185,7 @@ class TestOpenAIProviderHealthCheck:
 
 
 class TestOpenAIProviderChatCompletion:
-    """Test chat completion functionality."""
-
     def setup_method(self):
-        """Set up test fixtures."""
         self.config = {"api_key": "test-key", "model": "gpt-4"}
         self.provider = OpenAIProvider("test", self.config)
         self.provider._initialized = True
@@ -214,7 +194,6 @@ class TestOpenAIProviderChatCompletion:
 
     @pytest.mark.asyncio
     async def test_complete_basic(self):
-        """Test basic text completion."""
         # Mock API response
         mock_response = Mock()
         mock_response.status_code = 200
@@ -245,7 +224,6 @@ class TestOpenAIProviderChatCompletion:
 
     @pytest.mark.asyncio
     async def test_chat_complete_multiple_messages(self):
-        """Test chat completion with multiple messages."""
         messages = [
             ChatMessage(role="system", content="You are a helpful assistant."),
             ChatMessage(role="user", content="Hello"),
@@ -275,7 +253,6 @@ class TestOpenAIProviderChatCompletion:
 
     @pytest.mark.asyncio
     async def test_chat_complete_with_kwargs(self):
-        """Test chat completion with custom parameters."""
         messages = [ChatMessage(role="user", content="Test")]
 
         mock_response = Mock()
@@ -296,7 +273,6 @@ class TestOpenAIProviderChatCompletion:
 
     @pytest.mark.asyncio
     async def test_chat_complete_json_mode(self):
-        """Test chat completion with JSON mode."""
         messages = [ChatMessage(role="user", content="Return JSON")]
 
         mock_response = Mock()
@@ -313,7 +289,6 @@ class TestOpenAIProviderChatCompletion:
 
     @pytest.mark.asyncio
     async def test_chat_complete_api_error(self):
-        """Test chat completion with API error."""
         messages = [ChatMessage(role="user", content="Test")]
 
         mock_response = Mock()
@@ -326,7 +301,6 @@ class TestOpenAIProviderChatCompletion:
 
     @pytest.mark.asyncio
     async def test_chat_complete_network_error(self):
-        """Test chat completion with network error."""
         messages = [ChatMessage(role="user", content="Test")]
 
         self.provider.client.post.side_effect = httpx.ConnectError("Network error")
@@ -336,7 +310,6 @@ class TestOpenAIProviderChatCompletion:
 
     @pytest.mark.asyncio
     async def test_chat_complete_invalid_response(self):
-        """Test chat completion with invalid response format."""
         messages = [ChatMessage(role="user", content="Test")]
 
         mock_response = Mock()
@@ -349,10 +322,7 @@ class TestOpenAIProviderChatCompletion:
 
 
 class TestOpenAIProviderFunctionCalling:
-    """Test function calling functionality."""
-
     def setup_method(self):
-        """Set up test fixtures."""
         self.config = {"api_key": "test-key", "model": "gpt-4"}
         self.provider = OpenAIProvider("test", self.config)
         self.provider._initialized = True
@@ -373,7 +343,6 @@ class TestOpenAIProviderFunctionCalling:
 
     @pytest.mark.asyncio
     async def test_function_calling_success(self):
-        """Test successful function calling."""
         messages = [ChatMessage(role="user", content="What's the weather in Paris?")]
 
         mock_response = Mock()
@@ -412,7 +381,6 @@ class TestOpenAIProviderFunctionCalling:
 
     @pytest.mark.asyncio
     async def test_function_calling_with_custom_function_call(self):
-        """Test function calling with specific function call setting."""
         messages = [ChatMessage(role="user", content="Test")]
 
         mock_response = Mock()
@@ -429,7 +397,6 @@ class TestOpenAIProviderFunctionCalling:
 
     @pytest.mark.asyncio
     async def test_function_calling_malformed_json(self):
-        """Test function calling with malformed JSON arguments."""
         messages = [ChatMessage(role="user", content="Test")]
 
         mock_response = Mock()
@@ -462,7 +429,6 @@ class TestOpenAIProviderFunctionCalling:
 
     @pytest.mark.asyncio
     async def test_function_calling_unfixable_json(self):
-        """Test function calling with completely malformed JSON."""
         messages = [ChatMessage(role="user", content="Test")]
 
         mock_response = Mock()
@@ -492,10 +458,7 @@ class TestOpenAIProviderFunctionCalling:
 
 
 class TestOpenAIProviderEmbeddings:
-    """Test embedding functionality."""
-
     def setup_method(self):
-        """Set up test fixtures."""
         self.config = {"api_key": "test-key", "model": "text-embedding-3-small"}
         self.provider = OpenAIProvider("test", self.config)
         self.provider._initialized = True
@@ -504,7 +467,6 @@ class TestOpenAIProviderEmbeddings:
 
     @pytest.mark.asyncio
     async def test_embed_success(self):
-        """Test successful embedding generation."""
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"data": [{"embedding": [0.1, 0.2, 0.3, -0.1, -0.2]}]}
@@ -521,7 +483,6 @@ class TestOpenAIProviderEmbeddings:
 
     @pytest.mark.asyncio
     async def test_embed_with_non_embedding_model(self):
-        """Test embedding with non-embedding model falls back to default."""
         # Use a chat model
         config = {"api_key": "test-key", "model": "gpt-4"}
         provider = OpenAIProvider("test", config)
@@ -541,7 +502,6 @@ class TestOpenAIProviderEmbeddings:
 
     @pytest.mark.asyncio
     async def test_embed_api_error(self):
-        """Test embedding with API error."""
         mock_response = Mock()
         mock_response.status_code = 400
         mock_response.text = "Bad request"
@@ -552,10 +512,7 @@ class TestOpenAIProviderEmbeddings:
 
 
 class TestOpenAIProviderStreaming:
-    """Test streaming functionality."""
-
     def setup_method(self):
-        """Set up test fixtures."""
         self.config = {"api_key": "test-key", "model": "gpt-4"}
         self.provider = OpenAIProvider("test", self.config)
         self.provider._initialized = True
@@ -564,7 +521,6 @@ class TestOpenAIProviderStreaming:
 
     @pytest.mark.asyncio
     async def test_stream_chat_complete_success(self):
-        """Test successful streaming chat completion."""
         messages = [ChatMessage(role="user", content="Tell me a story")]
 
         # Mock the streaming functionality by patching the stream method
@@ -597,7 +553,6 @@ class TestOpenAIProviderStreaming:
 
     @pytest.mark.asyncio
     async def test_stream_chat_complete_api_error(self):
-        """Test streaming with API error."""
         messages = [ChatMessage(role="user", content="Test")]
 
         # Patch the stream_chat_complete method to raise an error
@@ -615,21 +570,16 @@ class TestOpenAIProviderStreaming:
 
 
 class TestOpenAIProviderMessageConversion:
-    """Test message format conversion."""
-
     def setup_method(self):
-        """Set up test fixtures."""
         self.provider = OpenAIProvider("test", {"api_key": "test"})
 
     def test_chat_message_to_dict_basic(self):
-        """Test basic message conversion."""
         message = ChatMessage(role="user", content="Hello")
         result = self.provider._chat_message_to_dict(message)
 
         assert result == {"role": "user", "content": "Hello"}
 
     def test_chat_message_to_dict_with_function_call(self):
-        """Test message conversion with function call."""
         function_call = FunctionCall(name="get_weather", arguments={"location": "Paris"})
         message = ChatMessage(role="assistant", content="", function_call=function_call)
 
@@ -642,7 +592,6 @@ class TestOpenAIProviderMessageConversion:
         }
 
     def test_chat_message_to_dict_with_name(self):
-        """Test message conversion with name field."""
         message = ChatMessage(role="function", content="Weather is sunny", name="get_weather")
 
         result = self.provider._chat_message_to_dict(message)

@@ -5,11 +5,8 @@ from a2a.types import Message, Role, Task
 
 
 class MessageProcessor:
-    """Advanced message processing for A2A compliance."""
-
     @staticmethod
     def extract_messages(task: Task) -> list[Message]:
-        """Extract A2A Message objects from task."""
         # Get messages from task.history (A2A standard) or metadata (fallback)
         if hasattr(task, "history") and task.history:
             return task.history
@@ -40,7 +37,6 @@ class MessageProcessor:
 
     @staticmethod
     def get_latest_user_message(messages: list[Message | dict]) -> dict[str, Any] | None:
-        """Get the most recent user message converted to dict format."""
         for message in reversed(messages):
             if isinstance(message, dict):
                 role = message.get("role")
@@ -65,7 +61,6 @@ class MessageProcessor:
 
     @staticmethod
     def get_conversation_history(messages: list[Message | dict], limit: int = 10) -> list[dict[str, Any]]:
-        """Get conversation history as serializable format."""
         history = []
         for message in messages[-limit:]:
             if isinstance(message, dict):
@@ -83,23 +78,18 @@ class MessageProcessor:
 
     @staticmethod
     def create_system_message(content: str) -> dict[str, Any]:
-        """Create a system message for conversation context."""
         return {"role": "system", "content": content, "timestamp": datetime.utcnow().isoformat()}
 
     @staticmethod
     def create_assistant_message(content: str) -> dict[str, Any]:
-        """Create an assistant message for conversation context."""
         return {"role": "assistant", "content": content, "timestamp": datetime.utcnow().isoformat()}
 
 
 class ConversationContext:
-    """Manage conversation context and state across requests."""
-
     _contexts: dict[str, dict[str, Any]] = {}
 
     @classmethod
     def get_context(cls, task_id: str) -> dict[str, Any]:
-        """Get conversation context for a task."""
         if task_id not in cls._contexts:
             cls._contexts[task_id] = {
                 "created_at": datetime.utcnow(),
@@ -113,14 +103,12 @@ class ConversationContext:
 
     @classmethod
     def update_context(cls, task_id: str, **kwargs) -> None:
-        """Update conversation context."""
         context = cls.get_context(task_id)
         context.update(kwargs)
         context["last_activity"] = datetime.utcnow()
 
     @classmethod
     def increment_message_count(cls, task_id: str) -> int:
-        """Increment and return message count for a conversation."""
         context = cls.get_context(task_id)
         context["message_count"] += 1
         context["last_activity"] = datetime.utcnow()
@@ -128,13 +116,11 @@ class ConversationContext:
 
     @classmethod
     def get_message_count(cls, task_id: str) -> int:
-        """Get current message count for a conversation."""
         context = cls.get_context(task_id)
         return context.get("message_count", 0)
 
     @classmethod
     def add_to_history(cls, task_id: str, role: str, content: str) -> None:
-        """Add a message to conversation history."""
         context = cls.get_context(task_id)
         history = context.get("conversation_history", [])
 
@@ -149,14 +135,12 @@ class ConversationContext:
 
     @classmethod
     def get_history(cls, task_id: str, limit: int = 10) -> list[dict[str, Any]]:
-        """Get conversation history for a task."""
         context = cls.get_context(task_id)
         history = context.get("conversation_history", [])
         return history[-limit:] if limit else history
 
     @classmethod
     def set_user_preference(cls, task_id: str, key: str, value: Any) -> None:
-        """Set user preference for a conversation."""
         context = cls.get_context(task_id)
         preferences = context.get("user_preferences", {})
         preferences[key] = value
@@ -164,25 +148,21 @@ class ConversationContext:
 
     @classmethod
     def get_user_preference(cls, task_id: str, key: str, default: Any = None) -> Any:
-        """Get user preference for a conversation."""
         context = cls.get_context(task_id)
         preferences = context.get("user_preferences", {})
         return preferences.get(key, default)
 
     @classmethod
     def clear_context(cls, task_id: str) -> None:
-        """Clear conversation context for a task."""
         if task_id in cls._contexts:
             del cls._contexts[task_id]
 
     @classmethod
     def get_active_contexts(cls) -> list[str]:
-        """Get list of active conversation contexts."""
         return list(cls._contexts.keys())
 
     @classmethod
     def cleanup_old_contexts(cls, max_age_hours: int = 24) -> int:
-        """Clean up old conversation contexts."""
         cutoff_time = datetime.utcnow().timestamp() - (max_age_hours * 3600)
         contexts_to_remove = []
 

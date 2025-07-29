@@ -28,10 +28,7 @@ except ImportError:
 
 
 class BearerTokenAuthenticator(BaseAuthenticator):
-    """Bearer Token based authentication."""
-
     def _resolve_env_var(self, value: str | None) -> str | None:
-        """Resolve environment variable placeholders in configuration values."""
         if not value or not isinstance(value, str):
             return value
 
@@ -47,7 +44,6 @@ class BearerTokenAuthenticator(BaseAuthenticator):
         return value
 
     def _validate_config(self) -> None:
-        """Validate Bearer token authenticator configuration."""
         # Get bearer configuration from auth structure
         bearer_config = self.config.get("auth", {}).get("bearer", {})
         bearer_token = bearer_config.get("bearer_token")
@@ -133,15 +129,12 @@ class BearerTokenAuthenticator(BaseAuthenticator):
         return self._validate_bearer_token(token, request_info)
 
     def get_auth_type(self) -> str:
-        """Get authentication type identifier."""
         return "bearer"
 
     def get_required_headers(self) -> set[str]:
-        """Get required headers for Bearer authentication."""
         return {"Authorization"}
 
     def supports_scopes(self) -> bool:
-        """Bearer tokens can support scopes (especially JWT)."""
         return True  # Could be extended to parse JWT scopes
 
     def _validate_bearer_token(self, token: str, request_info: dict[str, Any]) -> AuthenticationResult:

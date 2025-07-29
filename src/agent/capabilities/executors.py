@@ -4,14 +4,13 @@ from typing import Any
 import structlog
 from a2a.types import Task
 
-from agent.config import load_config
+from agent.config import Config
 
 # Import middleware decorators
 from agent.middleware import rate_limited, retryable, timed
 
 # Load agent config to pull in project name
-config = load_config()
-_project_name = config.get("agent", {}).get("name", "Agent")
+_project_name = Config.project_name
 
 # Import shared utilities (with fallbacks for testing)
 try:
@@ -128,7 +127,6 @@ def register_plugin_capability(plugin_config: dict[str, Any]) -> None:
 
     # Framework wraps with scope enforcement
     async def scope_enforced_executor(task: Task, context=None) -> str:
-        """Scope-enforced wrapper that implements framework security."""
         import time
 
         start_time = time.time()
@@ -202,7 +200,6 @@ def register_mcp_tool_as_capability(tool_name: str, mcp_client, tool_scopes: lis
     from agent.security.context import create_capability_context, get_current_auth
 
     async def mcp_tool_executor(task: Task, context=None) -> str:
-        """MCP tool executor with scope enforcement."""
         import time
 
         start_time = time.time()
@@ -276,13 +273,14 @@ _global_state_applied = False
 
 
 def _load_middleware_config() -> list[dict[str, Any]]:
-    """Load middleware configuration from agent config."""
     global _middleware_config
     if _middleware_config is not None:
         return _middleware_config
 
     try:
-        middleware_config = config.get("middleware", {})
+        middleware_config = (
+            Config.middleware.model_dump() if hasattr(Config.middleware, "model_dump") else dict(Config.middleware)
+        )
 
         # If it's already a list (old format), use as-is
         if isinstance(middleware_config, list):
@@ -366,16 +364,14 @@ def _load_middleware_config() -> list[dict[str, Any]]:
 
 
 def _load_state_config() -> dict[str, Any]:
-    """Load state management configuration from agent config."""
     global _state_config
     if _state_config is not None:
         return _state_config
 
     try:
-        from agent.config import load_config
+        from agent.config import Config
 
-        config = load_config()
-        _state_config = config.get("state_management", {})
+        _state_config = Config.state_management
         if isinstance(_state_config, dict):
             logger.debug(f"Loaded state config: {_state_config}")
         return _state_config
@@ -386,16 +382,12 @@ def _load_state_config() -> dict[str, Any]:
 
 
 def _get_plugin_config(plugin_id: str) -> dict | None:
-    """Get configuration for a specific plugin."""
     try:
-        from agent.config import load_config
+        from agent.config import Config
 
-        config = load_config()
-        plugins = config.get("plugins", [])
-
-        for plugin in plugins:
-            if plugin.get("plugin_id") == plugin_id:
-                return plugin
+        for plugin in Config.plugins:
+            if plugin.plugin_id == plugin_id:
+                return plugin.model_dump() if hasattr(plugin, "model_dump") else dict(plugin)
         return None
     except Exception as e:
         logger.debug(f"Could not load plugin config for '{plugin_id}': {e}")
@@ -403,7 +395,6 @@ def _get_plugin_config(plugin_id: str) -> dict | None:
 
 
 def _resolve_state_config(plugin_id: str) -> dict:
-    """Resolve state configuration for a plugin (global or plugin-specific)."""
     global_state_config = _load_state_config()
     plugin_config = _get_plugin_config(plugin_id)
 
@@ -415,7 +406,6 @@ def _resolve_state_config(plugin_id: str) -> dict:
 
 
 def _apply_auth_to_capability(executor: Callable, capability_id: str) -> Callable:
-    """Apply authentication context to a capability executor."""
     from functools import wraps
 
     from agent.security.context import create_capability_context, get_current_auth
@@ -444,7 +434,6 @@ def _apply_auth_to_capability(executor: Callable, capability_id: str) -> Callabl
 
 
 def _apply_state_to_capability(executor: Callable, capability_id: str) -> Callable:
-    """Apply configured state management to a capability executor."""
     state_config = _resolve_state_config(capability_id)
 
     if not state_config.get("enabled", False):
@@ -466,7 +455,6 @@ def _apply_state_to_capability(executor: Callable, capability_id: str) -> Callab
 
 
 def _resolve_middleware_config(capability_id: str) -> list[dict[str, Any]]:
-    """Resolve middleware configuration for a capability."""
     global_middleware_configs = _load_middleware_config()
 
     # Get the actual plugin name that provides this capability
@@ -495,7 +483,6 @@ def _resolve_middleware_config(capability_id: str) -> list[dict[str, Any]]:
 
 
 def _apply_middleware_to_capability(executor: Callable, capability_id: str) -> Callable:
-    """Apply configured middleware to a capability executor."""
     middleware_configs = _resolve_middleware_config(capability_id)
 
     if not middleware_configs:
@@ -514,8 +501,6 @@ def _apply_middleware_to_capability(executor: Callable, capability_id: str) -> C
 
 
 def register_capability(capability_id: str):
-    """Decorator to register a capability executor by ID with automatic middleware, state, and auth application."""
-
     def decorator(func: Callable[[Task], str]):
         # Apply authentication context first
         wrapped_func = _apply_auth_to_capability(func, capability_id)
@@ -531,7 +516,6 @@ def register_capability(capability_id: str):
 
 
 def register_capability_function(capability_id: str, executor: Callable[[Task], str]) -> None:
-    """Register a capability executor function directly (for plugins and dynamic registration)."""
     wrapped_executor = _apply_auth_to_capability(executor, capability_id)
     wrapped_executor = _apply_middleware_to_capability(wrapped_executor, capability_id)
     wrapped_executor = _apply_state_to_capability(wrapped_executor, capability_id)
@@ -540,7 +524,6 @@ def register_capability_function(capability_id: str, executor: Callable[[Task], 
 
 
 def get_capability_executor(capability_id: str) -> Callable[[Task], str] | None:
-    """Retrieve a registered capability executor by ID from unified registry."""
     # Check unified capabilities registry
     executor = _capabilities.get(capability_id)
     if executor:
@@ -551,29 +534,24 @@ def get_capability_executor(capability_id: str) -> Callable[[Task], str] | None:
 
 
 async def execute_status(task: Task) -> str:
-    """Get agent status and information."""
     return f"{_project_name} is operational and ready to process tasks. Task ID: {task.id}"
 
 
 async def execute_capabilities(task: Task) -> str:
-    """List agent capabilities and available plugins."""
     capabilities = list(_capabilities.keys())
     lines = "\n".join(f"- {capability}" for capability in capabilities)
     return f"{_project_name} capabilities:\n{lines}"
 
 
 def get_all_capabilities() -> dict[str, Callable[[Task], str]]:
-    """Return a copy of the capability executor registry."""
     return _capabilities.copy()
 
 
 def list_capabilities() -> list[str]:
-    """List all available capability IDs."""
     return list(_capabilities.keys())
 
 
 def apply_global_middleware() -> None:
-    """Apply middleware to all existing registered capability executors (for retroactive application)."""
     global _global_middleware_applied
 
     if _global_middleware_applied:
@@ -626,7 +604,6 @@ def apply_global_middleware() -> None:
 
 
 def apply_global_state_management() -> None:
-    """Apply state management to all existing registered capability executors (for retroactive application)."""
     global _global_state_applied
 
     if _global_state_applied:
@@ -670,7 +647,6 @@ def apply_global_state_management() -> None:
 
 
 def reset_middleware_cache() -> None:
-    """Reset middleware configuration cache (useful for testing or config reloading)."""
     global _middleware_config, _global_middleware_applied
     _middleware_config = None
     _global_middleware_applied = False
@@ -678,7 +654,6 @@ def reset_middleware_cache() -> None:
 
 
 def reset_state_cache() -> None:
-    """Reset state configuration cache (useful for testing or config reloading)."""
     global _state_config, _global_state_applied
     _state_config = None
     _global_state_applied = False
@@ -686,7 +661,6 @@ def reset_state_cache() -> None:
 
 
 def get_middleware_info() -> dict[str, Any]:
-    """Get information about current middleware configuration and application status."""
     middleware_configs = _load_middleware_config()
     return {
         "config": middleware_configs,
@@ -697,7 +671,6 @@ def get_middleware_info() -> dict[str, Any]:
 
 
 def get_state_info() -> dict[str, Any]:
-    """Get information about current state configuration and application status."""
     state_config = _load_state_config()
     return {
         "config": state_config,

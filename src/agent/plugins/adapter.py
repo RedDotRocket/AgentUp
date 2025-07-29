@@ -12,10 +12,7 @@ logger = structlog.get_logger(__name__)
 
 
 class PluginAdapter:
-    """Adapts plugin system to work with existing AgentUp components."""
-
     def __init__(self, plugin_manager: PluginManager | None = None):
-        """Initialize the adapter."""
         self.plugin_manager = plugin_manager or get_plugin_manager()
         self._function_registry: FunctionRegistry | None = None
 
@@ -72,20 +69,19 @@ class PluginAdapter:
             Dict mapping capability_id to required_scopes for enabled capabilities.
         """
         try:
-            from agent.config import load_config
+            from agent.config import Config
 
-            config = load_config()
-            configured_plugins = config.get("plugins", [])
+            configured_plugins = Config.plugins
 
             enabled_capabilities = {}
 
             for plugin_config in configured_plugins:
                 # Check if this uses the new capability-based structure
-                if "capabilities" in plugin_config:
-                    for capability_config in plugin_config["capabilities"]:
-                        capability_id = capability_config["capability_id"]
-                        required_scopes = capability_config.get("required_scopes", [])
-                        enabled = capability_config.get("enabled", True)
+                if plugin_config.capabilities:
+                    for capability_config in plugin_config.capabilities:
+                        capability_id = capability_config.capability_id
+                        required_scopes = capability_config.required_scopes or []
+                        enabled = capability_config.enabled
 
                         if enabled:
                             enabled_capabilities[capability_id] = required_scopes
@@ -98,8 +94,6 @@ class PluginAdapter:
             return {}
 
     def _create_ai_function_handler(self, capability_id: str, ai_func):
-        """Create a handler that adapts AI function calls to plugin execution."""
-
         async def handler(task: Task) -> str:
             # Create capability context from task with specific capability config
             context = self._create_capability_context_for_capability(task, capability_id)
@@ -123,7 +117,6 @@ class PluginAdapter:
         return handler
 
     def _create_capability_context(self, task: Task) -> CapabilityContext:
-        """Create a skill context from an A2A task."""
         # Extract metadata and configuration
         metadata = getattr(task, "metadata", {}) or {}
 
@@ -152,10 +145,9 @@ class PluginAdapter:
         and returns its configuration from agentup.yml.
         """
         try:
-            from agent.config import load_config
+            from agent.config import Config
 
-            config = load_config()
-            configured_plugins = config.get("plugins", [])
+            configured_plugins = Config.plugins
 
             # For AI function calls, we need to determine which plugin is being used
             # Check if we can determine the plugin from the function call context
@@ -164,17 +156,17 @@ class PluginAdapter:
             if function_name:
                 # Try to find which plugin provides this function
                 for plugin_config in configured_plugins:
-                    plugin_id = plugin_config.get("plugin_id")
+                    plugin_id = plugin_config.plugin_id
                     if plugin_id:
                         # Check if this plugin provides the function being called
                         plugin_functions = self._get_plugin_function_names(plugin_id)
                         if function_name in plugin_functions:
-                            return plugin_config.get("config", {})
+                            return plugin_config.config or {}
 
             # Fallback: if we can't determine specific plugin, try RAG plugin as that's most common
             for plugin_config in configured_plugins:
-                if plugin_config.get("plugin_id") == "rag":
-                    return plugin_config.get("config", {})
+                if plugin_config.plugin_id == "rag":
+                    return plugin_config.config or {}
 
             return {}
 
@@ -183,7 +175,6 @@ class PluginAdapter:
             return {}
 
     def _get_plugin_function_names(self, plugin_id: str) -> list[str]:
-        """Get list of function names provided by a plugin."""
         try:
             # Get all capabilities provided by this plugin
             function_names = []
@@ -198,7 +189,6 @@ class PluginAdapter:
             return []
 
     def _create_capability_context_for_capability(self, task: Task, capability_id: str) -> CapabilityContext:
-        """Create a capability context for a specific capability ID."""
         # Extract metadata
         metadata = getattr(task, "metadata", {}) or {}
 
@@ -221,12 +211,10 @@ class PluginAdapter:
         )
 
     def _get_plugin_config_for_capability(self, capability_id: str) -> dict[str, Any]:
-        """Get plugin configuration for a specific capability."""
         try:
-            from agent.config import load_config
+            from agent.config import Config
 
-            config = load_config()
-            configured_plugins = config.get("plugins", [])
+            configured_plugins = Config.plugins
 
             # Find which plugin provides this capability
             plugin_id = self.plugin_manager.capability_to_plugin.get(capability_id)
@@ -234,8 +222,8 @@ class PluginAdapter:
             if plugin_id:
                 # Find the plugin configuration
                 for plugin_config in configured_plugins:
-                    if plugin_config.get("plugin_id") == plugin_id:
-                        return plugin_config.get("config", {})
+                    if plugin_config.plugin_id == plugin_id:
+                        return plugin_config.config or {}
 
             return {}
 
@@ -244,8 +232,6 @@ class PluginAdapter:
             return {}
 
     def get_capability_executor_for_capability(self, capability_id: str):
-        """Get a capability executor function for a capability that's compatible with the system."""
-
         async def executor(task: Task) -> str:
             context = self._create_capability_context_for_capability(task, capability_id)
             result = self.plugin_manager.execute_capability(capability_id, context)
@@ -254,16 +240,13 @@ class PluginAdapter:
         return executor
 
     def find_capabilities_for_task(self, task: Task) -> list[tuple[str, float]]:
-        """Find capabilities that can handle a task, compatible with old routing."""
         context = self._create_capability_context(task)
         return self.plugin_manager.find_capabilities_for_task(context)
 
     def list_available_capabilities(self) -> list[str]:
-        """List all available capability IDs."""
         return list(self.plugin_manager.capabilities.keys())
 
     def get_capability_info(self, capability_id: str) -> dict[str, Any]:
-        """Get capability information in a format compatible with the old system."""
         capability = self.plugin_manager.get_capability(capability_id)
         if not capability:
             return {}
@@ -284,7 +267,6 @@ class PluginAdapter:
         }
 
     def get_ai_functions(self, capability_id: str):
-        """Get AI functions for a capability."""
         return self.plugin_manager.get_ai_functions(capability_id)
 
 

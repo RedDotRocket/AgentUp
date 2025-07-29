@@ -28,7 +28,6 @@ class ServiceAgentExecutor(AgentExecutor):
 
     @property
     def agent(self) -> AgentCard:
-        """Get the agent card."""
         # Import here to avoid circular imports
         from agent.api.routes import create_agent_card
 
@@ -173,7 +172,6 @@ class ServiceAgentExecutor(AgentExecutor):
             return "echo"
 
     async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
-        """Execute method required by AgentExecutor interface with A2A compliance."""
         task = context.current_task
 
         # Create task if not exists (A2A protocol requirement)
@@ -231,7 +229,6 @@ class ServiceAgentExecutor(AgentExecutor):
             )
 
     async def cancel(self, task_id: str) -> bool:
-        """Cancel method required by AgentExecutor interface."""
         self.logger.info(f"Task cancellation requested for: {task_id}")
         # Simple implementation - in practice this would track and cancel running tasks
         return True

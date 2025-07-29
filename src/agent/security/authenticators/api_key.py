@@ -13,10 +13,7 @@ from agent.security.validators import InputValidator
 
 
 class ApiKeyAuthenticator(BaseAuthenticator):
-    """API Key based authentication."""
-
     def _validate_config(self) -> None:
-        """Validate API key authenticator configuration."""
         # Get API key configuration from auth structure
         api_key_config = self.config.get("auth", {}).get("api_key")
 
@@ -124,15 +121,12 @@ class ApiKeyAuthenticator(BaseAuthenticator):
         raise InvalidCredentialsException("Unauthorized")
 
     def get_auth_type(self) -> str:
-        """Get authentication type identifier."""
         return "api_key"
 
     def get_required_headers(self) -> set[str]:
-        """Get required headers for API key authentication."""
         if self.location == "header":
             return {self.header_name}
         return set()
 
     def supports_scopes(self) -> bool:
-        """API key auth doesn't support scopes by default."""
         return False

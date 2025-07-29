@@ -1,23 +1,19 @@
-"""Tests for the service management system (src/agent/services.py)."""
-
 # Import the services to test
 import sys
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
+from agent.config import Config
 from agent.services import CacheService, ServiceError, ServiceRegistry, WebAPIService
 from agent.services import LegacyService as Service
 
 
 class TestService:
-    """Test the Service base class."""
-
     def test_service_initialization(self):
-        """Test Service initialization."""
         config = {"test": "config"}
         service = Service("test_service", config)
 
@@ -27,7 +23,6 @@ class TestService:
 
     @pytest.mark.asyncio
     async def test_service_abstract_methods(self):
-        """Test that abstract methods raise NotImplementedError."""
         service = Service("test", {})
 
         with pytest.raises(NotImplementedError):
@@ -38,7 +33,6 @@ class TestService:
 
     @pytest.mark.asyncio
     async def test_service_health_check_default(self):
-        """Test default health check implementation."""
         service = Service("test", {})
         health = await service.health_check()
 
@@ -46,10 +40,7 @@ class TestService:
 
 
 class TestCacheService:
-    """Test the CacheService implementation."""
-
     def test_cache_service_initialization(self):
-        """Test CacheService initialization."""
         config = {"url": "valkey://localhost:6379/0", "ttl": 1800}
 
         cache_service = CacheService("test_cache", config)
@@ -61,7 +52,6 @@ class TestCacheService:
         assert cache_service.is_initialized is False
 
     def test_cache_service_default_config(self):
-        """Test CacheService with default configuration."""
         config = {}
 
         cache_service = CacheService("test_cache", config)
@@ -71,7 +61,6 @@ class TestCacheService:
 
     @pytest.mark.asyncio
     async def test_cache_service_initialize(self):
-        """Test CacheService initialization."""
         config = {"url": "valkey://localhost:6379/0"}
         cache_service = CacheService("test_cache", config)
 
@@ -81,7 +70,6 @@ class TestCacheService:
 
     @pytest.mark.asyncio
     async def test_cache_service_close(self):
-        """Test CacheService close method."""
         config = {"url": "valkey://localhost:6379"}
         cache_service = CacheService("test_cache", config)
         cache_service._initialized = True
@@ -92,7 +80,6 @@ class TestCacheService:
 
     @pytest.mark.asyncio
     async def test_cache_service_health_check_healthy(self):
-        """Test CacheService health check when healthy."""
         config = {"url": "valkey://localhost:6379"}
         cache_service = CacheService("test_cache", config)
 
@@ -103,7 +90,6 @@ class TestCacheService:
 
     @pytest.mark.asyncio
     async def test_cache_service_get_method(self):
-        """Test CacheService get method."""
         config = {"url": "valkey://localhost:6379"}
         cache_service = CacheService("test_cache", config)
 
@@ -114,7 +100,6 @@ class TestCacheService:
 
     @pytest.mark.asyncio
     async def test_cache_service_set_method(self):
-        """Test CacheService set method."""
         config = {"url": "valkey://localhost:6379"}
         cache_service = CacheService("test_cache", config)
 
@@ -124,7 +109,6 @@ class TestCacheService:
 
     @pytest.mark.asyncio
     async def test_cache_service_delete_method(self):
-        """Test CacheService delete method."""
         config = {"url": "valkey://localhost:6379"}
         cache_service = CacheService("test_cache", config)
 
@@ -134,10 +118,7 @@ class TestCacheService:
 
 
 class TestWebAPIService:
-    """Test the WebAPIService implementation."""
-
     def test_web_api_service_initialization(self):
-        """Test WebAPIService initialization."""
         config = {
             "base_url": "https://api.example.com",
             "api_key": "test_key",
@@ -156,7 +137,6 @@ class TestWebAPIService:
         assert web_service.is_initialized is False
 
     def test_web_api_service_default_config(self):
-        """Test WebAPIService with default configuration."""
         config = {}
 
         web_service = WebAPIService("test_api", config)
@@ -168,7 +148,6 @@ class TestWebAPIService:
 
     @pytest.mark.asyncio
     async def test_web_api_service_initialize(self):
-        """Test WebAPIService initialization."""
         config = {"base_url": "https://api.example.com"}
         web_service = WebAPIService("test_api", config)
 
@@ -178,7 +157,6 @@ class TestWebAPIService:
 
     @pytest.mark.asyncio
     async def test_web_api_service_close(self):
-        """Test WebAPIService close method."""
         config = {"base_url": "https://api.example.com"}
         web_service = WebAPIService("test_api", config)
         web_service._initialized = True
@@ -189,7 +167,6 @@ class TestWebAPIService:
 
     @pytest.mark.asyncio
     async def test_web_api_service_health_check_healthy(self):
-        """Test WebAPIService health check when healthy."""
         config = {"base_url": "https://api.example.com"}
         web_service = WebAPIService("test_api", config)
 
@@ -200,7 +177,6 @@ class TestWebAPIService:
 
     @pytest.mark.asyncio
     async def test_web_api_service_get_method(self):
-        """Test WebAPIService get method."""
         config = {"base_url": "https://api.example.com"}
         web_service = WebAPIService("test_api", config)
 
@@ -211,7 +187,6 @@ class TestWebAPIService:
 
     @pytest.mark.asyncio
     async def test_web_api_service_post_method(self):
-        """Test WebAPIService post method."""
         config = {"base_url": "https://api.example.com"}
         web_service = WebAPIService("test_api", config)
 
@@ -222,13 +197,8 @@ class TestWebAPIService:
 
 
 class TestServiceRegistry:
-    """Test the ServiceRegistry class."""
-
     def test_service_registry_initialization_empty(self):
-        """Test ServiceRegistry initialization with empty config."""
-        with patch("agent.services.registry.load_config") as mock_load:
-            mock_load.return_value = {"project_name": "test", "services": {}}
-
+        with patch.object(Config, "ai_provider", {"project_name": "test", "services": {}}):
             registry = ServiceRegistry()
 
             assert registry.config is not None
@@ -238,10 +208,7 @@ class TestServiceRegistry:
             assert "ollama" in registry._llm_providers
 
     def test_service_registry_llm_provider_mapping(self):
-        """Test LLM provider mapping in ServiceRegistry."""
-        with patch("agent.services.registry.load_config") as mock_load:
-            mock_load.return_value = {"project_name": "test", "services": {}}
-
+        with patch.object(Config, "ai_provider", {"project_name": "test", "services": {}}):
             registry = ServiceRegistry()
 
             # Test that LLM providers are properly mapped
@@ -254,10 +221,7 @@ class TestServiceRegistry:
             assert registry._llm_providers["ollama"] == OllamaProvider
 
     def test_register_service_type(self):
-        """Test registering a custom service type."""
-        with patch("agent.services.registry.load_config") as mock_load:
-            mock_load.return_value = {"project_name": "test", "services": {}}
-
+        with patch.object(Config, "ai_provider", {"project_name": "test", "services": {}}):
             registry = ServiceRegistry()
 
             class CustomService(Service):
@@ -273,10 +237,7 @@ class TestServiceRegistry:
             assert registry._service_types["custom"] == CustomService
 
     def test_create_llm_service_openai(self):
-        """Test creating an OpenAI LLM service."""
-        with patch("agent.services.registry.load_config") as mock_load:
-            mock_load.return_value = {"project_name": "test", "services": {}}
-
+        with patch.object(Config, "ai_provider", {"project_name": "test", "services": {}}):
             registry = ServiceRegistry()
 
             config = {"provider": "openai", "api_key": "test_key", "model": "gpt-4"}
@@ -287,10 +248,7 @@ class TestServiceRegistry:
             assert service.config == config
 
     def test_create_llm_service_missing_provider(self):
-        """Test creating an LLM service without provider."""
-        with patch("agent.services.registry.load_config") as mock_load:
-            mock_load.return_value = {"project_name": "test", "services": {}}
-
+        with patch.object(Config, "ai_provider", {"project_name": "test", "services": {}}):
             registry = ServiceRegistry()
 
             config = {"api_key": "test_key"}
@@ -299,10 +257,7 @@ class TestServiceRegistry:
                 registry._create_llm_service("openai", config)
 
     def test_create_llm_service_unknown_provider(self):
-        """Test creating an LLM service with unknown provider."""
-        with patch("agent.services.registry.load_config") as mock_load:
-            mock_load.return_value = {"project_name": "test", "services": {}}
-
+        with patch.object(Config, "ai_provider", {"project_name": "test", "services": {}}):
             registry = ServiceRegistry()
 
             config = {"provider": "unknown", "api_key": "test_key"}
@@ -311,7 +266,6 @@ class TestServiceRegistry:
                 registry._create_llm_service("unknown", config)
 
     def test_initialize_all_services(self):
-        """Test initializing all services from config."""
         config_data = {
             "project_name": "test",
             "services": {
@@ -319,9 +273,12 @@ class TestServiceRegistry:
             },
         }
 
-        with patch("agent.services.registry.load_config") as mock_load:
-            mock_load.return_value = config_data
+        mock_config = Mock()
+        mock_config.model_dump.return_value = config_data
+        mock_config.project_name = "test-registry"
+        mock_config.services = {"valkey": Mock(type="cache", settings={"url": "valkey://localhost:6379"})}
 
+        with patch("agent.services.registry.Config", mock_config):
             registry = ServiceRegistry()
 
             # Initialize non-LLM services (which should work)
@@ -334,21 +291,23 @@ class TestServiceRegistry:
 
 
 class TestServiceRegistryIntegration:
-    """Test ServiceRegistry integration scenarios."""
-
     def test_full_service_registry_flow_with_mocks(self):
-        """Test complete service registry flow with mocked services."""
         config_data = {
             "project_name": "integration-test",
+            "description": "Integration test agent",
+            "version": "1.0.0",
             "services": {
                 "valkey": {"type": "cache", "settings": {"url": "valkey://localhost:6379"}},
                 "custom_api": {"type": "web_api", "settings": {"base_url": "https://api.example.com"}},
             },
         }
 
-        with patch("agent.services.registry.load_config") as mock_load:
-            mock_load.return_value = config_data
+        mock_config = Mock()
+        mock_config.model_dump.return_value = config_data
+        mock_config.project_name = "integration-test"
+        mock_config.services = config_data["services"]
 
+        with patch("agent.services.registry.Config", mock_config):
             registry = ServiceRegistry()
 
             # Initialize all services
@@ -364,10 +323,7 @@ class TestServiceRegistryIntegration:
             assert isinstance(registry._services["custom_api"], WebAPIService)
 
     def test_llm_service_creation_separately(self):
-        """Test LLM service creation using _create_llm_service method."""
-        with patch("agent.services.registry.load_config") as mock_load:
-            mock_load.return_value = {"project_name": "test", "services": {}}
-
+        with patch.object(Config, "ai_provider", {"project_name": "test", "services": {}}):
             registry = ServiceRegistry()
 
             config = {"provider": "openai", "api_key": "test_key", "model": "gpt-4"}

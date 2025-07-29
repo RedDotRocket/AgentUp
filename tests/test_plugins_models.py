@@ -23,10 +23,7 @@ from src.agent.plugins.models import (
 
 
 class TestPluginStatus:
-    """Test PluginStatus enum."""
-
     def test_plugin_status_values(self):
-        """Test plugin status enum values."""
         assert PluginStatus.LOADED == "loaded"
         assert PluginStatus.ENABLED == "enabled"
         assert PluginStatus.DISABLED == "disabled"
@@ -34,10 +31,7 @@ class TestPluginStatus:
 
 
 class TestCapabilityType:
-    """Test CapabilityType enum."""
-
     def test_capability_type_values(self):
-        """Test capability type enum values."""
         assert CapabilityType.TEXT == "text"
         assert CapabilityType.MULTIMODAL == "multimodal"
         assert CapabilityType.AI_FUNCTION == "ai_function"
@@ -46,10 +40,7 @@ class TestCapabilityType:
 
 
 class TestPluginInfo:
-    """Test PluginInfo model."""
-
     def test_plugin_info_creation(self):
-        """Test basic plugin info creation."""
         plugin = PluginInfo(name="test-plugin", version="1.0.0", author="Test Author", description="A test plugin")
 
         assert plugin.name == "test-plugin"
@@ -60,7 +51,6 @@ class TestPluginInfo:
         assert plugin.error is None
 
     def test_plugin_name_validation(self):
-        """Test plugin name validation."""
         # Valid names
         valid_names = ["test-plugin", "my_plugin", "plugin123", "simple"]
         for name in valid_names:
@@ -74,7 +64,6 @@ class TestPluginInfo:
                 PluginInfo(name=name, version="1.0.0")
 
     def test_version_validation(self):
-        """Test version validation."""
         # Valid versions
         valid_versions = ["1.0.0", "2.1.3", "1.0.0-alpha", "1.0.0-beta.1", "1.0.0+build.123"]
         for version in valid_versions:
@@ -88,7 +77,6 @@ class TestPluginInfo:
                 PluginInfo(name="test-plugin", version=version)
 
     def test_plugin_status_consistency(self):
-        """Test plugin status consistency validation."""
         # ERROR status without error message should fail
         with pytest.raises(ValidationError) as exc_info:
             PluginInfo(name="test-plugin", version="1.0.0", status=PluginStatus.ERROR)
@@ -106,10 +94,7 @@ class TestPluginInfo:
 
 
 class TestCapabilityInfo:
-    """Test CapabilityInfo model."""
-
     def test_capability_info_creation(self):
-        """Test basic capability info creation."""
         capability = CapabilityInfo(
             id="text_processor",
             name="Text Processor",
@@ -126,7 +111,6 @@ class TestCapabilityInfo:
         assert capability.priority == 50
 
     def test_capability_id_validation(self):
-        """Test capability ID validation."""
         # Valid IDs
         valid_ids = ["text_processor", "AI-Function", "simple123", "MyCapability"]
         for cap_id in valid_ids:
@@ -140,7 +124,6 @@ class TestCapabilityInfo:
                 CapabilityInfo(id=cap_id, name="Test Capability", version="1.0.0")
 
     def test_version_validation(self):
-        """Test version validation."""
         # Valid versions
         valid_versions = ["1.0.0", "2.1.3", "1.0.0-alpha"]
         for version in valid_versions:
@@ -154,7 +137,6 @@ class TestCapabilityInfo:
                 CapabilityInfo(id="test_capability", name="Test Capability", version=version)
 
     def test_mode_validation(self):
-        """Test input/output mode validation."""
         # Valid modes
         valid_modes = ["text", "json", "binary", "stream", "multimodal"]
         for mode in valid_modes:
@@ -169,7 +151,6 @@ class TestCapabilityInfo:
             CapabilityInfo(id="test_capability", name="Test Capability", version="1.0.0", input_mode="invalid_mode")
 
     def test_priority_validation(self):
-        """Test priority range validation."""
         # Valid priority
         capability = CapabilityInfo(id="test_capability", name="Test Capability", version="1.0.0", priority=75)
         assert capability.priority == 75
@@ -183,7 +164,6 @@ class TestCapabilityInfo:
             CapabilityInfo(id="test_capability", name="Test Capability", version="1.0.0", priority=150)
 
     def test_tags_validation(self):
-        """Test tags validation."""
         # Valid tags
         valid_tags = ["nlp", "text-processing", "ai_function"]
         capability = CapabilityInfo(id="test_capability", name="Test Capability", version="1.0.0", tags=valid_tags)
@@ -196,11 +176,7 @@ class TestCapabilityInfo:
 
 
 class TestAIFunction:
-    """Test AIFunction model."""
-
     def test_ai_function_creation(self):
-        """Test basic AI function creation."""
-
         def dummy_handler(task, context):
             return {"result": "test"}
 
@@ -221,8 +197,6 @@ class TestAIFunction:
         assert callable(function.handler)
 
     def test_function_name_validation(self):
-        """Test function name validation."""
-
         def dummy_handler(task, context):
             return {}
 
@@ -258,8 +232,6 @@ class TestAIFunction:
             assert f"Function name '{name}' is reserved" in str(exc_info.value)
 
     def test_description_validation(self):
-        """Test description length validation."""
-
         def dummy_handler(task, context):
             return {}
 
@@ -282,8 +254,6 @@ class TestAIFunction:
             )
 
     def test_parameters_schema_validation(self):
-        """Test parameters schema validation."""
-
         def dummy_handler(task, context):
             return {}
 
@@ -308,10 +278,7 @@ class TestAIFunction:
 
 
 class TestCapabilityContext:
-    """Test CapabilityContext model."""
-
     def test_capability_context_creation(self):
-        """Test basic capability context creation."""
         task = Task(id="test-task", context_id="test-context", status=TaskStatus(state=TaskState.submitted))
 
         context = CapabilityContext(task=task, config={"setting": "value"}, state={"current": "state"})
@@ -324,10 +291,7 @@ class TestCapabilityContext:
 
 
 class TestCapabilityResult:
-    """Test CapabilityResult model."""
-
     def test_capability_result_creation(self):
-        """Test basic capability result creation."""
         result = CapabilityResult(content="Operation completed successfully", success=True, metadata={"duration": 0.5})
 
         assert result.content == "Operation completed successfully"
@@ -336,7 +300,6 @@ class TestCapabilityResult:
         assert result.metadata["duration"] == 0.5
 
     def test_result_consistency_validation(self):
-        """Test result consistency validation."""
         # Failed result without error message should fail
         with pytest.raises(ValidationError) as exc_info:
             CapabilityResult(content="Failed result", success=False)
@@ -352,10 +315,7 @@ class TestCapabilityResult:
 
 
 class TestPluginValidationResult:
-    """Test PluginValidationResult model."""
-
     def test_validation_result_creation(self):
-        """Test basic validation result creation."""
         result = PluginValidationResult(valid=True, warnings=["Minor issue"], suggestions=["Consider improvement"])
 
         assert result.valid is True
@@ -364,7 +324,6 @@ class TestPluginValidationResult:
         assert len(result.suggestions) == 1
 
     def test_validation_result_properties(self):
-        """Test validation result properties."""
         result = PluginValidationResult(valid=False, errors=["Critical error"], warnings=["Warning message"])
 
         assert result.has_errors is True
@@ -379,10 +338,7 @@ class TestPluginValidationResult:
 
 
 class TestValidators:
-    """Test plugin validators."""
-
     def test_plugin_info_validator(self):
-        """Test plugin info validator."""
         validator = PluginInfoValidator(PluginInfo)
 
         # Test suspicious name warning
@@ -412,7 +368,6 @@ class TestValidators:
         assert "very long" in result.warnings[0]
 
     def test_capability_info_validator(self):
-        """Test capability info validator."""
         validator = CapabilityInfoValidator(CapabilityInfo)
 
         # Test missing description suggestion for AI functions
@@ -456,7 +411,6 @@ class TestValidators:
         assert "more descriptive tag" in result.suggestions[0]
 
     def test_ai_function_validator(self):
-        """Test AI function validator."""
         validator = AIFunctionValidator(AIFunction)
 
         def dummy_handler(task, context):
@@ -501,7 +455,6 @@ class TestValidators:
         assert "usage examples" in result.suggestions[0]
 
     def test_composite_plugin_validator(self):
-        """Test composite plugin validator."""
         composite_validator = create_plugin_validator()
 
         # Test with valid plugin
@@ -518,10 +471,7 @@ class TestValidators:
 
 
 class TestModelSerialization:
-    """Test Pydantic v2 serialization methods."""
-
     def test_plugin_info_serialization(self):
-        """Test plugin info serialization."""
         plugin = PluginInfo(name="test-plugin", version="1.0.0", author="Test Author", status=PluginStatus.ENABLED)
 
         # Test model_dump
@@ -544,7 +494,6 @@ class TestModelSerialization:
         assert plugin == plugin3
 
     def test_capability_info_serialization(self):
-        """Test capability info serialization."""
         capability = CapabilityInfo(
             id="text_processor",
             name="Text Processor",
@@ -568,8 +517,6 @@ class TestModelSerialization:
         assert capability.priority == capability2.priority
 
     def test_ai_function_serialization(self):
-        """Test AI function serialization (with arbitrary types)."""
-
         def dummy_handler(task, context):
             return {"result": "test"}
 

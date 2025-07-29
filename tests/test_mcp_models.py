@@ -29,10 +29,7 @@ from src.agent.mcp_support.model import (
 
 
 class TestMCPResource:
-    """Test MCPResource model."""
-
     def test_valid_resource_creation(self):
-        """Test creating a valid MCP resource."""
         resource = MCPResource(
             name="test-resource",
             uri="agent://test",
@@ -50,7 +47,6 @@ class TestMCPResource:
         assert resource.size_bytes == len(b"Hello, world!")
 
     def test_binary_resource_creation(self):
-        """Test creating a binary MCP resource."""
         blob_data = b"binary data"
         resource = MCPResource(
             name="binary-resource",
@@ -65,7 +61,6 @@ class TestMCPResource:
         assert resource.is_binary is True
 
     def test_resource_uri_validation(self):
-        """Test resource URI validation."""
         # Valid URIs
         valid_uris = [
             "file:///test.txt",
@@ -85,7 +80,6 @@ class TestMCPResource:
         assert "URI must use supported scheme" in str(exc_info.value)
 
     def test_mime_type_validation(self):
-        """Test MIME type validation."""
         # Valid MIME type
         resource = MCPResource(name="test", uri="agent://test", mime_type="application/json", text="test")
         assert resource.mime_type == "application/json"
@@ -96,7 +90,6 @@ class TestMCPResource:
         assert "MIME type must be in format 'type/subtype'" in str(exc_info.value)
 
     def test_text_resource_validation(self):
-        """Test text resource content validation."""
         # Text resource without text content should fail
         with pytest.raises(ValidationError) as exc_info:
             MCPResource(
@@ -107,7 +100,6 @@ class TestMCPResource:
         assert "Text resources must have text content" in str(exc_info.value)
 
     def test_binary_resource_validation(self):
-        """Test binary resource content validation."""
         # Binary resource without blob data should fail
         with pytest.raises(ValidationError) as exc_info:
             MCPResource(
@@ -118,7 +110,6 @@ class TestMCPResource:
         assert "Binary resources must have blob data" in str(exc_info.value)
 
     def test_human_readable_size(self):
-        """Test human readable size calculation."""
         resource = MCPResource(name="test", uri="agent://test", text="a" * 1024, size_bytes=1024)
         assert "1.0 KB" in resource.human_readable_size
 
@@ -126,7 +117,6 @@ class TestMCPResource:
         assert "1.0 MB" in large_resource.human_readable_size
 
     def test_resource_serialization(self):
-        """Test resource serialization."""
         resource = MCPResource(
             name="test-resource",
             uri="agent://test",
@@ -147,10 +137,7 @@ class TestMCPResource:
 
 
 class TestMCPTool:
-    """Test MCPTool model."""
-
     def test_valid_tool_creation(self):
-        """Test creating a valid MCP tool."""
         tool = MCPTool(
             name="test_function",
             description="A test function for MCP",
@@ -166,7 +153,6 @@ class TestMCPTool:
         assert tool.security_level == "low"
 
     def test_tool_name_validation(self):
-        """Test tool name validation."""
         # Valid names
         valid_names = ["test_function", "my-tool", "getData", "_private"]
         for name in valid_names:
@@ -180,7 +166,6 @@ class TestMCPTool:
                 MCPTool(name=name, description="Test tool")
 
     def test_schema_validation(self):
-        """Test input/output schema validation."""
         # Valid schema
         tool = MCPTool(
             name="test_tool",
@@ -199,7 +184,6 @@ class TestMCPTool:
         assert "Schema must have 'type' property" in str(exc_info.value)
 
     def test_version_validation(self):
-        """Test semantic version validation."""
         # Valid versions
         valid_versions = ["1.0.0", "2.1.3", "1.0.0-alpha", "1.0.0+build"]
         for version in valid_versions:
@@ -211,7 +195,6 @@ class TestMCPTool:
             MCPTool(name="test", description="Test", version="1.0")
 
     def test_security_level_calculation(self):
-        """Test security level calculation."""
         # Public tool (no scopes)
         tool = MCPTool(name="public", description="Public tool")
         assert tool.security_level == "public"
@@ -237,7 +220,6 @@ class TestMCPTool:
         assert tool.security_level == "high"
 
     def test_tool_serialization(self):
-        """Test tool serialization."""
         tool = MCPTool(
             name="test_function",
             description="A test function",
@@ -257,10 +239,7 @@ class TestMCPTool:
 
 
 class TestMCPMessage:
-    """Test MCPMessage model."""
-
     def test_request_message_creation(self):
-        """Test creating a request message."""
         message = MCPMessage(
             id="req-123",
             message_type=MCPMessageType.REQUEST,
@@ -275,7 +254,6 @@ class TestMCPMessage:
         assert message.is_response is False
 
     def test_response_message_creation(self):
-        """Test creating a response message."""
         message = MCPMessage(
             id="resp-123",
             message_type=MCPMessageType.RESPONSE,
@@ -288,7 +266,6 @@ class TestMCPMessage:
         assert message.is_response is True
 
     def test_error_message_creation(self):
-        """Test creating an error message."""
         message = MCPMessage(
             id="err-123",
             message_type=MCPMessageType.ERROR,
@@ -300,7 +277,6 @@ class TestMCPMessage:
         assert message.error["code"] == -32602
 
     def test_jsonrpc_version_validation(self):
-        """Test JSON-RPC version validation."""
         # Valid version
         message = MCPMessage(id="test", message_type=MCPMessageType.REQUEST, method="test", jsonrpc="2.0")
         assert message.jsonrpc == "2.0"
@@ -311,7 +287,6 @@ class TestMCPMessage:
         assert "Only JSON-RPC 2.0 is supported" in str(exc_info.value)
 
     def test_request_message_validation(self):
-        """Test request message validation."""
         # Request without method should fail
         with pytest.raises(ValidationError) as exc_info:
             MCPMessage(id="test", message_type=MCPMessageType.REQUEST)
@@ -328,7 +303,6 @@ class TestMCPMessage:
         assert "Request messages cannot have result or error" in str(exc_info.value)
 
     def test_response_message_validation(self):
-        """Test response message validation."""
         # Response with method should fail
         with pytest.raises(ValidationError) as exc_info:
             MCPMessage(
@@ -346,10 +320,7 @@ class TestMCPMessage:
 
 
 class TestMCPSession:
-    """Test MCPSession model."""
-
     def test_valid_session_creation(self):
-        """Test creating a valid MCP session."""
         session = MCPSession(
             session_id="session-123",
             server_name="test-server",
@@ -364,7 +335,6 @@ class TestMCPSession:
         assert session.is_healthy is True
 
     def test_session_id_validation(self):
-        """Test session ID validation."""
         # Valid session IDs
         valid_ids = ["session-123", "test_session", "session123", "a-b-c"]
         for session_id in valid_ids:
@@ -376,7 +346,6 @@ class TestMCPSession:
             MCPSession(session_id="invalid session!", server_name="test")
 
     def test_session_state_validation(self):
-        """Test session state consistency validation."""
         # Error state without error message should fail
         with pytest.raises(ValidationError) as exc_info:
             MCPSession(
@@ -396,7 +365,6 @@ class TestMCPSession:
         assert session.error_message == "Connection failed"
 
     def test_session_timeout_check(self):
-        """Test session timeout health check."""
         # Recent session should be healthy
         session = MCPSession(
             session_id="test",
@@ -416,7 +384,6 @@ class TestMCPSession:
         assert session.is_healthy is False
 
     def test_session_activity_update(self):
-        """Test session activity update."""
         session = MCPSession(session_id="test", server_name="test")
         old_activity = session.last_activity
 
@@ -429,7 +396,6 @@ class TestMCPSession:
         assert session.last_activity > old_activity
 
     def test_session_tool_and_resource_counts(self):
-        """Test session tool and resource count properties."""
         from src.agent.mcp_support.model import MCPResource, MCPTool
 
         tools = [
@@ -452,10 +418,7 @@ class TestMCPSession:
 
 
 class TestMCPCapability:
-    """Test MCPCapability model."""
-
     def test_valid_capability_creation(self):
-        """Test creating a valid MCP capability."""
         capability = MCPCapability(
             name="tools",
             version="1.0.0",
@@ -471,7 +434,6 @@ class TestMCPCapability:
         assert capability.notification_count == 1
 
     def test_capability_name_validation(self):
-        """Test capability name validation."""
         # Valid names
         valid_names = ["tools", "resources", "file-system", "test_capability"]
         for name in valid_names:
@@ -483,7 +445,6 @@ class TestMCPCapability:
             MCPCapability(name="123invalid")
 
     def test_version_validation(self):
-        """Test version validation."""
         # Valid versions
         capability = MCPCapability(
             name="test",
@@ -498,7 +459,6 @@ class TestMCPCapability:
             MCPCapability(name="test", version="invalid")
 
     def test_stability_check(self):
-        """Test capability stability checks."""
         # Stable capability
         stable = MCPCapability(name="stable")
         assert stable.is_stable is True
@@ -513,10 +473,7 @@ class TestMCPCapability:
 
 
 class TestMCPValidators:
-    """Test MCP model validators."""
-
     def test_mcp_resource_validator(self):
-        """Test MCP resource validator."""
         validator = MCPResourceValidator(MCPResource)
 
         # Large resource should generate warning
@@ -540,7 +497,6 @@ class TestMCPValidators:
         assert any("security implications" in s for s in result.suggestions)
 
     def test_mcp_tool_validator(self):
-        """Test MCP tool validator."""
         validator = MCPToolValidator(MCPTool)
 
         # Dangerous tool name should generate warning
@@ -561,7 +517,6 @@ class TestMCPValidators:
         assert any("permission scopes" in s for s in result.suggestions)
 
     def test_mcp_session_validator(self):
-        """Test MCP session validator."""
         validator = MCPSessionValidator(MCPSession)
 
         # Stale session should generate warning
@@ -585,7 +540,6 @@ class TestMCPValidators:
         assert any("capabilities" in w for w in result.warnings)
 
     def test_mcp_capability_validator(self):
-        """Test MCP capability validator."""
         validator = MCPCapabilityValidator(MCPCapability)
 
         # Experimental capability without description should generate suggestion
@@ -602,7 +556,6 @@ class TestMCPValidators:
         assert any("methods or notifications" in w for w in result.warnings)
 
     def test_composite_mcp_validator(self):
-        """Test composite MCP validator."""
         validator = create_mcp_validator()
 
         # Test with valid resource
@@ -616,10 +569,7 @@ class TestMCPValidators:
 
 
 class TestMCPModelSerialization:
-    """Test MCP model serialization and deserialization."""
-
     def test_mcp_resource_json_round_trip(self):
-        """Test MCP resource JSON serialization round trip."""
         resource = MCPResource(
             name="test-resource",
             uri="agent://test",
@@ -641,7 +591,6 @@ class TestMCPModelSerialization:
         assert resource2.metadata == resource.metadata
 
     def test_mcp_tool_json_round_trip(self):
-        """Test MCP tool JSON serialization round trip."""
         tool = MCPTool(
             name="test_tool",
             description="A comprehensive test tool",
@@ -665,7 +614,6 @@ class TestMCPModelSerialization:
         assert tool2.required_scopes == tool.required_scopes
 
     def test_mcp_session_json_round_trip(self):
-        """Test MCP session JSON serialization round trip."""
         session = MCPSession(
             session_id="test-session",
             server_name="test-server",

@@ -69,7 +69,7 @@ from .manager import SecurityManager
 _security_manager: SecurityManager = None
 
 
-def create_security_manager(config: dict[str, Any]) -> SecurityManager:
+def create_security_manager(config: dict[str, Any] = None) -> SecurityManager:
     """Create and configure a SecurityManager instance.
 
     This function should be called during application startup to initialize
@@ -86,14 +86,14 @@ def create_security_manager(config: dict[str, Any]) -> SecurityManager:
 
     Example:
         # In main.py or application startup
-        from .config import load_config
+        from .config import Config
         from .security import create_security_manager, set_global_security_manager
 
-        config = load_config()
+        config = Config.model_dump()
         security_manager = create_security_manager(config)
         set_global_security_manager(security_manager)
     """
-    return SecurityManager(config)
+    return SecurityManager()
 
 
 def set_global_security_manager(security_manager: SecurityManager) -> None:
@@ -139,7 +139,7 @@ def is_security_enabled() -> bool:
 
 
 # Convenience functions for common security operations
-def validate_security_config(config: dict[str, Any]) -> bool:
+def validate_security_config() -> bool:
     """Validate security configuration without creating a manager.
 
     Args:
@@ -153,8 +153,8 @@ def validate_security_config(config: dict[str, Any]) -> bool:
     """
     from .validators import SecurityConfigValidator
 
-    security_config = config.get("security", {})
-    SecurityConfigValidator.validate_security_config(security_config)
+    SecurityConfigValidator().validate_security_config()
+
     return True
 
 

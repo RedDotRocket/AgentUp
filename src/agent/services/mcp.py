@@ -13,14 +13,12 @@ class MCPService(Service):
     """
 
     def __init__(self, config_manager: ConfigurationManager, capability_registry: CapabilityRegistry):
-        """Initialize the MCP service."""
         super().__init__(config_manager)
         self.capabilities = capability_registry
         self._mcp_client = None
         self._mcp_server = None
 
     async def initialize(self) -> None:
-        """Initialize MCP integration."""
         self.logger.info("Initializing MCP service")
 
         mcp_config = self.config.get("mcp", {})
@@ -43,7 +41,6 @@ class MCPService(Service):
             raise
 
     async def shutdown(self) -> None:
-        """Cleanup MCP resources."""
         self.logger.debug("Shutting down MCP service")
 
         try:

@@ -46,7 +46,6 @@ class OllamaProvider(BaseLLMService):
             raise LLMProviderError(f"Failed to initialize Ollama service: {e}") from e
 
     async def _ensure_model_available(self):
-        """Ensure the model is available, pull if necessary."""
         try:
             # Check if model exists
             response = await self.client.get("/api/tags")
@@ -64,7 +63,6 @@ class OllamaProvider(BaseLLMService):
             raise LLMProviderAPIError(f"Failed to connect to Ollama: {e}") from e
 
     async def _pull_model(self):
-        """Pull model from Ollama registry."""
         payload = {"name": self.model}
 
         try:
@@ -78,13 +76,11 @@ class OllamaProvider(BaseLLMService):
             raise LLMProviderAPIError(f"Failed to pull model {self.model}: {e}") from e
 
     async def close(self) -> None:
-        """Close the Ollama service."""
         if self.client:
             await self.client.aclose()
         self._initialized = False
 
     async def health_check(self) -> dict[str, Any]:
-        """Check Ollama service health."""
         try:
             # Test with a simple generation
             response = await self.client.post(
@@ -101,7 +97,6 @@ class OllamaProvider(BaseLLMService):
             return {"status": "unhealthy", "error": str(e), "model": self.model}
 
     async def complete(self, prompt: str, **kwargs) -> LLMResponse:
-        """Generate completion from prompt."""
         if not self._initialized:
             await self.initialize()
 
@@ -138,12 +133,10 @@ class OllamaProvider(BaseLLMService):
             raise LLMProviderAPIError(f"Invalid Ollama API response format: {e}") from e
 
     def _is_vision_model(self) -> bool:
-        """Check if the current model supports vision."""
         vision_models = ["llava", "bakllava", "llava-llama3", "llava-phi3", "llava-code"]
         return any(vision_model in self.model.lower() for vision_model in vision_models)
 
     def _flatten_content_for_ollama(self, content: str | list[dict[str, Any]]) -> str | list[dict[str, Any]]:
-        """Handle multi-modal content for Ollama, preserving structure for vision models."""
         if isinstance(content, str):
             return content
 
@@ -175,7 +168,6 @@ class OllamaProvider(BaseLLMService):
         return str(content)
 
     async def chat_complete(self, messages: list[ChatMessage], **kwargs) -> LLMResponse:
-        """Generate chat completion from messages."""
         if not self._initialized:
             await self.initialize()
 
@@ -244,8 +236,6 @@ class OllamaProvider(BaseLLMService):
             raise LLMProviderAPIError(f"Invalid Ollama chat API response format: {e}") from e
 
     async def stream_chat_complete(self, messages: list[ChatMessage], **kwargs):
-        """Stream chat completion."""
-
         if not self._initialized:
             await self.initialize()
 
@@ -315,7 +305,6 @@ class OllamaProvider(BaseLLMService):
             raise LLMProviderAPIError(f"Ollama streaming API request failed: {e}") from e
 
     async def get_available_models(self) -> list[dict[str, Any]]:
-        """Get list of available models."""
         if not self._initialized:
             await self.initialize()
 
@@ -331,7 +320,6 @@ class OllamaProvider(BaseLLMService):
             raise LLMProviderAPIError(f"Failed to get available models: {e}") from e
 
     def get_model_info(self) -> dict[str, Any]:
-        """Get information about the current model."""
         info = super().get_model_info()
         info.update({"base_url": self.base_url, "local_inference": True, "supports_pull": True})
         return info

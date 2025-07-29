@@ -9,8 +9,6 @@ logger = structlog.get_logger(__name__)
 
 @dataclass
 class ScopeCheckResult:
-    """Result of a scope validation check."""
-
     has_access: bool
     expanded_scopes: frozenset[str] = field(default_factory=frozenset)
     missing_scopes: list[str] = field(default_factory=list)
@@ -18,34 +16,26 @@ class ScopeCheckResult:
 
 
 class ScopeCache:
-    """Request-scoped cache for expanded user scopes."""
-
     def __init__(self):
         self._expanded_scopes_cache: dict[frozenset[str], frozenset[str]] = {}
         self._validation_cache: dict[tuple[frozenset[str], str], bool] = {}
 
     def get_expanded_scopes(self, user_scopes: frozenset[str]) -> frozenset[str] | None:
-        """Get cached expanded scopes for user."""
         return self._expanded_scopes_cache.get(user_scopes)
 
     def set_expanded_scopes(self, user_scopes: frozenset[str], expanded: frozenset[str]) -> None:
-        """Cache expanded scopes for user."""
         self._expanded_scopes_cache[user_scopes] = expanded
 
     def get_validation_result(self, expanded_scopes: frozenset[str], required_scope: str) -> bool | None:
-        """Get cached validation result."""
         cache_key = (expanded_scopes, required_scope)
         return self._validation_cache.get(cache_key)
 
     def set_validation_result(self, expanded_scopes: frozenset[str], required_scope: str, result: bool) -> None:
-        """Cache validation result."""
         cache_key = (expanded_scopes, required_scope)
         self._validation_cache[cache_key] = result
 
 
 class OptimizedScopeHierarchy:
-    """Optimized scope hierarchy with pre-computed transitive closures."""
-
     def __init__(self, hierarchy: dict[str, list[str]]):
         self._hierarchy = hierarchy.copy()
         self._transitive_closures: dict[str, frozenset[str]] = {}
@@ -53,7 +43,6 @@ class OptimizedScopeHierarchy:
         self._precompute_closures()
 
     def _precompute_closures(self) -> None:
-        """Pre-compute transitive closure for all scopes."""
         logger.debug(f"Pre-computing scope closures for {len(self._hierarchy)} scopes")
 
         # Find wildcard scopes first
@@ -72,7 +61,6 @@ class OptimizedScopeHierarchy:
         logger.info(f"Pre-computed {len(self._transitive_closures)} scope closures")
 
     def _compute_closure(self, scope: str) -> frozenset[str]:
-        """Compute transitive closure for a single scope."""
         if scope in self._transitive_closures:
             return self._transitive_closures[scope]
 
@@ -97,7 +85,6 @@ class OptimizedScopeHierarchy:
         return frozenset(closure)
 
     def expand_scopes_fast(self, user_scopes: frozenset[str]) -> frozenset[str]:
-        """Fast scope expansion using pre-computed closures."""
         if not user_scopes:
             return frozenset()
 
@@ -120,12 +107,10 @@ class OptimizedScopeHierarchy:
         return frozenset(expanded)
 
     def validate_scope_fast(self, expanded_scopes: frozenset[str], required_scope: str) -> bool:
-        """Fast scope validation using expanded scopes."""
         return "*" in expanded_scopes or required_scope in expanded_scopes
 
     @property
     def hierarchy(self) -> dict[str, list[str]]:
-        """Get the original hierarchy for compatibility."""
         return self._hierarchy.copy()
 
 
@@ -134,8 +119,6 @@ _request_scope_cache: ContextVar[ScopeCache | None] = ContextVar("request_scope_
 
 
 class ScopeService:
-    """Centralized, high-performance scope validation service."""
-
     def __init__(self, hierarchy_config: dict[str, list[str]] | None = None):
         self._hierarchy: OptimizedScopeHierarchy | None = None
         if hierarchy_config:
@@ -144,24 +127,20 @@ class ScopeService:
         self._cache_enabled = True
 
     def initialize_hierarchy(self, hierarchy_config: dict[str, list[str]]) -> None:
-        """Initialize or update the scope hierarchy."""
         logger.info(f"Initializing scope hierarchy with {len(hierarchy_config)} entries")
         self._hierarchy = OptimizedScopeHierarchy(hierarchy_config)
         logger.info("Scope hierarchy initialized successfully")
 
     def start_request_cache(self) -> ScopeCache:
-        """Start a new request-scoped cache."""
         cache = ScopeCache()
         _request_scope_cache.set(cache)
         logger.debug("Started request-scoped scope cache")
         return cache
 
     def clear_request_cache(self) -> None:
-        """Clear request cache."""
         _request_scope_cache.set(None)
 
     def expand_user_scopes(self, user_scopes: list[str] | set[str]) -> frozenset[str]:
-        """Expand user scopes using hierarchy with caching."""
         if not self._hierarchy:
             logger.warning("No scope hierarchy available - returning original scopes")
             return frozenset(user_scopes)
@@ -194,7 +173,6 @@ class ScopeService:
         return expanded
 
     def validate_scope_access(self, user_scopes: list[str] | set[str], required_scope: str) -> ScopeCheckResult:
-        """Validate if user has required scope access."""
         if not self._hierarchy:
             logger.error("No scope hierarchy available for validation")
             return ScopeCheckResult(has_access=False, missing_scopes=[required_scope])
@@ -234,7 +212,6 @@ class ScopeService:
     def validate_multiple_scopes(
         self, user_scopes: list[str] | set[str], required_scopes: list[str]
     ) -> ScopeCheckResult:
-        """Validate if user has all required scopes."""
         if not required_scopes:
             return ScopeCheckResult(has_access=True)
 
@@ -261,7 +238,6 @@ class ScopeService:
         )
 
     def get_hierarchy_summary(self) -> dict[str, Any]:
-        """Get hierarchy summary for debugging (safe for logging)."""
         if not self._hierarchy:
             return {"error": "No hierarchy available"}
 
@@ -276,7 +252,6 @@ _scope_service: ScopeService | None = None
 
 
 def get_scope_service() -> ScopeService:
-    """Get the global scope service instance."""
     global _scope_service
     if _scope_service is None:
         _scope_service = ScopeService()

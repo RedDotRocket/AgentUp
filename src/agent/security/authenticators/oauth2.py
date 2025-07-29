@@ -18,10 +18,7 @@ logger = structlog.get_logger(__name__)
 
 
 class OAuth2Authenticator(BaseAuthenticator):
-    """OAuth2 based authentication using Authlib."""
-
     def _validate_config(self) -> None:
-        """Validate OAuth2 authenticator configuration."""
         # Get OAuth2 configuration from auth structure
         oauth2_config = self.config.get("auth", {}).get("oauth2", {})
 
@@ -295,13 +292,10 @@ class OAuth2Authenticator(BaseAuthenticator):
             raise InvalidCredentialsException("Unauthorized") from e
 
     def get_auth_type(self) -> str:
-        """Get authentication type identifier."""
         return "oauth2"
 
     def get_required_headers(self) -> set[str]:
-        """Get required headers for OAuth2 authentication."""
         return {"Authorization"}
 
     def supports_scopes(self) -> bool:
-        """OAuth2 supports scopes."""
         return True

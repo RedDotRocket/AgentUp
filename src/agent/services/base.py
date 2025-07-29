@@ -53,7 +53,6 @@ class Service(ABC):
 
     @property
     def initialized(self) -> bool:
-        """Check if the service has been initialized."""
         return self._initialized
 
     def get_config(self, key: str, default: Any = None) -> Any:

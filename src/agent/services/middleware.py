@@ -15,13 +15,11 @@ class MiddlewareManager(Service):
     """
 
     def __init__(self, config_manager: ConfigurationManager):
-        """Initialize the middleware manager."""
         super().__init__(config_manager)
         self._global_config: list[dict[str, Any]] = []
         self._middleware_factories: dict[str, Callable] = {}
 
     async def initialize(self) -> None:
-        """Initialize the middleware manager."""
         self.logger.info("Initializing middleware manager")
 
         # Load global middleware configuration
@@ -34,7 +32,6 @@ class MiddlewareManager(Service):
         self.logger.info(f"Middleware manager initialized with {len(self._global_config)} global middleware")
 
     def _register_middleware_factories(self) -> None:
-        """Register all available middleware factories."""
         try:
             from agent.middleware import cached, rate_limited, retryable, timed
             from agent.middleware.model import CacheConfig, RateLimitConfig, RetryConfig
@@ -51,7 +48,6 @@ class MiddlewareManager(Service):
             self.logger.warning(f"Some middleware types not available: {e}")
 
     def get_global_config(self) -> list[dict[str, Any]]:
-        """Get global middleware configuration."""
         return self._global_config.copy()
 
     def get_middleware_for_plugin(self, plugin_id: str) -> list[dict[str, Any]]:

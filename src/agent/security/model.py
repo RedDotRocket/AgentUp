@@ -35,8 +35,6 @@ from agent.types import (
 
 
 class AuthType(str, Enum):
-    """Supported authentication types."""
-
     API_KEY = "api_key"
     BEARER = "bearer"
     JWT = "jwt"
@@ -44,8 +42,6 @@ class AuthType(str, Enum):
 
 
 class Scope(BaseModel):
-    """Security scope definition with hierarchy support."""
-
     name: ScopeName = Field(..., description="Scope name")
     description: str | None = Field(None, description="Scope description")
     parent: ScopeName | None = Field(None, description="Parent scope name")
@@ -53,7 +49,6 @@ class Scope(BaseModel):
     @field_validator("name")
     @classmethod
     def validate_scope_format(cls, v: str) -> str:
-        """Ensure scope follows naming convention."""
         import re
 
         # Scopes should be lowercase with colons for hierarchy
@@ -63,15 +58,12 @@ class Scope(BaseModel):
         return v
 
     def is_subscope_of(self, parent: Scope) -> bool:
-        """Check if this scope is a subscope of parent."""
         return self.name.startswith(f"{parent.name}:")
 
     def __hash__(self) -> int:
-        """Make Scope hashable for use in sets."""
         return hash(self.name)
 
     def __eq__(self, other) -> bool:
-        """Compare scopes by name."""
         if isinstance(other, Scope):
             return self.name == other.name
         return False
@@ -80,8 +72,6 @@ class Scope(BaseModel):
 
 
 class APIKeyData(BaseModel):
-    """API key with metadata and permissions."""
-
     key: SecretStr = Field(..., description="The API key value")
     name: str | None = Field(None, description="Human-readable key name")
     scopes: list[Scope] = Field(default_factory=list, description="Assigned scopes")
@@ -94,7 +84,6 @@ class APIKeyData(BaseModel):
     @field_validator("key")
     @classmethod
     def validate_key_strength(cls, v: SecretStr) -> SecretStr:
-        """Ensure API key meets security requirements."""
         key_str = v.get_secret_value()
 
         # Skip validation for env var placeholders
@@ -128,7 +117,6 @@ class APIKeyData(BaseModel):
 
     @model_validator(mode="after")
     def validate_expiration(self) -> APIKeyData:
-        """Ensure expiration is in the future."""
         if self.expires_at and self.created_at:
             if self.expires_at <= self.created_at:
                 raise ValueError("Expiration must be after creation time")
@@ -137,7 +125,6 @@ class APIKeyData(BaseModel):
     @computed_field  # Modern Pydantic v2 computed property
     @property
     def is_expired(self) -> bool:
-        """Check if the key has expired."""
         if not self.expires_at:
             return False
         return datetime.utcnow() > self.expires_at
@@ -145,19 +132,16 @@ class APIKeyData(BaseModel):
     @computed_field
     @property
     def is_valid(self) -> bool:
-        """Check if the API key is valid (not expired)."""
         return not self.is_expired
 
     @computed_field
     @property
     def scope_names(self) -> set[str]:
-        """Get all scope names as a set for efficient lookup."""
         return {scope.name for scope in self.scopes}
 
     @computed_field
     @property
     def days_until_expiry(self) -> int | None:
-        """Days until expiry, None if no expiration set."""
         if self.expires_at is None:
             return None
         delta = self.expires_at - datetime.utcnow()
@@ -166,7 +150,6 @@ class APIKeyData(BaseModel):
     @computed_field
     @property
     def strength_score(self) -> float:
-        """Calculate key strength score (0.0 to 1.0)."""
         key_str = self.key.get_secret_value()
         if key_str.startswith("${") and key_str.endswith("}"):
             return 1.0  # Assume env vars are strong
@@ -192,7 +175,6 @@ class APIKeyData(BaseModel):
         return min(1.0, score)
 
     def has_scope(self, scope: str | Scope) -> bool:
-        """Check if key has a specific scope or any parent scope."""
         if isinstance(scope, str):
             scope = Scope(name=scope)
 
@@ -206,8 +188,6 @@ class APIKeyData(BaseModel):
 
 
 class APIKeyConfig(BaseModel):
-    """API key authentication configuration."""
-
     header_name: HeaderName = Field("X-API-Key", description="HTTP header name for API key")
     location: Literal["header", "query", "cookie"] = Field("header", description="Where to look for the API key")
     query_param: QueryParam = Field("api_key", description="Query parameter name if location is 'query'")
@@ -217,7 +197,6 @@ class APIKeyConfig(BaseModel):
     @field_validator("header_name")
     @classmethod
     def validate_header_name(cls, v: str) -> str:
-        """Validate HTTP header name format."""
         import re
 
         if not re.match(r"^[!#$%&'*+\-.0-9A-Z^_`a-z|~]+$", v):
@@ -227,7 +206,6 @@ class APIKeyConfig(BaseModel):
     @field_validator("keys")
     @classmethod
     def validate_unique_keys(cls, v: list[APIKeyData]) -> list[APIKeyData]:
-        """Ensure all API keys are unique."""
         seen = set()
         for key_data in v:
             key_value = key_data.key.get_secret_value()
@@ -238,8 +216,6 @@ class APIKeyConfig(BaseModel):
 
 
 class JWTAlgorithm(str, Enum):
-    """Supported JWT algorithms."""
-
     HS256 = "HS256"
     HS384 = "HS384"
     HS512 = "HS512"
@@ -252,8 +228,6 @@ class JWTAlgorithm(str, Enum):
 
 
 class JWTConfig(BaseModel):
-    """JWT authentication configuration."""
-
     secret_key: SecretStr = Field(..., description="JWT signing key")
     algorithm: JWTAlgorithm = Field(JWTAlgorithm.HS256, description="JWT signing algorithm")
     expiration: timedelta = Field(timedelta(hours=1), description="Token expiration time")
@@ -270,7 +244,6 @@ class JWTConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_algorithm_key_pair(self) -> JWTConfig:
-        """Ensure proper keys for algorithm type."""
         if self.algorithm in [
             JWTAlgorithm.RS256,
             JWTAlgorithm.RS384,
@@ -285,8 +258,6 @@ class JWTConfig(BaseModel):
 
 
 class OAuth2Config(BaseModel):
-    """OAuth2 authentication configuration."""
-
     client_id: str = Field(..., description="OAuth2 client ID")
     client_secret: SecretStr = Field(..., description="OAuth2 client secret")
     authorization_url: str = Field(..., description="Authorization endpoint URL")
@@ -316,14 +287,12 @@ class OAuth2Config(BaseModel):
     @field_validator("authorization_url", "token_url", "jwks_url", "introspection_endpoint")
     @classmethod
     def validate_urls(cls, v: str | None) -> str | None:
-        """Validate URL format."""
         if v and not v.startswith(("http://", "https://")):
             raise ValueError(f"Invalid URL: {v}")
         return v
 
     @model_validator(mode="after")
     def validate_strategy_config(self) -> OAuth2Config:
-        """Ensure required fields for validation strategy."""
         if self.validation_strategy in ["jwt", "both"] and not self.jwks_url:
             raise ValueError("jwks_url required for JWT validation")
         if self.validation_strategy in ["introspection", "both"] and not self.introspection_endpoint:
@@ -332,8 +301,6 @@ class OAuth2Config(BaseModel):
 
 
 class SecurityConfig(BaseModel):
-    """Complete security configuration."""
-
     enabled: bool = Field(True, description="Enable security features")
 
     # Authentication methods (at least one required)
@@ -363,7 +330,6 @@ class SecurityConfig(BaseModel):
     @field_validator("auth")
     @classmethod
     def validate_auth_config(cls, v: dict) -> dict:
-        """Ensure at least one auth method is configured."""
         if not v:
             raise ValueError("At least one authentication method must be configured")
 
@@ -387,7 +353,6 @@ class SecurityConfig(BaseModel):
     @field_validator("allowed_origins")
     @classmethod
     def validate_origins(cls, v: list[str]) -> list[str]:
-        """Validate CORS origins."""
         for origin in v:
             if origin != "*" and not origin.startswith(("http://", "https://")):
                 raise ValueError(f"Invalid origin: {origin}")
@@ -395,8 +360,6 @@ class SecurityConfig(BaseModel):
 
 
 class AuthResult(str, Enum):
-    """Authentication result status."""
-
     SUCCESS = "success"
     INVALID_CREDENTIALS = "invalid_credentials"
     EXPIRED = "expired"
@@ -406,8 +369,6 @@ class AuthResult(str, Enum):
 
 
 class AuthContext(BaseModel):
-    """Runtime authentication context."""
-
     authenticated: bool = Field(False, description="Whether request is authenticated")
     auth_type: AuthType | None = Field(None, description="Type of authentication used")
     auth_result: AuthResult | None = Field(None, description="Authentication result")
@@ -435,7 +396,6 @@ class AuthContext(BaseModel):
     metadata: dict[str, str] = Field(default_factory=dict, description="Additional metadata")
 
     def has_scope(self, scope: str | Scope) -> bool:
-        """Check if context has a specific scope."""
         if isinstance(scope, str):
             scope = Scope(name=scope)
 
@@ -447,11 +407,9 @@ class AuthContext(BaseModel):
         return False
 
     def has_any_scope(self, scopes: list[str | Scope]) -> bool:
-        """Check if context has any of the specified scopes."""
         return any(self.has_scope(scope) for scope in scopes)
 
     def has_all_scopes(self, scopes: list[str | Scope]) -> bool:
-        """Check if context has all specified scopes."""
         return all(self.has_scope(scope) for scope in scopes)
 
     model_config = ConfigDict(
@@ -460,8 +418,6 @@ class AuthContext(BaseModel):
 
 
 class AuditAction(str, Enum):
-    """Types of auditable actions."""
-
     LOGIN = "login"
     LOGOUT = "logout"
     CREATE = "create"
@@ -476,8 +432,6 @@ class AuditAction(str, Enum):
 
 
 class AuditResult(str, Enum):
-    """Result of an audited action."""
-
     SUCCESS = "success"
     FAILURE = "failure"
     ERROR = "error"
@@ -485,8 +439,6 @@ class AuditResult(str, Enum):
 
 
 class AuditLogEntry(BaseModel):
-    """Security audit log entry with comprehensive tracking."""
-
     # Timing
     timestamp: Timestamp = Field(default_factory=datetime.utcnow, description="Event timestamp")
     duration_ms: float | None = Field(None, description="Operation duration in milliseconds")
@@ -521,7 +473,6 @@ class AuditLogEntry(BaseModel):
     compliance_tags: list[str] = Field(default_factory=list, description="Compliance tags")
 
     def to_log_format(self) -> str:
-        """Format entry for logging."""
         parts = [
             f"[{self.timestamp.isoformat()}]",
             f"EVENT={self.event_type}",
@@ -544,13 +495,10 @@ class AuditLogEntry(BaseModel):
 
     @field_serializer("timestamp")
     def serialize_timestamp(self, value: datetime) -> str:
-        """Serialize datetime to ISO format."""
         return value.isoformat()
 
 
 class PermissionCheck(BaseModel):
-    """Request for permission verification."""
-
     user_id: UserId = Field(..., description="User to check")
     resource_type: str = Field(..., description="Resource type")
     resource_id: str | None = Field(None, description="Specific resource ID")
@@ -559,8 +507,6 @@ class PermissionCheck(BaseModel):
 
 
 class PermissionResult(BaseModel):
-    """Result of permission check."""
-
     granted: bool = Field(..., description="Whether permission is granted")
     reason: str | None = Field(None, description="Reason for denial")
     required_scopes: list[str] = Field(default_factory=list, description="Required scopes")
@@ -569,8 +515,6 @@ class PermissionResult(BaseModel):
 
 
 class SecurityEvent(BaseModel):
-    """Security event for monitoring and alerting."""
-
     event_id: str = Field(..., description="Unique event identifier")
     timestamp: Timestamp = Field(default_factory=datetime.utcnow, description="Event timestamp")
     severity: Literal["low", "medium", "high", "critical"] = Field(..., description="Event severity")

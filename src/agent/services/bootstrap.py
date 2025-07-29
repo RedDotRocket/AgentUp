@@ -20,7 +20,6 @@ class AgentBootstrapper:
     """
 
     def __init__(self):
-        """Initialize the bootstrapper."""
         self.logger = structlog.get_logger(__name__)
         self.config = ConfigurationManager()
         self.services: list[Service] = []
@@ -84,7 +83,6 @@ class AgentBootstrapper:
             raise
 
     async def shutdown_services(self) -> None:
-        """Shutdown all services in reverse order."""
         if not self._initialized:
             return
 
@@ -155,43 +153,36 @@ class AgentBootstrapper:
         return services
 
     async def _create_security_service(self) -> Service:
-        """Create and return security service."""
         from .security import SecurityService
 
         return SecurityService(self.config)
 
     async def _create_middleware_manager(self) -> Service:
-        """Create and return middleware manager."""
         from .middleware import MiddlewareManager
 
         return MiddlewareManager(self.config)
 
     async def _create_state_manager(self) -> Service:
-        """Create and return state manager."""
         from .state import StateManager
 
         return StateManager(self.config)
 
     async def _create_plugin_service(self, capability_registry: CapabilityRegistry) -> Service:
-        """Create and return plugin service."""
         from .plugins import PluginService
 
         return PluginService(self.config, capability_registry)
 
     async def _create_mcp_service(self, capability_registry: CapabilityRegistry) -> Service:
-        """Create and return MCP service."""
         from .mcp import MCPService
 
         return MCPService(self.config, capability_registry)
 
     async def _create_push_service(self) -> Service:
-        """Create and return push notification service."""
         from .push import PushNotificationService
 
         return PushNotificationService(self.config)
 
     async def _cleanup_services(self) -> None:
-        """Cleanup all services in reverse initialization order."""
         for service in reversed(self.services):
             service_name = service.__class__.__name__
             try:
@@ -204,7 +195,6 @@ class AgentBootstrapper:
         self._service_map.clear()
 
     def _log_initialization_summary(self) -> None:
-        """Log a summary of initialized services and features."""
         agent_info = self.config.get_agent_info()
 
         self.logger.info("=" * 50)
@@ -259,5 +249,4 @@ class AgentBootstrapper:
 
     @property
     def initialized(self) -> bool:
-        """Check if services have been initialized."""
         return self._initialized

@@ -8,8 +8,6 @@ logger = structlog.get_logger(__name__)
 
 
 class SecurityEventType(str, Enum):
-    """Types of security events for audit logging."""
-
     AUTHENTICATION_SUCCESS = "authentication_success"
     AUTHENTICATION_FAILURE = "authentication_failure"
     AUTHORIZATION_SUCCESS = "authorization_success"
@@ -23,8 +21,6 @@ class SecurityEventType(str, Enum):
 
 
 class SecurityAuditLogger:
-    """Centralized security audit logging with sanitization."""
-
     def __init__(self):
         self._audit_logger = structlog.get_logger("security.audit")
 
@@ -40,8 +36,6 @@ class SecurityAuditLogger:
         details: dict[str, Any] | None = None,
         risk_level: str = "low",
     ) -> None:
-        """Log a security event with sanitized information."""
-
         # Sanitize sensitive information
         sanitized_details = self._sanitize_details(details or {})
         sanitized_user_id = self._sanitize_user_id(user_id)
@@ -78,7 +72,6 @@ class SecurityAuditLogger:
     def log_authentication_success(
         self, user_id: str, client_ip: str | None = None, auth_method: str | None = None
     ) -> None:
-        """Log successful authentication."""
         self.log_security_event(
             SecurityEventType.AUTHENTICATION_SUCCESS,
             user_id=user_id,
@@ -88,7 +81,6 @@ class SecurityAuditLogger:
         )
 
     def log_authentication_failure(self, client_ip: str | None = None, reason: str | None = None) -> None:
-        """Log failed authentication."""
         self.log_security_event(
             SecurityEventType.AUTHENTICATION_FAILURE,
             client_ip=client_ip,
@@ -100,7 +92,6 @@ class SecurityAuditLogger:
     def log_authorization_failure(
         self, user_id: str, resource: str, action: str, missing_scopes: list[str] | None = None
     ) -> None:
-        """Log authorization failure."""
         details = {}
         if missing_scopes:
             details["missing_scopes_count"] = len(missing_scopes)  # Don't log actual scope names
@@ -116,7 +107,6 @@ class SecurityAuditLogger:
         )
 
     def log_function_access_denied(self, user_id: str, function_name: str, required_scopes_count: int = 0) -> None:
-        """Log denied function access."""
         self.log_security_event(
             SecurityEventType.FUNCTION_ACCESS_DENIED,
             user_id=user_id,
@@ -128,7 +118,6 @@ class SecurityAuditLogger:
         )
 
     def log_privilege_escalation_attempt(self, user_id: str, attempted_scope: str) -> None:
-        """Log potential privilege escalation attempt."""
         self.log_security_event(
             SecurityEventType.PRIVILEGE_ESCALATION_ATTEMPT,
             user_id=user_id,
@@ -139,7 +128,6 @@ class SecurityAuditLogger:
         )
 
     def log_configuration_error(self, component: str, error_type: str, details: dict[str, Any] | None = None) -> None:
-        """Log security configuration errors."""
         self.log_security_event(
             SecurityEventType.SECURITY_CONFIGURATION_ERROR,
             resource=component,
@@ -149,7 +137,6 @@ class SecurityAuditLogger:
         )
 
     def _sanitize_user_id(self, user_id: str | None) -> str | None:
-        """Sanitize user ID to prevent information leakage."""
         if not user_id:
             return None
 
@@ -162,7 +149,6 @@ class SecurityAuditLogger:
             return user_id
 
     def _sanitize_ip(self, ip: str) -> str:
-        """Sanitize IP address for privacy compliance."""
         # Mask the last octet for IPv4
         parts = ip.split(".")
         if len(parts) == 4:
@@ -170,12 +156,10 @@ class SecurityAuditLogger:
         return ip  # Return as-is for IPv6 or invalid IPs
 
     def _sanitize_user_agent(self, user_agent: str) -> str:
-        """Sanitize user agent string."""
         # Just keep the first part (browser/client name)
         return user_agent.split()[0] if user_agent else "unknown"
 
     def _sanitize_details(self, details: dict[str, Any]) -> dict[str, Any]:
-        """Sanitize details dictionary to remove sensitive information."""
         sanitized = {}
 
         for key, value in details.items():
@@ -194,7 +178,6 @@ class SecurityAuditLogger:
         return sanitized
 
     def _categorize_scope(self, scope: str) -> str:
-        """Categorize scope for logging without revealing exact scope names."""
         scope_lower = scope.lower()
 
         if "admin" in scope_lower or "*" in scope:
@@ -212,7 +195,6 @@ _security_audit_logger: SecurityAuditLogger | None = None
 
 
 def get_security_audit_logger() -> SecurityAuditLogger:
-    """Get the global security audit logger."""
     global _security_audit_logger
     if _security_audit_logger is None:
         _security_audit_logger = SecurityAuditLogger()
@@ -220,5 +202,4 @@ def get_security_audit_logger() -> SecurityAuditLogger:
 
 
 def log_security_event(*args, **kwargs) -> None:
-    """Convenience function for logging security events."""
     get_security_audit_logger().log_security_event(*args, **kwargs)

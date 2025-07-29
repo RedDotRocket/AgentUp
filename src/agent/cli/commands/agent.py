@@ -3,7 +3,6 @@ import click
 
 @click.group()
 def agent():
-    """Manage agents - create, run, validate, deploy."""
     pass
 
 

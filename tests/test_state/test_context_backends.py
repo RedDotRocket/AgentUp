@@ -17,16 +17,12 @@ from src.agent.state.context import (
 
 
 class TestMemoryStorageBackend:
-    """Test memory-based storage backend."""
-
     def test_memory_storage_initialization(self):
-        """Test memory storage initialization."""
         storage = InMemoryStorage()
         assert storage._states == {}
 
     @pytest.mark.asyncio
     async def test_memory_storage_set_and_get(self):
-        """Test setting and getting state in memory storage."""
         storage = InMemoryStorage()
 
         # Create test state
@@ -52,7 +48,6 @@ class TestMemoryStorageBackend:
 
     @pytest.mark.asyncio
     async def test_memory_storage_get_nonexistent(self):
-        """Test getting non-existent state returns None."""
         storage = InMemoryStorage()
 
         result = await storage.get("nonexistent")
@@ -60,7 +55,6 @@ class TestMemoryStorageBackend:
 
     @pytest.mark.asyncio
     async def test_memory_storage_delete(self):
-        """Test deleting state from memory storage."""
         storage = InMemoryStorage()
 
         # Create and set test state
@@ -86,7 +80,6 @@ class TestMemoryStorageBackend:
 
     @pytest.mark.asyncio
     async def test_memory_storage_list_contexts(self):
-        """Test listing contexts in memory storage."""
         storage = InMemoryStorage()
 
         # Create multiple states
@@ -125,10 +118,7 @@ class TestMemoryStorageBackend:
 
 
 class TestFileStorageBackend:
-    """Test file-based storage backend."""
-
     def test_file_storage_initialization(self):
-        """Test file storage initialization."""
         with tempfile.TemporaryDirectory() as tmp_dir:
             storage = FileStorage(storage_dir=tmp_dir)
             assert storage.storage_dir == tmp_dir
@@ -136,7 +126,6 @@ class TestFileStorageBackend:
 
     @pytest.mark.asyncio
     async def test_file_storage_set_and_get(self):
-        """Test setting and getting state in file storage."""
         with tempfile.TemporaryDirectory() as tmp_dir:
             storage = FileStorage(storage_dir=tmp_dir)
 
@@ -167,7 +156,6 @@ class TestFileStorageBackend:
 
     @pytest.mark.asyncio
     async def test_file_storage_persistence(self):
-        """Test that file storage persists across instances."""
         with tempfile.TemporaryDirectory() as tmp_dir:
             # Create first storage instance
             storage1 = FileStorage(storage_dir=tmp_dir)
@@ -193,7 +181,6 @@ class TestFileStorageBackend:
 
     @pytest.mark.asyncio
     async def test_file_storage_delete(self):
-        """Test deleting state from file storage."""
         with tempfile.TemporaryDirectory() as tmp_dir:
             storage = FileStorage(storage_dir=tmp_dir)
 
@@ -221,7 +208,6 @@ class TestFileStorageBackend:
 
     @pytest.mark.asyncio
     async def test_file_storage_corrupted_file(self):
-        """Test handling corrupted state file."""
         with tempfile.TemporaryDirectory() as tmp_dir:
             storage = FileStorage(storage_dir=tmp_dir)
 
@@ -235,17 +221,13 @@ class TestFileStorageBackend:
 
 
 class TestValkeyStorageBackend:
-    """Test Valkey/Redis-based storage backend."""
-
     def test_valkey_storage_initialization(self):
-        """Test Valkey storage initialization."""
         storage = ValkeyStorage(url="valkey://localhost:6379", key_prefix="test:")
         assert storage.url == "valkey://localhost:6379"
         assert storage.key_prefix == "test:"
 
     @pytest.mark.asyncio
     async def test_valkey_storage_set_and_get(self):
-        """Test setting and getting state in Valkey storage."""
         with patch("valkey.asyncio.from_url") as mock_valkey:
             mock_client = AsyncMock()
             mock_valkey.return_value = mock_client
@@ -296,7 +278,6 @@ class TestValkeyStorageBackend:
 
     @pytest.mark.asyncio
     async def test_valkey_storage_connection_failure(self):
-        """Test Valkey storage fallback when connection fails."""
         with patch("valkey.asyncio.from_url") as mock_valkey:
             # Mock connection failure
             mock_valkey.side_effect = Exception("Connection failed")
@@ -327,7 +308,6 @@ class TestValkeyStorageBackend:
 
     @pytest.mark.asyncio
     async def test_valkey_storage_delete(self):
-        """Test deleting state from Valkey storage."""
         with patch("valkey.asyncio.from_url") as mock_valkey:
             mock_client = AsyncMock()
             mock_valkey.return_value = mock_client
@@ -344,11 +324,8 @@ class TestValkeyStorageBackend:
 
 
 class TestConversationContext:
-    """Test conversation context management."""
-
     @pytest.mark.asyncio
     async def test_conversation_context_get_or_create_new(self):
-        """Test creating new conversation context."""
         storage = InMemoryStorage()
         context = ConversationContext(storage)
 
@@ -362,7 +339,6 @@ class TestConversationContext:
 
     @pytest.mark.asyncio
     async def test_conversation_context_get_existing(self):
-        """Test getting existing conversation context."""
         storage = InMemoryStorage()
         context = ConversationContext(storage)
 
@@ -379,7 +355,6 @@ class TestConversationContext:
 
     @pytest.mark.asyncio
     async def test_conversation_context_set_and_get_variable(self):
-        """Test setting and getting variables through context."""
         storage = InMemoryStorage()
         context = ConversationContext(storage)
 
@@ -396,7 +371,6 @@ class TestConversationContext:
 
     @pytest.mark.asyncio
     async def test_conversation_context_add_and_get_history(self):
-        """Test adding and getting history through context."""
         storage = InMemoryStorage()
         context = ConversationContext(storage)
 
@@ -419,7 +393,6 @@ class TestConversationContext:
 
     @pytest.mark.asyncio
     async def test_conversation_context_clear(self):
-        """Test clearing conversation context."""
         storage = InMemoryStorage()
         context = ConversationContext(storage)
 
@@ -444,16 +417,12 @@ class TestConversationContext:
 
 
 class TestContextManagerFactory:
-    """Test context manager factory function."""
-
     def test_get_context_manager_memory(self):
-        """Test getting memory context manager."""
         context = get_context_manager("memory", force_new=True)
         assert isinstance(context, ConversationContext)
         assert isinstance(context.storage, InMemoryStorage)
 
     def test_get_context_manager_file(self):
-        """Test getting file context manager."""
         with tempfile.TemporaryDirectory() as tmp_dir:
             context = get_context_manager("file", storage_dir=tmp_dir, force_new=True)
             assert isinstance(context, ConversationContext)
@@ -461,7 +430,6 @@ class TestContextManagerFactory:
             assert context.storage.storage_dir == tmp_dir
 
     def test_get_context_manager_valkey(self):
-        """Test getting Valkey context manager."""
         context = get_context_manager("valkey", url="valkey://localhost:6379", key_prefix="test:", force_new=True)
         assert isinstance(context, ConversationContext)
         assert isinstance(context.storage, ValkeyStorage)
@@ -469,12 +437,10 @@ class TestContextManagerFactory:
         assert context.storage.key_prefix == "test:"
 
     def test_get_context_manager_invalid_backend(self):
-        """Test getting context manager with invalid backend."""
         with pytest.raises(ValueError, match="Unknown storage type"):
             get_context_manager("invalid_backend", force_new=True)
 
     def test_get_context_manager_file_default_storage_dir(self):
-        """Test getting file context manager with default storage directory."""
         context = get_context_manager("file", force_new=True)
         assert isinstance(context, ConversationContext)
         assert isinstance(context.storage, FileStorage)
@@ -482,10 +448,7 @@ class TestContextManagerFactory:
 
 
 class TestConversationStateModel:
-    """Test ConversationState data model."""
-
     def test_conversation_state_to_dict(self):
-        """Test converting conversation state to dictionary."""
         created_at = datetime.utcnow()
         updated_at = datetime.utcnow()
 
@@ -510,7 +473,6 @@ class TestConversationStateModel:
         assert data["history"] == [{"role": "user", "content": "Hello"}]
 
     def test_conversation_state_from_dict(self):
-        """Test creating conversation state from dictionary."""
         data = {
             "context_id": "test-context",
             "user_id": "user-123",
@@ -533,11 +495,8 @@ class TestConversationStateModel:
 
 
 class TestIntegrationScenarios:
-    """Test integration scenarios across different backends."""
-
     @pytest.mark.asyncio
     async def test_full_conversation_workflow(self):
-        """Test complete conversation workflow with state management."""
         storage = InMemoryStorage()
         context = ConversationContext(storage)
 
@@ -580,7 +539,6 @@ class TestIntegrationScenarios:
 
     @pytest.mark.asyncio
     async def test_cross_backend_consistency(self):
-        """Test data consistency across different storage backends."""
         # Test data
         context_id = "consistency-test"
         test_variables = {"user_name": "Bob", "preference": "light_mode"}

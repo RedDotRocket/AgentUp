@@ -13,8 +13,6 @@ hookspec = pluggy.HookspecMarker("agentup")
 
 
 class CapabilitySpec:
-    """Hook specifications that capability plugins must implement."""
-
     @hookspec
     def register_capability(self) -> CapabilityInfo | list[CapabilityInfo]:
         """

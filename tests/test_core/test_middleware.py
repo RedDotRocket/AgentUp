@@ -28,15 +28,11 @@ from agent.middleware import (
 
 
 class TestMiddlewareRegistry:
-    """Test the middleware registry system."""
-
     def test_registry_initialization(self):
-        """Test registry initialization."""
         registry = MiddlewareRegistry()
         assert registry._middleware == {}
 
     def test_register_middleware(self):
-        """Test registering middleware."""
         registry = MiddlewareRegistry()
 
         def dummy_middleware():
@@ -46,12 +42,10 @@ class TestMiddlewareRegistry:
         assert registry.get("test_middleware") == dummy_middleware
 
     def test_get_nonexistent_middleware(self):
-        """Test getting non-existent middleware returns None."""
         registry = MiddlewareRegistry()
         assert registry.get("nonexistent") is None
 
     def test_apply_middleware_to_handler(self):
-        """Test applying middleware to a handler."""
         registry = MiddlewareRegistry()
 
         # Mock middleware function
@@ -78,15 +72,11 @@ class TestMiddlewareRegistry:
 
 
 class TestRateLimiter:
-    """Test the rate limiting functionality."""
-
     def test_rate_limiter_initialization(self):
-        """Test rate limiter initialization."""
         limiter = RateLimiter()
         assert limiter.buckets == {}
 
     def test_rate_limit_within_limit(self):
-        """Test requests within rate limit are allowed."""
         limiter = RateLimiter()
         key = "test_key"
 
@@ -94,7 +84,6 @@ class TestRateLimiter:
         assert limiter.check_rate_limit(key, requests_per_minute=60) is True
 
     def test_rate_limit_bucket_initialization(self):
-        """Test bucket is properly initialized on first request."""
         limiter = RateLimiter()
         key = "test_key"
         requests_per_minute = 60
@@ -107,7 +96,6 @@ class TestRateLimiter:
         assert "last_update" in bucket
 
     def test_rate_limit_exceeded(self):
-        """Test rate limit is exceeded when no tokens available."""
         limiter = RateLimiter()
         key = "test_key"
 
@@ -117,7 +105,6 @@ class TestRateLimiter:
         assert limiter.check_rate_limit(key, requests_per_minute=60) is False
 
     def test_rate_limit_token_refill(self):
-        """Test tokens are refilled over time."""
         limiter = RateLimiter()
         key = "test_key"
 
@@ -129,7 +116,6 @@ class TestRateLimiter:
         assert limiter.check_rate_limit(key, requests_per_minute=60) is True
 
     def test_rate_limit_max_tokens(self):
-        """Test token count doesn't exceed maximum."""
         limiter = RateLimiter()
         key = "test_key"
 
@@ -142,17 +128,13 @@ class TestRateLimiter:
         # Should not exceed max tokens (60) even with long time passed
         assert limiter.buckets[key]["tokens"] <= 60
 
-    """Test retry configuration."""
-
     def test_retry_config_initialization(self):
-        """Test retry config initialization."""
         config = RetryConfig()
         assert config.max_attempts == 3
         assert config.backoff_factor == 1.0
         assert config.max_delay == 60.0
 
     def test_retry_config_custom_values(self):
-        """Test retry config with custom values."""
         config = RetryConfig(max_attempts=5, backoff_factor=2.0, max_delay=120.0)
         assert config.max_attempts == 5
         assert config.backoff_factor == 2.0
@@ -160,12 +142,8 @@ class TestRateLimiter:
 
 
 class TestExecuteWithRetry:
-    """Test the retry execution function."""
-
     @pytest.mark.asyncio
     async def test_execute_with_retry_success_first_attempt(self):
-        """Test successful execution on first attempt."""
-
         async def success_func():
             return "success"
 
@@ -175,7 +153,6 @@ class TestExecuteWithRetry:
 
     @pytest.mark.asyncio
     async def test_execute_with_retry_success_after_retries(self):
-        """Test successful execution after some failures."""
         call_count = 0
 
         async def sometimes_fail_func():
@@ -192,8 +169,6 @@ class TestExecuteWithRetry:
 
     @pytest.mark.asyncio
     async def test_execute_with_retry_all_attempts_fail(self):
-        """Test when all retry attempts fail."""
-
         async def always_fail_func():
             raise ValueError("Always fails")
 
@@ -204,8 +179,6 @@ class TestExecuteWithRetry:
 
     @pytest.mark.asyncio
     async def test_execute_with_retry_sync_function(self):
-        """Test retry with synchronous function."""
-
         def sync_success_func():
             return "sync_success"
 
@@ -215,7 +188,6 @@ class TestExecuteWithRetry:
 
     @pytest.mark.asyncio
     async def test_execute_with_retry_backoff_timing(self):
-        """Test retry backoff timing."""
         call_times = []
 
         async def timing_test_func():
@@ -237,12 +209,8 @@ class TestExecuteWithRetry:
 
 
 class TestMiddlewareDecorators:
-    """Test middleware decorators."""
-
     @pytest.mark.asyncio
     async def test_rate_limited_decorator(self):
-        """Test rate limited decorator."""
-
         @rate_limited(requests_per_minute=60)
         async def test_func():
             return "success"
@@ -253,8 +221,6 @@ class TestMiddlewareDecorators:
 
     @pytest.mark.asyncio
     async def test_rate_limited_decorator_exceeded(self):
-        """Test rate limited decorator when limit exceeded."""
-
         @rate_limited(requests_per_minute=1)  # Very low limit
         async def test_func():
             return "success"
@@ -268,7 +234,6 @@ class TestMiddlewareDecorators:
 
     @pytest.mark.asyncio
     async def test_cached_decorator(self):
-        """Test cached decorator."""
         call_count = 0
 
         @cached(ttl=300)
@@ -294,7 +259,6 @@ class TestMiddlewareDecorators:
 
     @pytest.mark.asyncio
     async def test_retryable_decorator(self):
-        """Test retryable decorator."""
         call_count = 0
 
         @retryable(max_attempts=3, backoff_factor=0.01)
@@ -311,7 +275,6 @@ class TestMiddlewareDecorators:
 
     @pytest.mark.asyncio
     async def test_timed_decorator(self):
-        """Test timed decorator."""
         with patch("agent.middleware.logger") as mock_logger:
 
             @timed()
@@ -330,7 +293,6 @@ class TestMiddlewareDecorators:
 
     @pytest.mark.asyncio
     async def test_with_middleware_decorator(self):
-        """Test with_middleware decorator."""
         call_count = 0
 
         @with_middleware(
@@ -350,16 +312,12 @@ class TestMiddlewareDecorators:
 
 
 class TestMiddlewareComposition:
-    """Test middleware composition and interaction."""
-
     def setup_method(self):
-        """Reset rate limiter and cache before each test."""
         reset_rate_limits()
         clear_cache()
 
     @pytest.mark.asyncio
     async def test_multiple_middleware_decorators(self):
-        """Test applying multiple middleware decorators."""
         call_count = 0
 
         @rate_limited(requests_per_minute=3600)  # High rate limit to avoid interference
@@ -383,8 +341,6 @@ class TestMiddlewareComposition:
 
     @pytest.mark.asyncio
     async def test_middleware_error_handling(self):
-        """Test middleware behavior when wrapped function raises exception."""
-
         @rate_limited(requests_per_minute=3600)  # High rate limit to avoid interference
         async def test_func():
             raise ValueError("Test exception")
@@ -395,11 +351,7 @@ class TestMiddlewareComposition:
 
 
 class TestUtilityFunctions:
-    """Test utility functions."""
-
     def test_apply_rate_limiting(self):
-        """Test apply_rate_limiting utility function."""
-
         async def test_handler():
             return "success"
 
@@ -407,8 +359,6 @@ class TestUtilityFunctions:
         assert callable(wrapped)
 
     def test_apply_caching(self):
-        """Test apply_caching utility function."""
-
         async def test_handler():
             return "success"
 
@@ -416,8 +366,6 @@ class TestUtilityFunctions:
         assert callable(wrapped)
 
     def test_apply_retry(self):
-        """Test apply_retry utility function."""
-
         async def test_handler():
             return "success"
 
@@ -425,12 +373,10 @@ class TestUtilityFunctions:
         assert callable(wrapped)
 
     def test_clear_cache_function(self):
-        """Test clear_cache utility function."""
         # This tests the global cache clearing
         clear_cache()  # Should not raise any exceptions
 
     def test_get_cache_stats(self):
-        """Test get_cache_stats utility function."""
         stats = get_cache_stats()
         assert isinstance(stats, dict)
         assert "total_entries" in stats
@@ -438,11 +384,9 @@ class TestUtilityFunctions:
         assert "active_entries" in stats
 
     def test_reset_rate_limits(self):
-        """Test reset_rate_limits utility function."""
         reset_rate_limits()  # Should not raise any exceptions
 
     def test_get_rate_limit_stats(self):
-        """Test get_rate_limit_stats utility function."""
         stats = get_rate_limit_stats()
         assert isinstance(stats, dict)
         assert "active_buckets" in stats
@@ -450,16 +394,12 @@ class TestUtilityFunctions:
 
 
 class TestMiddlewareExceptions:
-    """Test middleware exception classes."""
-
     def test_middleware_error(self):
-        """Test MiddlewareError exception."""
         error = MiddlewareError(error_type="MiddlewareError", message="Test error")
         assert error.message == "Test error"
         assert error.error_type == "MiddlewareError"
 
     def test_rate_limit_error(self):
-        """Test RateLimitExceeded exception."""
         error = RateLimitExceeded("Rate limit exceeded")
         assert error.message == "Rate limit exceeded"
         assert str(error) == "Rate limit exceeded"
@@ -467,11 +407,8 @@ class TestMiddlewareExceptions:
 
 
 class TestCacheKeyGeneration:
-    """Test cache key generation for caching middleware."""
-
     @pytest.mark.asyncio
     async def test_cache_key_with_different_args(self):
-        """Test that different arguments generate different cache entries."""
         call_count = 0
 
         @cached(ttl=300)
@@ -492,7 +429,6 @@ class TestCacheKeyGeneration:
 
     @pytest.mark.asyncio
     async def test_cache_key_with_kwargs(self):
-        """Test cache key generation with keyword arguments."""
         call_count = 0
 
         @cached(ttl=300)
@@ -511,12 +447,8 @@ class TestCacheKeyGeneration:
 
 
 class TestRateLimitKeyGeneration:
-    """Test rate limit key generation."""
-
     @pytest.mark.asyncio
     async def test_rate_limit_key_with_different_args(self):
-        """Test that different arguments get separate rate limit buckets."""
-
         @rate_limited(requests_per_minute=1)  # Very restrictive
         async def test_func(arg):
             return f"result_{arg}"

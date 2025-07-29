@@ -17,8 +17,6 @@ from ..utils.validation import BaseValidator, CompositeValidator, ValidationResu
 
 
 class ExecutionStatus(str, Enum):
-    """Function execution status enumeration."""
-
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -28,8 +26,6 @@ class ExecutionStatus(str, Enum):
 
 
 class FunctionType(str, Enum):
-    """Function type enumeration."""
-
     BUILTIN = "builtin"
     PLUGIN = "plugin"
     LLM_FUNCTION = "llm_function"
@@ -38,8 +34,6 @@ class FunctionType(str, Enum):
 
 
 class ParameterType(str, Enum):
-    """Function parameter type enumeration."""
-
     STRING = "string"
     INTEGER = "integer"
     FLOAT = "float"
@@ -50,8 +44,6 @@ class ParameterType(str, Enum):
 
 
 class FunctionParameter(BaseModel):
-    """Function parameter definition model."""
-
     name: str = Field(..., description="Parameter name", min_length=1, max_length=64)
     type: ParameterType = Field(..., description="Parameter type")
     description: str = Field("", description="Parameter description")
@@ -66,7 +58,6 @@ class FunctionParameter(BaseModel):
     @field_validator("name")
     @classmethod
     def validate_parameter_name(cls, v: str) -> str:
-        """Validate parameter name format."""
         import re
 
         if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", v):
@@ -75,7 +66,6 @@ class FunctionParameter(BaseModel):
 
     @model_validator(mode="after")
     def validate_parameter_constraints(self) -> FunctionParameter:
-        """Validate parameter constraints consistency."""
         # Validate numeric constraints
         if self.type in (ParameterType.INTEGER, ParameterType.FLOAT):
             if self.min_value is not None and self.max_value is not None:
@@ -96,8 +86,6 @@ class FunctionParameter(BaseModel):
 
 
 class FunctionSignature(BaseModel):
-    """Function signature metadata model."""
-
     name: str = Field(..., description="Function name", min_length=1, max_length=64)
     module: str = Field(..., description="Module path", min_length=1, max_length=256)
     function_type: FunctionType = Field(..., description="Function type")
@@ -114,7 +102,6 @@ class FunctionSignature(BaseModel):
     @field_validator("name")
     @classmethod
     def validate_function_name(cls, v: str) -> str:
-        """Validate function name format."""
         import re
 
         if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", v):
@@ -129,7 +116,6 @@ class FunctionSignature(BaseModel):
     @field_validator("module")
     @classmethod
     def validate_module_path(cls, v: str) -> str:
-        """Validate module path format."""
         import re
 
         if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_.]*$", v):
@@ -139,7 +125,6 @@ class FunctionSignature(BaseModel):
     @field_validator("tags")
     @classmethod
     def validate_tags(cls, v: list[str]) -> list[str]:
-        """Validate tags format."""
         for tag in v:
             if not tag or not tag.replace("-", "").replace("_", "").isalnum():
                 raise ValueError(f"Invalid tag format: '{tag}'")
@@ -148,7 +133,6 @@ class FunctionSignature(BaseModel):
     @field_validator("version")
     @classmethod
     def validate_version(cls, v: str) -> str:
-        """Validate semantic version format."""
         import re
 
         if not re.match(r"^\d+\.\d+\.\d+(-[\w\.-]+)?(\+[\w\.-]+)?$", v):
@@ -157,18 +141,14 @@ class FunctionSignature(BaseModel):
 
     @property
     def required_parameters(self) -> list[FunctionParameter]:
-        """Get list of required parameters."""
         return [param for param in self.parameters if param.required]
 
     @property
     def optional_parameters(self) -> list[FunctionParameter]:
-        """Get list of optional parameters."""
         return [param for param in self.parameters if not param.required]
 
 
 class ExecutionContext(BaseModel):
-    """Function execution context model."""
-
     request_id: str = Field(..., description="Request identifier", min_length=1, max_length=128)
     function_name: str = Field(..., description="Function being executed")
     user_id: str | None = Field(None, description="User identifier")
@@ -183,7 +163,6 @@ class ExecutionContext(BaseModel):
     @field_validator("request_id")
     @classmethod
     def validate_request_id(cls, v: str) -> str:
-        """Validate request ID format."""
         import re
 
         if not re.match(r"^[a-zA-Z0-9_-]+$", v):
@@ -192,23 +171,18 @@ class ExecutionContext(BaseModel):
 
     @property
     def is_retry(self) -> bool:
-        """Check if this is a retry execution."""
         return self.retry_count > 0
 
     @property
     def can_retry(self) -> bool:
-        """Check if execution can be retried."""
         return self.retry_count < self.max_retries
 
     @property
     def elapsed_seconds(self) -> float:
-        """Calculate elapsed execution time."""
         return (datetime.utcnow() - self.started_at).total_seconds()
 
 
 class ExecutionResult(BaseModel):
-    """Function execution result model."""
-
     request_id: str = Field(..., description="Request identifier")
     function_name: str = Field(..., description="Function that was executed")
     status: ExecutionStatus = Field(..., description="Execution status")
@@ -225,24 +199,20 @@ class ExecutionResult(BaseModel):
 
     @property
     def is_successful(self) -> bool:
-        """Check if execution was successful."""
         return self.status == ExecutionStatus.COMPLETED
 
     @property
     def is_failed(self) -> bool:
-        """Check if execution failed."""
         return self.status in (ExecutionStatus.FAILED, ExecutionStatus.TIMEOUT)
 
     @property
     def duration_seconds(self) -> float | None:
-        """Calculate execution duration in seconds."""
         if self.completed_at:
             return (self.completed_at - self.started_at).total_seconds()
         return None
 
     @model_validator(mode="after")
     def validate_execution_result(self) -> ExecutionResult:
-        """Validate execution result consistency."""
         # Failed executions should have error message
         if self.is_failed and not self.error:
             raise ValueError("Failed executions must have error message")
@@ -270,19 +240,15 @@ class ExecutionResult(BaseModel):
 
 
 class FunctionRegistry(BaseModel):
-    """Function registry model for managing available functions."""
-
     functions: dict[str, FunctionSignature] = Field(default_factory=dict, description="Registered functions")
     last_updated: datetime = Field(default_factory=datetime.utcnow, description="Last registry update")
     version: str = Field("1.0.0", description="Registry version")
 
     def register_function(self, signature: FunctionSignature) -> None:
-        """Register a function in the registry."""
         self.functions[signature.name] = signature
         self.last_updated = datetime.utcnow()
 
     def unregister_function(self, name: str) -> bool:
-        """Unregister a function from the registry."""
         if name in self.functions:
             del self.functions[name]
             self.last_updated = datetime.utcnow()
@@ -290,25 +256,20 @@ class FunctionRegistry(BaseModel):
         return False
 
     def get_function(self, name: str) -> FunctionSignature | None:
-        """Get function signature by name."""
         return self.functions.get(name)
 
     def list_functions(self, function_type: FunctionType | None = None) -> list[FunctionSignature]:
-        """List all functions, optionally filtered by type."""
         if function_type:
             return [sig for sig in self.functions.values() if sig.function_type == function_type]
         return list(self.functions.values())
 
     @property
     def function_count(self) -> int:
-        """Get total number of registered functions."""
         return len(self.functions)
 
 
 # Core Validators using validation framework
 class FunctionSignatureValidator(BaseValidator[FunctionSignature]):
-    """Business rule validator for function signatures."""
-
     def validate(self, model: FunctionSignature) -> ValidationResult:
         result = ValidationResult(valid=True)
 
@@ -339,8 +300,6 @@ class FunctionSignatureValidator(BaseValidator[FunctionSignature]):
 
 
 class ExecutionContextValidator(BaseValidator[ExecutionContext]):
-    """Business rule validator for execution context."""
-
     def validate(self, model: ExecutionContext) -> ValidationResult:
         result = ValidationResult(valid=True)
 
@@ -362,8 +321,6 @@ class ExecutionContextValidator(BaseValidator[ExecutionContext]):
 
 
 class ExecutionResultValidator(BaseValidator[ExecutionResult]):
-    """Business rule validator for execution results."""
-
     def validate(self, model: ExecutionResult) -> ValidationResult:
         result = ValidationResult(valid=True)
 
@@ -392,7 +349,6 @@ class ExecutionResultValidator(BaseValidator[ExecutionResult]):
 
 # Composite validator for core models
 def create_core_validator() -> CompositeValidator[FunctionSignature]:
-    """Create a comprehensive core validator."""
     validators = [
         FunctionSignatureValidator(FunctionSignature),
     ]

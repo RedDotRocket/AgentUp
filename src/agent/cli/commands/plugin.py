@@ -16,7 +16,6 @@ console = Console()
 
 
 def _render_plugin_template(template_name: str, context: dict) -> str:
-    """Render a plugin template with the given context."""
     templates_dir = Path(__file__).parent.parent.parent / "templates" / "plugins"
 
     # For YAML files, disable block trimming to preserve proper formatting
@@ -34,7 +33,6 @@ def _render_plugin_template(template_name: str, context: dict) -> str:
 
 
 def _to_snake_case(name: str) -> str:
-    """Convert string to snake_case."""
     # Replace hyphens and spaces with underscores
     name = name.replace("-", "_").replace(" ", "_")
     # Remove any non-alphanumeric characters except underscores
@@ -44,7 +42,6 @@ def _to_snake_case(name: str) -> str:
 
 @click.group()
 def plugin():
-    """Manage AgentUp plugins - create, install, list, and validate plugins."""
     pass
 
 
@@ -54,7 +51,6 @@ def plugin():
 @click.option("--format", "-f", type=click.Choice(["table", "json", "yaml"]), default="table", help="Output format")
 @click.option("--debug", is_flag=True, help="Show debug logging output")
 def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
-    """List all loaded plugins and their capabilities."""
     try:
         # Configure logging based on verbose/debug flags
         import logging
@@ -285,7 +281,6 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
 @click.option("--output-dir", "-o", type=click.Path(), help="Output directory for the plugin")
 @click.option("--no-git", is_flag=True, help="Skip git initialization")
 def create(plugin_name: str | None, template: str, output_dir: str | None, no_git: bool):
-    """Create a new plugin for development."""
     console.print("[bold cyan]AgentUp Plugin Creator[/bold cyan]")
     console.print("Let's create a new plugin!\n")
 
@@ -449,7 +444,6 @@ def create(plugin_name: str | None, template: str, output_dir: str | None, no_gi
 @click.option("--url", "-u", help="Git URL or local path (for git/local sources)")
 @click.option("--force", "-f", is_flag=True, help="Force reinstall if already installed")
 def install(plugin_name: str, source: str, url: str | None, force: bool):
-    """Install a plugin from PyPI, Git, or local directory."""
     if source in ["git", "local"] and not url:
         console.print(f"[red]Error: --url is required for {source} source[/red]")
         return
@@ -496,7 +490,6 @@ def install(plugin_name: str, source: str, url: str | None, force: bool):
 @plugin.command()
 @click.argument("plugin_name")
 def uninstall(plugin_name: str):
-    """Uninstall a plugin."""
     if not questionary.confirm(f"Uninstall plugin '{plugin_name}'?", default=False).ask():
         console.print("Cancelled.")
         return
@@ -522,7 +515,6 @@ def uninstall(plugin_name: str):
 @plugin.command()
 @click.argument("plugin_name")
 def reload(plugin_name: str):
-    """Reload a plugin (useful during development)."""
     try:
         from agent.plugins.manager import get_plugin_manager
 
@@ -549,7 +541,6 @@ def reload(plugin_name: str):
 @plugin.command()
 @click.argument("capability_id")
 def info(capability_id: str):
-    """Show detailed information about a plugin capability."""
     try:
         from agent.plugins.manager import get_plugin_manager
 
@@ -636,18 +627,16 @@ def info(capability_id: str):
 
 @plugin.command()
 def validate():
-    """Validate all loaded plugins and their configurations."""
     try:
-        from agent.config import load_config
+        from agent.config import Config
         from agent.plugins.manager import get_plugin_manager
 
         manager = get_plugin_manager()
-        config = load_config()
 
         console.print("[cyan]Validating plugins...[/cyan]\n")
 
         # Get capability configurations
-        capability_configs = {plugin.get("plugin_id"): plugin.get("config", {}) for plugin in config.get("plugins", [])}
+        capability_configs = {plugin.plugin_id: plugin.config or {} for plugin in Config.plugins}
 
         all_valid = True
         results = []

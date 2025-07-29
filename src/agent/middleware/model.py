@@ -19,8 +19,6 @@ from ..utils.validation import BaseValidator, CompositeValidator, ValidationResu
 
 
 class CacheBackendType(str, Enum):
-    """Cache backend type enumeration."""
-
     MEMORY = "memory"
     VALKEY = "valkey"
     REDIS = "redis"
@@ -28,8 +26,6 @@ class CacheBackendType(str, Enum):
 
 
 class MiddlewareType(str, Enum):
-    """Middleware type enumeration."""
-
     RATE_LIMIT = "rate_limit"
     CACHE = "cache"
     RETRY = "retry"
@@ -40,8 +36,6 @@ class MiddlewareType(str, Enum):
 
 
 class RateLimitConfig(BaseModel):
-    """Rate limiting configuration model."""
-
     enabled: bool = Field(True, description="Enable rate limiting")
     requests_per_minute: int = Field(60, description="Requests per minute", gt=0)
     burst_limit: int | None = Field(None, description="Burst limit for short periods", gt=0)
@@ -54,7 +48,6 @@ class RateLimitConfig(BaseModel):
     @field_validator("key_strategy")
     @classmethod
     def validate_key_strategy(cls, v: str) -> str:
-        """Validate rate limit key strategy."""
         valid_strategies = {"function_name", "user_id", "ip_address", "session_id", "custom"}
         if v not in valid_strategies:
             raise ValueError(f"Key strategy must be one of {valid_strategies}")
@@ -63,7 +56,6 @@ class RateLimitConfig(BaseModel):
     @field_validator("enforcement_mode")
     @classmethod
     def validate_enforcement_mode(cls, v: str) -> str:
-        """Validate enforcement mode."""
         valid_modes = {"strict", "soft", "log_only"}
         if v not in valid_modes:
             raise ValueError(f"Enforcement mode must be one of {valid_modes}")
@@ -71,7 +63,6 @@ class RateLimitConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_rate_limit_config(self) -> RateLimitConfig:
-        """Validate rate limit configuration consistency."""
         if self.burst_limit and self.burst_limit <= self.requests_per_minute:
             raise ValueError("Burst limit must be greater than requests_per_minute")
 
@@ -84,23 +75,18 @@ class RateLimitConfig(BaseModel):
 
     @property
     def effective_rate_per_second(self) -> float:
-        """Calculate effective rate per second."""
         return self.requests_per_minute / 60.0
 
     @property
     def has_burst_capability(self) -> bool:
-        """Check if burst limiting is enabled."""
         return self.burst_limit is not None
 
     @property
     def has_custom_limits(self) -> bool:
-        """Check if custom per-function limits are defined."""
         return len(self.custom_limits) > 0
 
 
 class CacheConfig(BaseModel):
-    """Cache configuration model."""
-
     enabled: bool = Field(True, description="Enable caching")
     backend_type: CacheBackendType = Field(CacheBackendType.MEMORY, description="Cache backend type")
     default_ttl: int = Field(300, description="Default TTL in seconds", gt=0)
@@ -132,7 +118,6 @@ class CacheConfig(BaseModel):
     @field_validator("serialization_format")
     @classmethod
     def validate_serialization_format(cls, v: str) -> str:
-        """Validate serialization format."""
         valid_formats = {"json", "pickle", "msgpack"}
         if v not in valid_formats:
             raise ValueError(f"Serialization format must be one of {valid_formats}")
@@ -141,7 +126,6 @@ class CacheConfig(BaseModel):
     @field_validator("eviction_policy")
     @classmethod
     def validate_eviction_policy(cls, v: str) -> str:
-        """Validate eviction policy."""
         valid_policies = {"lru", "lfu", "fifo", "random", "ttl"}
         if v not in valid_policies:
             raise ValueError(f"Eviction policy must be one of {valid_policies}")
@@ -150,7 +134,6 @@ class CacheConfig(BaseModel):
     @field_validator("cache_miss_strategy")
     @classmethod
     def validate_cache_miss_strategy(cls, v: str) -> str:
-        """Validate cache miss strategy."""
         valid_strategies = {"passthrough", "fail_fast", "log_and_continue"}
         if v not in valid_strategies:
             raise ValueError(f"Cache miss strategy must be one of {valid_strategies}")
@@ -159,14 +142,12 @@ class CacheConfig(BaseModel):
     @field_validator("valkey_url")
     @classmethod
     def validate_valkey_url(cls, v: str) -> str:
-        """Validate Valkey/Redis URL format."""
         if not v.startswith(("redis://", "rediss://", "unix://")):
             raise ValueError("Valkey URL must start with redis://, rediss://, or unix://")
         return v
 
     @model_validator(mode="after")
     def validate_cache_config(self) -> CacheConfig:
-        """Validate cache configuration consistency."""
         # Backend-specific validations
         if self.backend_type == CacheBackendType.MEMORY:
             if self.max_size != self.memory_max_size:
@@ -180,17 +161,14 @@ class CacheConfig(BaseModel):
 
     @property
     def is_distributed(self) -> bool:
-        """Check if cache backend is distributed."""
         return self.backend_type in (CacheBackendType.VALKEY, CacheBackendType.REDIS)
 
     @property
     def is_persistent(self) -> bool:
-        """Check if cache backend is persistent."""
         return self.backend_type in (CacheBackendType.VALKEY, CacheBackendType.REDIS, CacheBackendType.FILE)
 
     @property
     def estimated_memory_usage_mb(self) -> float:
-        """Estimate memory usage in MB."""
         if self.backend_type == CacheBackendType.MEMORY:
             # Rough estimate: average 1KB per cache entry
             return (self.max_size * 1024) / (1024 * 1024)
@@ -198,8 +176,6 @@ class CacheConfig(BaseModel):
 
 
 class RetryConfig(BaseModel):
-    """Retry configuration model."""
-
     enabled: bool = Field(True, description="Enable retry logic")
     max_attempts: int = Field(3, description="Maximum retry attempts", ge=1, le=10)
     backoff_factor: float = Field(1.0, description="Backoff multiplier", ge=0.01, le=10.0)
@@ -218,7 +194,6 @@ class RetryConfig(BaseModel):
     @field_validator("backoff_strategy")
     @classmethod
     def validate_backoff_strategy(cls, v: str) -> str:
-        """Validate backoff strategy."""
         valid_strategies = {"exponential", "linear", "fixed", "fibonacci"}
         if v not in valid_strategies:
             raise ValueError(f"Backoff strategy must be one of {valid_strategies}")
@@ -226,7 +201,6 @@ class RetryConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_retry_config(self) -> RetryConfig:
-        """Validate retry configuration consistency."""
         if self.max_attempts == 1 and self.enabled:
             raise ValueError("If retries are enabled, max_attempts must be > 1")
 
@@ -238,7 +212,6 @@ class RetryConfig(BaseModel):
         return self
 
     def calculate_delay(self, attempt: int) -> float:
-        """Calculate delay for specific attempt."""
         if self.backoff_strategy == "exponential":
             delay = self.backoff_factor * (2**attempt)
         elif self.backoff_strategy == "linear":
@@ -255,18 +228,14 @@ class RetryConfig(BaseModel):
         return min(delay, self.max_delay)
 
     def calculate_max_total_delay(self) -> float:
-        """Calculate maximum total delay across all attempts."""
         return sum(self.calculate_delay(i) for i in range(self.max_attempts - 1))
 
     @property
     def has_exception_filtering(self) -> bool:
-        """Check if exception filtering is configured."""
         return bool(self.retry_on_exceptions or self.do_not_retry_on)
 
 
 class MiddlewareConfig(BaseModel):
-    """Overall middleware configuration model."""
-
     enabled: bool = Field(True, description="Enable middleware system")
     middleware_order: list[MiddlewareType] = Field(
         default_factory=lambda: [
@@ -295,7 +264,6 @@ class MiddlewareConfig(BaseModel):
     @field_validator("middleware_order")
     @classmethod
     def validate_middleware_order(cls, v: list[MiddlewareType]) -> list[MiddlewareType]:
-        """Validate middleware execution order."""
         if MiddlewareType.AUTHENTICATION in v and MiddlewareType.AUTHENTICATION != v[0]:
             raise ValueError("Authentication middleware should be first in order")
 
@@ -306,7 +274,6 @@ class MiddlewareConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_middleware_config(self) -> MiddlewareConfig:
-        """Validate overall middleware configuration."""
         # Ensure enabled middleware have valid configs
         if MiddlewareType.RATE_LIMIT in self.middleware_order and not self.rate_limit.enabled:
             raise ValueError("Rate limiting is in execution order but disabled")
@@ -321,17 +288,14 @@ class MiddlewareConfig(BaseModel):
 
     @property
     def active_middleware_count(self) -> int:
-        """Get count of active middleware."""
         return len(self.middleware_order)
 
     @property
     def has_custom_middleware(self) -> bool:
-        """Check if custom middleware is configured."""
         return len(self.custom_middleware) > 0
 
     @property
     def estimated_overhead_ms(self) -> float:
-        """Estimate middleware overhead in milliseconds."""
         overhead = 0.0
 
         if MiddlewareType.AUTHENTICATION in self.middleware_order:
@@ -350,8 +314,6 @@ class MiddlewareConfig(BaseModel):
 
 
 class MiddlewareRegistry(BaseModel):
-    """Middleware registry model for managing middleware functions."""
-
     middleware: dict[str, Any] = Field(default_factory=dict, description="Registered middleware functions")
     last_updated: datetime = Field(default_factory=datetime.utcnow, description="Last registry update")
     version: str = Field("1.0.0", description="Registry version")
@@ -359,22 +321,18 @@ class MiddlewareRegistry(BaseModel):
     # Add backward compatibility property
     @property
     def _middleware(self) -> dict[str, Any]:
-        """Get middleware dict (backward compatibility)."""
         return self.middleware
 
     def register_middleware(self, name: str, config: dict[str, JsonValue]) -> None:
-        """Register middleware in the registry."""
         self.middleware[name] = config
         self.last_updated = datetime.utcnow()
 
     # Add backward compatibility methods
     def register(self, name: str, middleware: Any) -> None:
-        """Register middleware (backward compatibility)."""
         self.middleware[name] = middleware
         self.last_updated = datetime.utcnow()
 
     def unregister_middleware(self, name: str) -> bool:
-        """Unregister middleware from the registry."""
         if name in self.middleware:
             del self.middleware[name]
             self.last_updated = datetime.utcnow()
@@ -382,16 +340,13 @@ class MiddlewareRegistry(BaseModel):
         return False
 
     def get_middleware(self, name: str) -> dict[str, JsonValue] | None:
-        """Get middleware configuration by name."""
         return self.middleware.get(name)
 
     # Add backward compatibility method
     def get(self, name: str) -> Any:
-        """Get middleware (backward compatibility)."""
         return self.middleware.get(name)
 
     def apply(self, handler: Any, middleware_configs: list[dict[str, Any]]) -> Any:
-        """Apply middleware to a handler."""
         wrapped = handler
         for config in middleware_configs:
             middleware_name = config.get("name")
@@ -402,20 +357,16 @@ class MiddlewareRegistry(BaseModel):
         return wrapped
 
     def list_middleware(self, middleware_type: MiddlewareType | None = None) -> list[str]:
-        """List all middleware names, optionally filtered by type."""
         if middleware_type:
             return [name for name, config in self.middleware.items() if config.get("type") == middleware_type.value]
         return list(self.middleware.keys())
 
     @property
     def middleware_count(self) -> int:
-        """Get total number of registered middleware."""
         return len(self.middleware)
 
 
 class MiddlewareError(BaseModel):
-    """Middleware error model."""
-
     error_type: str = Field(..., description="Error type", min_length=1, max_length=64)
     message: str = Field(..., description="Error message", min_length=1, max_length=500)
     middleware_name: str | None = Field(None, description="Middleware that caused the error")
@@ -427,7 +378,6 @@ class MiddlewareError(BaseModel):
     @field_validator("error_type")
     @classmethod
     def validate_error_type(cls, v: str) -> str:
-        """Validate error type format."""
         import re
 
         if not re.match(r"^[A-Z][a-zA-Z0-9_]*Error$", v):
@@ -436,24 +386,19 @@ class MiddlewareError(BaseModel):
 
     @property
     def is_timeout_error(self) -> bool:
-        """Check if error is timeout-related."""
         return "timeout" in self.error_type.lower()
 
     @property
     def is_rate_limit_error(self) -> bool:
-        """Check if error is rate limit-related."""
         return "ratelimit" in self.error_type.lower() or "rate_limit" in self.error_type.lower()
 
     @property
     def should_retry(self) -> bool:
-        """Check if operation should be retried."""
         return self.recoverable and not self.is_rate_limit_error
 
 
 # Middleware Validators using validation framework
 class RateLimitConfigValidator(BaseValidator[RateLimitConfig]):
-    """Business rule validator for rate limit configuration."""
-
     def validate(self, model: RateLimitConfig) -> ValidationResult:
         result = ValidationResult(valid=True)
 
@@ -478,8 +423,6 @@ class RateLimitConfigValidator(BaseValidator[RateLimitConfig]):
 
 
 class CacheConfigValidator(BaseValidator[CacheConfig]):
-    """Business rule validator for cache configuration."""
-
     def validate(self, model: CacheConfig) -> ValidationResult:
         result = ValidationResult(valid=True)
 
@@ -520,8 +463,6 @@ class CacheConfigValidator(BaseValidator[CacheConfig]):
 
 
 class RetryConfigValidator(BaseValidator[RetryConfig]):
-    """Business rule validator for retry configuration."""
-
     def validate(self, model: RetryConfig) -> ValidationResult:
         result = ValidationResult(valid=True)
 
@@ -546,8 +487,6 @@ class RetryConfigValidator(BaseValidator[RetryConfig]):
 
 
 class MiddlewareConfigValidator(BaseValidator[MiddlewareConfig]):
-    """Business rule validator for overall middleware configuration."""
-
     def validate(self, model: MiddlewareConfig) -> ValidationResult:
         result = ValidationResult(valid=True)
 
@@ -581,7 +520,6 @@ class MiddlewareConfigValidator(BaseValidator[MiddlewareConfig]):
 
 # Composite validator for middleware models
 def create_middleware_validator() -> CompositeValidator[MiddlewareConfig]:
-    """Create a comprehensive middleware validator."""
     validators = [
         MiddlewareConfigValidator(MiddlewareConfig),
     ]

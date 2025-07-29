@@ -20,8 +20,6 @@ from agent.utils.validation import BaseValidator, CompositeValidator, Validation
 
 
 class TaskPriority(str, Enum):
-    """Task priority enumeration."""
-
     LOW = "low"
     NORMAL = "normal"
     HIGH = "high"
@@ -29,8 +27,6 @@ class TaskPriority(str, Enum):
 
 
 class ErrorType(str, Enum):
-    """API error type enumeration."""
-
     VALIDATION_ERROR = "validation_error"
     AUTHENTICATION_ERROR = "authentication_error"
     AUTHORIZATION_ERROR = "authorization_error"
@@ -41,8 +37,6 @@ class ErrorType(str, Enum):
 
 
 class TaskRequest(BaseModel):
-    """API task request model."""
-
     task_id: str = Field(..., description="Task identifier", min_length=1, max_length=128)
     function_name: str = Field(..., description="Function to execute", min_length=1, max_length=64)
     parameters: dict[str, JsonValue] = Field(default_factory=dict, description="Function parameters")
@@ -56,7 +50,6 @@ class TaskRequest(BaseModel):
     @field_validator("task_id")
     @classmethod
     def validate_task_id(cls, v: str) -> str:
-        """Validate task ID format."""
         import re
 
         if not re.match(r"^[a-zA-Z0-9_-]+$", v):
@@ -66,7 +59,6 @@ class TaskRequest(BaseModel):
     @field_validator("function_name")
     @classmethod
     def validate_function_name(cls, v: str) -> str:
-        """Validate function name format."""
         import re
 
         if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", v):
@@ -76,14 +68,12 @@ class TaskRequest(BaseModel):
     @field_validator("callback_url")
     @classmethod
     def validate_callback_url(cls, v: str | None) -> str | None:
-        """Validate callback URL format."""
         if v and not v.startswith(("http://", "https://")):
             raise ValueError("Callback URL must start with http:// or https://")
         return v
 
     @model_validator(mode="after")
     def validate_task_request(self) -> TaskRequest:
-        """Validate task request consistency."""
         # Check parameter size
         params_str = str(self.parameters)
         if len(params_str) > 100000:  # 100KB limit
@@ -93,8 +83,6 @@ class TaskRequest(BaseModel):
 
 
 class TaskResponse(BaseModel):
-    """API task response model."""
-
     task_id: str = Field(..., description="Task identifier")
     status: A2ATaskState = Field(..., description="Task status")
     result: JsonValue | None = Field(None, description="Task result")
@@ -107,19 +95,16 @@ class TaskResponse(BaseModel):
 
     @property
     def duration_seconds(self) -> float | None:
-        """Calculate task duration in seconds."""
         if self.completed_at:
             return (self.completed_at - self.started_at).total_seconds()
         return None
 
     @property
     def is_complete(self) -> bool:
-        """Check if task is in a completed state."""
         return self.status in (A2ATaskState.completed, A2ATaskState.failed, A2ATaskState.canceled)
 
     @model_validator(mode="after")
     def validate_task_response(self) -> TaskResponse:
-        """Validate task response consistency."""
         # Completed/failed tasks should have completion time
         if self.is_complete and self.completed_at is None:
             self.completed_at = datetime.utcnow()
@@ -140,8 +125,6 @@ class TaskResponse(BaseModel):
 
 
 class APIError(BaseModel):
-    """Standardized API error response model."""
-
     error_type: ErrorType = Field(..., description="Error type")
     error_code: str = Field(..., description="Error code")
     message: str = Field(..., description="Human-readable error message")
@@ -153,7 +136,6 @@ class APIError(BaseModel):
     @field_validator("error_code")
     @classmethod
     def validate_error_code(cls, v: str) -> str:
-        """Validate error code format."""
         import re
 
         if not re.match(r"^[A-Z][A-Z0-9_]*$", v):
@@ -163,7 +145,6 @@ class APIError(BaseModel):
     @field_validator("message")
     @classmethod
     def validate_message(cls, v: str) -> str:
-        """Validate error message."""
         if len(v) < 5:
             raise ValueError("Error message must be at least 5 characters")
         if len(v) > 500:
@@ -172,8 +153,6 @@ class APIError(BaseModel):
 
 
 class PaginationParams(BaseModel):
-    """Pagination parameters for API responses."""
-
     page: int = Field(1, description="Page number", ge=1)
     per_page: int = Field(50, description="Items per page", ge=1, le=1000)
     sort_by: str | None = Field(None, description="Sort field")
@@ -181,18 +160,14 @@ class PaginationParams(BaseModel):
 
     @property
     def offset(self) -> int:
-        """Calculate offset for database queries."""
         return (self.page - 1) * self.per_page
 
     @property
     def limit(self) -> int:
-        """Get limit for database queries."""
         return self.per_page
 
 
 class PaginatedResponse(BaseModel):
-    """Paginated API response model."""
-
     items: list[JsonValue] = Field(..., description="Response items")
     total: int = Field(..., description="Total item count", ge=0)
     page: int = Field(..., description="Current page", ge=1)
@@ -203,7 +178,6 @@ class PaginatedResponse(BaseModel):
 
     @classmethod
     def create(cls, items: list[JsonValue], total: int, pagination: PaginationParams) -> PaginatedResponse:
-        """Create paginated response from items and pagination params."""
         pages = max(1, (total + pagination.per_page - 1) // pagination.per_page)
 
         return cls(
@@ -218,8 +192,6 @@ class PaginatedResponse(BaseModel):
 
 
 class HealthCheckResponse(BaseModel):
-    """Health check API response model."""
-
     status: Literal["healthy", "degraded", "unhealthy"] = Field(..., description="Overall health status")
     timestamp: datetime = Field(default_factory=datetime.utcnow, description="Health check timestamp")
     version: str = Field(..., description="Application version")
@@ -228,13 +200,10 @@ class HealthCheckResponse(BaseModel):
 
     @property
     def is_healthy(self) -> bool:
-        """Check if system is healthy."""
         return self.status == "healthy"
 
 
 class MetricsResponse(BaseModel):
-    """Metrics API response model."""
-
     timestamp: datetime = Field(default_factory=datetime.utcnow, description="Metrics timestamp")
     request_count: int = Field(0, description="Total request count", ge=0)
     error_count: int = Field(0, description="Total error count", ge=0)
@@ -245,21 +214,17 @@ class MetricsResponse(BaseModel):
 
     @property
     def error_rate(self) -> float:
-        """Calculate error rate percentage."""
         if self.request_count == 0:
             return 0.0
         return (self.error_count / self.request_count) * 100
 
     @property
     def success_rate(self) -> float:
-        """Calculate success rate percentage."""
         return 100.0 - self.error_rate
 
 
 # API Validators using validation framework
 class TaskRequestValidator(BaseValidator[TaskRequest]):
-    """Business rule validator for task requests."""
-
     def validate(self, model: TaskRequest) -> ValidationResult:
         result = ValidationResult(valid=True)
 
@@ -288,8 +253,6 @@ class TaskRequestValidator(BaseValidator[TaskRequest]):
 
 
 class APIErrorValidator(BaseValidator[APIError]):
-    """Business rule validator for API errors."""
-
     def validate(self, model: APIError) -> ValidationResult:
         result = ValidationResult(valid=True)
 
@@ -313,8 +276,6 @@ class APIErrorValidator(BaseValidator[APIError]):
 
 
 class PaginationValidator(BaseValidator[PaginationParams]):
-    """Business rule validator for pagination parameters."""
-
     def validate(self, model: PaginationParams) -> ValidationResult:
         result = ValidationResult(valid=True)
 
@@ -332,7 +293,6 @@ class PaginationValidator(BaseValidator[PaginationParams]):
 
 # Composite validator for API models
 def create_api_validator() -> CompositeValidator[TaskRequest]:
-    """Create a comprehensive API validator."""
     validators = [
         TaskRequestValidator(TaskRequest),
     ]

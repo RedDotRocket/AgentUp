@@ -1,5 +1,3 @@
-"""Tests for A2A streaming functionality."""
-
 import asyncio
 import json
 from unittest.mock import MagicMock, patch
@@ -11,12 +9,8 @@ from agent.api.routes import sse_generator
 
 
 class TestStreamingEndpoint:
-    """Test the message/stream endpoint."""
-
     @pytest.mark.asyncio
     async def test_sse_generator_success(self):
-        """Test SSE generator with successful responses."""
-
         # Mock async iterator
         async def mock_responses():
             # Mock SendStreamingMessageResponse objects
@@ -40,8 +34,6 @@ class TestStreamingEndpoint:
 
     @pytest.mark.asyncio
     async def test_sse_generator_error(self):
-        """Test SSE generator with exception."""
-
         # Mock async iterator that raises exception
         async def mock_responses():
             response1 = MagicMock()
@@ -67,7 +59,6 @@ class TestStreamingEndpoint:
     @pytest.mark.skip(reason="Requires integration test setup with client fixture")
     @pytest.mark.asyncio
     async def test_streaming_endpoint_authentication(self, client: AsyncClient):
-        """Test streaming endpoint requires authentication."""
         request_data = {
             "jsonrpc": "2.0",
             "method": "message/stream",
@@ -90,7 +81,6 @@ class TestStreamingEndpoint:
     @pytest.mark.skip(reason="Requires integration test setup with authenticated_client fixture")
     @pytest.mark.asyncio
     async def test_streaming_endpoint_invalid_method(self, authenticated_client: AsyncClient):
-        """Test streaming endpoint with invalid method."""
         request_data = {
             "jsonrpc": "2.0",
             "method": "invalid/stream",
@@ -116,7 +106,6 @@ class TestStreamingEndpoint:
     @pytest.mark.skip(reason="Requires integration test setup with authenticated_client fixture")
     @pytest.mark.asyncio
     async def test_streaming_endpoint_missing_params(self, authenticated_client: AsyncClient):
-        """Test streaming endpoint with missing parameters."""
         request_data = {"jsonrpc": "2.0", "method": "message/stream", "params": {}, "id": "req-test"}
 
         response = await authenticated_client.post("/", json=request_data)
@@ -129,7 +118,6 @@ class TestStreamingEndpoint:
     @pytest.mark.skip(reason="Requires integration test setup with authenticated_client fixture")
     @pytest.mark.asyncio
     async def test_streaming_endpoint_invalid_json(self, authenticated_client: AsyncClient):
-        """Test streaming endpoint with invalid JSON."""
         response = await authenticated_client.post(
             "/", content="invalid json", headers={"Content-Type": "application/json"}
         )
@@ -141,8 +129,6 @@ class TestStreamingEndpoint:
     @pytest.mark.asyncio
     @patch("agent.api.routes.get_request_handler")
     async def test_streaming_endpoint_success(self, mock_handler, authenticated_client: AsyncClient):
-        """Test successful streaming endpoint interaction."""
-
         # Mock streaming response
         async def mock_stream():
             response1 = MagicMock()
@@ -207,19 +193,14 @@ class TestStreamingEndpoint:
 
 
 class TestStreamingIntegration:
-    """Integration tests for streaming functionality."""
-
     @pytest.mark.asyncio
     async def test_streaming_with_oauth2_auth(self):
-        """Test streaming with OAuth2 authentication."""
         # This would require a running server with OAuth2 configured
         # Implementation depends on test setup
         pass
 
     @pytest.mark.asyncio
     async def test_streaming_timeout_handling(self):
-        """Test streaming behavior with timeouts."""
-
         # Mock a slow streaming response
         async def slow_stream():
             await asyncio.sleep(0.1)
@@ -240,7 +221,6 @@ class TestStreamingIntegration:
 
     @pytest.mark.asyncio
     async def test_streaming_large_response(self):
-        """Test streaming with large responses."""
         # Mock large response
         large_text = "A" * 10000  # 10KB text
 
@@ -261,8 +241,6 @@ class TestStreamingIntegration:
 
     @pytest.mark.asyncio
     async def test_streaming_concurrent_requests(self):
-        """Test multiple concurrent streaming requests."""
-
         async def mock_stream(stream_id):
             for i in range(3):
                 response = MagicMock()
@@ -283,7 +261,6 @@ class TestStreamingIntegration:
             assert len(events) == 3
 
     async def _collect_stream_events(self, stream):
-        """Helper to collect events from a stream."""
         events = []
         async for event in sse_generator(stream):
             events.append(event)
@@ -291,10 +268,7 @@ class TestStreamingIntegration:
 
 
 class TestStreamingValidation:
-    """Tests for streaming request/response validation."""
-
     def test_streaming_request_validation(self):
-        """Test validation of streaming request format."""
         # Valid request
         valid_request = {
             "jsonrpc": "2.0",
@@ -316,7 +290,6 @@ class TestStreamingValidation:
         assert valid_request["params"]["message"]["role"] == "user"
 
     def test_streaming_response_format(self):
-        """Test streaming response format compliance."""
         # Mock response object
         response_data = {
             "jsonrpc": "2.0",
@@ -344,7 +317,6 @@ class TestStreamingValidation:
         assert "artifacts" in response_data["result"]
 
     def test_sse_event_format(self):
-        """Test SSE event format compliance."""
         # Test data
         json_data = '{"test": "data"}'
 
@@ -364,7 +336,6 @@ class TestStreamingValidation:
 # Fixtures for authenticated client
 @pytest.fixture
 async def authenticated_client():
-    """Create an authenticated test client."""
     # This would need to be implemented based on your auth setup
     # For now, return a mock
     client = MagicMock(spec=AsyncClient)

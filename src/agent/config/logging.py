@@ -170,7 +170,6 @@ def setup_logging(config: LoggingConfig | None = None, json_logs: bool | None = 
 
 
 def _get_module_logger():
-    """Get logger for this module, initializing if needed."""
     global logger
     if logger is None:
         try:

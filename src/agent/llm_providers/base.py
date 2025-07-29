@@ -10,8 +10,6 @@ logger = structlog.get_logger(__name__)
 
 @dataclass
 class FunctionCall:
-    """Function call from LLM."""
-
     name: str
     arguments: dict[str, Any]
     call_id: str | None = None
@@ -19,8 +17,6 @@ class FunctionCall:
 
 @dataclass
 class LLMResponse:
-    """Standardized LLM response format."""
-
     content: str
     finish_reason: str = "stop"
     usage: dict[str, int] | None = None
@@ -30,8 +26,6 @@ class LLMResponse:
 
 @dataclass
 class ChatMessage:
-    """Standardized chat message format."""
-
     role: str  # system, user, assistant, function
     content: str | list[dict[str, Any]]  # Support both text and structured content (for vision)
     function_call: FunctionCall | None = None
@@ -40,8 +34,6 @@ class ChatMessage:
 
 
 class BaseLLMService(ABC):
-    """Abstract base class for all LLM providers."""
-
     def __init__(self, name: str, config: dict[str, Any]):
         self.name = name
         self.config = config
@@ -61,30 +53,25 @@ class BaseLLMService(ABC):
 
     @abstractmethod
     async def complete(self, prompt: str, **kwargs) -> LLMResponse:
-        """Generate completion from prompt."""
         pass
 
     @abstractmethod
     async def chat_complete(self, messages: list[ChatMessage], **kwargs) -> LLMResponse:
-        """Generate chat completion from messages."""
         pass
 
     async def embed(self, text: str) -> list[float]:
-        """Generate embeddings (optional)."""
         try:
             return await self._embed_impl(text)
         except NotImplementedError:
             raise NotImplementedError(f"Provider {self.name} does not support embeddings") from None
 
     async def _embed_impl(self, text: str) -> list[float]:
-        """Implementation of embeddings (override in subclasses that support it)."""
         raise NotImplementedError("Embeddings not implemented for this provider")
 
     # Function calling support
     async def chat_complete_with_functions(
         self, messages: list[ChatMessage], functions: list[dict[str, Any]], **kwargs
     ) -> LLMResponse:
-        """Chat completion with function calling support."""
         try:
             # Try native function calling first
             return await self._chat_complete_with_functions_native(messages, functions, **kwargs)
@@ -96,13 +83,11 @@ class BaseLLMService(ABC):
     async def _chat_complete_with_functions_native(
         self, messages: list[ChatMessage], functions: list[dict[str, Any]], **kwargs
     ) -> LLMResponse:
-        """Native function calling implementation (override in providers that support it)."""
         raise NotImplementedError("Native function calling not implemented for this provider")
 
     async def _chat_complete_with_functions_prompt(
         self, messages: list[ChatMessage], functions: list[dict[str, Any]], **kwargs
     ) -> LLMResponse:
-        """Prompt-based function calling fallback."""
         # Build function descriptions
         function_descriptions = []
         for func in functions:
@@ -143,7 +128,6 @@ After function calls, provide a natural response based on the results."""
         return response
 
     def _parse_function_calls(self, content: str) -> list[FunctionCall]:
-        """Parse function calls from LLM response."""
         import re
 
         function_calls = []
@@ -178,7 +162,6 @@ After function calls, provide a natural response based on the results."""
 
     # Utility methods
     def _messages_to_prompt(self, messages: list[ChatMessage]) -> str:
-        """Convert messages to prompt format (for completion-only models)."""
         prompt_parts = []
         for msg in messages:
             role = msg.role
@@ -196,7 +179,6 @@ After function calls, provide a natural response based on the results."""
         return "\n\n".join(prompt_parts)
 
     def _chat_message_to_dict(self, message: ChatMessage) -> dict[str, Any]:
-        """Convert ChatMessage to provider-specific format."""
         msg_dict = {"role": message.role, "content": message.content}
 
         if message.function_call:
@@ -217,7 +199,6 @@ After function calls, provide a natural response based on the results."""
         return msg_dict
 
     def _dict_to_chat_message(self, msg_dict: dict[str, Any]) -> ChatMessage:
-        """Convert provider response to ChatMessage."""
         message = ChatMessage(role=msg_dict.get("role", "assistant"), content=msg_dict.get("content", ""))
 
         if "function_call" in msg_dict:
@@ -244,11 +225,9 @@ After function calls, provide a natural response based on the results."""
 
     @property
     def is_initialized(self) -> bool:
-        """Check if service is initialized."""
         return self._initialized
 
     def get_model_info(self) -> dict[str, Any]:
-        """Get information about the model."""
         return {
             "name": self.name,
             "provider": self.__class__.__name__,
@@ -258,18 +237,12 @@ After function calls, provide a natural response based on the results."""
 
 
 class LLMProviderError(Exception):
-    """Base exception for LLM provider errors."""
-
     pass
 
 
 class LLMProviderConfigError(LLMProviderError):
-    """Configuration error for LLM provider."""
-
     pass
 
 
 class LLMProviderAPIError(LLMProviderError):
-    """API error from LLM provider."""
-
     pass

@@ -6,8 +6,6 @@ logger = structlog.get_logger(__name__)
 
 
 class MCPClientService:
-    """MCP client service for connecting to external MCP servers."""
-
     def __init__(self, name: str, config: dict[str, Any]):
         self.name = name
         self.config = config
@@ -29,7 +27,6 @@ class MCPClientService:
         logger.info(f"MCP client initialized with {len(self._servers)} servers")
 
     async def _connect_to_server(self, server_config: dict[str, Any]) -> None:
-        """Connect to a single MCP server."""
         from mcp import ClientSession, StdioServerParameters
         from mcp.client.stdio import stdio_client
 
@@ -58,7 +55,6 @@ class MCPClientService:
         logger.info(f"Successfully discovered capabilities from MCP server: {server_name}")
 
     async def _discover_server_capabilities(self, server_name: str, session) -> None:
-        """Discover tools and resources from an MCP server."""
         tools_count = 0
         resources_count = 0
 
@@ -116,7 +112,6 @@ class MCPClientService:
                 logger.info(f"Available tools from {server_name}: {', '.join(tool_names)}")
 
     async def get_available_tools(self) -> list[dict[str, Any]]:
-        """Get all available tools from connected MCP servers."""
         tools = []
         for tool_key, tool_info in self._available_tools.items():
             # Convert MCP tool schema to AgentUp function schema
@@ -129,7 +124,6 @@ class MCPClientService:
         return tools
 
     async def call_tool(self, tool_name: str, arguments: dict[str, Any]) -> str:
-        """Call an MCP tool and return the result."""
         if tool_name not in self._available_tools:
             raise ValueError(f"Tool {tool_name} not found in available MCP tools")
 
@@ -207,7 +201,6 @@ class MCPClientService:
             raise
 
     async def get_resource(self, resource_uri: str) -> str | None:
-        """Get content from an MCP resource."""
         for resource_key, resource_info in self._available_resources.items():
             if resource_key == resource_uri or resource_info["name"] == resource_uri:
                 server_name = resource_info["server"]
@@ -242,7 +235,6 @@ class MCPClientService:
         return None
 
     async def close(self) -> None:
-        """Close MCP client and clear cached data."""
         logger.info("Closing MCP client")
 
         self._servers.clear()
@@ -253,7 +245,6 @@ class MCPClientService:
         logger.info("MCP client closed")
 
     async def health_check(self) -> dict[str, Any]:
-        """Check health of MCP connections."""
         return {
             "status": "healthy" if self._initialized else "not_initialized",
             "servers_connected": len(self._servers),
@@ -263,23 +254,18 @@ class MCPClientService:
 
     @property
     def is_initialized(self) -> bool:
-        """Check if MCP client is initialized."""
         return self._initialized
 
     def list_servers(self) -> list[str]:
-        """list connected MCP server names."""
         return list(self._servers.keys())
 
     def list_tools(self) -> list[str]:
-        """list available MCP tool names."""
         return list(self._available_tools.keys())
 
     def list_resources(self) -> list[str]:
-        """list available MCP resource names."""
         return list(self._available_resources.keys())
 
     async def test_tool_connection(self, tool_name: str) -> dict[str, Any]:
-        """Test MCP tool connection without arguments for debugging."""
         if tool_name not in self._available_tools:
             return {
                 "success": False,

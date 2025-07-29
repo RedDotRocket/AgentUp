@@ -15,8 +15,6 @@ logger = structlog.get_logger(__name__)
 
 
 class FunctionRegistry:
-    """Registry for LLM-callable functions (plugins)."""
-
     def __init__(self):
         self._functions: dict[str, dict[str, Any]] = {}
         self._handlers: dict[str, Callable] = {}
@@ -24,7 +22,6 @@ class FunctionRegistry:
         self._mcp_client = None
 
     def register_function(self, name: str, handler: Callable, schema: dict[str, Any]):
-        """Register a plugin as an LLM-callable function with deduplication."""
         if name in self._functions:
             # Check if this is the same function being registered again
             existing_schema = self._functions[name]
@@ -41,7 +38,6 @@ class FunctionRegistry:
         logger.debug(f"Registered function '{name}' in registry")
 
     def get_function_schemas(self) -> list[dict[str, Any]]:
-        """Get all function schemas for LLM function calling (local + MCP) with deduplication."""
         # Use a dict to deduplicate by function name
         schema_dict = {}
 
@@ -141,13 +137,11 @@ class FunctionRegistry:
             return []
 
     def _get_plugin_tools(self, scope_service, user_scopes: set[str]) -> list[dict[str, Any]]:
-        """Get plugin tools filtered by user scopes with security logging."""
-        from agent.config import load_config
+        from agent.config import Config
         from agent.plugins.integration import get_plugin_adapter
         from agent.security.audit_logger import get_security_audit_logger
 
         tools = []
-        config = load_config()
         plugin_adapter = get_plugin_adapter()
         audit_logger = get_security_audit_logger()
 
@@ -170,30 +164,30 @@ class FunctionRegistry:
             user_id = f"session_{hashlib.sha256(uuid.uuid4().bytes).hexdigest()}"
 
         logger.debug(
-            f"Plugin capability filtering - adapter: {plugin_adapter is not None}, config: {config is not None}"
+            f"Plugin capability filtering - adapter: {plugin_adapter is not None}, config: {Config is not None}"
         )
 
-        if not (plugin_adapter and config):
+        if not plugin_adapter:
             return tools
 
-        configured_plugins = config.get("plugins", [])
+        configured_plugins = Config.plugins
         logger.debug(f"Found {len(configured_plugins)} configured plugins")
 
         for plugin_config in configured_plugins:
-            plugin_id = plugin_config.get("plugin_id")
+            plugin_id = plugin_config.plugin_id
             if not plugin_id:
                 continue
 
             logger.debug(f"Processing plugin: {plugin_id}")
 
             # Handle new capability-based config structure
-            if "capabilities" in plugin_config:
-                capabilities_list = plugin_config["capabilities"]
+            if plugin_config.capabilities:
+                capabilities_list = plugin_config.capabilities
                 logger.debug(f"Plugin '{plugin_id}' has {len(capabilities_list)} capabilities defined")
 
                 for capability_config in capabilities_list:
-                    capability_id = capability_config.get("capability_id")
-                    required_scopes = capability_config.get("required_scopes", [])
+                    capability_id = capability_config.capability_id
+                    required_scopes = capability_config.required_scopes or []
 
                     # Use centralized scope validation
                     result = scope_service.validate_multiple_scopes(user_scopes, required_scopes)
@@ -224,17 +218,14 @@ class FunctionRegistry:
         return tools
 
     def _get_mcp_tools(self, scope_service, user_scopes: set[str]) -> list[dict[str, Any]]:
-        """Get MCP tools filtered by user scopes."""
-        from agent.config import load_config
+        from agent.config import Config
 
         tools = []
-        config = load_config()
-        mcp_config = config.get("mcp", {})
 
-        if not mcp_config.get("client", {}).get("enabled", False):
+        if not Config.mcp.client_enabled:
             return tools
 
-        servers = mcp_config.get("client", {}).get("servers", [])
+        servers = Config.mcp.servers
 
         # Extract tool scopes from server configuration
         tool_scopes = {}
@@ -257,17 +248,14 @@ class FunctionRegistry:
         return tools
 
     def get_handler(self, function_name: str) -> Callable | None:
-        """Get handler for a function."""
         return self._handlers.get(function_name)
 
     def list_functions(self) -> list[str]:
-        """list all registered function names (local + MCP)."""
         local_functions = list(self._functions.keys())
         mcp_functions = list(self._mcp_tools.keys())
         return local_functions + mcp_functions
 
     async def register_mcp_client(self, mcp_client) -> None:
-        """Register MCP client and discover available tools."""
         # CONDITIONAL_MCP_IMPORTS
         logger.info(f"Registering MCP client, initialized: {mcp_client.is_initialized if mcp_client else False}")
         self._mcp_client = mcp_client
@@ -296,7 +284,6 @@ class FunctionRegistry:
             )
 
     async def call_mcp_tool(self, tool_name: str, arguments: dict[str, Any]) -> str:
-        """Call an MCP tool through the registered client."""
         if not self._mcp_client:
             raise ValueError("No MCP client registered")
 
@@ -310,11 +297,9 @@ class FunctionRegistry:
         return await self._mcp_client.call_tool(original_name, arguments)
 
     def is_mcp_tool(self, function_name: str) -> bool:
-        """Check if a function is an MCP tool."""
         return function_name in self._mcp_tools
 
     async def register_mcp_tool(self, tool_name: str, wrapped_tool, tool_schema):
-        """Register an MCP tool with scope enforcement wrapper."""
         # Add the scope-enforced tool to the function schemas for AI
         self._mcp_tools[tool_name] = tool_schema
 
@@ -325,8 +310,6 @@ class FunctionRegistry:
 
 
 class FunctionDispatcher:
-    """LLM-powered function dispatcher that maintains A2A compliance."""
-
     def __init__(self, function_registry: FunctionRegistry):
         self.function_registry = function_registry
         self.conversation_manager = ConversationManager()
@@ -498,7 +481,6 @@ class FunctionDispatcher:
             return f"I encountered an error processing your request: {str(e)}"
 
     async def _get_ai_processing_state_context(self, task: Task) -> tuple[Any, str] | tuple[None, None]:
-        """Get state context for AI processing if state management is enabled."""
         try:
             from agent.capabilities.executors import _load_state_config
             from agent.state.context import get_context_manager
@@ -531,7 +513,6 @@ class FunctionDispatcher:
             return None, None
 
     async def _store_ai_processing_state(self, context, context_id: str, user_input: str, response: str):
-        """Store conversation state for AI processing."""
         try:
             # Get conversation count
             conversation_count = await context.get_variable(context_id, "ai_conversation_count", 0)
@@ -565,7 +546,6 @@ class FunctionDispatcher:
             logger.error(f"Failed to store AI processing state: {e}")
 
     def _extract_user_message(self, task: Task) -> str:
-        """Extract user message from A2A task."""
         # Use existing MessageProcessor for A2A compliance
         messages = MessageProcessor.extract_messages(task)
         latest_message = MessageProcessor.get_latest_user_message(messages)
@@ -584,7 +564,6 @@ class FunctionDispatcher:
         return ""
 
     def _extract_user_message_full(self, task: Task) -> dict[str, Any] | str:
-        """Extract full user message from A2A task with multi-modal support."""
         # Get the latest A2A message from task history
         if hasattr(task, "history") and task.history:
             for message in reversed(task.history):
@@ -605,7 +584,6 @@ class FunctionDispatcher:
         return ""
 
     async def process_task_streaming(self, task: Task) -> AsyncIterator[str | dict[str, Any]]:
-        """Process A2A task with streaming support."""
         async for chunk in self.streaming_handler.process_task_streaming(
             task, LLMManager, self._extract_user_message, self._fallback_response
         ):
@@ -626,7 +604,6 @@ class FunctionDispatcher:
         pass
 
     def _fallback_response(self, user_input: str) -> str:
-        """Fallback response when LLM is not available."""
         return f"I received your message: '{user_input}'. However, my AI capabilities are currently unavailable. Please try again later."
 
 
@@ -664,7 +641,6 @@ _function_dispatcher: FunctionDispatcher | None = None
 
 
 def get_function_registry() -> FunctionRegistry:
-    """Get the global function registry."""
     global _function_registry
     if _function_registry is None:
         _function_registry = FunctionRegistry()
@@ -672,7 +648,6 @@ def get_function_registry() -> FunctionRegistry:
 
 
 def get_function_dispatcher() -> FunctionDispatcher:
-    """Get the global function dispatcher."""
     global _function_dispatcher
     if _function_dispatcher is None:
         _function_dispatcher = FunctionDispatcher(get_function_registry())
@@ -681,12 +656,10 @@ def get_function_dispatcher() -> FunctionDispatcher:
 
 # Legacy compatibility
 def get_dispatcher() -> FunctionDispatcher:
-    """Legacy compatibility function - returns function dispatcher."""
     return get_function_dispatcher()
 
 
 def register_ai_functions_from_capabilities():
-    """Auto-register functions from capabilities with @ai_function decorator."""
     # CONDITIONAL_EXECUTORS_IMPORT
     try:
         from agent.capabilities import executors
@@ -793,10 +766,9 @@ def register_ai_functions_from_capabilities():
 
             # Get configured plugins from agent config
             try:
-                from agent.config import load_config
+                from agent.config import Config
 
-                config = load_config()
-                configured_plugins = {plugin.get("plugin_id") for plugin in config.get("plugins", [])}
+                configured_plugins = {plugin.plugin_id for plugin in Config.plugins}
             except Exception as e:
                 logger.warning(f"Could not load agent config for plugin AI functions: {e}")
                 configured_plugins = set()

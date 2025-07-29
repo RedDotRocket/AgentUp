@@ -15,8 +15,6 @@ logger = structlog.get_logger(__name__)
 
 
 class MultiModalProcessor:
-    """Process multi-modal inputs and outputs."""
-
     # Supported image formats
     IMAGE_FORMATS = {
         "image/png": [".png"],
@@ -41,7 +39,6 @@ class MultiModalProcessor:
 
     @classmethod
     def extract_parts_by_type(cls, parts: list[Part], mime_type_prefix: str) -> list[Part]:
-        """Extract parts matching a mime type prefix."""
         matching_parts = []
 
         for part in parts:
@@ -64,7 +61,6 @@ class MultiModalProcessor:
 
     @classmethod
     def extract_image_parts(cls, parts: list[Part]) -> list[dict[str, str]]:
-        """Extract image file parts from message parts."""
         image_parts = []
 
         for part in parts:
@@ -85,7 +81,6 @@ class MultiModalProcessor:
 
     @classmethod
     def extract_document_parts(cls, parts: list[Part]) -> list[dict[str, str]]:
-        """Extract document file parts from message parts."""
         doc_parts = []
 
         for part in parts:
@@ -106,7 +101,6 @@ class MultiModalProcessor:
 
     @classmethod
     def process_image(cls, image_data: str, mime_type: str) -> dict[str, Any]:
-        """Process base64 encoded image data."""
         try:
             # Decode base64 data
             image_bytes = base64.b64decode(image_data)
@@ -154,7 +148,6 @@ class MultiModalProcessor:
 
     @classmethod
     def save_image(cls, image: Image.Image, output_path: str | Path, format: str | None = None) -> bool:
-        """Save PIL Image to file."""
         try:
             output_path = Path(output_path)
             output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -175,13 +168,11 @@ class MultiModalProcessor:
 
     @classmethod
     def resize_image(cls, image: Image.Image, max_size: tuple) -> Image.Image:
-        """Resize image maintaining aspect ratio."""
         image.thumbnail(max_size, Image.Resampling.LANCZOS)
         return image
 
     @classmethod
     def convert_image_format(cls, image: Image.Image, target_format: str) -> bytes:
-        """Convert image to different format."""
         output = io.BytesIO()
 
         # Handle format conversions
@@ -196,14 +187,12 @@ class MultiModalProcessor:
 
     @classmethod
     def encode_image_base64(cls, image: Image.Image, format: str = "PNG") -> str:
-        """Encode PIL Image to base64 string."""
         buffer = io.BytesIO()
         image.save(buffer, format=format)
         return base64.b64encode(buffer.getvalue()).decode("utf-8")
 
     @classmethod
     def process_document(cls, doc_data: str, mime_type: str) -> dict[str, Any]:
-        """Process base64 encoded document data."""
         try:
             # Decode base64 data
             doc_bytes = base64.b64decode(doc_data)
@@ -244,7 +233,6 @@ class MultiModalProcessor:
 
     @classmethod
     def validate_file_size(cls, data: str, file_type: str = "default") -> bool:
-        """Validate file size against limits."""
         # Calculate size in MB
         size_bytes = len(base64.b64decode(data))
         size_mb = size_bytes / (1024 * 1024)
@@ -256,7 +244,6 @@ class MultiModalProcessor:
 
     @classmethod
     def create_data_part(cls, file_path: str | Path, name: str | None = None) -> DataPart | None:
-        """Create DataPart from file."""
         try:
             file_path = Path(file_path)
 
@@ -282,7 +269,6 @@ class MultiModalProcessor:
 
     @classmethod
     def create_file_part(cls, file_path: str | Path, name: str | None = None) -> FilePart | None:
-        """Create A2A FilePart from file."""
         try:
             file_path = Path(file_path)
 
@@ -311,7 +297,6 @@ class MultiModalProcessor:
 
     @classmethod
     def extract_all_content(cls, parts: list[Part]) -> dict[str, list[Any]]:
-        """Extract all content from message parts organized by type."""
         content = {"text": [], "images": [], "documents": [], "other": []}
 
         for part in parts:
@@ -345,8 +330,6 @@ class MultiModalProcessor:
 
 
 class MultiModalService:
-    """Service wrapper for multi-modal processing providing universal access."""
-
     def __init__(self, name: str, config: dict[str, Any]):
         self.name = name
         self.config = config
@@ -363,16 +346,13 @@ class MultiModalService:
         )
 
     async def initialize(self) -> None:
-        """Initialize the multi-modal service."""
         logger.info(f"Multi-modal service {self.name} initialized")
         self._initialized = True
 
     async def close(self) -> None:
-        """Close the multi-modal service."""
         self._initialized = False
 
     async def health_check(self) -> dict[str, Any]:
-        """Check multi-modal service health."""
         try:
             return {
                 "status": "healthy",
@@ -386,24 +366,19 @@ class MultiModalService:
 
     @property
     def is_initialized(self) -> bool:
-        """Check if service is initialized."""
         return self._initialized
 
     # Delegate to MultiModalProcessor for all processing methods
     def extract_image_parts(self, parts: list[Part]) -> list[dict[str, str]]:
-        """Extract image file parts from message parts."""
         return MultiModalProcessor.extract_image_parts(parts)
 
     def extract_document_parts(self, parts: list[Part]) -> list[dict[str, str]]:
-        """Extract document file parts from message parts."""
         return MultiModalProcessor.extract_document_parts(parts)
 
     def extract_all_content(self, parts: list[Part]) -> dict[str, list[Any]]:
-        """Extract all content from message parts organized by type."""
         return MultiModalProcessor.extract_all_content(parts)
 
     def process_image(self, image_data: str, mime_type: str) -> dict[str, Any]:
-        """Process base64 encoded image data."""
         # Validate size if configured
         if not MultiModalProcessor.validate_file_size(image_data, "image"):
             return {"success": False, "error": f"Image exceeds maximum size of {self.max_image_size_mb}MB"}
@@ -415,7 +390,6 @@ class MultiModalService:
         return MultiModalProcessor.process_image(image_data, mime_type)
 
     def process_document(self, doc_data: str, mime_type: str) -> dict[str, Any]:
-        """Process base64 encoded document data."""
         # Validate size if configured
         if not MultiModalProcessor.validate_file_size(doc_data, "document"):
             return {"success": False, "error": f"Document exceeds maximum size of {self.max_document_size_mb}MB"}
@@ -427,31 +401,24 @@ class MultiModalService:
         return MultiModalProcessor.process_document(doc_data, mime_type)
 
     def resize_image(self, image: Image.Image, max_size: tuple) -> Image.Image:
-        """Resize image maintaining aspect ratio."""
         return MultiModalProcessor.resize_image(image, max_size)
 
     def convert_image_format(self, image: Image.Image, target_format: str) -> bytes:
-        """Convert image to different format."""
         return MultiModalProcessor.convert_image_format(image, target_format)
 
     def encode_image_base64(self, image: Image.Image, format: str = "PNG") -> str:
-        """Encode PIL Image to base64 string."""
         return MultiModalProcessor.encode_image_base64(image, format)
 
     def create_data_part(self, file_path: str | Path, name: str | None = None) -> DataPart | None:
-        """Create DataPart from file."""
         return MultiModalProcessor.create_data_part(file_path, name)
 
     def create_file_part(self, file_path: str | Path, name: str | None = None) -> FilePart | None:
-        """Create A2A FilePart from file."""
         return MultiModalProcessor.create_file_part(file_path, name)
 
     def validate_file_size(self, data: str, file_type: str = "default") -> bool:
-        """Validate file size against limits."""
         return MultiModalProcessor.validate_file_size(data, file_type)
 
     def save_image(self, image: Image.Image, output_path: str | Path, format: str | None = None) -> bool:
-        """Save PIL Image to file."""
         return MultiModalProcessor.save_image(image, output_path, format)
 
 

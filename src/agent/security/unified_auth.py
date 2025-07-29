@@ -12,8 +12,6 @@ logger = structlog.get_logger(__name__)
 
 
 class AuthType(str, Enum):
-    """Supported authentication types."""
-
     OAUTH2 = "oauth2"
     JWT = "jwt"
     BEARER = "bearer"
@@ -23,8 +21,6 @@ class AuthType(str, Enum):
 
 @dataclass
 class AuthContext:
-    """Enhanced authentication context with scope information."""
-
     user_id: str
     auth_type: AuthType
     scopes: list[str] = field(default_factory=list)
@@ -33,7 +29,6 @@ class AuthContext:
     is_valid: bool = True
 
     def has_scope(self, scope: str) -> bool:
-        """Check if this context has a specific scope."""
         from .scope_service import get_scope_service
 
         scope_service = get_scope_service()
@@ -44,21 +39,16 @@ class AuthContext:
             return scope in self.scopes
 
     def require_scope(self, scope: str) -> None:
-        """Require a specific scope, raising exception if not present."""
         if not self.has_scope(scope):
             raise HTTPException(status_code=403, detail=f"Insufficient permissions. Required scope: {scope}")
 
 
 class ScopeHierarchy:
-    """Legacy wrapper around optimized ScopeService for compatibility."""
-
     def __init__(self):
-        """Initialize empty hierarchy - will be populated via add_scope_inheritance."""
         self._hierarchy_config = {}
         self._initialized = False
 
     def add_scope_inheritance(self, parent_scope: str, child_scopes: list[str]) -> None:
-        """Add custom scope inheritance."""
         self._hierarchy_config[parent_scope] = child_scopes
         logger.debug(f"Added scope inheritance: {parent_scope} -> {child_scopes}")
 
@@ -68,7 +58,6 @@ class ScopeHierarchy:
             self._initialized = True
 
     def expand_scopes(self, user_scopes: list[str]) -> set[str]:
-        """Expand user scopes using optimized service."""
         if not self._initialized:
             logger.warning("Scope hierarchy not initialized - returning original scopes")
             return set(user_scopes)
@@ -84,7 +73,6 @@ class ScopeHierarchy:
         return expanded_set
 
     def validate_scope(self, user_scopes: list[str], required_scope: str) -> bool:
-        """Validate scope using optimized service."""
         if not self._initialized:
             logger.warning("Scope hierarchy not initialized - denying access")
             return False
@@ -99,33 +87,24 @@ class ScopeHierarchy:
 
     @property
     def hierarchy(self) -> dict[str, list[str]]:
-        """Get hierarchy config for compatibility."""
         return self._hierarchy_config.copy()
 
 
 class AuthenticationProvider:
-    """Base class for authentication providers."""
-
     async def authenticate(self, request: Request) -> AuthContext | None:
-        """Authenticate a request and return auth context."""
         raise NotImplementedError
 
     def get_auth_type(self) -> AuthType:
-        """Get the authentication type for this provider."""
         raise NotImplementedError
 
 
 class JWTAuthProvider(AuthenticationProvider):
-    """JWT authentication provider."""
-
     def __init__(self, secret_key: str, algorithm: str = "HS256", issuer: str | None = None):
-        """Initialize JWT provider."""
         self.secret_key = secret_key
         self.algorithm = algorithm
         self.issuer = issuer
 
     async def authenticate(self, request: Request) -> AuthContext | None:
-        """Authenticate JWT token."""
         auth_header = request.headers.get("Authorization")
         if not auth_header or not auth_header.startswith("Bearer "):
             return None
@@ -159,20 +138,15 @@ class JWTAuthProvider(AuthenticationProvider):
             return None
 
     def get_auth_type(self) -> AuthType:
-        """Get auth type."""
         return AuthType.JWT
 
 
 class BearerTokenAuthProvider(AuthenticationProvider):
-    """Bearer token authentication provider."""
-
     def __init__(self, token_validation_url: str | None = None, valid_tokens: dict[str, dict[str, Any]] | None = None):
-        """Initialize bearer token provider."""
         self.token_validation_url = token_validation_url
         self.valid_tokens = valid_tokens or {}
 
     async def authenticate(self, request: Request) -> AuthContext | None:
-        """Authenticate bearer token."""
         auth_header = request.headers.get("Authorization")
         if not auth_header or not auth_header.startswith("Bearer "):
             return None
@@ -196,7 +170,6 @@ class BearerTokenAuthProvider(AuthenticationProvider):
         return None
 
     async def _validate_token_externally(self, token: str) -> AuthContext | None:
-        """Validate token against external service."""
         try:
             import httpx
 
@@ -220,20 +193,15 @@ class BearerTokenAuthProvider(AuthenticationProvider):
             return None
 
     def get_auth_type(self) -> AuthType:
-        """Get auth type."""
         return AuthType.BEARER
 
 
 class APIKeyAuthProvider(AuthenticationProvider):
-    """API Key authentication provider."""
-
     def __init__(self, valid_keys: dict[str, dict[str, Any]], header_name: str = "X-API-Key"):
-        """Initialize API key provider."""
         self.valid_keys = valid_keys
         self.header_name = header_name
 
     async def authenticate(self, request: Request) -> AuthContext | None:
-        """Authenticate API key."""
         api_key = request.headers.get(self.header_name)
         if not api_key:
             return None
@@ -250,15 +218,11 @@ class APIKeyAuthProvider(AuthenticationProvider):
         return None
 
     def get_auth_type(self) -> AuthType:
-        """Get auth type."""
         return AuthType.API_KEY
 
 
 class UnifiedAuthenticationManager:
-    """Unified authentication supporting multiple auth types with granular scopes."""
-
     def __init__(self, config: dict[str, Any]):
-        """Initialize unified authentication manager."""
         self.config = config
         self.scope_hierarchy = ScopeHierarchy()
         self.auth_providers: list[AuthenticationProvider] = []
@@ -287,7 +251,6 @@ class UnifiedAuthenticationManager:
         )
 
     def _initialize_providers(self) -> None:
-        """Initialize authentication providers based on configuration."""
         # Get auth configuration from auth: structure
         auth_config = self.config.get("auth", {})
         if not auth_config:
@@ -362,11 +325,9 @@ class UnifiedAuthenticationManager:
             self.auth_providers.append(provider)
 
     def is_auth_enabled(self) -> bool:
-        """Check if authentication is enabled."""
         return self.auth_enabled
 
     async def authenticate_request(self, request: Request, required_scopes: list[str] = None) -> AuthContext | None:
-        """Authenticate request using any available provider with security audit logging."""
         audit_logger = get_security_audit_logger()
         client_ip = request.client.host if request.client else None
         # user_agent = request.headers.get("User-Agent")
@@ -437,7 +398,6 @@ class UnifiedAuthenticationManager:
         raise HTTPException(status_code=401, detail="Authentication required")
 
     def validate_scope_access(self, user_scopes: list[str], required_scope: str) -> bool:
-        """Validate scope access using optimized service."""
         # Use the optimized service directly for better performance
         scope_service = get_scope_service()
         if scope_service._hierarchy:  # Service is initialized
@@ -445,7 +405,6 @@ class UnifiedAuthenticationManager:
             return result.has_access
 
     def get_scope_summary(self) -> dict[str, Any]:
-        """Get summary of scope hierarchy for debugging."""
         scope_service = get_scope_service()
         if scope_service._hierarchy:
             # Use optimized service summary (safe for logging)

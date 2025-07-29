@@ -12,7 +12,7 @@ async def main():
     ):
         # Create a session using the client streams
         async with ClientSession(read_stream, write_stream) as session:
-            # Initialize the connection
+
             await session.initialize()
             # Call a tool
             tool_result = await session.call_tool("echo", {"message": "hello"})

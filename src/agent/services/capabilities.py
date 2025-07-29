@@ -1,9 +1,3 @@
-"""Unified capability registry service for AgentUp.
-
-This module consolidates all executor functionality into a single registry,
-replacing the scattered executor implementations across multiple files.
-"""
-
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -14,8 +8,6 @@ from .config import ConfigurationManager
 
 
 class CapabilityMetadata:
-    """Metadata for a registered capability."""
-
     def __init__(
         self,
         capability_id: str,
@@ -45,14 +37,12 @@ class CapabilityRegistry(Service):
     """
 
     def __init__(self, config_manager: ConfigurationManager):
-        """Initialize the capability registry."""
         super().__init__(config_manager)
         self._capabilities: dict[str, Callable[[Task], Awaitable[str]]] = {}
         self._metadata: dict[str, CapabilityMetadata] = {}
         self._core_capabilities = ["status", "capabilities", "echo"]
 
     async def initialize(self) -> None:
-        """Initialize the capability registry."""
         self.logger.info("Initializing capability registry")
 
         # Register core capabilities
@@ -150,7 +140,6 @@ class CapabilityRegistry(Service):
         return self._metadata.get(capability_id)
 
     def list_capabilities(self) -> list[str]:
-        """List all registered capability IDs."""
         # Get capabilities from this registry
         local_capabilities = list(self._capabilities.keys())
 
@@ -231,8 +220,6 @@ class CapabilityRegistry(Service):
             raise
 
     async def _register_core_capabilities(self) -> None:
-        """Register core framework capabilities."""
-
         # Status capability
         async def status_executor(task: Task) -> str:
             agent_info = self.config.get_agent_info()
@@ -261,7 +248,6 @@ class CapabilityRegistry(Service):
         self.register("echo", echo_executor, CapabilityMetadata("echo", description="Echo test capability"))
 
     def _wrap_with_auth(self, executor: Callable, metadata: CapabilityMetadata) -> Callable:
-        """Wrap executor with authentication/authorization checks."""
         from functools import wraps
 
         @wraps(executor)
@@ -297,7 +283,6 @@ class CapabilityRegistry(Service):
         return auth_wrapped
 
     def _wrap_with_middleware(self, executor: Callable, capability_id: str) -> Callable:
-        """Wrap executor with configured middleware."""
         try:
             # Get middleware configuration
             middleware_configs = self._get_middleware_config(capability_id)
@@ -321,7 +306,6 @@ class CapabilityRegistry(Service):
             return executor
 
     def _wrap_with_state(self, executor: Callable, capability_id: str) -> Callable:
-        """Wrap executor with state management."""
         try:
             # Get state configuration
             state_config = self._get_state_config(capability_id)
@@ -345,7 +329,6 @@ class CapabilityRegistry(Service):
             return executor
 
     def _get_middleware_config(self, capability_id: str) -> list[dict[str, Any]]:
-        """Get middleware configuration for a capability."""
         # Check for capability-specific override first
         plugin_config = self._get_plugin_config_for_capability(capability_id)
         if plugin_config and "middleware_override" in plugin_config:
@@ -410,7 +393,6 @@ class CapabilityRegistry(Service):
         return middleware_list
 
     def _get_state_config(self, capability_id: str) -> dict[str, Any]:
-        """Get state configuration for a capability."""
         # Check for capability-specific override first
         plugin_config = self._get_plugin_config_for_capability(capability_id)
         if plugin_config and "state_override" in plugin_config:
@@ -420,7 +402,6 @@ class CapabilityRegistry(Service):
         return self.config.get("state_management", {})
 
     def _get_plugin_config_for_capability(self, capability_id: str) -> dict[str, Any] | None:
-        """Get plugin configuration for a capability."""
         # Try to find the plugin that provides this capability
         metadata = self._metadata.get(capability_id)
         if metadata and metadata.plugin_id:

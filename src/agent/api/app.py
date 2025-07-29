@@ -23,7 +23,6 @@ logger = structlog.get_logger()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """FastAPI lifespan manager using service layer."""
     # Initialize services using bootstrapper
     # This is where we set up the agent's services and capabilities
     logger.debug("Starting application lifespan with services")
@@ -47,7 +46,6 @@ async def lifespan(app: FastAPI):
 
 
 def _setup_request_handler(app: FastAPI) -> None:
-    """Setup the A2A request handler with services."""
     # Get services from app state
     services = app.state.services
 
@@ -76,7 +74,6 @@ def _setup_request_handler(app: FastAPI) -> None:
 
 
 def create_app() -> FastAPI:
-    """Create FastAPI application."""
     agent_card = create_agent_card()
 
     # Create FastAPI app
@@ -98,7 +95,6 @@ def create_app() -> FastAPI:
 
 
 def _configure_middleware(app: FastAPI) -> None:
-    """Configure FastAPI middleware using service configuration."""
     config = ConfigurationManager()
 
     # Network rate limiting middleware (applied to FastAPI Middleware)
@@ -161,7 +157,6 @@ app = create_app()
 
 
 def main():
-    """Main function to run the agent server."""
     host = os.getenv("SERVER_HOST", DEFAULT_SERVER_HOST)
     port = int(os.getenv("SERVER_PORT", DEFAULT_SERVER_PORT))
 

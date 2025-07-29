@@ -26,8 +26,6 @@ logger = structlog.get_logger(__name__)
 
 
 class RateLimitExceeded(Exception):
-    """Raised when rate limit is exceeded."""
-
     def __init__(self, message: str):
         super().__init__(message)
         self.message = message
@@ -38,37 +36,28 @@ RateLimitError = RateLimitExceeded
 
 
 class CacheBackend:
-    """Base class for cache backends."""
-
     def __init__(self, config: CacheConfig):
         self.config = config
 
     async def get(self, key: str) -> Any | None:
-        """Get value from cache."""
         raise NotImplementedError
 
     async def set(self, key: str, value: Any, ttl: int | None = None) -> None:
-        """Set value in cache with TTL."""
         raise NotImplementedError
 
     async def delete(self, key: str) -> None:
-        """Delete value from cache."""
         raise NotImplementedError
 
     async def clear(self) -> None:
-        """Clear all cache entries."""
         raise NotImplementedError
 
 
 class MemoryCache(CacheBackend):
-    """In-memory cache implementation."""
-
     def __init__(self, config: CacheConfig):
         super().__init__(config)
         self.cache: dict[str, dict[str, Any]] = {}
 
     async def get(self, key: str) -> Any | None:
-        """Get value from cache."""
         if key in self.cache:
             entry = self.cache[key]
             if time.time() < entry["expires_at"]:
@@ -81,7 +70,6 @@ class MemoryCache(CacheBackend):
         return None
 
     async def set(self, key: str, value: Any, ttl: int | None = None) -> None:
-        """Set value in cache with TTL."""
         effective_ttl = ttl if ttl is not None else self.config.default_ttl
 
         # Simple eviction: remove oldest entry if at capacity
@@ -93,26 +81,21 @@ class MemoryCache(CacheBackend):
         logger.debug(f"Cache set for key: {key}, TTL: {effective_ttl}s")
 
     async def delete(self, key: str) -> None:
-        """Delete value from cache."""
         if key in self.cache:
             del self.cache[key]
             logger.debug(f"Cache deleted for key: {key}")
 
     async def clear(self) -> None:
-        """Clear all cache entries."""
         self.cache.clear()
         logger.debug("Cache cleared")
 
 
 class ValkeyCache(CacheBackend):
-    """Valkey/Redis cache implementation."""
-
     def __init__(self, config: CacheConfig):
         super().__init__(config)
         self._client = None
 
     async def _get_client(self):
-        """Get Valkey client, creating if needed."""
         if self._client is None:
             try:
                 try:
@@ -141,7 +124,6 @@ class ValkeyCache(CacheBackend):
         return self._client
 
     async def get(self, key: str) -> Any | None:
-        """Get value from cache."""
         try:
             client = await self._get_client()
             value = await client.get(f"{self.config.key_prefix}:{key}")
@@ -158,7 +140,6 @@ class ValkeyCache(CacheBackend):
             return None
 
     async def set(self, key: str, value: Any, ttl: int | None = None) -> None:
-        """Set value in cache with TTL."""
         try:
             client = await self._get_client()
             effective_ttl = ttl if ttl is not None else self.config.default_ttl
@@ -174,7 +155,6 @@ class ValkeyCache(CacheBackend):
             logger.error(f"Cache set error for key {key}: {e}")
 
     async def delete(self, key: str) -> None:
-        """Delete value from cache."""
         try:
             client = await self._get_client()
             await client.delete(f"{self.config.key_prefix}:{key}")
@@ -183,7 +163,6 @@ class ValkeyCache(CacheBackend):
             logger.error(f"Cache delete error for key {key}: {e}")
 
     async def clear(self) -> None:
-        """Clear all cache entries."""
         try:
             client = await self._get_client()
             await client.flushdb()
@@ -193,8 +172,6 @@ class ValkeyCache(CacheBackend):
 
 
 class RateLimiter:
-    """Token bucket rate limiter using Pydantic config."""
-
     def __init__(self, config: RateLimitConfig | None = None):
         self.config = config or RateLimitConfig()
         self.buckets: dict[str, dict[str, Any]] = defaultdict(dict)
@@ -202,7 +179,6 @@ class RateLimiter:
     def check_rate_limit(
         self, key: str, requests_per_minute: int | None = None, custom_limit: int | None = None
     ) -> bool:
-        """Check if request is within rate limit."""
         if not self.config.enabled:
             return True
 
@@ -241,14 +217,14 @@ _global_cache_config: CacheConfig | None = None
 
 
 def get_global_cache_config() -> CacheConfig:
-    """Get or create the global shared cache configuration."""
     global _global_cache_config
     if _global_cache_config is None:
         try:
-            from agent.config import load_config
+            from agent.config import Config
 
-            config = load_config(configure_logging=False)
-            middleware_config = config.get("middleware", {})
+            middleware_config = (
+                Config.middleware.model_dump() if hasattr(Config.middleware, "model_dump") else dict(Config.middleware)
+            )
 
             cache_params = {}
             if isinstance(middleware_config, dict) and middleware_config.get("caching", {}).get("enabled", False):
@@ -269,7 +245,6 @@ def get_global_cache_config() -> CacheConfig:
 
 
 def reset_global_cache_config():
-    """Reset the global cache configuration (useful for testing or config reloading)."""
     global _global_cache_config
     _global_cache_config = None
     logger.debug("Reset global cache configuration")
@@ -280,7 +255,6 @@ _rate_limiters: dict[str, RateLimiter] = {}
 
 
 def get_cache_backend(config: CacheConfig) -> CacheBackend:
-    """Get or create cache backend."""
     cache_key = f"{config.backend_type}:{config.key_prefix}:{config.default_ttl}:{config.max_size}"
     if cache_key not in _cache_backends:
         if config.backend_type == CacheBackendType.MEMORY:
@@ -293,7 +267,6 @@ def get_cache_backend(config: CacheConfig) -> CacheBackend:
 
 
 def get_rate_limiter(config: RateLimitConfig) -> RateLimiter:
-    """Get or create rate limiter."""
     limiter_key = f"{config.key_strategy}:{config.requests_per_minute}"
     if limiter_key not in _rate_limiters:
         _rate_limiters[limiter_key] = RateLimiter(config)
@@ -301,7 +274,6 @@ def get_rate_limiter(config: RateLimitConfig) -> RateLimiter:
 
 
 async def execute_with_retry(func: Callable, config: RetryConfig, *args, **kwargs) -> Any:
-    """Execute function with retry logic."""
     if not config.enabled:
         if asyncio.iscoroutinefunction(func):
             return await func(*args, **kwargs)
@@ -329,7 +301,6 @@ async def execute_with_retry(func: Callable, config: RetryConfig, *args, **kwarg
 
 # Middleware decorators
 def rate_limited(config: RateLimitConfig | None = None, requests_per_minute: int = 60):
-    """Rate limiting middleware decorator."""
     if config is None:
         config = RateLimitConfig(requests_per_minute=requests_per_minute)
 
@@ -368,7 +339,6 @@ def rate_limited(config: RateLimitConfig | None = None, requests_per_minute: int
 
 
 def cached(config: CacheConfig | None = None, ttl: int | None = None):
-    """Caching middleware decorator."""
     if config is None:
         config = get_global_cache_config()
 
@@ -417,7 +387,6 @@ def cached(config: CacheConfig | None = None, ttl: int | None = None):
 
 
 def retryable(config: RetryConfig | None = None, max_attempts: int = 3, backoff_factor: float | None = None):
-    """Retry middleware decorator."""
     if config is None:
         kwargs = {"max_attempts": max_attempts}
         if backoff_factor is not None:
@@ -435,8 +404,6 @@ def retryable(config: RetryConfig | None = None, max_attempts: int = 3, backoff_
 
 
 def timed():
-    """Timing middleware decorator."""
-
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         async def wrapper(*args, **kwargs):
@@ -460,8 +427,6 @@ def timed():
 
 
 def with_middleware(middleware_configs: list[dict[str, Any]]):
-    """Apply multiple middleware based on configuration."""
-
     # Import module logger for consistency
 
     def decorator(func: Callable) -> Callable:
@@ -504,7 +469,6 @@ def with_middleware(middleware_configs: list[dict[str, Any]]):
 
 # AI-compatible middleware functions
 def get_ai_compatible_middleware() -> list[dict[str, Any]]:
-    """Get middleware configurations that are compatible with AI routing."""
     try:
         from ..capabilities.executors import _load_middleware_config
 
@@ -524,7 +488,6 @@ def get_ai_compatible_middleware() -> list[dict[str, Any]]:
 
 
 def apply_ai_routing_middleware(func: Callable, func_name: str) -> Callable:
-    """Apply only AI-compatible middleware to functions for AI routing."""
     ai_middleware = get_ai_compatible_middleware()
 
     if not ai_middleware:
@@ -541,7 +504,6 @@ def apply_ai_routing_middleware(func: Callable, func_name: str) -> Callable:
 
 
 async def execute_ai_function_with_middleware(func_name: str, func: Callable, *args, **kwargs) -> Any:
-    """Execute AI function with selective middleware application."""
     ai_middleware = get_ai_compatible_middleware()
 
     if not ai_middleware:
@@ -559,7 +521,6 @@ async def execute_ai_function_with_middleware(func_name: str, func: Callable, *a
 def apply_rate_limiting(
     handler: Callable, config: RateLimitConfig | None = None, requests_per_minute: int | None = None
 ) -> Callable:
-    """Apply rate limiting to a handler."""
     if config is None:
         if requests_per_minute is not None:
             config = RateLimitConfig(requests_per_minute=requests_per_minute)
@@ -569,7 +530,6 @@ def apply_rate_limiting(
 
 
 def apply_caching(handler: Callable, config: CacheConfig | None = None, ttl: int | None = None) -> Callable:
-    """Apply caching to a handler."""
     if config is None:
         if ttl is not None:
             global_config = get_global_cache_config()
@@ -586,7 +546,6 @@ def apply_caching(handler: Callable, config: CacheConfig | None = None, ttl: int
 
 
 def apply_retry(handler: Callable, config: RetryConfig | None = None, max_attempts: int | None = None) -> Callable:
-    """Apply retry logic to a handler."""
     if config is None:
         if max_attempts is not None:
             config = RetryConfig(max_attempts=max_attempts)
@@ -597,7 +556,6 @@ def apply_retry(handler: Callable, config: RetryConfig | None = None, max_attemp
 
 # Cache management functions
 async def clear_cache_async(config: CacheConfig | None = None) -> None:
-    """Clear all cached data (async version)."""
     if config is None:
         config = get_global_cache_config()
     cache_backend = get_cache_backend(config)
@@ -605,7 +563,6 @@ async def clear_cache_async(config: CacheConfig | None = None) -> None:
 
 
 def clear_cache(config: CacheConfig | None = None) -> None:
-    """Clear all cached data (sync version for backward compatibility)."""
     if config is None:
         config = get_global_cache_config()
     cache_backend = get_cache_backend(config)
@@ -619,7 +576,6 @@ def clear_cache(config: CacheConfig | None = None) -> None:
 
 
 async def get_cache_stats_async(config: CacheConfig | None = None) -> dict[str, Any]:
-    """Get cache statistics (async version)."""
     if config is None:
         config = get_global_cache_config()
     cache_backend = get_cache_backend(config)
@@ -658,7 +614,6 @@ async def get_cache_stats_async(config: CacheConfig | None = None) -> dict[str, 
 
 
 def get_cache_stats(config: CacheConfig | None = None) -> dict[str, Any]:
-    """Get cache statistics (sync version for backward compatibility)."""
     if config is None:
         config = get_global_cache_config()
     cache_backend = get_cache_backend(config)
@@ -692,13 +647,11 @@ def get_cache_stats(config: CacheConfig | None = None) -> dict[str, Any]:
 
 # Rate limiter management functions
 def reset_rate_limits() -> None:
-    """Reset all rate limit buckets."""
     for limiter in _rate_limiters.values():
         limiter.buckets.clear()
 
 
 def get_rate_limit_stats() -> dict[str, Any]:
-    """Get rate limiter statistics."""
     total_buckets = sum(len(limiter.buckets) for limiter in _rate_limiters.values())
     return {
         "active_limiters": len(_rate_limiters),

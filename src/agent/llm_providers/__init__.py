@@ -43,7 +43,6 @@ def create_llm_provider(provider_type: str, name: str, config: dict[str, Any]) -
 
 
 def get_available_providers() -> dict[str, type[BaseLLMService]]:
-    """Get all available LLM providers."""
     return PROVIDER_REGISTRY.copy()
 
 

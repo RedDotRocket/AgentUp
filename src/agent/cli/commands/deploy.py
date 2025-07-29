@@ -79,8 +79,6 @@ def deploy(type: str, output: str | None, port: int, replicas: int, image_name: 
 
 
 def generate_docker_files(output_dir: Path, agent_name: str, image_name: str, port: int):
-    """Generate Docker-related files."""
-
     # Create Dockerfile
     dockerfile_content = f"""FROM python:3.11-slim
 
@@ -210,8 +208,6 @@ helm/
 
 
 def generate_k8s_files(output_dir: Path, agent_name: str, image_name: str, image_tag: str, port: int, replicas: int):
-    """Generate Kubernetes manifests."""
-
     # Create k8s directory
     k8s_dir = output_dir / "k8s"
     k8s_dir.mkdir(exist_ok=True)
@@ -379,8 +375,6 @@ spec:
 
 
 def generate_helm_files(output_dir: Path, agent_name: str, image_name: str, port: int):
-    """Generate Helm chart."""
-
     # Create helm directory structure
     helm_dir = output_dir / "helm" / agent_name
     templates_dir = helm_dir / "templates"
@@ -513,8 +507,6 @@ agentConfig: |
 
 
 def create_helm_templates(templates_dir: Path, agent_name: str):
-    """Create Helm template files."""
-
     # _helpers.tpl
     helpers_content = f"""{{{{/*
 Expand the name of the chart.

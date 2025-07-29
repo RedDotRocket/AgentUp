@@ -1,5 +1,3 @@
-from typing import Any
-
 import structlog
 from fastapi import HTTPException, Request
 
@@ -21,18 +19,16 @@ class SecurityManager:
     Main security manager that manages authentication and authorization.
     """
 
-    def __init__(self, config: dict[str, Any]):
-        """Initialize security manager with configuration.
+    def __init__(self):
+        from agent.config import Config
 
-        Args:
-            config: Complete agent configuration dictionary
-        """
-        self.config = config
-        self.security_config = config.get("security", {})
+        # Store config references
+        self.config = Config.model_dump()
+        self.security_config = self.config.get("security", {})
         self.auth_enabled = self.security_config.get("enabled", False)
 
         # Validate configuration
-        SecurityConfigValidator.validate_security_config(self.security_config)
+        SecurityConfigValidator().validate_security_config()
 
         # Determine primary authentication type first!
         self.primary_auth_type = self._determine_primary_auth_type()
@@ -49,7 +45,6 @@ class SecurityManager:
         )
 
     def _determine_primary_auth_type(self) -> str:
-        """Determine the primary authentication type from configuration."""
         # Get auth type from auth: structure
         auth_config = self.security_config.get("auth", {})
         if not auth_config:

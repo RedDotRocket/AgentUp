@@ -28,7 +28,6 @@ class PluginService(Service):
         self._plugin_adapter = None
 
     async def initialize(self) -> None:
-        """Initialize the plugin service and load all plugins."""
         self.logger.info("Initializing plugin service")
 
         plugin_config = self.config.get("plugins", {})
@@ -65,7 +64,6 @@ class PluginService(Service):
             raise
 
     async def shutdown(self) -> None:
-        """Cleanup plugin resources."""
         self.logger.debug("Shutting down plugin service")
 
         # Unregister all plugin capabilities
@@ -92,7 +90,6 @@ class PluginService(Service):
         return True  # Default enabled
 
     async def _load_plugins(self, plugin_config: Any) -> None:
-        """Load all configured plugins."""
         plugins_to_load = []
 
         if isinstance(plugin_config, dict):

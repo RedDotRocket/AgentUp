@@ -23,6 +23,7 @@ dependencies = [
     "asyncio>=3.4.3",
     "fastmcp>=2.8.1",
     "pydantic>=2.11.5",
+    "pydantic-settings>=2.7.0",
     "python-dotenv>=1.1.0",
     "mkdocs-material>=9.6.14",
     "authlib>=1.6.0",

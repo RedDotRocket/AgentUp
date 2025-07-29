@@ -10,7 +10,6 @@ logger = structlog.get_logger(__name__)
 
 # CONDITIONAL_MCP_IMPORTS
 def _check_fastmcp_availability():
-    """Check if FastMCP is available."""
     try:
         import fastmcp
         from fastmcp import FastMCP
@@ -27,8 +26,6 @@ if not MCP_AVAILABLE:
 
 
 class MCPServerComponent:
-    """MCP server that exposes AgentUp handlers as MCP tools."""
-
     def __init__(self, name: str, config: dict[str, Any]):
         self.name = name
         self.config = config
@@ -56,7 +53,6 @@ class MCPServerComponent:
         logger.info(f"MCP server '{self.name}' initialized")
 
     async def _register_default_resources(self) -> None:
-        """Register default MCP resources."""
         # CONDITIONAL_MCP_IMPLEMENTATION
         if not self._server:
             return
@@ -64,19 +60,16 @@ class MCPServerComponent:
         # Example: Agent info resource
         @self._server.resource("agent://info")
         async def get_agent_info() -> str:
-            """Get information about this {{ project_name }} agent."""
             return "AgentUp - A2A-compliant AI agent with MCP support"
 
         # Example: Health status resource
         @self._server.resource("agent://health")
         async def get_health_status() -> str:
-            """Get agent health status."""
             return f"Status: healthy, Handlers: {len(self._handlers)}, Time: {datetime.now()}"
 
         logger.info("Registered default MCP resources")
 
     def register_handler_as_tool(self, name: str, handler: Callable, schema: dict[str, Any]) -> None:
-        """Register an AgentUp handler as an MCP tool."""
         # CONDITIONAL_MCP_IMPLEMENTATION
         if not MCP_AVAILABLE or not self._server:
             logger.warning(f"Cannot register handler {name} - MCP server not available")
@@ -90,7 +83,6 @@ class MCPServerComponent:
             # If no parameters defined, create a simple wrapper with no parameters
             @self._server.tool(name)
             async def mcp_tool_wrapper() -> str:
-                """MCP wrapper for AgentUp handler."""
                 try:
                     # Create a minimal A2A task object for the handler
                     from types import SimpleNamespace
@@ -114,7 +106,6 @@ class MCPServerComponent:
                 # No parameters, create simple wrapper
                 @self._server.tool(name)
                 async def mcp_tool_wrapper() -> str:
-                    """MCP wrapper for AgentUp handler."""
                     try:
                         from types import SimpleNamespace
 
@@ -178,7 +169,6 @@ async def mcp_tool_wrapper({param_str}) -> str:
         logger.info(f"Registered handler '{name}' as MCP tool")
 
     async def start_server(self, host: str = "localhost", port: int = 8001) -> None:
-        """Start the MCP server."""
         if not self._server:
             logger.error("MCP server not initialized")
             return
@@ -193,7 +183,6 @@ async def mcp_tool_wrapper({param_str}) -> str:
             logger.error(f"MCP server failed: {e}")
 
     async def close(self) -> None:
-        """Close the MCP server."""
         if self._server_task:
             self._server_task.cancel()
             try:
@@ -209,7 +198,6 @@ async def mcp_tool_wrapper({param_str}) -> str:
         logger.info("MCP server closed")
 
     async def health_check(self) -> dict[str, Any]:
-        """Check MCP server health."""
         return {
             "status": "healthy" if self._initialized else "not_initialized",
             "handlers_registered": len(self._handlers),
@@ -218,13 +206,10 @@ async def mcp_tool_wrapper({param_str}) -> str:
 
     @property
     def is_initialized(self) -> bool:
-        """Check if MCP server is initialized."""
         return self._initialized
 
     def list_handlers(self) -> list[str]:
-        """list registered handler names."""
         return list(self._handlers.keys())
 
     def list_resources(self) -> list[str]:
-        """list available resource names."""
         return list(self._resources.keys())

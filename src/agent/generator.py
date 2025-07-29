@@ -19,8 +19,6 @@ DEFAULT_ENVIRONMENT = AgentConfig.model_fields["environment"].default
 
 
 class ProjectGenerator:
-    """Generate Agent projects from templates."""
-
     def __init__(self, output_dir: Path, config: dict[str, Any], features: list[str] = None):
         self.output_dir = Path(output_dir)
         self.config = config
@@ -43,7 +41,6 @@ class ProjectGenerator:
     # ============================================================================
 
     def generate(self):
-        """Generate the project structure."""
         # Create output directory
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -57,7 +54,6 @@ class ProjectGenerator:
     # ============================================================================
 
     def _get_features(self) -> list[str]:
-        """Get enabled features from config."""
         return self.config.get("features", [])
 
     # ============================================================================
@@ -65,7 +61,6 @@ class ProjectGenerator:
     # ============================================================================
 
     def _generate_template_files(self):
-        """Generate files from Jinja2 templates (docs/static files)."""
         # Core project files
         self._write_template_file("pyproject.toml")
         self._write_template_file("README.md")
@@ -76,7 +71,6 @@ class ProjectGenerator:
             self._generate_deployment_files()
 
     def _generate_deployment_files(self):
-        """Generate deployment files based on feature configuration."""
         feature_config = self.config.get("feature_config", {})
 
         # Docker files
@@ -89,7 +83,6 @@ class ProjectGenerator:
             self._generate_helm_charts()
 
     def _generate_helm_charts(self):
-        """Generate Helm chart files."""
         helm_dir = self.output_dir / "helm"
         helm_templates_dir = helm_dir / "templates"
 
@@ -111,20 +104,17 @@ class ProjectGenerator:
             output_path.write_text(content)
 
     def _create_env_file(self):
-        """Create .env file for environment variables."""
         env_file = self.output_dir / ".env"
         if not env_file.exists():
             env_content = self._render_template(".env")
             env_file.write_text(env_content)
 
     def _generate_config_files(self):
-        """Generate configuration files."""
         config_path = self.output_dir / "agentup.yml"
         config_content = self._render_template("config/agentup.yml")
         config_path.write_text(config_content)
 
     def _write_template_file(self, template_name: str):
-        """Helper to render template and write to output directory."""
         content = self._render_template(template_name)
         output_path = self.output_dir / template_name
         output_path.write_text(content)
@@ -149,7 +139,6 @@ class ProjectGenerator:
         return template.render(context)
 
     def _get_template_filename(self, template_path: str) -> str:
-        """Convert template path to template filename with .j2 extension."""
         if template_path.startswith("src/agent/"):
             # For src/agent paths, strip the path prefix and only use filename
             return Path(template_path).name + ".j2"
@@ -158,7 +147,6 @@ class ProjectGenerator:
             return template_path + ".j2"
 
     def _build_template_context(self) -> dict[str, Any]:
-        """Build the complete context dictionary for template rendering."""
         context = self._build_base_context()
         context.update(self._build_feature_flags())
         context.update(self._build_ai_provider_context())
@@ -169,7 +157,6 @@ class ProjectGenerator:
         return context
 
     def _build_base_context(self) -> dict[str, Any]:
-        """Build base template context with project information."""
         return {
             "project_name": self.project_name,
             "project_name_snake": self._to_snake_case(self.project_name),
@@ -181,7 +168,6 @@ class ProjectGenerator:
         }
 
     def _build_feature_flags(self) -> dict[str, Any]:
-        """Build feature flag context variables."""
         return {
             "has_ai_provider": "ai_provider" in self.features,
             "has_services": "services" in self.features,
@@ -196,7 +182,6 @@ class ProjectGenerator:
         }
 
     def _build_ai_provider_context(self) -> dict[str, Any]:
-        """Build AI provider context for templates."""
         ai_provider_config = self.config.get("ai_provider_config")
 
         if ai_provider_config:
@@ -215,7 +200,6 @@ class ProjectGenerator:
             }
 
     def _build_security_context(self) -> dict[str, Any]:
-        """Build security and authentication context."""
         auth_enabled = "auth" in self.features
         auth_type = self.config.get("feature_config", {}).get("auth", DEFAULT_AUTH_TYPE)
         scope_config = self.config.get("feature_config", {}).get("scope_config", {})
@@ -236,7 +220,6 @@ class ProjectGenerator:
         return context
 
     def _build_backend_contexts(self) -> dict[str, Any]:
-        """Build backend configuration contexts (cache, state)."""
         feature_config = self.config.get("feature_config", {})
 
         # Cache backend
@@ -255,7 +238,6 @@ class ProjectGenerator:
         }
 
     def _build_development_context(self) -> dict[str, Any]:
-        """Build development configuration context."""
         feature_config = self.config.get("feature_config", {})
 
         return {
@@ -269,7 +251,6 @@ class ProjectGenerator:
     # ============================================================================
 
     def _replace_template_vars(self, content: str) -> str:
-        """Replace template variables in Python files."""
         replacements = {
             "{{ project_name }}": self.project_name,
             "{{project_name}}": self.project_name,  # Handle without spaces
@@ -283,7 +264,6 @@ class ProjectGenerator:
         return content
 
     def _to_snake_case(self, text: str) -> str:
-        """Convert text to snake_case."""
         # Remove special characters and split by spaces/hyphens
         text = re.sub(r"[^\w\s-]", "", text)
         text = re.sub(r"[-\s]+", "_", text)
@@ -292,27 +272,23 @@ class ProjectGenerator:
         return text.lower()
 
     def _to_title_case(self, text: str) -> str:
-        """Convert text to PascalCase for class names."""
         # Remove special characters and split by spaces/hyphens/underscores
         text = re.sub(r"[^\w\s-]", "", text)
         words = re.split(r"[-\s_]+", text)
         return "".join(word.capitalize() for word in words if word)
 
     def _generate_api_key(self, length: int = 32) -> str:
-        """Generate a random API key."""
         # Use URL-safe characters (letters, digits, -, _)
         alphabet = string.ascii_letters + string.digits + "-_"
         return "".join(secrets.choice(alphabet) for _ in range(length))
 
     def _generate_jwt_secret(self, length: int = 64) -> str:
-        """Generate a random JWT secret."""
         # Use all printable ASCII characters except quotes for JWT secrets
         # Avoid characters that could interfere with parsing (", ', \, `, etc.).
         alphabet = string.ascii_letters + string.digits + "!@#$%^&*()-_=+"
         return "".join(secrets.choice(alphabet) for _ in range(length))
 
     def _generate_client_secret(self, length: int = 48) -> str:
-        """Generate a random OAuth client secret."""
         # Use URL-safe characters for OAuth client secrets
         alphabet = string.ascii_letters + string.digits + "-_"
         return "".join(secrets.choice(alphabet) for _ in range(length))
