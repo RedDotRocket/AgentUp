@@ -256,7 +256,6 @@ class FunctionRegistry:
 
         return tools
 
-
     def get_handler(self, function_name: str) -> Callable | None:
         """Get handler for a function."""
         return self._handlers.get(function_name)

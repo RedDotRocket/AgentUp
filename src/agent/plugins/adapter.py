@@ -253,7 +253,6 @@ class PluginAdapter:
 
         return executor
 
-
     def find_capabilities_for_task(self, task: Task) -> list[tuple[str, float]]:
         """Find capabilities that can handle a task, compatible with old routing."""
         context = self._create_capability_context(task)
