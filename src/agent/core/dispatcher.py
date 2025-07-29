@@ -15,6 +15,14 @@ logger = structlog.get_logger(__name__)
 
 
 class FunctionRegistry:
+    """
+    Function registry model for managing available functions.
+
+    This class provides a centralized registry for functions, including
+    local functions, MCP tools, and their handlers. It supports registration,
+    retrieval, and filtering of functions based on user scopes.
+    """
+
     def __init__(self):
         self._functions: dict[str, dict[str, Any]] = {}
         self._handlers: dict[str, Callable] = {}

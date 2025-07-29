@@ -139,9 +139,10 @@ class Settings(BaseSettings):
         yaml_file = os.getenv("AGENT_CONFIG_PATH", "agentup.yml")
         return (
             init_settings,
-            YamlConfigSettingsSource(settings_cls, yaml_file=yaml_file),
             env_settings,
             dotenv_settings,
+            YamlConfigSettingsSource(settings_cls, yaml_file=yaml_file),
+            file_secret_settings,
         )
 
     @property

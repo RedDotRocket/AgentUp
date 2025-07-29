@@ -278,10 +278,7 @@ def _load_middleware_config() -> list[dict[str, Any]]:
         return _middleware_config
 
     try:
-        middleware_config = (
-            Config.middleware.model_dump() if hasattr(Config.middleware, "model_dump") else dict(Config.middleware)
-        )
-
+        middleware_config = Config.middleware.model_dump()
         # If it's already a list (old format), use as-is
         if isinstance(middleware_config, list):
             _middleware_config = middleware_config

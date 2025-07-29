@@ -222,10 +222,7 @@ def get_global_cache_config() -> CacheConfig:
         try:
             from agent.config import Config
 
-            middleware_config = (
-                Config.middleware.model_dump() if hasattr(Config.middleware, "model_dump") else dict(Config.middleware)
-            )
-
+            middleware_config = Config.middleware.model_dump()
             cache_params = {}
             if isinstance(middleware_config, dict) and middleware_config.get("caching", {}).get("enabled", False):
                 caching_section = middleware_config.get("caching", {})
