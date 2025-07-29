@@ -246,11 +246,6 @@ class PluginAdapter:
     def get_capability_executor_for_capability(self, capability_id: str):
         """Get a capability executor function for a capability that's compatible with the system."""
 
-        # Check if this is a built-in capability first
-        builtin_executor = self._get_builtin_capability_executor(capability_id)
-        if builtin_executor:
-            return builtin_executor
-
         async def executor(task: Task) -> str:
             context = self._create_capability_context_for_capability(task, capability_id)
             result = self.plugin_manager.execute_capability(capability_id, context)
@@ -258,26 +253,6 @@ class PluginAdapter:
 
         return executor
 
-    def _get_builtin_capability_executor(self, capability_id: str):
-        """Get built-in capability executor if available."""
-        try:
-            from .builtin import get_builtin_registry
-
-            builtin_registry = get_builtin_registry()
-
-            # Find which built-in plugin provides this capability
-            for plugin_id in builtin_registry.list_plugins():
-                plugin = builtin_registry.get_plugin(plugin_id)
-                if plugin and capability_id in plugin.get_capabilities():
-                    handler = plugin.get_capability_handler(capability_id)
-                    if handler:
-                        # Return the handler directly - it's already an async function
-                        return handler
-
-            return None
-
-        except ImportError:
-            return None
 
     def find_capabilities_for_task(self, task: Task) -> list[tuple[str, float]]:
         """Find capabilities that can handle a task, compatible with old routing."""

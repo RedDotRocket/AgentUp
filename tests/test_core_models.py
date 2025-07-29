@@ -41,7 +41,6 @@ class TestFunctionType:
 
     def test_function_type_values(self):
         """Test function type enum values."""
-        assert FunctionType.BUILTIN == "builtin"
         assert FunctionType.PLUGIN == "plugin"
         assert FunctionType.LLM_FUNCTION == "llm_function"
         assert FunctionType.ASYNC == "async"

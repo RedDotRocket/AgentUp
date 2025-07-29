@@ -107,12 +107,6 @@ class FunctionRegistry:
                 logger.warning(f"Failed to filter MCP tools by scopes: {e}")
                 # Security: Do NOT fallback to all tools
 
-            # Check built-in framework capabilities (core handlers)
-            try:
-                available_tools.extend(self._get_builtin_tools(scope_service, user_scopes))
-            except Exception as e:
-                logger.warning(f"Failed to include built-in tools: {e}")
-
             # Deduplicate tools by name before returning
             deduplicated_tools = {}
             for tool in available_tools:
@@ -262,45 +256,6 @@ class FunctionRegistry:
 
         return tools
 
-    def _get_builtin_tools(self, scope_service, user_scopes: set[str]) -> list[dict[str, Any]]:
-        """Get built-in tools filtered by user scopes."""
-        from agent.config import load_config
-
-        tools = []
-        config = load_config()
-        configured_plugins = config.get("plugins", [])
-
-        # Build a map of capability requirements for registered functions
-        capability_scope_map = {}
-        for plugin_config in configured_plugins:
-            if "capabilities" in plugin_config:
-                for capability_config in plugin_config["capabilities"]:
-                    capability_id = capability_config.get("capability_id")
-                    required_scopes = capability_config.get("required_scopes", [])
-                    capability_scope_map[capability_id] = required_scopes
-
-        logger.debug(
-            f"Checking {len(self._functions)} built-in functions against scope map with {len(capability_scope_map)} entries"
-        )
-
-        for function_name, function_schema in self._functions.items():
-            # Check if this function has explicit scope configuration
-            if function_name not in capability_scope_map:
-                # Function not configured - DENY by default for security (fail closed)
-                logger.debug(f"Function '{function_name}' has no scope configuration - denying access")
-                continue
-
-            required_scopes = capability_scope_map[function_name]
-
-            # Use centralized scope validation
-            result = scope_service.validate_multiple_scopes(user_scopes, required_scopes)
-            if result.has_access:
-                tools.append(function_schema)
-                logger.debug(f"Granted built-in function '{function_name}' (required: {required_scopes})")
-            else:
-                logger.debug(f"Denied built-in function '{function_name}' - missing scopes: {result.missing_scopes}")
-
-        return tools
 
     def get_handler(self, function_name: str) -> Callable | None:
         """Get handler for a function."""

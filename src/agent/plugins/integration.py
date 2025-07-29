@@ -195,36 +195,6 @@ def get_capability_info(capability_id: str) -> dict[str, Any]:
     return {}
 
 
-def _register_builtin_plugins() -> None:
-    """Register built-in plugins and integrate them with the capability system."""
-    try:
-        # Import and register core plugins
-        from .builtin import get_builtin_registry
-        from .core_plugins import register_core_plugins
-
-        # Register all core built-in plugins
-        register_core_plugins()
-
-        # Get agent config to see which built-in plugins are configured
-        try:
-            from agent.config import load_config
-
-            config = load_config()
-            configured_plugins = config.get("plugins", [])
-        except Exception as e:
-            logger.warning(f"Could not load agent config for built-in plugins: {e}")
-            configured_plugins = []
-
-        # Integrate built-in plugins with capability system
-        builtin_registry = get_builtin_registry()
-        builtin_registry.integrate_with_capability_system(configured_plugins)
-
-        logger.info("Built-in plugins registered and integrated")
-
-    except Exception as e:
-        logger.error(f"Failed to register built-in plugins: {e}")
-
-
 def enable_plugin_system() -> None:
     """
     Enable the plugin system and integrate it with existing capability executors.
@@ -232,10 +202,6 @@ def enable_plugin_system() -> None:
     This should be called during agent startup.
     """
     try:
-        # First, register built-in plugins
-        _register_builtin_plugins()
-
-        # Then integrate external plugins and get enabled capabilities
         enabled_capabilities = integrate_plugins_with_capabilities()
 
         # Integrate plugins with the function registry for AI function calling
