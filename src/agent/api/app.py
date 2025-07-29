@@ -101,7 +101,7 @@ def _configure_middleware(app: FastAPI) -> None:
     """Configure FastAPI middleware using service configuration."""
     config = ConfigurationManager()
 
-    # Network rate limiting middleware
+    # Network rate limiting middleware (applied to FastAPI Middleware)
     rate_limit_config = config.get("rate_limiting", {})
     if rate_limit_config.get("enabled", True):
         from agent.api.rate_limiting import NetworkRateLimitMiddleware

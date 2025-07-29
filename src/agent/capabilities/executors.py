@@ -376,7 +376,8 @@ def _load_state_config() -> dict[str, Any]:
 
         config = load_config()
         _state_config = config.get("state_management", {})
-        logger.debug(f"Loaded state config: {_state_config}")
+        if isinstance(_state_config, dict):
+            logger.debug(f"Loaded state config: {_state_config}")
         return _state_config
     except Exception as e:
         logger.warning(f"Could not load state config: {e}")
@@ -505,8 +506,7 @@ def _apply_middleware_to_capability(executor: Callable, capability_id: str) -> C
         # Mark the original executor as having middleware applied before wrapping
         executor._agentup_middleware_applied = True
         wrapped_executor = with_middleware(middleware_configs)(executor)
-        middleware_names = [m.get("name") for m in middleware_configs]
-        logger.debug(f"Applied middleware to capability '{capability_id}': {middleware_names}")
+        logger.debug(f"Applied middleware to plugin '{capability_id}': {middleware_configs}")
         return wrapped_executor
     except Exception as e:
         logger.error(f"Failed to apply middleware to capability '{capability_id}': {e}")
