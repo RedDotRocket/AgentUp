@@ -3,8 +3,20 @@ name: Security Scan
 on:
   push:
     branches: [ main, develop ]
+    paths:
+      - 'src/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - 'Makefile'
+      - '.github/workflows/security.yml'
   pull_request:
     branches: [ main, develop ]
+    paths:
+      - 'src/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - 'Makefile'
+      - '.github/workflows/security.yml'
   schedule:
     # Run security scan weekly on Monday at 3 AM UTC
     - cron: '0 3 * * 1'

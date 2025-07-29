@@ -7,7 +7,7 @@ on:
       - 'docs/**'
       - 'mkdocs.yml'
       - 'docker/docs/**'
-      - '.github/workflows/build-docs.yml'
+      - '.github/workflows/publish-docs.yml'
 
 env:
   REGISTRY: ghcr.io
