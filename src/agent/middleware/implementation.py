@@ -467,7 +467,7 @@ def with_middleware(middleware_configs: list[dict[str, Any]]):
 # AI-compatible middleware functions
 def get_ai_compatible_middleware() -> list[dict[str, Any]]:
     try:
-        from ..capabilities.executors import _load_middleware_config
+        from ..capabilities.manager import _load_middleware_config
 
         middleware_configs = _load_middleware_config()
 

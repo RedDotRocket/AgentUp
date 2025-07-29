@@ -4,7 +4,7 @@ from typing import Any
 import structlog
 from a2a.types import Task
 
-from agent.capabilities.executors import _capabilities
+from agent.capabilities.manager import _capabilities
 
 from .adapter import PluginAdapter, get_plugin_manager
 
@@ -101,7 +101,7 @@ def integrate_plugins_with_capabilities() -> dict[str, list[str]]:
 
         # Use the new SCOPE_DESIGN.md pattern for capability registration
         try:
-            from agent.capabilities.executors import register_plugin_capability
+            from agent.capabilities.manager import register_plugin_capability
 
             plugin_config = {"capability_id": capability_id, "required_scopes": required_scopes}
 

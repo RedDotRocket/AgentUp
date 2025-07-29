@@ -30,6 +30,12 @@ logger = structlog.get_logger(__name__)
 
 
 class GenericAgentExecutor(AgentExecutor):
+    """Generic executor for AgentUp agents.
+    This executor handles both BaseAgent and AgentCard instances, allowing
+    for flexible routing based on keywords and patterns defined in the agent's config.
+    It supports both direct routing to specific plugins and AI-based routing using the dispatcher.
+    """
+
     def __init__(self, agent: BaseAgent | AgentCard):
         self.agent = agent
         self.supports_streaming = getattr(agent, "supports_streaming", False)
@@ -153,6 +159,14 @@ class GenericAgentExecutor(AgentExecutor):
             )
 
     def _extract_user_message(self, task: Task) -> str:
+        """Extract user message text from A2A task history.
+
+        Args:
+            task: A2A Task object
+
+        Returns:
+            User message text or empty string
+        """
         try:
             if not (hasattr(task, "history") and task.history):
                 return ""

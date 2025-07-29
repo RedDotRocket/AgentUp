@@ -121,7 +121,7 @@ class FunctionExecutor:
             if accepts_context or accepts_context_id:
                 # Get state configuration and apply state management
                 try:
-                    from agent.capabilities.executors import _load_state_config
+                    from agent.capabilities.manager import _load_state_config
                     from agent.state.decorators import with_state
 
                     state_config = _load_state_config()

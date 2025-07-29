@@ -187,7 +187,7 @@ async def _expose_handlers_as_mcp_tools(mcp_server) -> None:
 
 async def _register_mcp_tools_as_capabilities(mcp_client, available_tools, servers_config):
     try:
-        from agent.capabilities.executors import register_mcp_tool_as_capability
+        from agent.capabilities.manager import register_mcp_tool_as_capability
 
         # Extract tool scopes from server configuration
         tool_scopes = {}

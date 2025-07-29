@@ -5,7 +5,7 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
-from .executors import (  # noqa: E402
+from .manager import (  # noqa: E402
     execute_capabilities,
     execute_status,
     get_all_capabilities,

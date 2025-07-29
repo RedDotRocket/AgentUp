@@ -490,7 +490,7 @@ class FunctionDispatcher:
 
     async def _get_ai_processing_state_context(self, task: Task) -> tuple[Any, str] | tuple[None, None]:
         try:
-            from agent.capabilities.executors import _load_state_config
+            from agent.capabilities.manager import _load_state_config
             from agent.state.context import get_context_manager
 
             state_config = _load_state_config()
@@ -670,12 +670,12 @@ def get_dispatcher() -> FunctionDispatcher:
 def register_ai_functions_from_capabilities():
     # CONDITIONAL_EXECUTORS_IMPORT
     try:
-        from agent.capabilities import executors
+        from agent.capabilities import manager
 
         # Also try importing individual executor modules
         executor_modules = []
         try:
-            from agent.capabilities import executors as main_executors
+            from agent.capabilities import manager as main_executors
 
             executor_modules.append(main_executors)
         except ImportError:
@@ -725,7 +725,7 @@ def register_ai_functions_from_capabilities():
 
         # If no specific modules, scan the main executors module
         if not executor_modules:
-            executor_modules = [executors]
+            executor_modules = [manager]
 
     except ImportError:
         logger.warning("Capabilities module not available for AI function registration")

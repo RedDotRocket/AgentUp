@@ -145,7 +145,7 @@ class CapabilityRegistry(Service):
 
         # Also include capabilities from the executors registry
         try:
-            from agent.capabilities.executors import _capabilities as executor_capabilities
+            from agent.capabilities.manager import _capabilities as executor_capabilities
 
             all_capabilities = set(local_capabilities)
             all_capabilities.update(executor_capabilities.keys())
@@ -174,7 +174,7 @@ class CapabilityRegistry(Service):
 
         # Add capabilities from executors registry (without detailed metadata)
         try:
-            from agent.capabilities.executors import _capabilities as executor_capabilities
+            from agent.capabilities.manager import _capabilities as executor_capabilities
 
             for cap_id in executor_capabilities:
                 if cap_id not in result:

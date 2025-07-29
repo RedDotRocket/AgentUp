@@ -141,7 +141,7 @@ class PluginService(Service):
 
         # Use the existing registration method from capabilities/executors.py
         try:
-            from agent.capabilities.executors import register_plugin_capability
+            from agent.capabilities.manager import register_plugin_capability
 
             # Prepare capability config
             capability_config = {
