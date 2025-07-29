@@ -245,21 +245,24 @@ def get_global_cache_config() -> CacheConfig:
     global _global_cache_config
     if _global_cache_config is None:
         try:
-            from ..capabilities.executors import _load_middleware_config
+            from agent.config import load_config
 
-            middleware_configs = _load_middleware_config()
+            config = load_config(configure_logging=False)
+            middleware_config = config.get("middleware", {})
 
-            # Find cache config from middleware configs
             cache_params = {}
-            for config in middleware_configs:
-                if config.get("name") == "cached":
-                    cache_params = config.get("params", {})
-                    break
+            if isinstance(middleware_config, dict) and middleware_config.get("caching", {}).get("enabled", False):
+                caching_section = middleware_config.get("caching", {})
+                cache_params = {
+                    "backend_type": caching_section.get("backend", "memory"),
+                    "default_ttl": caching_section.get("default_ttl", 300),
+                    "max_size": caching_section.get("max_size", 1000),
+                }
 
             _global_cache_config = CacheConfig(**cache_params)
             logger.debug(f"Created global cache config: {_global_cache_config}")
-        except Exception as e:
-            logger.debug(f"Could not load cache config from middleware: {e}")
+        except FileNotFoundError as e:
+            logger.warning(f"Could not load global cache config, falling back to default config: {e}")
             _global_cache_config = CacheConfig()
 
     return _global_cache_config
