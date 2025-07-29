@@ -53,6 +53,7 @@ dev = [
     "twine>=6.0.0",
     "types-pyyaml>=6.0.0",
     "types-requests>=2.32.0",
+    "pre-commit>=4.2.0",
 ]
 
 [build-system]
