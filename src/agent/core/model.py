@@ -30,6 +30,7 @@ class ExecutionStatus(str, Enum):
 class FunctionType(str, Enum):
     """Function type enumeration."""
 
+    BUILTIN = "builtin"
     PLUGIN = "plugin"
     LLM_FUNCTION = "llm_function"
     ASYNC = "async"
