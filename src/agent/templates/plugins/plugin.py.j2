@@ -11,14 +11,12 @@ hookimpl = pluggy.HookimplMarker("agentup")
 
 
 class Plugin:
-    """{% if template == "advanced" %}Advanced {% elif template == "ai" %}AI-enabled {% else %}Main {% endif %}plugin class for {{ display_name }}."""
+    """{% if template == "ai" %}AI-enabled {% else %}Direct routing {% endif %}plugin class for {{ display_name }}."""
 
     def __init__(self):
         """Initialize the plugin."""
         self.name = "{{ plugin_name }}"
-        {% if template == "advanced" %}self.services = {}
-        self.config = {}
-        {% elif template == "ai" %}self.llm_service = None
+        {% if template == "ai" %}self.llm_service = None
         {% endif %}
 
     @hookimpl
@@ -29,137 +27,41 @@ class Plugin:
             name="{{ display_name }}",
             version="0.4.0",
             description="{{ description }}",
-            capabilities=[CapabilityType.TEXT{% if template == "advanced" %}, CapabilityType.STATEFUL{% elif template == "ai" %}, CapabilityType.AI_FUNCTION{% endif %}],
-            tags=["{{ plugin_name }}"{% if template == "advanced" %}, "advanced"{% elif template == "ai" %}, "ai", "llm"{% endif %}, "custom"]{% if template == "advanced" %},
-            config_schema={
-                "type": "object",
-                "properties": {
-                    "api_key": {
-                        "type": "string",
-                        "description": "API key for external service",
-                    },
-                    "timeout": {
-                        "type": "integer",
-                        "default": 30,
-                        "description": "Request timeout in seconds",
-                    },
-                    "debug": {
-                        "type": "boolean",
-                        "default": False,
-                        "description": "Enable debug logging",
-                    },
-                },
-                "required": ["api_key"],
-            },
-            {% endif %}
+            capabilities=[CapabilityType.TEXT{% if template == "ai" %}, CapabilityType.AI_FUNCTION{% endif %}],
+            tags=["{{ plugin_name }}"{% if template == "ai" %}, "ai", "llm"{% endif %}, "custom"],
+            required_scopes=["{{ plugin_name }}:use"],  # Default scope for the plugin
         )
 
     @hookimpl
     def validate_config(self, config: dict) -> PluginValidationResult:
         """Validate capability configuration."""
-        {% if template == "advanced" %}errors = []
-        warnings = []
-
-        # Check required fields
-        if not config.get("api_key"):
-            errors.append("api_key is required")
-
-        # Validate timeout
-        timeout = config.get("timeout", 30)
-        if not isinstance(timeout, int) or timeout <= 0:
-            errors.append("timeout must be a positive integer")
-        elif timeout > 300:
-            warnings.append("timeout is very high (> 5 minutes)")
-
-        return PluginValidationResult(
-            valid=len(errors) == 0,
-            errors=errors,
-            warnings=warnings,
-        )
-        {% elif template == "ai" %}# AI capabilities typically don't need much config
+        {% if template == "ai" %}# AI capabilities typically don't need much config
         return PluginValidationResult(valid=True)
         {% else %}# Add your validation logic here
         return PluginValidationResult(valid=True)
         {% endif %}
 
-    {% if template == "advanced" or template == "ai" %}@hookimpl
+    {% if template == "ai" %}@hookimpl
     def configure_services(self, services: dict) -> None:
         """Configure services for the plugin."""
-        {% if template == "advanced" %}self.services = services
-        # Access services like: services.get("llm"), services.get("database"), etc.
-        {% elif template == "ai" %}# Store LLM service for AI operations
+        # Store LLM service for AI operations
         self.llm_service = services.get("llm")
-        {% endif %}
 
     {% endif %}
     @hookimpl
-    def can_handle_task(self, context: CapabilityContext) -> {% if template == "advanced" %}float{% else %}bool{% endif %}:
+    def can_handle_task(self, context: CapabilityContext) -> bool:
         """Check if this capability can handle the task."""
-        {% if template == "advanced" %}# Advanced capability detection with confidence scoring
-        user_input = self._extract_user_input(context).lower()
-
-        # Define keywords and their confidence scores
-        keywords = {
-            "{{ capability_id }}": 1.0,
-            "{{ plugin_name }}": 0.9,
-            # Add more keywords here
-        }
-
-        # Calculate confidence based on keyword matches
-        confidence = 0.0
-        for keyword, score in keywords.items():
-            if keyword in user_input:
-                confidence = max(confidence, score)
-
-        return confidence
-        {% elif template == "ai" %}# For AI functions, let the LLM decide
+        {% if template == "ai" %}# For AI functions, let the LLM decide
         return True
         {% else %}# Add your capability detection logic here
-        # For now, return True to handle all tasks
+        # For direct routing, you can check for specific keywords or patterns
         return True
         {% endif %}
 
     @hookimpl
     def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
         """Execute the capability logic."""
-        {% if template == "advanced" %}try:
-            # Get configuration
-            self.config = context.config
-
-            # Extract user input
-            user_input = self._extract_user_input(context)
-
-            # Access state if needed
-            state = context.state
-
-            # Your advanced capability logic here
-            # Example: Make API call, process data, etc.
-
-            response = f"{{ display_name }} processed: {user_input}"
-
-            # Update state if needed
-            state_updates = {
-                "last_processed": user_input,
-                "process_count": state.get("process_count", 0) + 1,
-            }
-
-            return CapabilityResult(
-                content=response,
-                success=True,
-                metadata={
-                    "capability": "{{ capability_id }}",
-                    "confidence": self.can_handle_task(context),
-                },
-                state_updates=state_updates,
-            )
-
-        except Exception as e:
-            return CapabilityResult(
-                content=f"Error processing request: {str(e)}",
-                success=False,
-                error=str(e),
-            )
-        {% elif template == "ai" %}# This is called when the capability is invoked directly
+        {% if template == "ai" %}# This is called when the capability is invoked directly
         user_input = self._extract_user_input(context)
 
         return CapabilityResult(
@@ -169,7 +71,7 @@ class Plugin:
         {% else %}# Extract user input from the task
         user_input = self._extract_user_input(context)
 
-        # Your capability logic here
+        # Your direct routing capability logic here
         response = f"Processed by {{ display_name }}: {user_input}"
 
         return CapabilityResult(
@@ -179,38 +81,7 @@ class Plugin:
         )
         {% endif %}
 
-    {% if template == "advanced" %}@hookimpl
-    def get_middleware_config(self) -> list[dict]:
-        """Request middleware for this capability."""
-        return [
-            {"type": "rate_limit", "requests_per_minute": 60},
-            {"type": "cache", "ttl": 300},
-            {"type": "logging", "level": "INFO"},
-        ]
-
-    @hookimpl
-    def get_state_schema(self) -> dict:
-        """Define state schema for stateful operations."""
-        return {
-            "type": "object",
-            "properties": {
-                "last_processed": {"type": "string"},
-                "process_count": {"type": "integer"},
-                "user_preferences": {"type": "object"},
-            },
-        }
-
-    @hookimpl
-    def get_health_status(self) -> dict:
-        """Report health status of the plugin."""
-        return {
-            "status": "healthy",
-            "version": "0.4.0",
-            "services_available": list(self.services.keys()),
-            "config_loaded": bool(self.config),
-        }
-
-    {% elif template == "ai" %}@hookimpl
+    {% if template == "ai" %}@hookimpl
     def get_ai_functions(self) -> list[AIFunction]:
         """Provide AI functions for LLM function calling."""
         return [

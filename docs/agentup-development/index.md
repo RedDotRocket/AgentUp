@@ -110,7 +110,7 @@ pip install agentup
 
 # Create plugin anywhere
 mkdir -p ~/my-plugins && cd ~/my-plugins
-agentup plugin create weather-plugin --template advanced
+agentup plugin create weather-plugin --template ai
 cd weather-plugin
 
 # Install for development (same environment as AgentUp)

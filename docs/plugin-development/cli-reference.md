@@ -132,7 +132,7 @@ agentup plugin create [NAME] [OPTIONS]
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--template, -t` | Plugin template: `basic`, `advanced`, `ai` | `basic` |
+| `--template, -t` | Plugin template: `direct`, `ai` | `direct` |
 | `--output-dir, -o` | Output directory for plugin | `./[plugin-name]` |
 | `--no-git` | Skip git initialization | `false` |
 

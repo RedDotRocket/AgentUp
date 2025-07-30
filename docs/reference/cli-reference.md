@@ -200,7 +200,7 @@ agentup plugin create [OPTIONS] NAME
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--template TEMPLATE` | Plugin template | `basic` |
+| `--template TEMPLATE` | Plugin template | `direct` |
 | `--output-dir DIR` | Output directory | Current directory |
 | `--author AUTHOR` | Plugin author | |
 | `--description DESC` | Plugin description | |

@@ -18,7 +18,7 @@ AgentUp plugins are **standalone Python packages** that can be created anywhere 
 ```bash
 # You can create plugins in any directory
 cd ~/my-projects/          # Or any directory you prefer
-agentup plugin create time-plugin --template basic
+agentup plugin create time-plugin --template direct
 
 # This creates a new plugin directory
 cd time-plugin/
@@ -40,7 +40,7 @@ Let's create a plugin that provides time and date information:
 
 ```bash
 # Run this from any directory where you want to create the plugin
-agentup plugin create time-plugin --template basic
+agentup plugin create time-plugin --template direct
 ```
 
 This creates a new directory with everything you need to get started:

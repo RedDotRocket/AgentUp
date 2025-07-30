@@ -509,9 +509,7 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
 
 @plugin.command()
 @click.argument("plugin_name", required=False)
-@click.option(
-    "--template", "-t", type=click.Choice(["basic", "advanced", "ai"]), default="basic", help="Plugin template"
-)
+@click.option("--template", "-t", type=click.Choice(["direct", "ai"]), default="direct", help="Plugin template")
 @click.option("--output-dir", "-o", type=click.Path(), help="Output directory for the plugin")
 @click.option("--no-git", is_flag=True, help="Skip git initialization")
 def create(plugin_name: str | None, template: str, output_dir: str | None, no_git: bool):
