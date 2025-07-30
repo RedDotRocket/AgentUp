@@ -40,12 +40,12 @@ class YamlConfigSettingsSource(PydanticBaseSettingsSource):
                 content = yaml.safe_load(f)
                 if content is None:
                     return {}
-                # Handle the 'name' alias for 'project_name'
+
                 if "name" in content and "project_name" not in content:
                     content["project_name"] = content["name"]
                 # Apply environment variable expansion
                 expanded_content = expand_env_vars(content)
-                # Type cast since we know YAML content is a dict
+
                 return expanded_content if isinstance(expanded_content, dict) else {}
         except Exception:
             # If there's any error reading the file, return empty dict
