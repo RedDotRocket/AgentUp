@@ -19,10 +19,7 @@ from src.agent.handlers.handlers import (
 
 
 class TestStateConfigResolution:
-    """Test state configuration resolution logic."""
-
     def test_load_state_config_success(self):
-        """Test successful loading of state configuration."""
         mock_config = {
             "state_management": {"enabled": True, "backend": "valkey", "config": {"url": "valkey://localhost:6379"}}
         }
@@ -38,7 +35,6 @@ class TestStateConfigResolution:
             assert result["backend"] == "valkey"
 
     def test_load_state_config_missing(self):
-        """Test loading state configuration when not present."""
         mock_config = {"plugins": []}  # No state_management section
 
         with patch("src.agent.handlers.handlers.load_config", return_value=mock_config):
@@ -50,7 +46,6 @@ class TestStateConfigResolution:
             assert result == {}
 
     def test_load_state_config_exception(self):
-        """Test loading state configuration when exception occurs."""
         with patch("src.agent.handlers.handlers.load_config", side_effect=Exception("Config error")):
             # Reset cache first
             reset_state_cache()
@@ -60,7 +55,6 @@ class TestStateConfigResolution:
             assert result == {}
 
     def test_get_skill_config_found(self):
-        """Test getting skill configuration when skill exists."""
         mock_config = {
             "plugins": [
                 {"plugin_id": "test_skill", "name": "Test Skill", "state_override": {"backend": "memory"}},
@@ -77,7 +71,6 @@ class TestStateConfigResolution:
             assert "state_override" in result
 
     def test_get_plugin_config_not_found(self):
-        """Test getting plugin configuration when plugin doesn't exist."""
         mock_config = {"plugins": [{"plugin_id": "other_skill", "name": "Other Skill"}]}
 
         with patch("src.agent.handlers.handlers.load_config", return_value=mock_config):
@@ -86,7 +79,6 @@ class TestStateConfigResolution:
             assert result is None
 
     def test_resolve_state_config_global(self):
-        """Test resolving state configuration uses global config."""
         global_config = {"enabled": True, "backend": "memory"}
         skill_config = {"skill_id": "test_skill", "name": "Test Skill"}
 
@@ -97,7 +89,6 @@ class TestStateConfigResolution:
                 assert result == global_config
 
     def test_resolve_state_config_skill_override(self):
-        """Test resolving state configuration uses skill-specific override."""
         global_config = {"enabled": True, "backend": "memory"}
         skill_config = {
             "skill_id": "test_skill",
@@ -114,11 +105,7 @@ class TestStateConfigResolution:
 
 
 class TestStateApplication:
-    """Test state application to handlers."""
-
     def test_apply_state_to_handler_enabled(self):
-        """Test applying state to handler when enabled."""
-
         # Create a mock handler
         async def mock_handler(task: Task):
             return "test result"
@@ -137,8 +124,6 @@ class TestStateApplication:
                 mock_with_state.assert_called_once_with([state_config])
 
     def test_apply_state_to_handler_disabled(self):
-        """Test applying state to handler when disabled."""
-
         # Create a mock handler
         async def mock_handler(task: Task):
             return "test result"
@@ -152,8 +137,6 @@ class TestStateApplication:
             assert result == mock_handler
 
     def test_apply_state_to_handler_exception(self):
-        """Test applying state to handler when exception occurs."""
-
         # Create a mock handler
         async def mock_handler(task: Task):
             return "test result"
@@ -169,14 +152,10 @@ class TestStateApplication:
 
 
 class TestHandlerRegistration:
-    """Test handler registration with automatic state application."""
-
     def setup_method(self):
-        """Clear handler registry before each test."""
         _handlers.clear()
 
     def test_register_handler_decorator_with_state(self):
-        """Test register_handler decorator applies state automatically."""
         # Mock state configuration
         state_config = {"enabled": True, "backend": "memory", "config": {}}
 
@@ -204,8 +183,6 @@ class TestHandlerRegistration:
                     mock_with_state.assert_called_once_with([state_config])
 
     def test_register_handler_function_with_state(self):
-        """Test register_handler_function applies state automatically."""
-
         # Create a mock handler
         async def mock_handler(task: Task):
             return "test result"
@@ -235,8 +212,6 @@ class TestHandlerRegistration:
                     mock_with_state.assert_called_once_with([state_config])
 
     def test_get_handler_returns_stateful_handler(self):
-        """Test get_handler returns the state-wrapped handler."""
-
         # Create a mock handler
         async def mock_handler(task: Task):
             return "test result"
@@ -266,16 +241,11 @@ class TestHandlerRegistration:
 
 
 class TestGlobalStateApplication:
-    """Test global state application functionality."""
-
     def setup_method(self):
-        """Clear handler registry and reset state cache before each test."""
         _handlers.clear()
         reset_state_cache()
 
     def test_apply_global_state_enabled(self):
-        """Test applying global state when enabled."""
-
         # Add some handlers to the registry
         async def handler1(task: Task):
             return "handler1"
@@ -312,8 +282,6 @@ class TestGlobalStateApplication:
                 assert hasattr(_handlers["skill2"], "_agentup_state_applied")
 
     def test_apply_global_state_disabled(self):
-        """Test applying global state when disabled."""
-
         # Add some handlers to the registry
         async def handler1(task: Task):
             return "handler1"
@@ -335,8 +303,6 @@ class TestGlobalStateApplication:
                 assert _handlers["skill1"] == handler1
 
     def test_apply_global_state_already_applied(self):
-        """Test applying global state when already applied."""
-
         # Add some handlers to the registry
         async def handler1(task: Task):
             return "handler1"
@@ -359,8 +325,6 @@ class TestGlobalStateApplication:
                 mock_apply_state.assert_not_called()
 
     def test_apply_global_state_skip_already_wrapped(self):
-        """Test applying global state skips already wrapped handlers."""
-
         # Add handlers, one already wrapped
         async def handler1(task: Task):
             return "handler1"
@@ -397,10 +361,7 @@ class TestGlobalStateApplication:
 
 
 class TestStateInfoAndUtilities:
-    """Test state information and utility functions."""
-
     def test_get_state_info_enabled(self):
-        """Test get_state_info when state is enabled."""
         # Mock state configuration
         state_config = {"enabled": True, "backend": "valkey", "config": {"url": "valkey://localhost:6379"}}
 
@@ -417,7 +378,6 @@ class TestStateInfoAndUtilities:
             assert info["total_handlers"] == 2
 
     def test_get_state_info_disabled(self):
-        """Test get_state_info when state is disabled."""
         # Mock state configuration
         state_config = {"enabled": False, "backend": "memory"}
 
@@ -428,7 +388,6 @@ class TestStateInfoAndUtilities:
             assert info["backend"] == "memory"
 
     def test_reset_state_cache(self):
-        """Test reset_state_cache functionality."""
         # Mock some state to be cached
         with patch("src.agent.handlers.handlers._load_state_config") as mock_load_config:
             mock_load_config.return_value = {"enabled": True}
@@ -450,16 +409,12 @@ class TestStateInfoAndUtilities:
 
 
 class TestIntegrationWithRealScenarios:
-    """Test integration scenarios with realistic configurations."""
-
     def setup_method(self):
-        """Clear handler registry and reset caches before each test."""
         _handlers.clear()
         reset_state_cache()
 
     @pytest.mark.asyncio
     async def test_full_state_application_workflow(self):
-        """Test complete state application workflow."""
         # Create a realistic agent configuration
         agent_config = {
             "plugins": [

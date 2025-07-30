@@ -32,11 +32,8 @@ from agent.config.a2a import (
 
 
 class TestAgentCard:
-    """Test agent card creation."""
-
     @patch("agent.api.routes.ConfigurationManager")
     def test_create_agent_card_minimal(self, mock_config_manager):
-        """Test creating agent card with minimal configuration."""
         mock_config = {
             "project_name": "TestAgent",
             "description": "Test Agent Description",
@@ -61,7 +58,6 @@ class TestAgentCard:
 
     @patch("agent.api.routes.ConfigurationManager")
     def test_create_agent_card_with_skills(self, mock_config_manager):
-        """Test creating agent card with skills."""
         mock_config = {
             "agent": {"name": "SkillfulAgent", "description": "Agent with skills", "version": "2.0.0"},
             "plugins": [
@@ -85,7 +81,6 @@ class TestAgentCard:
 
     @patch("agent.api.routes.ConfigurationManager")
     def test_create_agent_card_with_security_enabled(self, mock_config_manager):
-        """Test creating agent card with security enabled."""
         mock_config = {
             "agent": {"name": "SecureAgent"},
             "skills": [],
@@ -102,7 +97,6 @@ class TestAgentCard:
 
     @patch("agent.api.routes.ConfigurationManager")
     def test_create_agent_card_caching(self, mock_config_manager):
-        """Test that agent card is cached properly."""
         mock_config = {
             "project_name": "CachedAgent",
             "agent": {"name": "CachedAgent", "description": "Test caching", "version": "1.0.0"},
@@ -135,10 +129,7 @@ class TestAgentCard:
 
 
 class TestRequestHandlerManagement:
-    """Test request handler instance management."""
-
     def test_set_and_get_request_handler(self):
-        """Test setting and getting request handler."""
         mock_handler = Mock(spec=DefaultRequestHandler)
 
         set_request_handler_instance(mock_handler)
@@ -147,7 +138,6 @@ class TestRequestHandlerManagement:
         assert result is mock_handler
 
     def test_get_request_handler_not_initialized(self):
-        """Test getting request handler when not initialized."""
         # Clear the global handler
         import agent.api.routes
 
@@ -158,23 +148,18 @@ class TestRequestHandlerManagement:
 
 
 class TestHealthEndpoints:
-    """Test health check endpoints."""
-
     @pytest.fixture
     def app(self):
-        """Create FastAPI app with router."""
         app = FastAPI()
         app.include_router(router)
         return app
 
     @pytest.fixture
     def client(self, app):
-        """Create test client."""
         return TestClient(app)
 
     @patch("agent.api.routes.ConfigurationManager")
     def test_health_check(self, mock_config_manager, client):
-        """Test basic health check endpoint."""
         mock_config_manager.return_value.get.return_value = "TestAgent"
 
         response = client.get("/health")
@@ -187,18 +172,14 @@ class TestHealthEndpoints:
 
 
 class TestAgentDiscovery:
-    """Test agent discovery endpoint."""
-
     @pytest.fixture
     def client(self):
-        """Create test client."""
         app = FastAPI()
         app.include_router(router)
         return TestClient(app)
 
     @patch("agent.api.routes.create_agent_card")
     def test_agent_discovery_endpoint(self, mock_create_card, client):
-        """Test /.well-known/agent.json endpoint."""
         mock_card = AgentCard(
             name="TestAgent",
             description="Test Description",
@@ -220,25 +201,20 @@ class TestAgentDiscovery:
 
 
 class TestJSONRPCEndpoint:
-    """Test main JSON-RPC endpoint validation."""
-
     @pytest.fixture
     def client(self):
-        """Create test client."""
         app = FastAPI()
         app.include_router(router)
         return TestClient(app)
 
     @pytest.fixture
     def mock_handler(self):
-        """Create mock request handler."""
         handler = Mock(spec=DefaultRequestHandler)
         set_request_handler_instance(handler)
         return handler
 
     @patch("agent.api.protected")
     def test_jsonrpc_not_dict(self, mock_protected, client, mock_handler):
-        """Test JSON-RPC endpoint with non-dict body."""
         mock_protected.return_value = lambda func: func
 
         response = client.post("/", json=[])
@@ -250,7 +226,6 @@ class TestJSONRPCEndpoint:
 
     @patch("agent.api.protected")
     def test_jsonrpc_wrong_version(self, mock_protected, client, mock_handler):
-        """Test JSON-RPC endpoint with wrong version."""
         mock_protected.return_value = lambda func: func
 
         response = client.post("/", json={"jsonrpc": "1.0", "method": "test", "id": 1})
@@ -262,7 +237,6 @@ class TestJSONRPCEndpoint:
 
     @patch("agent.api.protected")
     def test_jsonrpc_method_not_found(self, mock_protected, client, mock_handler):
-        """Test JSON-RPC endpoint with unknown method."""
         mock_protected.return_value = lambda func: func
 
         response = client.post("/", json={"jsonrpc": "2.0", "method": "unknown/method", "id": 1})
@@ -274,12 +248,8 @@ class TestJSONRPCEndpoint:
 
 
 class TestSSEGenerator:
-    """Test SSE generator for streaming responses."""
-
     @pytest.mark.asyncio
     async def test_sse_generator_success(self):
-        """Test SSE generator with successful responses."""
-
         async def mock_iterator():
             for i in range(3):
                 mock_response = Mock()
@@ -297,8 +267,6 @@ class TestSSEGenerator:
 
     @pytest.mark.asyncio
     async def test_sse_generator_error(self):
-        """Test SSE generator with error."""
-
         async def mock_iterator():
             yield Mock(model_dump_json=Mock(return_value='{"data": "ok"}'))
             raise Exception("Stream error")
@@ -313,11 +281,8 @@ class TestSSEGenerator:
 
 
 class TestJSONRPCErrorHandler:
-    """Test JSON-RPC error handler."""
-
     @pytest.mark.asyncio
     async def test_jsonrpc_error_handler(self):
-        """Test JSON-RPC error handler."""
         request = Mock(spec=Request)
         error = JSONRPCError(code=-32600, message="Invalid Request", data={"detail": "Missing required field"})
 

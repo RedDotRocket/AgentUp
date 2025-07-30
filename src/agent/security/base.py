@@ -25,8 +25,6 @@ class AuthenticationResult:
 
 
 class BaseAuthenticator(ABC):
-    """Abstract base class for all authenticators."""
-
     def __init__(self, config: dict[str, Any]):
         self.config = config
         self.auth_type = self.__class__.__name__.lower().replace("authenticator", "")
@@ -60,25 +58,19 @@ class BaseAuthenticator(ABC):
 
     @abstractmethod
     def get_auth_type(self) -> str:
-        """Get the authentication type identifier."""
         pass
 
     def supports_scopes(self) -> bool:
-        """Return True if this authenticator supports scope-based authorization."""
         return False
 
     def get_required_headers(self) -> set[str]:
-        """Get the set of required headers for this authenticator."""
         return set()
 
     def get_optional_headers(self) -> set[str]:
-        """Get the set of optional headers for this authenticator."""
         return set()
 
 
 class SecurityPolicy:
-    """Security policy configuration."""
-
     def __init__(
         self,
         require_authentication: bool = True,
@@ -92,13 +84,11 @@ class SecurityPolicy:
         self.allow_anonymous = allow_anonymous
 
     def is_auth_type_allowed(self, auth_type: str) -> bool:
-        """Check if an authentication type is allowed by this policy."""
         if not self.allowed_auth_types:
             return True  # No restrictions
         return auth_type in self.allowed_auth_types
 
     def has_required_scopes(self, user_scopes: set[str]) -> bool:
-        """Check if user has all required scopes."""
         if not self.required_scopes:
             return True  # No scope requirements
         return self.required_scopes.issubset(user_scopes)

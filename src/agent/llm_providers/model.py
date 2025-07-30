@@ -17,8 +17,6 @@ from ..utils.validation import BaseValidator, CompositeValidator, ValidationResu
 
 
 class MessageRole(str, Enum):
-    """Message role enumeration for chat conversations."""
-
     USER = "user"
     ASSISTANT = "assistant"
     SYSTEM = "system"
@@ -27,8 +25,6 @@ class MessageRole(str, Enum):
 
 
 class ContentType(str, Enum):
-    """Content type enumeration for multimodal content."""
-
     TEXT = "text"
     IMAGE_URL = "image_url"
     IMAGE_FILE = "image_file"
@@ -38,16 +34,12 @@ class ContentType(str, Enum):
 
 
 class FunctionCallType(str, Enum):
-    """Function call type enumeration."""
-
     NONE = "none"
     AUTO = "auto"
     REQUIRED = "required"
 
 
 class LLMProvider(str, Enum):
-    """Supported LLM provider enumeration."""
-
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
     OLLAMA = "ollama"
@@ -58,8 +50,6 @@ class LLMProvider(str, Enum):
 
 
 class MultimodalContent(BaseModel):
-    """Multimodal content item for chat messages."""
-
     type: ContentType = Field(..., description="Content type")
     text: str | None = Field(None, description="Text content")
     image_url: dict[str, str] | None = Field(None, description="Image URL data")
@@ -69,7 +59,6 @@ class MultimodalContent(BaseModel):
 
     @model_validator(mode="after")
     def validate_content_type(self) -> MultimodalContent:
-        """Validate content type has appropriate data."""
         if self.type == ContentType.TEXT and not self.text:
             raise ValueError("Text content type requires text field")
         elif self.type == ContentType.IMAGE_URL and not self.image_url:
@@ -83,8 +72,6 @@ class MultimodalContent(BaseModel):
 
 
 class ToolCall(BaseModel):
-    """Tool/function call data structure."""
-
     id: str = Field(..., description="Tool call ID")
     type: Literal["function"] = Field("function", description="Tool call type")
     function: dict[str, str] = Field(..., description="Function call data")
@@ -92,7 +79,6 @@ class ToolCall(BaseModel):
     @field_validator("function")
     @classmethod
     def validate_function_call(cls, v: dict[str, str]) -> dict[str, str]:
-        """Validate function call has required fields."""
         required_fields = {"name", "arguments"}
         if not all(field in v for field in required_fields):
             raise ValueError("Function call must have 'name' and 'arguments' fields")
@@ -100,8 +86,6 @@ class ToolCall(BaseModel):
 
 
 class ChatMessage(BaseModel):
-    """Enhanced chat message with multimodal support."""
-
     role: MessageRole = Field(..., description="Message role")
     content: str | list[MultimodalContent] = Field(..., description="Message content")
     name: str | None = Field(None, description="Message author name", max_length=64)
@@ -112,7 +96,6 @@ class ChatMessage(BaseModel):
     @field_validator("content")
     @classmethod
     def validate_content(cls, v: str | list[MultimodalContent]) -> str | list[MultimodalContent]:
-        """Validate message content format and size."""
         if isinstance(v, str):
             if len(v) > 1_000_000:  # 1MB limit for text content
                 raise ValueError("Text content exceeds 1MB limit")
@@ -128,14 +111,12 @@ class ChatMessage(BaseModel):
     @field_validator("name")
     @classmethod
     def validate_name(cls, v: str | None) -> str | None:
-        """Validate message author name format."""
         if v and not v.replace("_", "").replace("-", "").replace(".", "").isalnum():
             raise ValueError("Name must contain only alphanumeric characters, hyphens, underscores, and dots")
         return v
 
     @model_validator(mode="after")
     def validate_message_consistency(self) -> ChatMessage:
-        """Validate message role and content consistency."""
         # Function role requires tool_call_id
         if self.role == MessageRole.FUNCTION and not self.tool_call_id:
             raise ValueError("Function messages require tool_call_id")
@@ -154,8 +135,6 @@ class ChatMessage(BaseModel):
 
 
 class FunctionParameter(BaseModel):
-    """Function parameter definition."""
-
     type: str = Field(..., description="Parameter type (JSON Schema)")
     description: str | None = Field(None, description="Parameter description")
     enum: list[str] | None = Field(None, description="Allowed values for enum types")
@@ -166,7 +145,6 @@ class FunctionParameter(BaseModel):
     @field_validator("type")
     @classmethod
     def validate_parameter_type(cls, v: str) -> str:
-        """Validate JSON Schema parameter type."""
         valid_types = {"string", "number", "integer", "boolean", "array", "object", "null"}
         if v not in valid_types:
             raise ValueError(f"Parameter type must be one of {valid_types}")
@@ -174,8 +152,6 @@ class FunctionParameter(BaseModel):
 
 
 class FunctionDefinition(BaseModel):
-    """Enhanced function definition for LLM calling."""
-
     name: str = Field(..., description="Function name", min_length=1, max_length=64)
     description: str = Field(..., description="Function description", min_length=1, max_length=1024)
     parameters: dict[str, Any] = Field(..., description="JSON schema for parameters")
@@ -184,7 +160,6 @@ class FunctionDefinition(BaseModel):
     @field_validator("name")
     @classmethod
     def validate_function_name(cls, v: str) -> str:
-        """Validate function name format."""
         import re
 
         if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", v):
@@ -199,7 +174,6 @@ class FunctionDefinition(BaseModel):
     @field_validator("parameters")
     @classmethod
     def validate_parameters_schema(cls, v: dict[str, Any]) -> dict[str, Any]:
-        """Validate JSON schema for parameters."""
         if not isinstance(v, dict):
             raise ValueError("Parameters must be a valid JSON schema object")
 
@@ -215,7 +189,6 @@ class FunctionDefinition(BaseModel):
 
     @model_validator(mode="after")
     def validate_function_definition(self) -> FunctionDefinition:
-        """Validate complete function definition."""
         # Check description is meaningful
         if len(self.description.strip()) < 10:
             raise ValueError("Function description should be at least 10 characters")
@@ -224,8 +197,6 @@ class FunctionDefinition(BaseModel):
 
 
 class LLMConfig(BaseModel):
-    """Standardized LLM configuration across providers."""
-
     provider: LLMProvider = Field(..., description="LLM provider")
     model: str = Field(..., description="Model name/identifier")
     api_key: str | None = Field(None, description="API key (handled securely)")
@@ -256,7 +227,6 @@ class LLMConfig(BaseModel):
     @field_validator("api_base")
     @classmethod
     def validate_api_base(cls, v: str | None) -> str | None:
-        """Validate API base URL format."""
         if v and not v.startswith(("http://", "https://")):
             raise ValueError("API base URL must start with http:// or https://")
         return v
@@ -264,14 +234,12 @@ class LLMConfig(BaseModel):
     @field_validator("model")
     @classmethod
     def validate_model_name(cls, v: str) -> str:
-        """Validate model name format."""
         if not v or len(v) > 256:
             raise ValueError("Model name must be 1-256 characters")
         return v
 
     @model_validator(mode="after")
     def validate_llm_config(self) -> LLMConfig:
-        """Validate LLM configuration consistency."""
         # Provider-specific validations
         if self.provider == LLMProvider.ANTHROPIC:
             if self.model.startswith("claude") and self.max_tokens > 100000:
@@ -289,8 +257,6 @@ class LLMConfig(BaseModel):
 
 
 class StreamingResponse(BaseModel):
-    """Streaming response chunk from LLM."""
-
     id: str = Field(..., description="Response ID")
     object: str = Field("chat.completion.chunk", description="Object type")
     created: int = Field(..., description="Creation timestamp")
@@ -301,15 +267,12 @@ class StreamingResponse(BaseModel):
     @field_validator("choices")
     @classmethod
     def validate_choices(cls, v: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """Validate streaming response choices."""
         if not v:
             raise ValueError("Streaming response must have at least one choice")
         return v
 
 
 class LLMResponse(BaseModel):
-    """Complete LLM response with metadata."""
-
     id: str = Field(..., description="Response ID")
     object: str = Field("chat.completion", description="Object type")
     created: int = Field(..., description="Creation timestamp")
@@ -320,21 +283,17 @@ class LLMResponse(BaseModel):
 
     @property
     def first_choice_message(self) -> dict[str, Any] | None:
-        """Get the first choice message content."""
         if self.choices:
             return self.choices[0].get("message")
         return None
 
     @property
     def total_tokens(self) -> int:
-        """Get total token usage."""
         return self.usage.get("total_tokens", 0)
 
 
 # LLM Validators using validation framework
 class ChatMessageValidator(BaseValidator[ChatMessage]):
-    """Business rule validator for chat messages."""
-
     def validate(self, model: ChatMessage) -> ValidationResult:
         result = ValidationResult(valid=True)
 
@@ -362,8 +321,6 @@ class ChatMessageValidator(BaseValidator[ChatMessage]):
 
 
 class FunctionDefinitionValidator(BaseValidator[FunctionDefinition]):
-    """Business rule validator for function definitions."""
-
     def validate(self, model: FunctionDefinition) -> ValidationResult:
         result = ValidationResult(valid=True)
 
@@ -394,8 +351,6 @@ class FunctionDefinitionValidator(BaseValidator[FunctionDefinition]):
 
 
 class LLMConfigValidator(BaseValidator[LLMConfig]):
-    """Business rule validator for LLM configuration."""
-
     def validate(self, model: LLMConfig) -> ValidationResult:
         result = ValidationResult(valid=True)
 
@@ -426,7 +381,6 @@ class LLMConfigValidator(BaseValidator[LLMConfig]):
 
 # Composite validator for LLM models
 def create_llm_validator() -> CompositeValidator[LLMConfig]:
-    """Create a comprehensive LLM validator."""
     validators = [
         LLMConfigValidator(LLMConfig),
     ]

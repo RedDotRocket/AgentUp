@@ -4,14 +4,11 @@ from unittest.mock import Mock
 
 from a2a.types import Task, TaskState, TaskStatus
 
-from src.agent.plugins.models import CapabilityContext, CapabilityInfo, CapabilityResult
+from src.agent.plugins.models import CapabilityContext, CapabilityResult, PluginDefinition
 
 
 class MockTask:
-    """Mock A2A Task for testing."""
-
     def __init__(self, user_input: str = "", task_id: str = "test-123"):
-        """Initialize mock task."""
         # Create a proper Task object that's compatible with Pydantic
         self._task = Task(
             id=task_id,
@@ -22,21 +19,16 @@ class MockTask:
         self._task.metadata = {}
 
     def __getattr__(self, name):
-        """Delegate attribute access to the Task object."""
         return getattr(self._task, name)
 
     def model_dump(self, **kwargs):
-        """Delegate model_dump to the Task object."""
         return self._task.model_dump(**kwargs)
 
     def model_validate(self, obj, **kwargs):
-        """Delegate model_validate to the Task object."""
         return self._task.model_validate(obj, **kwargs)
 
 
 class PluginTestCase:
-    """Base test case for plugin testing."""
-
     def create_context(
         self,
         user_input: str = "",
@@ -45,7 +37,6 @@ class PluginTestCase:
         state: dict[str, Any] | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> CapabilityContext:
-        """Create a test context."""
         mock_task = MockTask(user_input)
         return CapabilityContext(
             task=mock_task._task,  # Pass the actual Task object
@@ -55,49 +46,40 @@ class PluginTestCase:
             metadata=metadata or {},
         )
 
-    def assert_capability_info_valid(self, capability_info: CapabilityInfo) -> None:
-        """Assert that skill info is valid."""
-        assert isinstance(capability_info, CapabilityInfo)
+    def assert_capability_info_valid(self, capability_info: PluginDefinition) -> None:
+        assert isinstance(capability_info, PluginDefinition)
         assert capability_info.id
         assert capability_info.name
         assert capability_info.version
         assert isinstance(capability_info.capabilities, list)
 
     def assert_result_success(self, result: CapabilityResult) -> None:
-        """Assert that a skill result indicates success."""
         assert isinstance(result, CapabilityResult)
         assert result.success
         assert result.content
         assert result.error is None
 
     def assert_result_failure(self, result: CapabilityResult) -> None:
-        """Assert that a skill result indicates failure."""
         assert isinstance(result, CapabilityResult)
         assert not result.success
         assert result.error is not None
 
 
 class PluginTestRunner:
-    """Test runner for plugins."""
-
     def __init__(self, plugin_class):
-        """Initialize test runner."""
         self.plugin_class = plugin_class
         self.plugin = None
 
     def setup(self) -> None:
-        """Set up the plugin for testing."""
         self.plugin = self.plugin_class()
 
     def teardown(self) -> None:
-        """Clean up after testing."""
         self.plugin = None
 
     def test_registration(self) -> bool:
-        """Test plugin registration."""
         try:
             capability_info = self.plugin.register_capability()
-            assert isinstance(capability_info, CapabilityInfo)
+            assert isinstance(capability_info, PluginDefinition)
             assert capability_info.id
             assert capability_info.name
             return True
@@ -106,7 +88,6 @@ class PluginTestRunner:
             return False
 
     def test_validation(self, test_configs: list[dict[str, Any]]) -> bool:
-        """Test configuration validation."""
         try:
             for config in test_configs:
                 result = self.plugin.validate_config(config)
@@ -118,7 +99,6 @@ class PluginTestRunner:
             return False
 
     def test_execution(self, test_inputs: list[str]) -> bool:
-        """Test skill execution."""
         try:
             for user_input in test_inputs:
                 mock_task = MockTask(user_input)
@@ -131,7 +111,6 @@ class PluginTestRunner:
             return False
 
     def test_routing(self, test_cases: list[tuple[str, bool | float]]) -> bool:
-        """Test skill routing."""
         try:
             for user_input, expected in test_cases:
                 mock_task = MockTask(user_input)
@@ -149,7 +128,6 @@ class PluginTestRunner:
             return False
 
     def run_all_tests(self) -> dict[str, bool]:
-        """Run all tests and return results."""
         self.setup()
 
         results = {
@@ -164,11 +142,9 @@ class PluginTestRunner:
 
 
 def create_test_plugin(skill_id: str, name: str) -> type:
-    """Create a simple test plugin class."""
-
     class TestPlugin:
-        def register_capability(self) -> CapabilityInfo:
-            return CapabilityInfo(
+        def register_capability(self) -> PluginDefinition:
+            return PluginDefinition(
                 id=skill_id,
                 name=name,
                 version="1.0.0",
@@ -194,7 +170,6 @@ def create_test_plugin(skill_id: str, name: str) -> type:
 
 
 async def test_plugin_async(plugin_instance) -> dict[str, Any]:
-    """Test a plugin with async methods."""
     results = {}
 
     # Test registration

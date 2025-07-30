@@ -1,10 +1,9 @@
 from .a2a import *  # noqa: F403
 from .constants import *  # noqa: F403
-from .loader import _process_env_vars, load_config, merge_configs
 from .model import *  # noqa: F403
+from .settings import Config, get_settings
 
 __all__ = [
-    "load_config",
-    "_process_env_vars",
-    "merge_configs",
+    "Config",
+    "get_settings",
 ]

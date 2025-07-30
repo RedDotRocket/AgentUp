@@ -24,10 +24,7 @@ from src.agent.core.model import (
 
 
 class TestExecutionStatus:
-    """Test ExecutionStatus enum."""
-
     def test_execution_status_values(self):
-        """Test execution status enum values."""
         assert ExecutionStatus.PENDING == "pending"
         assert ExecutionStatus.RUNNING == "running"
         assert ExecutionStatus.COMPLETED == "completed"
@@ -37,11 +34,7 @@ class TestExecutionStatus:
 
 
 class TestFunctionType:
-    """Test FunctionType enum."""
-
     def test_function_type_values(self):
-        """Test function type enum values."""
-        assert FunctionType.BUILTIN == "builtin"
         assert FunctionType.PLUGIN == "plugin"
         assert FunctionType.LLM_FUNCTION == "llm_function"
         assert FunctionType.ASYNC == "async"
@@ -49,10 +42,7 @@ class TestFunctionType:
 
 
 class TestParameterType:
-    """Test ParameterType enum."""
-
     def test_parameter_type_values(self):
-        """Test parameter type enum values."""
         assert ParameterType.STRING == "string"
         assert ParameterType.INTEGER == "integer"
         assert ParameterType.FLOAT == "float"
@@ -63,10 +53,7 @@ class TestParameterType:
 
 
 class TestFunctionParameter:
-    """Test FunctionParameter model."""
-
     def test_function_parameter_creation(self):
-        """Test basic function parameter creation."""
         param = FunctionParameter(
             name="input_text",
             type=ParameterType.STRING,
@@ -85,7 +72,6 @@ class TestFunctionParameter:
         assert param.default is None
 
     def test_parameter_name_validation(self):
-        """Test parameter name validation."""
         # Valid names
         valid_names = ["param", "param_name", "_private", "param123", "camelCase"]
         for name in valid_names:
@@ -99,7 +85,6 @@ class TestFunctionParameter:
                 FunctionParameter(name=name, type=ParameterType.STRING)
 
     def test_parameter_constraints_validation(self):
-        """Test parameter constraints validation."""
         # Valid numeric constraints
         param = FunctionParameter(name="number", type=ParameterType.INTEGER, min_value=1, max_value=100)
         assert param.min_value == 1
@@ -121,7 +106,6 @@ class TestFunctionParameter:
         assert "min_length cannot be greater than max_length" in str(exc_info.value)
 
     def test_default_value_handling(self):
-        """Test default value handling."""
         # Parameter with default should not be required
         param = FunctionParameter(
             name="optional_param",
@@ -134,10 +118,7 @@ class TestFunctionParameter:
 
 
 class TestFunctionSignature:
-    """Test FunctionSignature model."""
-
     def test_function_signature_creation(self):
-        """Test basic function signature creation."""
         signature = FunctionSignature(
             name="process_text",
             module="text_processor",
@@ -155,7 +136,6 @@ class TestFunctionSignature:
         assert signature.deprecated is False
 
     def test_function_name_validation(self):
-        """Test function name validation."""
         # Valid names
         valid_names = ["func", "my_function", "_private", "func123"]
         for name in valid_names:
@@ -176,7 +156,6 @@ class TestFunctionSignature:
             assert f"Function name '{name}' is reserved" in str(exc_info.value)
 
     def test_module_path_validation(self):
-        """Test module path validation."""
         # Valid module paths
         valid_paths = ["module", "my_module", "package.module", "deep.package.module"]
         for path in valid_paths:
@@ -190,7 +169,6 @@ class TestFunctionSignature:
                 FunctionSignature(name="test_func", module=path, function_type=FunctionType.BUILTIN)
 
     def test_tags_validation(self):
-        """Test tags validation."""
         # Valid tags
         valid_tags = ["nlp", "text-processing", "ai_function", "utility"]
         signature = FunctionSignature(
@@ -206,7 +184,6 @@ class TestFunctionSignature:
             )
 
     def test_version_validation(self):
-        """Test semantic version validation."""
         # Valid versions
         valid_versions = ["1.0.0", "2.1.3", "1.0.0-alpha", "1.0.0-beta.1", "1.0.0+build.123"]
         for version in valid_versions:
@@ -224,7 +201,6 @@ class TestFunctionSignature:
                 )
 
     def test_parameter_properties(self):
-        """Test parameter properties."""
         param1 = FunctionParameter(name="required_param", type=ParameterType.STRING, required=True)
         param2 = FunctionParameter(name="optional_param", type=ParameterType.STRING, required=False)
 
@@ -242,10 +218,7 @@ class TestFunctionSignature:
 
 
 class TestExecutionContext:
-    """Test ExecutionContext model."""
-
     def test_execution_context_creation(self):
-        """Test basic execution context creation."""
         context = ExecutionContext(
             request_id="req-123",
             function_name="test_function",
@@ -265,7 +238,6 @@ class TestExecutionContext:
         assert isinstance(context.started_at, datetime)
 
     def test_request_id_validation(self):
-        """Test request ID validation."""
         # Valid request IDs
         valid_ids = ["req-123", "req_456", "REQUEST789", "a1b2c3"]
         for req_id in valid_ids:
@@ -279,7 +251,6 @@ class TestExecutionContext:
                 ExecutionContext(request_id=req_id, function_name="test_func")
 
     def test_timeout_validation(self):
-        """Test timeout validation."""
         # Valid timeout
         context = ExecutionContext(request_id="req-123", function_name="test_func", timeout_seconds=300)
         assert context.timeout_seconds == 300
@@ -293,7 +264,6 @@ class TestExecutionContext:
             ExecutionContext(request_id="req-123", function_name="test_func", timeout_seconds=4000)
 
     def test_retry_properties(self):
-        """Test retry properties."""
         # Initial context (no retries)
         context = ExecutionContext(request_id="req-123", function_name="test_func", retry_count=0, max_retries=3)
         assert context.is_retry is False
@@ -310,7 +280,6 @@ class TestExecutionContext:
         assert context.can_retry is False
 
     def test_elapsed_seconds_property(self):
-        """Test elapsed seconds calculation."""
         context = ExecutionContext(request_id="req-123", function_name="test_func")
         elapsed = context.elapsed_seconds
         assert elapsed >= 0
@@ -318,10 +287,7 @@ class TestExecutionContext:
 
 
 class TestExecutionResult:
-    """Test ExecutionResult model."""
-
     def test_execution_result_creation(self):
-        """Test basic execution result creation."""
         start_time = datetime.utcnow()
         result = ExecutionResult(
             request_id="req-123",
@@ -339,7 +305,6 @@ class TestExecutionResult:
         assert result.error is None
 
     def test_result_properties(self):
-        """Test result properties."""
         # Successful result
         result = ExecutionResult(
             request_id="req-123",
@@ -373,7 +338,6 @@ class TestExecutionResult:
         assert result.is_failed is True
 
     def test_execution_result_validation(self):
-        """Test execution result consistency validation."""
         # Failed execution without error message should fail
         with pytest.raises(ValidationError) as exc_info:
             ExecutionResult(
@@ -414,7 +378,6 @@ class TestExecutionResult:
         assert result.completed_at is not None
 
     def test_duration_calculation(self):
-        """Test duration calculation."""
         start_time = datetime.utcnow()
         result = ExecutionResult(
             request_id="req-123", function_name="test_func", status=ExecutionStatus.COMPLETED, started_at=start_time
@@ -432,10 +395,7 @@ class TestExecutionResult:
 
 
 class TestFunctionRegistry:
-    """Test FunctionRegistry model."""
-
     def test_function_registry_creation(self):
-        """Test basic function registry creation."""
         registry = FunctionRegistry()
 
         assert len(registry.functions) == 0
@@ -444,7 +404,6 @@ class TestFunctionRegistry:
         assert registry.function_count == 0
 
     def test_register_function(self):
-        """Test function registration."""
         registry = FunctionRegistry()
         signature = FunctionSignature(name="test_func", module="test_module", function_type=FunctionType.BUILTIN)
 
@@ -456,7 +415,6 @@ class TestFunctionRegistry:
         assert registry.function_count == 1
 
     def test_unregister_function(self):
-        """Test function unregistration."""
         registry = FunctionRegistry()
         signature = FunctionSignature(name="test_func", module="test_module", function_type=FunctionType.BUILTIN)
 
@@ -474,7 +432,6 @@ class TestFunctionRegistry:
         assert success is False
 
     def test_get_function(self):
-        """Test getting function by name."""
         registry = FunctionRegistry()
         signature = FunctionSignature(name="test_func", module="test_module", function_type=FunctionType.BUILTIN)
 
@@ -489,7 +446,6 @@ class TestFunctionRegistry:
         assert retrieved is None
 
     def test_list_functions(self):
-        """Test listing functions."""
         registry = FunctionRegistry()
 
         builtin_func = FunctionSignature(
@@ -517,10 +473,7 @@ class TestFunctionRegistry:
 
 
 class TestValidators:
-    """Test core validators."""
-
     def test_function_signature_validator(self):
-        """Test function signature validator."""
         validator = FunctionSignatureValidator(FunctionSignature)
 
         # Test dangerous function name warning
@@ -568,7 +521,6 @@ class TestValidators:
         assert "usage examples" in result.suggestions[0]
 
     def test_execution_context_validator(self):
-        """Test execution context validator."""
         validator = ExecutionContextValidator(ExecutionContext)
 
         # Test short timeout warning
@@ -602,7 +554,6 @@ class TestValidators:
         assert "cannot exceed max retries" in result.errors[0]
 
     def test_execution_result_validator(self):
-        """Test execution result validator."""
         validator = ExecutionResultValidator(ExecutionResult)
 
         # Test long execution time warning
@@ -658,7 +609,6 @@ class TestValidators:
         assert "sensitive information" in result.warnings[0]
 
     def test_composite_core_validator(self):
-        """Test composite core validator."""
         composite_validator = create_core_validator()
 
         # Test with valid function signature
@@ -681,10 +631,7 @@ class TestValidators:
 
 
 class TestModelSerialization:
-    """Test Pydantic v2 serialization methods."""
-
     def test_function_signature_serialization(self):
-        """Test function signature serialization."""
         param = FunctionParameter(name="input_text", type=ParameterType.STRING, description="Input text", required=True)
         signature = FunctionSignature(
             name="process_text",
@@ -717,7 +664,6 @@ class TestModelSerialization:
         assert signature == signature3
 
     def test_execution_context_serialization(self):
-        """Test execution context serialization."""
         context = ExecutionContext(
             request_id="req-123",
             function_name="test_function",
@@ -744,7 +690,6 @@ class TestModelSerialization:
         assert context.metadata == context2.metadata
 
     def test_execution_result_serialization(self):
-        """Test execution result serialization."""
         result = ExecutionResult(
             request_id="req-123",
             function_name="test_function",
@@ -774,7 +719,6 @@ class TestModelSerialization:
         assert result.metadata == result2.metadata
 
     def test_function_registry_serialization(self):
-        """Test function registry serialization."""
         registry = FunctionRegistry(version="2.0.0")
 
         signature1 = FunctionSignature(name="func1", module="module1", function_type=FunctionType.BUILTIN)

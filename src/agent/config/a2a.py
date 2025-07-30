@@ -36,8 +36,6 @@ from pydantic import BaseModel, Field
 
 
 class JSONRPCError(Exception):
-    """JSON-RPC error with code."""
-
     def __init__(self, code: int, message: str, data: Any = None):
         super().__init__(message)
         self.code = code
@@ -46,38 +44,26 @@ class JSONRPCError(Exception):
 
 
 class TaskNotFoundError(Exception):
-    """Task not found error."""
-
     pass
 
 
 class TaskNotCancelableError(Exception):
-    """Task cannot be canceled error."""
-
     pass
 
 
 class PushNotificationNotSupportedError(Exception):
-    """Push notification not supported error."""
-
     pass
 
 
 class UnsupportedOperationError(Exception):
-    """Unsupported operation error."""
-
     pass
 
 
 class ContentTypeNotSupportedError(Exception):
-    """Content type not supported error."""
-
     pass
 
 
 class InvalidAgentResponseError(Exception):
-    """Invalid agent response error."""
-
     pass
 
 
@@ -132,8 +118,6 @@ def create_jsonrpc_error_from_exception(exception: Exception, request_id: Any = 
 
 
 class BaseAgent(BaseModel, ABC):
-    """Base class for agents implementing A2A protocol."""
-
     model_config = {
         "arbitrary_types_allowed": True,
         "extra": "allow",

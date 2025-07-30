@@ -58,13 +58,11 @@ _request_handler: DefaultRequestHandler | None = None
 
 
 def set_request_handler_instance(handler: DefaultRequestHandler):
-    """Set the global request handler instance."""
     global _request_handler
     _request_handler = handler
 
 
 def get_request_handler() -> DefaultRequestHandler:
-    """Get the global request handler instance."""
     if _request_handler is None:
         raise RuntimeError("Request handler not initialized")
     return _request_handler
@@ -200,7 +198,7 @@ def create_agent_card(extended: bool = False) -> AgentCard:
     agent_card = AgentCard(
         name=agent_info.get("name", config.get("project_name", "Agent")),
         description=agent_info.get("description", config.get("description", "AI Agent")),
-        version=agent_info.get("version", "0.3.0"),
+        version=agent_info.get("version", "0.4.0"),
         url="http://localhost:8000",
         capabilities=capabilities,
         skills=agent_skills,
@@ -224,8 +222,6 @@ def create_agent_card(extended: bool = False) -> AgentCard:
 @router.get("/task/{task_id}/status")
 @protected()
 async def get_task_status(task_id: str, request: Request) -> JSONResponse:
-    """Get task status and result."""
-
     if task_id not in task_storage:
         raise HTTPException(status_code=404, detail="Task not found")
 
@@ -249,7 +245,6 @@ async def get_task_status(task_id: str, request: Request) -> JSONResponse:
 
 @router.get("/health")
 async def health_check() -> JSONResponse:
-    """Basic health check endpoint."""
     config_manager = ConfigurationManager()
     return JSONResponse(
         status_code=200,
@@ -263,7 +258,6 @@ async def health_check() -> JSONResponse:
 
 @router.get("/services/health")
 async def services_health() -> JSONResponse:
-    """Check health of all services."""
     try:
         from agent.services import get_services
 
@@ -287,7 +281,6 @@ async def services_health() -> JSONResponse:
 # A2A AgentCard
 @router.get("/.well-known/agent.json", response_model=AgentCard)
 async def get_agent_discovery() -> AgentCard:
-    """A2A agent discovery endpoint."""
     return create_agent_card()
 
 
@@ -295,12 +288,10 @@ async def get_agent_discovery() -> AgentCard:
 @router.get("/agent/authenticatedExtendedCard", response_model=AgentCard)
 @protected()
 async def get_authenticated_extended_card(request: Request) -> AgentCard:
-    """A2A authenticated extended agent card endpoint."""
     return create_agent_card(extended=True)
 
 
 async def sse_generator(async_iterator: AsyncGenerator) -> AsyncGenerator[str, None]:
-    """Convert async iterator to SSE format."""
     try:
         async for response in async_iterator:
             # Each response is a SendStreamingMessageResponse
@@ -318,7 +309,6 @@ async def jsonrpc_endpoint(
     request: Request,
     handler: DefaultRequestHandler = Depends(get_request_handler),
 ) -> JSONResponse | StreamingResponse:
-    """This is the main JSON-RPC 2.0 endpoint with SSE Streaming support."""
     try:
         # Parse JSON-RPC request
         body = await request.json()
@@ -496,7 +486,6 @@ async def jsonrpc_endpoint(
 
 # Error handlers (to be registered with FastAPI app)
 async def jsonrpc_error_handler(request: Request, exc: JSONRPCError):
-    """Handle JSON-RPC errors."""
     return JSONResponse(
         status_code=400, content={"error": {"code": exc.code, "message": exc.message, "data": exc.data}}
     )

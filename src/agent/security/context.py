@@ -19,12 +19,10 @@ class AuthContext:
         self.token = None
 
     def __enter__(self):
-        """Enter the context and set the authentication result."""
         self.token = _auth_context.set(self.auth_result)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """Exit the context and reset the authentication result."""
         _auth_context.reset(self.token)
 
 
@@ -119,26 +117,21 @@ class CapabilityContext:
 
     @property
     def user_id(self) -> str | None:
-        """Get the authenticated user ID."""
         return self.auth_result.user_id if self.auth_result else None
 
     @property
     def user_scopes(self) -> set[str]:
-        """Get the user's scopes."""
         return self.auth_result.scopes or set() if self.auth_result else set()
 
     @property
     def auth_metadata(self) -> dict[str, Any]:
-        """Get authentication metadata."""
         return self.auth_result.metadata or {} if self.auth_result else {}
 
     @property
     def is_authenticated(self) -> bool:
-        """Check if user is authenticated."""
         return self.auth_result is not None
 
     def has_scope(self, scope: str) -> bool:
-        """Check if user has a specific scope, including scope hierarchy expansion."""
         try:
             # Try to use the unified auth manager's scope hierarchy
             from agent.security.unified_auth import get_unified_auth_manager
@@ -156,7 +149,6 @@ class CapabilityContext:
             return scope in self.user_scopes
 
     def requires_scopes(self, required_scopes: set[str]) -> bool:
-        """Check if user has all required scopes, including scope hierarchy expansion."""
         try:
             # Try to use the unified auth manager's scope hierarchy
             from agent.security.unified_auth import get_unified_auth_manager
@@ -175,7 +167,6 @@ class CapabilityContext:
             return required_scopes.issubset(self.user_scopes)
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert context to dictionary for logging/debugging."""
         return {
             "task_id": getattr(self.task, "id", None),
             "user_id": self.user_id,
@@ -239,8 +230,9 @@ def log_capability_access(
     """
     Comprehensive audit logging for capability access.
 
-    This implements the audit trail requirement from SCOPE_DESIGN.md to log
-    all capability access with user context for security monitoring.
+    This implements the audit trail requirement for all capability access,
+    including scope checks and execution time. It logs both successful and failed
+    capability accesses, providing a complete audit trail for security monitoring.
 
     Args:
         capability_id: ID of the capability being accessed

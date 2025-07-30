@@ -305,7 +305,6 @@ class ValkeyPushNotifier(EnhancedPushNotifier):
         self.key_prefix = key_prefix
 
     async def set_info(self, task_id: str, push_config: PushNotificationConfig) -> TaskPushNotificationConfig:
-        """Store configuration in Valkey."""
         # Create TaskPushNotificationConfig wrapper
         config = TaskPushNotificationConfig(taskId=task_id, pushNotificationConfig=push_config)
 
@@ -326,7 +325,6 @@ class ValkeyPushNotifier(EnhancedPushNotifier):
         return self._mask_sensitive_data(config)
 
     async def get_info(self, task_id: str, config_id: str | None = None) -> TaskPushNotificationConfig | None:
-        """Get configuration from Valkey."""
         if config_id:
             # Get specific configuration
             key = f"{self.key_prefix}{task_id}:{config_id}"
@@ -349,7 +347,6 @@ class ValkeyPushNotifier(EnhancedPushNotifier):
         return None
 
     async def list_info(self, task_id: str) -> list[TaskPushNotificationConfig]:
-        """list all configurations for task from Valkey."""
         pattern = f"{self.key_prefix}{task_id}:*"
         keys = await self.valkey.keys(pattern)
 
@@ -364,7 +361,6 @@ class ValkeyPushNotifier(EnhancedPushNotifier):
         return configs
 
     async def delete_info(self, task_id: str, config_id: str) -> bool:
-        """Delete configuration from Valkey."""
         key = f"{self.key_prefix}{task_id}:{config_id}"
         result = await self.valkey.delete(key)
 
@@ -374,7 +370,6 @@ class ValkeyPushNotifier(EnhancedPushNotifier):
         return bool(result)
 
     async def send_notification(self, task: Task) -> None:
-        """Send notifications using configurations from Valkey."""
         task_id = task.id
         configs = await self.list_info(task_id)
 

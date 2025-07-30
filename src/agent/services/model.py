@@ -18,8 +18,6 @@ from ..utils.validation import BaseValidator, CompositeValidator, ValidationResu
 
 
 class ServiceStatus(str, Enum):
-    """Service health status enumeration."""
-
     HEALTHY = "healthy"
     DEGRADED = "degraded"
     UNHEALTHY = "unhealthy"
@@ -27,8 +25,6 @@ class ServiceStatus(str, Enum):
 
 
 class ServiceType(str, Enum):
-    """Service type enumeration."""
-
     LLM = "llm"
     CACHE = "cache"
     DATABASE = "database"
@@ -40,8 +36,6 @@ class ServiceType(str, Enum):
 
 
 class ServiceRegistration(BaseModel):
-    """Service registration data model."""
-
     name: str = Field(..., description="Service name", min_length=1, max_length=100)
     service_type: ServiceType = Field(..., description="Service type")
     version: str = Field(..., description="Service version")
@@ -56,7 +50,6 @@ class ServiceRegistration(BaseModel):
     @field_validator("endpoint", "health_check_url")
     @classmethod
     def validate_urls(cls, v: str | None) -> str | None:
-        """Validate service URLs."""
         if v and not v.startswith(("http://", "https://")):
             raise ValueError("URL must start with http:// or https://")
         return v
@@ -64,7 +57,6 @@ class ServiceRegistration(BaseModel):
     @field_validator("version")
     @classmethod
     def validate_version(cls, v: str) -> str:
-        """Validate semantic version format."""
         import re
 
         if not re.match(r"^\d+\.\d+\.\d+(-[\w\.-]+)?(\+[\w\.-]+)?$", v):
@@ -74,7 +66,6 @@ class ServiceRegistration(BaseModel):
     @field_validator("name")
     @classmethod
     def validate_name(cls, v: str) -> str:
-        """Validate service name format."""
         import re
 
         if not re.match(r"^[a-zA-Z][a-zA-Z0-9_-]*$", v):
@@ -84,14 +75,12 @@ class ServiceRegistration(BaseModel):
     @field_validator("priority")
     @classmethod
     def validate_priority(cls, v: int) -> int:
-        """Validate priority range."""
         if not 0 <= v <= 100:
             raise ValueError("Priority must be between 0 and 100")
         return v
 
     @model_validator(mode="after")
     def validate_service_config(self) -> ServiceRegistration:
-        """Validate service configuration consistency."""
         if self.service_type == ServiceType.MCP and not self.endpoint:
             raise ValueError("MCP services must have an endpoint")
 
@@ -102,8 +91,6 @@ class ServiceRegistration(BaseModel):
 
 
 class ServiceHealth(BaseModel):
-    """Service health status model."""
-
     service_name: str = Field(..., description="Service name")
     status: ServiceStatus = Field(..., description="Health status")
     last_check: datetime = Field(default_factory=datetime.utcnow, description="Last health check time")
@@ -116,14 +103,12 @@ class ServiceHealth(BaseModel):
     @field_validator("response_time_ms")
     @classmethod
     def validate_response_time(cls, v: float | None) -> float | None:
-        """Validate response time is reasonable."""
         if v is not None and v > 300000:  # 5 minutes in ms
             raise ValueError("Response time seems unreasonably high")
         return v
 
     @model_validator(mode="after")
     def validate_health_consistency(self) -> ServiceHealth:
-        """Validate health status consistency."""
         if self.status == ServiceStatus.UNHEALTHY and not self.error_message:
             raise ValueError("Unhealthy status requires error message")
 
@@ -134,8 +119,6 @@ class ServiceHealth(BaseModel):
 
 
 class ServiceMetrics(BaseModel):
-    """Service performance metrics model."""
-
     service_name: str = Field(..., description="Service name")
     uptime_seconds: float = Field(0, description="Service uptime in seconds", ge=0)
     request_count: int = Field(0, description="Total request count", ge=0)
@@ -148,14 +131,12 @@ class ServiceMetrics(BaseModel):
 
     @property
     def error_rate(self) -> float:
-        """Calculate error rate percentage."""
         if self.request_count == 0:
             return 0.0
         return (self.error_count / self.request_count) * 100
 
     @property
     def availability_percent(self) -> float:
-        """Calculate availability percentage."""
         if self.request_count == 0:
             return 100.0
         successful_requests = self.request_count - self.error_count
@@ -163,7 +144,6 @@ class ServiceMetrics(BaseModel):
 
     @model_validator(mode="after")
     def validate_metrics_consistency(self) -> ServiceMetrics:
-        """Validate metrics consistency."""
         if self.error_count > self.request_count:
             raise ValueError("Error count cannot exceed request count")
 
@@ -174,8 +154,6 @@ class ServiceMetrics(BaseModel):
 
 
 class ServiceDependency(BaseModel):
-    """Service dependency relationship model."""
-
     service_name: str = Field(..., description="Service name")
     depends_on: str = Field(..., description="Dependency service name")
     dependency_type: str = Field("required", description="Dependency type")
@@ -186,7 +164,6 @@ class ServiceDependency(BaseModel):
     @field_validator("dependency_type")
     @classmethod
     def validate_dependency_type(cls, v: str) -> str:
-        """Validate dependency type."""
         valid_types = {"required", "optional", "weak", "strong"}
         if v not in valid_types:
             raise ValueError(f"Dependency type must be one of {valid_types}")
@@ -194,8 +171,6 @@ class ServiceDependency(BaseModel):
 
 
 class ServiceConfiguration(BaseModel):
-    """Complete service configuration model."""
-
     registration: ServiceRegistration = Field(..., description="Service registration data")
     health_config: dict[str, Any] = Field(
         default_factory=lambda: {"check_interval": 30, "timeout": 10, "failure_threshold": 3, "recovery_threshold": 2},
@@ -210,7 +185,6 @@ class ServiceConfiguration(BaseModel):
 
     @model_validator(mode="after")
     def validate_configuration(self) -> ServiceConfiguration:
-        """Validate complete service configuration."""
         # Validate health check configuration
         health_config = self.health_config
         if health_config.get("check_interval", 0) <= 0:
@@ -231,8 +205,6 @@ class ServiceConfiguration(BaseModel):
 
 
 class ServiceRegistrationValidator(BaseValidator[ServiceRegistration]):
-    """Business rule validator for service registration."""
-
     def validate(self, model: ServiceRegistration) -> ValidationResult:
         result = ValidationResult(valid=True)
 
@@ -259,8 +231,6 @@ class ServiceRegistrationValidator(BaseValidator[ServiceRegistration]):
 
 
 class ServiceHealthValidator(BaseValidator[ServiceHealth]):
-    """Business rule validator for service health."""
-
     def validate(self, model: ServiceHealth) -> ValidationResult:
         result = ValidationResult(valid=True)
 
@@ -282,8 +252,6 @@ class ServiceHealthValidator(BaseValidator[ServiceHealth]):
 
 
 class ServiceConfigurationValidator(BaseValidator[ServiceConfiguration]):
-    """Comprehensive service configuration validator."""
-
     def validate(self, model: ServiceConfiguration) -> ValidationResult:
         result = ValidationResult(valid=True)
 
@@ -315,7 +283,6 @@ class ServiceConfigurationValidator(BaseValidator[ServiceConfiguration]):
 
 # Composite validator for all service models
 def create_service_validator() -> CompositeValidator[ServiceConfiguration]:
-    """Create a comprehensive service validator."""
     validators = [
         ServiceConfigurationValidator(ServiceConfiguration),
     ]

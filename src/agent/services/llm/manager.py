@@ -6,18 +6,13 @@ logger = structlog.get_logger(__name__)
 
 
 class LLMManager:
-    """Manages LLM provider selection, validation, and communication."""
-
     @staticmethod
     async def get_llm_service(services=None):
-        """Get the configured LLM service from ai_provider configuration."""
         try:
-            from agent.config import load_config
-
-            config = load_config()
+            from agent.config import Config
 
             # Get the new ai_provider configuration
-            ai_provider_config = config.get("ai_provider", {})
+            ai_provider_config = Config.ai_provider
             if not ai_provider_config:
                 logger.warning("ai_provider not configured in agentup.yml")
                 return None
@@ -58,7 +53,6 @@ class LLMManager:
     async def llm_with_functions(
         llm, messages: list[dict[str, str]], function_schemas: list[dict[str, Any]], function_executor
     ) -> str:
-        """Process with LLM function calling capability using provider-agnostic approach."""
         try:
             from agent.llm_providers.base import ChatMessage  # type: ignore[import-untyped]
         except ImportError:
@@ -103,7 +97,6 @@ class LLMManager:
 
     @staticmethod
     async def llm_direct_response(llm, messages: list[dict[str, str]]) -> str:
-        """Get direct LLM response when no functions are available."""
         # CONDITIONAL_LLM_PROVIDER_IMPORTS
         # Note: llm_providers module is generated during project creation from templates
         try:
@@ -129,7 +122,6 @@ class LLMManager:
 
     @staticmethod
     def _messages_to_prompt(messages: list[dict[str, str]]) -> str:
-        """Convert messages to prompt format for LLM."""
         prompt_parts = []
         for msg in messages:
             role = msg["role"]
@@ -146,7 +138,6 @@ class LLMManager:
 
     @staticmethod
     def _extract_message_content(msg: dict[str, Any]) -> str | list[dict[str, Any]]:
-        """Extract content from A2A message, handling both text and multi-modal parts."""
         # If it's already simple content, return as-is
         if "content" in msg and isinstance(msg["content"], str):
             return msg["content"]
@@ -159,7 +150,6 @@ class LLMManager:
 
     @staticmethod
     def _process_message_parts(parts: list[Any]) -> str | list[dict[str, Any]]:
-        """Process A2A message parts into LLM-compatible format."""
         content_parts = []
         text_parts = []
 
@@ -181,7 +171,6 @@ class LLMManager:
 
     @staticmethod
     def _process_a2a_part(part: Any, content_parts: list[dict[str, Any]], text_parts: list[str]) -> None:
-        """Process A2A SDK Part object."""
         kind = part.root.kind
 
         if kind == "text":
@@ -194,7 +183,6 @@ class LLMManager:
 
     @staticmethod
     def _process_dict_part(part: dict[str, Any], content_parts: list[dict[str, Any]], text_parts: list[str]) -> None:
-        """Process dict-format part."""
         kind = part.get("kind")
 
         if kind == "text":
@@ -207,7 +195,6 @@ class LLMManager:
 
     @staticmethod
     def _process_file_part(file_info: Any, content_parts: list[dict[str, Any]], text_parts: list[str]) -> None:
-        """Process A2A SDK file object."""
         mime_type = getattr(file_info, "mimeType", None)
         file_name = getattr(file_info, "name", "file")
 
@@ -241,7 +228,6 @@ class LLMManager:
     def _process_file_info(
         file_info: dict[str, Any], content_parts: list[dict[str, Any]], text_parts: list[str]
     ) -> None:
-        """Process dict-format file info."""
         mime_type = file_info.get("mimeType", "")
         file_name = file_info.get("name", "file")
 
@@ -273,7 +259,6 @@ class LLMManager:
 
     @staticmethod
     def _is_text_mime_type(mime_type: str) -> bool:
-        """Check if MIME type represents text content."""
         return (
             mime_type.startswith("text/")
             or mime_type == "application/json"
@@ -284,10 +269,8 @@ class LLMManager:
 
     @staticmethod
     def _format_file_content(file_name: str, mime_type: str, content: str) -> str:
-        """Format file content for inclusion in LLM prompt."""
         return f"\n\n--- Content of {file_name} ({mime_type}) ---\n{content}\n--- End of {file_name} ---\n"
 
     @staticmethod
     def _format_file_notice(file_name: str, mime_type: str) -> str:
-        """Format file notice for non-text files."""
         return f"\n\n--- File attached: {file_name} ({mime_type}) ---\n[Binary file content not displayed]\n"

@@ -12,10 +12,7 @@ from tests.utils.test_helpers import create_test_config
 
 
 class TestProjectGenerator:
-    """Test the ProjectGenerator class."""
-
     def test_generator_initialization(self, temp_dir: Path):
-        """Test ProjectGenerator initialization."""
         config = create_test_config("test-project", ["services"], ["openai"])
 
         generator = ProjectGenerator(temp_dir, config)
@@ -26,7 +23,6 @@ class TestProjectGenerator:
         assert "services" in generator.features
 
     def test_generator_features_from_config(self, temp_dir: Path):
-        """Test that generator uses features from config."""
         config = create_test_config("feature-test", ["services", "middleware", "auth"], ["openai", "valkey"])
 
         generator = ProjectGenerator(temp_dir, config)
@@ -37,7 +33,6 @@ class TestProjectGenerator:
         assert "auth" in generator.features
 
     def test_generator_features_fallback_empty(self, temp_dir: Path):
-        """Test that generator uses empty features when config has none."""
         config = {"name": "fallback-test"}
 
         generator = ProjectGenerator(temp_dir, config)
@@ -45,7 +40,6 @@ class TestProjectGenerator:
         assert generator.features == []
 
     def test_ai_provider_context_generation(self, temp_dir: Path):
-        """Test AI provider context generation."""
         config = create_test_config("test", ["services"], ["openai"])
         config["ai_provider_config"] = {"provider": "openai", "model": "gpt-4o-mini", "api_key": "${OPENAI_API_KEY}"}
         generator = ProjectGenerator(temp_dir, config)
@@ -57,7 +51,6 @@ class TestProjectGenerator:
         assert context["has_ai_provider"] is True
 
     def test_ai_provider_context_no_config(self, temp_dir: Path):
-        """Test AI provider context when no AI provider is configured."""
         config = create_test_config("test", ["services"], [])
         generator = ProjectGenerator(temp_dir, config)
 
@@ -68,7 +61,6 @@ class TestProjectGenerator:
         assert context["has_ai_provider"] is False
 
     def test_replace_template_vars(self, temp_dir: Path):
-        """Test the _replace_template_vars method."""
         config = create_test_config("my-project")
         config["description"] = "My awesome project"
         generator = ProjectGenerator(temp_dir, config)
@@ -87,12 +79,9 @@ class TestProjectGenerator:
 
 
 class TestProjectGenerationFlow:
-    """Test the complete project generation flow."""
-
     # No longer need template system mocking
 
     def test_generate_minimal_project(self, temp_dir: Path):
-        """Test generating a minimal project."""
         config = create_test_config("minimal-test", [], [])
 
         # Mock file operations
@@ -110,7 +99,6 @@ class TestProjectGenerationFlow:
             mock_config.assert_called_once()
 
     def test_generate_standard_project_with_openai(self, temp_dir: Path):
-        """Test generating a standard project with OpenAI."""
         config = create_test_config("standard-openai-test", ["services", "middleware"], ["openai"])
 
         with (
@@ -127,7 +115,6 @@ class TestProjectGenerationFlow:
             mock_config.assert_called_once()
 
     def test_generate_ollama_project(self, temp_dir: Path):
-        """Test generating a project with Ollama (critical test for recent fix)."""
         config = create_test_config("ollama-test", ["services", "middleware"], ["ollama"])
         config["ai_provider_config"] = {
             "provider": "ollama",
@@ -144,7 +131,6 @@ class TestProjectGenerationFlow:
         assert context["has_ai_provider"] is True
 
     def test_generate_anthropic_project(self, temp_dir: Path):
-        """Test generating a project with Anthropic."""
         config = create_test_config("anthropic-test", ["services", "middleware"], ["anthropic"])
         config["ai_provider_config"] = {
             "provider": "anthropic",
@@ -162,10 +148,7 @@ class TestProjectGenerationFlow:
 
 
 class TestTemplateRendering:
-    """Test template rendering functionality."""
-
     def test_render_template_context(self, temp_dir: Path):
-        """Test that template context is properly created."""
         config = create_test_config("context-test", ["services", "middleware", "auth"], ["openai", "valkey"])
         config["ai_provider_config"] = {"provider": "openai", "model": "gpt-4o-mini", "api_key": "${OPENAI_API_KEY}"}
 
@@ -195,7 +178,6 @@ class TestTemplateRendering:
         assert call_args["llm_provider_config"] is True
 
     def test_render_template_no_llm_provider(self, temp_dir: Path):
-        """Test template rendering when no LLM provider is selected."""
         config = create_test_config(
             "no-llm-test",
             ["middleware"],  # No services
@@ -222,10 +204,7 @@ class TestTemplateRendering:
 
 
 class TestConfigurationGeneration:
-    """Test configuration file generation."""
-
     def test_template_context_features(self, temp_dir: Path):
-        """Test that feature flags are properly set in template context."""
         config = create_test_config("feature-test", ["services", "middleware", "auth"], ["openai"])
         generator = ProjectGenerator(temp_dir, config)
 
@@ -236,7 +215,6 @@ class TestConfigurationGeneration:
         assert context["has_ai_provider"] is False  # No ai_provider_config set
 
     def test_template_context_no_features(self, temp_dir: Path):
-        """Test template context when no features are enabled."""
         config = create_test_config("minimal-test", [], [])
         generator = ProjectGenerator(temp_dir, config)
 
@@ -247,7 +225,6 @@ class TestConfigurationGeneration:
         assert context["has_ai_provider"] is False
 
     def test_backend_contexts(self, temp_dir: Path):
-        """Test backend context building (cache, state)."""
         config = create_test_config("backend-test", ["state_management"], [])
         config["feature_config"] = {"cache_backend": "redis", "state_backend": "memory"}
         generator = ProjectGenerator(temp_dir, config)
@@ -257,7 +234,6 @@ class TestConfigurationGeneration:
         assert context["state_backend"] == "memory"
 
     def test_security_context(self, temp_dir: Path):
-        """Test security context building."""
         config = create_test_config("security-test", ["auth"], [])
         config["feature_config"] = {"auth": "jwt", "scope_config": {"security_level": "enterprise"}}
         generator = ProjectGenerator(temp_dir, config)
@@ -269,10 +245,7 @@ class TestConfigurationGeneration:
 
 
 class TestContextGeneration:
-    """Test template context generation."""
-
     def test_full_template_context(self, temp_dir: Path):
-        """Test that full template context is properly generated."""
         config = create_test_config("full-test", ["services", "middleware", "auth"], [])
         config["ai_provider_config"] = {"provider": "openai", "model": "gpt-4o-mini", "api_key": "${OPENAI_API_KEY}"}
         generator = ProjectGenerator(temp_dir, config)
@@ -295,7 +268,6 @@ class TestContextGeneration:
         assert context["ai_enabled"] is True
 
     def test_minimal_template_context(self, temp_dir: Path):
-        """Test template context for minimal configuration."""
         config = create_test_config("minimal-test", [], [])
         generator = ProjectGenerator(temp_dir, config)
 

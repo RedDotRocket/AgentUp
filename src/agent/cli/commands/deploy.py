@@ -79,8 +79,6 @@ def deploy(type: str, output: str | None, port: int, replicas: int, image_name: 
 
 
 def generate_docker_files(output_dir: Path, agent_name: str, image_name: str, port: int):
-    """Generate Docker-related files."""
-
     # Create Dockerfile
     dockerfile_content = f"""FROM python:3.11-slim
 
@@ -210,8 +208,6 @@ helm/
 
 
 def generate_k8s_files(output_dir: Path, agent_name: str, image_name: str, image_tag: str, port: int, replicas: int):
-    """Generate Kubernetes manifests."""
-
     # Create k8s directory
     k8s_dir = output_dir / "k8s"
     k8s_dir.mkdir(exist_ok=True)
@@ -319,7 +315,7 @@ data:
     agent:
       name: {agent_name}
       description: A2A Agent deployed on Kubernetes
-      version: 0.3.0
+      version: 0.4.0
     skills:
       - skill_id: hello_world
         name: Hello World
@@ -379,8 +375,6 @@ spec:
 
 
 def generate_helm_files(output_dir: Path, agent_name: str, image_name: str, port: int):
-    """Generate Helm chart."""
-
     # Create helm directory structure
     helm_dir = output_dir / "helm" / agent_name
     templates_dir = helm_dir / "templates"
@@ -391,8 +385,8 @@ def generate_helm_files(output_dir: Path, agent_name: str, image_name: str, port
 name: {agent_name}
 description: A Helm chart for {agent_name} A2A Agent
 type: application
-version: 0.3.0
-appVersion: "0.3.0"
+version: 0.4.0
+appVersion: "0.4.0"
 keywords:
   - a2a
   - agent
@@ -473,7 +467,7 @@ agentConfig: |
   agent:
     name: {agent_name}
     description: A2A Agent deployed with Helm
-    version: 0.3.0
+    version: 0.4.0
   skills:
     - skill_id: hello_world
       name: Hello World
@@ -513,8 +507,6 @@ agentConfig: |
 
 
 def create_helm_templates(templates_dir: Path, agent_name: str):
-    """Create Helm template files."""
-
     # _helpers.tpl
     helpers_content = f"""{{{{/*
 Expand the name of the chart.

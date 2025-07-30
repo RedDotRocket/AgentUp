@@ -3,8 +3,8 @@ import pluggy
 from .models import (
     AIFunction,
     CapabilityContext,
-    CapabilityInfo,
     CapabilityResult,
+    PluginDefinition,
     PluginValidationResult,
 )
 
@@ -13,10 +13,8 @@ hookspec = pluggy.HookspecMarker("agentup")
 
 
 class CapabilitySpec:
-    """Hook specifications that capability plugins must implement."""
-
     @hookspec
-    def register_capability(self) -> CapabilityInfo | list[CapabilityInfo]:
+    def register_capability(self) -> PluginDefinition | list[PluginDefinition]:
         """
         Register the capability or capabilities with AgentUp.
 
@@ -24,7 +22,7 @@ class CapabilitySpec:
         about the capability or capabilities provided by this plugin.
 
         Returns:
-            CapabilityInfo or list[CapabilityInfo]: Information about the capability/capabilities
+            PluginDefinition or list[PluginDefinition]: Information about the capability/capabilities
                                                     including ID, name, features, and configuration schema.
                                                     A plugin can provide a single capability or multiple capabilities.
         """

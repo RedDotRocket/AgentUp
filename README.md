@@ -1,7 +1,7 @@
 # AgentUp
 
 <p align="center">
-  <img src="assets/compie.png" alt="Compie Logo" width="300"/>
+  <img src="https://raw.githubusercontent.com/RedDotRocket/AgentUp/main/assets/compie.png" alt="Compie Logo" width="300"/>
 </p>
 
 <p align="center">

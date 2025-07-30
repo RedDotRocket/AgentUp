@@ -19,10 +19,7 @@ from src.agent.types import (
 
 
 class TestJsonValue:
-    """Test JsonValue type definition."""
-
     def test_valid_json_values(self):
-        """Test valid JSON values."""
         # Primitive types
         assert isinstance("string", str)
         assert isinstance(42, int)
@@ -53,41 +50,33 @@ class TestJsonValue:
 
 
 class TestTypeAliases:
-    """Test type aliases."""
-
     def test_user_id_type(self):
-        """Test UserId type alias."""
         user_id: UserId = "user123"
         assert isinstance(user_id, str)
         assert user_id == "user123"
 
     def test_scope_name_type(self):
-        """Test ScopeName type alias."""
         scope: ScopeName = "read:api"
         assert isinstance(scope, str)
         assert scope == "read:api"
 
     def test_ip_address_type(self):
-        """Test IPAddress type alias."""
         ip: IPAddress = "192.168.1.1"
         assert isinstance(ip, str)
         assert ip == "192.168.1.1"
 
     def test_headers_type(self):
-        """Test Headers type."""
         headers: Headers = {"Content-Type": "application/json", "Authorization": "Bearer token123"}
         assert isinstance(headers, dict)
         assert headers["Content-Type"] == "application/json"
 
     def test_query_params_type(self):
-        """Test QueryParams type."""
         params: QueryParams = {"single": "value", "multiple": ["value1", "value2"]}
         assert isinstance(params, dict)
         assert params["single"] == "value"
         assert isinstance(params["multiple"], list)
 
     def test_config_dict_type(self):
-        """Test ConfigDict type."""
         config: ConfigDict = {
             "string_setting": "value",
             "number_setting": 42,
@@ -99,17 +88,13 @@ class TestTypeAliases:
         assert config["number_setting"] == 42
 
     def test_metadata_dict_type(self):
-        """Test MetadataDict type."""
         metadata: MetadataDict = {"version": "1.0.0", "author": "AgentUp", "description": "Test metadata"}
         assert isinstance(metadata, dict)
         assert all(isinstance(v, str) for v in metadata.values())
 
 
 class TestConstants:
-    """Test constant classes."""
-
     def test_http_method_constants(self):
-        """Test HttpMethod constants."""
         assert HttpMethod.GET == "GET"
         assert HttpMethod.POST == "POST"
         assert HttpMethod.PUT == "PUT"
@@ -119,7 +104,6 @@ class TestConstants:
         assert HttpMethod.OPTIONS == "OPTIONS"
 
     def test_content_type_constants(self):
-        """Test ContentType constants."""
         assert ContentType.JSON == "application/json"
         assert ContentType.XML == "application/xml"
         assert ContentType.TEXT == "text/plain"
@@ -129,7 +113,6 @@ class TestConstants:
         assert ContentType.BINARY == "application/octet-stream"
 
     def test_auth_scheme_constants(self):
-        """Test AuthScheme constants."""
         assert AuthScheme.BEARER == "Bearer"
         assert AuthScheme.BASIC == "Basic"
         assert AuthScheme.API_KEY == "ApiKey"
@@ -137,11 +120,7 @@ class TestConstants:
 
 
 class TestTypeUsage:
-    """Test practical usage of types."""
-
     def test_function_with_typed_parameters(self):
-        """Test function using typed parameters."""
-
         def process_request(user_id: UserId, headers: Headers, params: QueryParams) -> ConfigDict:
             return {"user": user_id, "content_type": headers.get("Content-Type"), "param_count": len(params)}
 
@@ -154,7 +133,6 @@ class TestTypeUsage:
         assert result["param_count"] == 1
 
     def test_nested_json_structure(self):
-        """Test nested JSON-like structure."""
         complex_config: ConfigDict = {
             "database": {"host": "localhost", "port": 5432, "credentials": {"username": "admin", "password": "secret"}},
             "features": ["auth", "logging", "monitoring"],

@@ -25,10 +25,7 @@ from src.agent.llm_providers.model import (
 
 
 class TestEnums:
-    """Test enumeration classes."""
-
     def test_message_role_values(self):
-        """Test message role enum values."""
         assert MessageRole.USER == "user"
         assert MessageRole.ASSISTANT == "assistant"
         assert MessageRole.SYSTEM == "system"
@@ -36,7 +33,6 @@ class TestEnums:
         assert MessageRole.TOOL == "tool"
 
     def test_content_type_values(self):
-        """Test content type enum values."""
         assert ContentType.TEXT == "text"
         assert ContentType.IMAGE_URL == "image_url"
         assert ContentType.IMAGE_FILE == "image_file"
@@ -45,7 +41,6 @@ class TestEnums:
         assert ContentType.DOCUMENT == "document"
 
     def test_llm_provider_values(self):
-        """Test LLM provider enum values."""
         assert LLMProvider.OPENAI == "openai"
         assert LLMProvider.ANTHROPIC == "anthropic"
         assert LLMProvider.OLLAMA == "ollama"
@@ -56,10 +51,7 @@ class TestEnums:
 
 
 class TestMultimodalContent:
-    """Test MultimodalContent model."""
-
     def test_text_content_creation(self):
-        """Test creating text content."""
         content = MultimodalContent(type=ContentType.TEXT, text="Hello, world!")
 
         assert content.type == ContentType.TEXT
@@ -68,7 +60,6 @@ class TestMultimodalContent:
         assert content.image_file is None
 
     def test_image_url_content_creation(self):
-        """Test creating image URL content."""
         content = MultimodalContent(type=ContentType.IMAGE_URL, image_url={"url": "https://example.com/image.jpg"})
 
         assert content.type == ContentType.IMAGE_URL
@@ -76,7 +67,6 @@ class TestMultimodalContent:
         assert content.text is None
 
     def test_content_type_validation(self):
-        """Test content type validation."""
         # Text content without text should fail
         with pytest.raises(ValidationError) as exc_info:
             MultimodalContent(type=ContentType.TEXT)
@@ -99,10 +89,7 @@ class TestMultimodalContent:
 
 
 class TestToolCall:
-    """Test ToolCall model."""
-
     def test_tool_call_creation(self):
-        """Test basic tool call creation."""
         tool_call = ToolCall(id="call_123", function={"name": "get_weather", "arguments": '{"location": "NYC"}'})
 
         assert tool_call.id == "call_123"
@@ -111,7 +98,6 @@ class TestToolCall:
         assert tool_call.function["arguments"] == '{"location": "NYC"}'
 
     def test_function_call_validation(self):
-        """Test function call validation."""
         # Missing name should fail
         with pytest.raises(ValidationError) as exc_info:
             ToolCall(id="call_123", function={"arguments": "{}"})
@@ -124,10 +110,7 @@ class TestToolCall:
 
 
 class TestChatMessage:
-    """Test ChatMessage model."""
-
     def test_simple_text_message(self):
-        """Test creating simple text message."""
         message = ChatMessage(role=MessageRole.USER, content="Hello, how are you?")
 
         assert message.role == MessageRole.USER
@@ -136,7 +119,6 @@ class TestChatMessage:
         assert message.tool_calls == []
 
     def test_multimodal_message(self):
-        """Test creating multimodal message."""
         content_items = [
             MultimodalContent(type=ContentType.TEXT, text="What's in this image?"),
             MultimodalContent(type=ContentType.IMAGE_URL, image_url={"url": "https://example.com/image.jpg"}),
@@ -150,7 +132,6 @@ class TestChatMessage:
         assert message.content[1].type == ContentType.IMAGE_URL
 
     def test_message_with_tool_calls(self):
-        """Test message with tool calls."""
         tool_call = ToolCall(id="call_123", function={"name": "get_weather", "arguments": '{"location": "NYC"}'})
 
         message = ChatMessage(
@@ -162,7 +143,6 @@ class TestChatMessage:
         assert message.tool_calls[0].id == "call_123"
 
     def test_content_size_validation(self):
-        """Test content size validation."""
         # Text content too large
         large_text = "x" * 1_000_001  # > 1MB
         with pytest.raises(ValidationError) as exc_info:
@@ -184,7 +164,6 @@ class TestChatMessage:
         assert "Too many multimodal content items" in str(exc_info.value)
 
     def test_name_validation(self):
-        """Test message name validation."""
         # Valid names
         valid_names = ["user123", "test-user", "user_name", "user.name"]
         for name in valid_names:
@@ -198,7 +177,6 @@ class TestChatMessage:
                 ChatMessage(role=MessageRole.USER, content="Test", name=name)
 
     def test_function_message_validation(self):
-        """Test function message validation."""
         # Function message without tool_call_id should fail
         with pytest.raises(ValidationError) as exc_info:
             ChatMessage(role=MessageRole.FUNCTION, content="Function result")
@@ -214,7 +192,6 @@ class TestChatMessage:
         assert message.tool_call_id == "call_123"
 
     def test_assistant_tool_call_validation(self):
-        """Test assistant message with tool calls validation."""
         # Tool call without ID should fail
         invalid_tool_call = ToolCall(
             id="",  # Empty ID
@@ -227,10 +204,7 @@ class TestChatMessage:
 
 
 class TestFunctionParameter:
-    """Test FunctionParameter model."""
-
     def test_function_parameter_creation(self):
-        """Test basic function parameter creation."""
         param = FunctionParameter(type="string", description="User's name", required=True)
 
         assert param.type == "string"
@@ -239,13 +213,11 @@ class TestFunctionParameter:
         assert param.enum is None
 
     def test_enum_parameter(self):
-        """Test enum parameter creation."""
         param = FunctionParameter(type="string", description="Color choice", enum=["red", "green", "blue"])
 
         assert param.enum == ["red", "green", "blue"]
 
     def test_parameter_type_validation(self):
-        """Test parameter type validation."""
         # Valid types
         valid_types = ["string", "number", "integer", "boolean", "array", "object", "null"]
         for param_type in valid_types:
@@ -259,10 +231,7 @@ class TestFunctionParameter:
 
 
 class TestFunctionDefinition:
-    """Test FunctionDefinition model."""
-
     def test_function_definition_creation(self):
-        """Test basic function definition creation."""
         func_def = FunctionDefinition(
             name="get_weather",
             description="Get current weather for a location",
@@ -279,7 +248,6 @@ class TestFunctionDefinition:
         assert func_def.strict is False
 
     def test_function_name_validation(self):
-        """Test function name validation."""
         # Valid names
         valid_names = ["get_weather", "calculate_sum", "process_data", "func123"]
         for name in valid_names:
@@ -306,7 +274,6 @@ class TestFunctionDefinition:
             assert f"Function name '{name}' is reserved" in str(exc_info.value)
 
     def test_parameters_schema_validation(self):
-        """Test parameters schema validation."""
         # Missing type property
         with pytest.raises(ValidationError) as exc_info:
             FunctionDefinition(name="test_func", description="Test function description", parameters={"properties": {}})
@@ -318,7 +285,6 @@ class TestFunctionDefinition:
         assert "Object type parameters should define 'properties'" in str(exc_info.value)
 
     def test_description_validation(self):
-        """Test description length validation."""
         # Too short description
         with pytest.raises(ValidationError) as exc_info:
             FunctionDefinition(
@@ -330,10 +296,7 @@ class TestFunctionDefinition:
 
 
 class TestLLMConfig:
-    """Test LLMConfig model."""
-
     def test_llm_config_creation(self):
-        """Test basic LLM config creation."""
         config = LLMConfig(
             provider=LLMProvider.OPENAI, model="gpt-4", api_key="sk-test123", max_tokens=2000, temperature=0.8
         )
@@ -346,7 +309,6 @@ class TestLLMConfig:
         assert config.timeout == 120  # Default
 
     def test_parameter_validation(self):
-        """Test parameter range validation."""
         # Valid temperature
         config = LLMConfig(provider=LLMProvider.OPENAI, model="gpt-4", temperature=1.5)
         assert config.temperature == 1.5
@@ -364,7 +326,6 @@ class TestLLMConfig:
             LLMConfig(provider=LLMProvider.OPENAI, model="gpt-4", max_tokens=200000)
 
     def test_api_base_validation(self):
-        """Test API base URL validation."""
         # Valid URLs
         valid_urls = ["https://api.openai.com", "http://localhost:8080"]
         for url in valid_urls:
@@ -377,7 +338,6 @@ class TestLLMConfig:
         assert "API base URL must start with http:// or https://" in str(exc_info.value)
 
     def test_model_name_validation(self):
-        """Test model name validation."""
         # Valid model name
         config = LLMConfig(provider=LLMProvider.OPENAI, model="gpt-4-turbo-preview")
         assert config.model == "gpt-4-turbo-preview"
@@ -394,7 +354,6 @@ class TestLLMConfig:
             )
 
     def test_provider_specific_validation(self):
-        """Test provider-specific validation."""
         # Anthropic with high token limit
         with pytest.raises(ValidationError) as exc_info:
             LLMConfig(provider=LLMProvider.ANTHROPIC, model="claude-3-opus", max_tokens=120000)
@@ -412,10 +371,7 @@ class TestLLMConfig:
 
 
 class TestStreamingResponse:
-    """Test StreamingResponse model."""
-
     def test_streaming_response_creation(self):
-        """Test basic streaming response creation."""
         response = StreamingResponse(
             id="chatcmpl-123",
             created=1677652288,
@@ -430,7 +386,6 @@ class TestStreamingResponse:
         assert len(response.choices) == 1
 
     def test_choices_validation(self):
-        """Test choices validation."""
         # Empty choices should fail
         with pytest.raises(ValidationError) as exc_info:
             StreamingResponse(id="chatcmpl-123", created=1677652288, model="gpt-4", choices=[])
@@ -438,10 +393,7 @@ class TestStreamingResponse:
 
 
 class TestLLMResponse:
-    """Test LLMResponse model."""
-
     def test_llm_response_creation(self):
-        """Test basic LLM response creation."""
         response = LLMResponse(
             id="chatcmpl-123",
             created=1677652288,
@@ -462,7 +414,6 @@ class TestLLMResponse:
         assert response.total_tokens == 25
 
     def test_first_choice_message_property(self):
-        """Test first choice message property."""
         response = LLMResponse(
             id="chatcmpl-123",
             created=1677652288,
@@ -484,10 +435,7 @@ class TestLLMResponse:
 
 
 class TestValidators:
-    """Test validation framework integration."""
-
     def test_chat_message_validator(self):
-        """Test chat message validator."""
         validator = ChatMessageValidator(ChatMessage)
 
         # Test long message warning
@@ -521,7 +469,6 @@ class TestValidators:
         assert "Large number of images" in result.warnings[0]
 
     def test_function_definition_validator(self):
-        """Test function definition validator."""
         validator = FunctionDefinitionValidator(FunctionDefinition)
 
         # Test dangerous function name warning
@@ -567,7 +514,6 @@ class TestValidators:
         assert "should have a description" in result.suggestions[0]
 
     def test_llm_config_validator(self):
-        """Test LLM config validator."""
         validator = LLMConfigValidator(LLMConfig)
 
         # Test expensive configuration warning
@@ -598,7 +544,6 @@ class TestValidators:
         assert "Long timeout" in result.suggestions[0]
 
     def test_composite_llm_validator(self):
-        """Test composite LLM validator."""
         composite_validator = create_llm_validator()
 
         # Test with valid configuration
@@ -615,10 +560,7 @@ class TestValidators:
 
 
 class TestModelSerialization:
-    """Test Pydantic v2 serialization methods."""
-
     def test_chat_message_serialization(self):
-        """Test chat message serialization."""
         message = ChatMessage(role=MessageRole.USER, content="Hello, world!", name="test_user")
 
         # Test model_dump
@@ -640,7 +582,6 @@ class TestModelSerialization:
         assert message == message3
 
     def test_llm_config_serialization(self):
-        """Test LLM config serialization."""
         config = LLMConfig(provider=LLMProvider.ANTHROPIC, model="claude-3-opus", temperature=0.5, max_tokens=1000)
 
         # Test model_dump with exclude_unset

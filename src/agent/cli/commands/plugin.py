@@ -14,9 +14,215 @@ from rich.table import Table
 
 console = Console()
 
+# Standard library modules that should not be used as plugin names
+_STDLIB_MODULES = {
+    # Core builtins
+    "builtins",
+    "__builtin__",
+    "__future__",
+    "sys",
+    "os",
+    "io",
+    "re",
+    "json",
+    "xml",
+    "csv",
+    "urllib",
+    "http",
+    "email",
+    "html",
+    "collections",
+    "itertools",
+    "functools",
+    "operator",
+    "pathlib",
+    "glob",
+    "shutil",
+    "tempfile",
+    "datetime",
+    "time",
+    "calendar",
+    "hashlib",
+    "hmac",
+    "secrets",
+    "random",
+    "math",
+    "cmath",
+    "decimal",
+    "fractions",
+    "statistics",
+    "array",
+    "struct",
+    "codecs",
+    "unicodedata",
+    "stringprep",
+    "readline",
+    "rlcompleter",
+    "pickle",
+    "copyreg",
+    "copy",
+    "pprint",
+    "reprlib",
+    "enum",
+    "types",
+    "weakref",
+    "gc",
+    "inspect",
+    "site",
+    "importlib",
+    "pkgutil",
+    "modulefinder",
+    "runpy",
+    "traceback",
+    "faulthandler",
+    "pdb",
+    "profile",
+    "pstats",
+    "timeit",
+    "trace",
+    "contextlib",
+    "abc",
+    "atexit",
+    "tracemalloc",
+    "warnings",
+    "dataclasses",
+    "contextvar",
+    "concurrent",
+    "threading",
+    "multiprocessing",
+    "subprocess",
+    "sched",
+    "queue",
+    "select",
+    "selectors",
+    "asyncio",
+    "socket",
+    "ssl",
+    "signal",
+    "mmap",
+    "ctypes",
+    "logging",
+    "getopt",
+    "argparse",
+    "fileinput",
+    "linecache",
+    "shlex",
+    "configparser",
+    "netrc",
+    "mailcap",
+    "mimetypes",
+    "base64",
+    "binhex",
+    "binascii",
+    "quopri",
+    "uu",
+    "sqlite3",
+    "zlib",
+    "gzip",
+    "bz2",
+    "lzma",
+    "zipfile",
+    "tarfile",
+    "getpass",
+    "cmd",
+    "turtle",
+    "wsgiref",
+    "unittest",
+    "doctest",
+    "test",
+    "2to3",
+    "lib2to3",
+    "venv",
+    "ensurepip",
+    "zipapp",
+    "platform",
+    "errno",
+    "msilib",
+    "msvcrt",
+    "winreg",
+    "winsound",
+    "posix",
+    "pwd",
+    "spwd",
+    "grp",
+    "crypt",
+    "termios",
+    "tty",
+    "pty",
+    "fcntl",
+    "pipes",
+    "resource",
+    "nis",
+    "syslog",
+    "optparse",
+    "imp",
+    "zipimport",
+    "ast",
+    "symtable",
+    "token",
+    "keyword",
+    "tokenize",
+    "tabnanny",
+    "pyclbr",
+    "py_compile",
+    "compileall",
+    "dis",
+    "pickletools",
+    "formatter",
+    "parser",
+    "symbol",
+    "compiler",
+}
+
+# Reserved names that may cause conflicts in projects
+_RESERVED_NAMES = {
+    "agentup",
+    "test",
+    "tests",
+    "setup",
+    "install",
+    "build",
+    "dist",
+    "egg",
+    "develop",
+    "docs",
+    "doc",
+    "src",
+    "lib",
+    "bin",
+    "scripts",
+    "tools",
+    "util",
+    "utils",
+    "common",
+    "core",
+    "main",
+    "__pycache__",
+    "node_modules",
+    ".git",
+    ".venv",
+    "venv",
+    "env",
+    "virtual",
+    "virtualenv",
+    "requirements",
+    "config",
+    "conf",
+    "settings",
+    "data",
+    "tmp",
+    "temp",
+    "cache",
+    "log",
+    "logs",
+    "admin",
+    "root",
+    "user",
+    "api",
+}
+
 
 def _render_plugin_template(template_name: str, context: dict) -> str:
-    """Render a plugin template with the given context."""
     templates_dir = Path(__file__).parent.parent.parent / "templates" / "plugins"
 
     # For YAML files, disable block trimming to preserve proper formatting
@@ -34,7 +240,6 @@ def _render_plugin_template(template_name: str, context: dict) -> str:
 
 
 def _to_snake_case(name: str) -> str:
-    """Convert string to snake_case."""
     # Replace hyphens and spaces with underscores
     name = name.replace("-", "_").replace(" ", "_")
     # Remove any non-alphanumeric characters except underscores
@@ -42,9 +247,35 @@ def _to_snake_case(name: str) -> str:
     return name.lower()
 
 
-@click.group()
+def _validate_plugin_name(name: str) -> tuple[bool, str]:
+    """Validate plugin name to ensure it won't conflict with Python builtins or reserved names.
+
+    Returns:
+        tuple: (is_valid, error_message)
+    """
+    # Check basic format
+    if not name or not name.replace("-", "").replace("_", "").isalnum():
+        return False, "Plugin name must contain only letters, numbers, hyphens, and underscores"
+
+    # Normalize to check against Python modules
+    normalized_name = name.lower().replace("-", "_")
+
+    if normalized_name in _STDLIB_MODULES:
+        return False, f"'{name}' conflicts with Python standard library module '{normalized_name}'"
+
+    # Check against commonly reserved names and project terms
+    if normalized_name in _RESERVED_NAMES:
+        return False, f"'{name}' is a reserved name that may cause conflicts"
+
+    # Check if it's too short
+    if len(name) < 3:
+        return False, "Plugin name should be at least 3 characters long"
+
+    return True, ""
+
+
+@click.group("plugin", help="Manage plugins and their configurations.")
 def plugin():
-    """Manage AgentUp plugins - create, install, list, and validate plugins."""
     pass
 
 
@@ -54,7 +285,6 @@ def plugin():
 @click.option("--format", "-f", type=click.Choice(["table", "json", "yaml"]), default="table", help="Output format")
 @click.option("--debug", is_flag=True, help="Show debug logging output")
 def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
-    """List all loaded plugins and their capabilities."""
     try:
         # Configure logging based on verbose/debug flags
         import logging
@@ -285,15 +515,20 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
 @click.option("--output-dir", "-o", type=click.Path(), help="Output directory for the plugin")
 @click.option("--no-git", is_flag=True, help="Skip git initialization")
 def create(plugin_name: str | None, template: str, output_dir: str | None, no_git: bool):
-    """Create a new plugin for development."""
     console.print("[bold cyan]AgentUp Plugin Creator[/bold cyan]")
     console.print("Let's create a new plugin!\n")
 
     # Interactive prompts if not provided
     if not plugin_name:
+
+        def validate_name(name: str) -> bool | str:
+            """Validator for questionary that returns True or error message."""
+            is_valid, error_msg = _validate_plugin_name(name)
+            return True if is_valid else error_msg
+
         plugin_name = questionary.text(
             "Plugin name:",
-            validate=lambda x: len(x.strip()) > 0 and x.replace("-", "").replace("_", "").isalnum(),
+            validate=validate_name,
         ).ask()
 
         if not plugin_name:
@@ -302,6 +537,12 @@ def create(plugin_name: str | None, template: str, output_dir: str | None, no_gi
 
     # Normalize plugin name
     plugin_name = plugin_name.lower().replace(" ", "-")
+
+    # Validate the name even if provided via CLI
+    is_valid, error_msg = _validate_plugin_name(plugin_name)
+    if not is_valid:
+        console.print(f"[red]Error: {error_msg}[/red]")
+        return
 
     # Get plugin details
     display_name = questionary.text("Display name:", default=plugin_name.replace("-", " ").title()).ask()
@@ -449,7 +690,6 @@ def create(plugin_name: str | None, template: str, output_dir: str | None, no_gi
 @click.option("--url", "-u", help="Git URL or local path (for git/local sources)")
 @click.option("--force", "-f", is_flag=True, help="Force reinstall if already installed")
 def install(plugin_name: str, source: str, url: str | None, force: bool):
-    """Install a plugin from PyPI, Git, or local directory."""
     if source in ["git", "local"] and not url:
         console.print(f"[red]Error: --url is required for {source} source[/red]")
         return
@@ -496,7 +736,6 @@ def install(plugin_name: str, source: str, url: str | None, force: bool):
 @plugin.command()
 @click.argument("plugin_name")
 def uninstall(plugin_name: str):
-    """Uninstall a plugin."""
     if not questionary.confirm(f"Uninstall plugin '{plugin_name}'?", default=False).ask():
         console.print("Cancelled.")
         return
@@ -522,7 +761,6 @@ def uninstall(plugin_name: str):
 @plugin.command()
 @click.argument("plugin_name")
 def reload(plugin_name: str):
-    """Reload a plugin (useful during development)."""
     try:
         from agent.plugins.manager import get_plugin_manager
 
@@ -549,7 +787,6 @@ def reload(plugin_name: str):
 @plugin.command()
 @click.argument("capability_id")
 def info(capability_id: str):
-    """Show detailed information about a plugin capability."""
     try:
         from agent.plugins.manager import get_plugin_manager
 
@@ -636,18 +873,16 @@ def info(capability_id: str):
 
 @plugin.command()
 def validate():
-    """Validate all loaded plugins and their configurations."""
     try:
-        from agent.config import load_config
+        from agent.config import Config
         from agent.plugins.manager import get_plugin_manager
 
         manager = get_plugin_manager()
-        config = load_config()
 
         console.print("[cyan]Validating plugins...[/cyan]\n")
 
         # Get capability configurations
-        capability_configs = {plugin.get("plugin_id"): plugin.get("config", {}) for plugin in config.get("plugins", [])}
+        capability_configs = {plugin.plugin_id: plugin.config or {} for plugin in Config.plugins}
 
         all_valid = True
         results = []

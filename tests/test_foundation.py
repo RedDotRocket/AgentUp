@@ -1,5 +1,3 @@
-"""Basic foundation tests to validate the test setup."""
-
 from pathlib import Path
 from typing import Any
 
@@ -15,15 +13,19 @@ from tests.utils.test_helpers import (
 )
 
 
-class TestTestFoundation:
-    """Test the test foundation itself to ensure everything is working."""
+@pytest.fixture
+def set_env_vars(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test_anthropic_key")
+    monkeypatch.setenv("OPENAI_API_KEY", "test_openai_key")
+    monkeypatch.setenv("OLLAMA_BASE_URL", "http://localhost:11434")
+    monkeypatch.setenv("VALKEY_URL", "valkey://localhost:6379")
 
+
+class TestTestFoundation:
     def test_basic_pytest_setup(self):
-        """Test that pytest is working correctly."""
         assert True, "Basic pytest functionality works"
 
     def test_temp_dir_fixture(self, temp_dir: Path):
-        """Test the temp_dir fixture."""
         assert temp_dir.exists(), "Temporary directory should exist"
         assert temp_dir.is_dir(), "Temporary directory should be a directory"
 
@@ -34,19 +36,16 @@ class TestTestFoundation:
         assert test_file.read_text() == "Hello, test!", "File content should be preserved"
 
     def test_sample_agent_config_fixture(self, sample_agent_config: dict[str, Any]):
-        """Test the sample agent configuration fixture."""
-        assert "agent" in sample_agent_config, "Should have agent section"
         assert "plugins" in sample_agent_config, "Should have plugins section"
         assert "ai_provider" in sample_agent_config, "Should have ai_provider section"
         assert "services" in sample_agent_config, "Should have services section"
 
         # Test specific values
-        assert sample_agent_config["agent"]["name"] == "test-agent"
+        assert sample_agent_config["name"] == "test-agent"
         assert sample_agent_config["ai_provider"]["provider"] == "openai"
         assert sample_agent_config["ai_provider"]["model"] == "gpt-4o-mini"
 
     def test_minimal_agent_config_fixture(self, minimal_agent_config: dict[str, Any]):
-        """Test the minimal agent configuration fixture."""
         assert "agent" in minimal_agent_config, "Should have agent section"
         assert "plugins" in minimal_agent_config, "Should have plugins section"
         assert minimal_agent_config["agent"]["name"] == "minimal-test"
@@ -56,7 +55,6 @@ class TestTestFoundation:
     def test_provider_specific_configs(
         self, ollama_agent_config: dict[str, Any], anthropic_agent_config: dict[str, Any]
     ):
-        """Test provider-specific configuration fixtures."""
         # Test Ollama config
         assert ollama_agent_config["ai_provider"]["provider"] == "ollama"
         assert ollama_agent_config["ai_provider"]["model"] == "qwen3:0.6b"
@@ -68,7 +66,6 @@ class TestTestFoundation:
         assert anthropic_agent_config["services"] == {}
 
     def test_project_config_fixture(self, project_config: dict[str, Any]):
-        """Test the project configuration fixture."""
         assert "name" in project_config, "Should have project name"
         # Template removed - no longer required
         assert "features" in project_config, "Should have features"
@@ -80,10 +77,7 @@ class TestTestFoundation:
 
 
 class TestTestHelpers:
-    """Test the test helper functions."""
-
     def test_create_test_config(self):
-        """Test the create_test_config helper."""
         config = create_test_config("my-test", ["services"], ["openai"])
 
         assert config["name"] == "my-test"
@@ -91,18 +85,14 @@ class TestTestHelpers:
         assert config["services"] == ["openai"]
 
     def test_assert_config_has_service(self, sample_agent_config: dict[str, Any]):
-        """Test the assert_config_has_service helper."""
-        # The sample config no longer has openai in services (it's in ai_provider)
-        # So we test that the assertion correctly fails
-        with pytest.raises(AssertionError):
-            assert_config_has_service(sample_agent_config, "openai", "llm")
+        # The sample config now has openai service with type="llm", so this should pass
+        assert_config_has_service(sample_agent_config, "openai", "llm")
 
-        # This should also fail
+        # This should fail since the service doesn't exist
         with pytest.raises(AssertionError):
             assert_config_has_service(sample_agent_config, "nonexistent", "llm")
 
     def test_agent_config_builder(self):
-        """Test the AgentConfigBuilder class."""
         config = (
             AgentConfigBuilder()
             .with_agent("builder-test", "Builder test agent")
@@ -116,12 +106,11 @@ class TestTestHelpers:
         assert config["ai"]["llm_service"] == "openai"
         assert config["ai"]["model"] == "gpt-4"
         assert "openai" in config["services"]
-        assert config["services"]["openai"]["model"] == "gpt-4"
+        assert config["services"]["openai"]["settings"]["model"] == "gpt-4"
         assert len(config["skills"]) == 1
         assert config["skills"][0]["skill_id"] == "test_skill"
 
     def test_build_predefined_configs(self):
-        """Test the predefined config builders."""
         minimal = build_minimal_config()
         standard = build_standard_config()
 
@@ -137,10 +126,7 @@ class TestTestHelpers:
 
 
 class TestMockServices:
-    """Test the mock services."""
-
     def test_mock_llm_response(self):
-        """Test the MockLLMResponse class."""
         response = MockLLMResponse("Test response", {"total_tokens": 50})
 
         assert response.content == "Test response"
@@ -149,7 +135,6 @@ class TestMockServices:
         assert response.strip() == "Test response"
 
     def test_mock_service_registry(self):
-        """Test the MockServiceRegistry class."""
         registry = create_mock_services()
 
         # Test service registration
@@ -167,7 +152,6 @@ class TestMockServices:
 
     @pytest.mark.asyncio
     async def test_mock_llm_services(self):
-        """Test the mock LLM services."""
         registry = create_mock_services()
 
         # Test OpenAI service
@@ -190,7 +174,6 @@ class TestMockServices:
 
     @pytest.mark.asyncio
     async def test_mock_valkey_service(self):
-        """Test the mock Valkey service."""
         registry = create_mock_services()
         valkey = registry.get_cache("valkey")
 
@@ -206,8 +189,7 @@ class TestMockServices:
         value = await valkey.get("test_key")
         assert value is None
 
-    def test_env_vars_fixture(self, env_vars):
-        """Test the environment variables fixture."""
+    def test_env_vars_fixture(self, set_env_vars):
         import os
 
         assert os.environ.get("OPENAI_API_KEY") == "test_openai_key"

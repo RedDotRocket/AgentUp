@@ -41,7 +41,6 @@ class MCPHTTPServer:
         # Setup tool listing handler
         @self._server.list_tools()
         async def handle_list_tools() -> list[Tool]:
-            """list all available MCP tools."""
             tools = []
 
             # Get registered AI functions from the function registry
@@ -73,7 +72,6 @@ class MCPHTTPServer:
         # Setup tool call handler
         @self._server.call_tool()
         async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
-            """Handle MCP tool calls by routing to AI functions."""
             try:
                 from agent.core.dispatcher import get_function_registry
 
@@ -127,7 +125,6 @@ class MCPHTTPServer:
         logger.info(f"MCP HTTP server initialized for agent: {self.agent_name}")
 
     def register_handler(self, name: str, handler: Callable, schema: dict[str, Any]) -> None:
-        """Register a handler (for compatibility with existing code)."""
         # With the official SDK, tools are dynamically listed from the function registry
         # This method is kept for backward compatibility but does nothing
         logger.debug(f"Handler registration ignored (using SDK): {name}")
@@ -135,13 +132,11 @@ class MCPHTTPServer:
         _ = handler, schema
 
     async def get_server_instance(self):
-        """Get the MCP server instance for integration with FastAPI."""
         if not self._initialized:
             await self.initialize()
         return self._server
 
     async def health_check(self) -> dict[str, Any]:
-        """Check MCP server health."""
         return {
             "status": "healthy" if self._initialized else "not_initialized",
             "agent_name": self.agent_name,
@@ -171,7 +166,6 @@ def create_mcp_router(mcp_server: MCPHTTPServer):
     _sessions: dict[str, dict] = {}
 
     def _validate_mcp_headers(request: Request) -> None:
-        """Validate MCP protocol headers."""
         # Validate MCP protocol version
         protocol_version = request.headers.get("MCP-Protocol-Version")
         if protocol_version and protocol_version not in ["1.0", "2025-06-18"]:
@@ -186,7 +180,6 @@ def create_mcp_router(mcp_server: MCPHTTPServer):
                 logger.warning(f"MCP request from non-local origin: {origin}")
 
     def _create_session() -> str:
-        """Create a cryptographically secure session ID."""
         session_id = secrets.token_urlsafe(32)
         _sessions[session_id] = {
             "created_at": json.dumps({"timestamp": "now"}),  # Placeholder
@@ -197,7 +190,6 @@ def create_mcp_router(mcp_server: MCPHTTPServer):
     @router.post("/mcp")  # This handler is registered with FastAPI
     @protected(scopes={"mcp:access"})  # Require MCP access scope
     async def handle_mcp_request(request: Request) -> Response:
-        """Handle MCP JSON-RPC requests via HTTP POST using the MCP SDK."""
         try:
             # Validate MCP protocol headers
             _validate_mcp_headers(request)
@@ -271,7 +263,6 @@ def create_mcp_router(mcp_server: MCPHTTPServer):
     @router.get("/mcp")  # This handler is registered with FastAPI
     @protected(scopes={"mcp:access"})  # Require MCP access scope for SSE streaming
     async def handle_mcp_sse(request: Request) -> StreamingResponse:
-        """Handle MCP Server-Sent Events (SSE) for bidirectional streaming."""
         try:
             # Validate MCP protocol headers
             _validate_mcp_headers(request)
@@ -288,7 +279,6 @@ def create_mcp_router(mcp_server: MCPHTTPServer):
             )
 
         async def mcp_event_generator():
-            """Generate MCP-compliant SSE events."""
             try:
                 # Send initial connection event
                 connection_event = {

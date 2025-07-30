@@ -22,7 +22,7 @@ Legacy Services (for backwards compatibility):
 
 # New service layer
 # Legacy services for backwards compatibility
-from agent.config import load_config
+from agent.config import Config
 
 from .base import Service
 from .bootstrap import AgentBootstrapper
@@ -70,5 +70,5 @@ __all__ = [
     "CacheService",
     "WebAPIService",
     "MultiModalProcessor",
-    "load_config",
+    "Config",
 ]

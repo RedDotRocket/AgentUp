@@ -26,10 +26,7 @@ from src.agent.api.model import (
 
 
 class TestA2ATaskState:
-    """Test A2ATaskState enum (imported from a2a.types)."""
-
     def test_task_state_values(self):
-        """Test task state enum values."""
         # A2ATaskState is now imported from a2a.types as TaskState
         # Verify the expected values are available
         assert hasattr(A2ATaskState, "submitted")
@@ -47,10 +44,7 @@ class TestA2ATaskState:
 
 
 class TestTaskPriority:
-    """Test TaskPriority enum."""
-
     def test_task_priority_values(self):
-        """Test task priority enum values."""
         assert TaskPriority.LOW == "low"
         assert TaskPriority.NORMAL == "normal"
         assert TaskPriority.HIGH == "high"
@@ -58,10 +52,7 @@ class TestTaskPriority:
 
 
 class TestErrorType:
-    """Test ErrorType enum."""
-
     def test_error_type_values(self):
-        """Test error type enum values."""
         assert ErrorType.VALIDATION_ERROR == "validation_error"
         assert ErrorType.AUTHENTICATION_ERROR == "authentication_error"
         assert ErrorType.AUTHORIZATION_ERROR == "authorization_error"
@@ -72,10 +63,7 @@ class TestErrorType:
 
 
 class TestTaskRequest:
-    """Test TaskRequest model."""
-
     def test_task_request_creation(self):
-        """Test basic task request creation."""
         request = TaskRequest(
             task_id="task-123",
             function_name="test_function",
@@ -93,7 +81,6 @@ class TestTaskRequest:
         assert request.user_id is None
 
     def test_task_id_validation(self):
-        """Test task ID validation."""
         # Valid task IDs
         valid_ids = ["task-123", "task_456", "TASK789", "a1b2c3"]
         for task_id in valid_ids:
@@ -107,7 +94,6 @@ class TestTaskRequest:
                 TaskRequest(task_id=task_id, function_name="test_func")
 
     def test_function_name_validation(self):
-        """Test function name validation."""
         # Valid function names
         valid_names = ["test_function", "calculate_sum", "_private", "func123"]
         for name in valid_names:
@@ -121,7 +107,6 @@ class TestTaskRequest:
                 TaskRequest(task_id="test-123", function_name=name)
 
     def test_callback_url_validation(self):
-        """Test callback URL validation."""
         # Valid URLs
         valid_urls = ["http://example.com", "https://api.example.com/callback"]
         for url in valid_urls:
@@ -135,7 +120,6 @@ class TestTaskRequest:
                 TaskRequest(task_id="test-123", function_name="test_func", callback_url=url)
 
     def test_parameters_size_validation(self):
-        """Test parameters size validation."""
         # Large parameters (> 100KB)
         large_params = {"data": "x" * 100001}
         with pytest.raises(ValidationError) as exc_info:
@@ -143,7 +127,6 @@ class TestTaskRequest:
         assert "Parameters too large" in str(exc_info.value)
 
     def test_timeout_validation(self):
-        """Test timeout validation."""
         # Valid timeout
         request = TaskRequest(task_id="test-123", function_name="test_func", timeout=300)
         assert request.timeout == 300
@@ -158,10 +141,7 @@ class TestTaskRequest:
 
 
 class TestTaskResponse:
-    """Test TaskResponse model."""
-
     def test_task_response_creation(self):
-        """Test basic task response creation."""
         response = TaskResponse(
             task_id="task-123", status=A2ATaskState.completed, result={"output": "success"}, progress=1.0
         )
@@ -173,7 +153,6 @@ class TestTaskResponse:
         assert response.error is None
 
     def test_progress_validation(self):
-        """Test progress validation."""
         # Valid progress
         response = TaskResponse(task_id="task-123", status=A2ATaskState.working, progress=0.5)
         assert response.progress == 0.5
@@ -187,7 +166,6 @@ class TestTaskResponse:
             TaskResponse(task_id="task-123", status=A2ATaskState.working, progress=1.5)
 
     def test_task_response_validation(self):
-        """Test task response consistency validation."""
         # Failed task without error message should fail
         with pytest.raises(ValidationError) as exc_info:
             TaskResponse(task_id="task-123", status=A2ATaskState.failed)
@@ -206,7 +184,6 @@ class TestTaskResponse:
         assert response.progress == 0.1
 
     def test_duration_calculation(self):
-        """Test duration calculation."""
         start_time = datetime.utcnow()
         response = TaskResponse(task_id="task-123", status=A2ATaskState.completed, started_at=start_time)
         # Should have completion time set automatically
@@ -215,7 +192,6 @@ class TestTaskResponse:
         assert response.duration_seconds >= 0
 
     def test_is_complete_property(self):
-        """Test is_complete property."""
         # Completed task
         response = TaskResponse(task_id="task-123", status=A2ATaskState.completed)
         assert response.is_complete is True
@@ -230,10 +206,7 @@ class TestTaskResponse:
 
 
 class TestAPIError:
-    """Test APIError model."""
-
     def test_api_error_creation(self):
-        """Test basic API error creation."""
         error = APIError(
             error_type=ErrorType.VALIDATION_ERROR, error_code="INVALID_INPUT", message="Invalid input provided"
         )
@@ -244,7 +217,6 @@ class TestAPIError:
         assert isinstance(error.timestamp, datetime)
 
     def test_error_code_validation(self):
-        """Test error code validation."""
         # Valid error codes
         valid_codes = ["VALIDATION_ERROR", "NOT_FOUND", "INTERNAL_ERROR_123"]
         for code in valid_codes:
@@ -258,7 +230,6 @@ class TestAPIError:
                 APIError(error_type=ErrorType.VALIDATION_ERROR, error_code=code, message="Test error")
 
     def test_message_validation(self):
-        """Test error message validation."""
         # Valid message
         error = APIError(
             error_type=ErrorType.VALIDATION_ERROR, error_code="INVALID_INPUT", message="This is a valid error message"
@@ -275,10 +246,7 @@ class TestAPIError:
 
 
 class TestPaginationParams:
-    """Test PaginationParams model."""
-
     def test_pagination_params_creation(self):
-        """Test basic pagination params creation."""
         params = PaginationParams(page=2, per_page=20, sort_by="created_at", sort_order="desc")
 
         assert params.page == 2
@@ -287,7 +255,6 @@ class TestPaginationParams:
         assert params.sort_order == "desc"
 
     def test_pagination_validation(self):
-        """Test pagination validation."""
         # Valid pagination
         params = PaginationParams(page=1, per_page=50)
         assert params.page == 1
@@ -306,17 +273,13 @@ class TestPaginationParams:
             PaginationParams(page=1, per_page=1001)
 
     def test_offset_and_limit_properties(self):
-        """Test offset and limit properties."""
         params = PaginationParams(page=3, per_page=20)
         assert params.offset == 40  # (3-1) * 20
         assert params.limit == 20
 
 
 class TestPaginatedResponse:
-    """Test PaginatedResponse model."""
-
     def test_paginated_response_creation(self):
-        """Test basic paginated response creation."""
         response = PaginatedResponse(
             items=[1, 2, 3], total=100, page=1, per_page=10, pages=10, has_next=True, has_prev=False
         )
@@ -330,7 +293,6 @@ class TestPaginatedResponse:
         assert response.has_prev is False
 
     def test_create_class_method(self):
-        """Test create class method."""
         items = ["item1", "item2", "item3"]
         pagination = PaginationParams(page=2, per_page=5)
 
@@ -346,10 +308,7 @@ class TestPaginatedResponse:
 
 
 class TestHealthCheckResponse:
-    """Test HealthCheckResponse model."""
-
     def test_health_check_response_creation(self):
-        """Test basic health check response creation."""
         response = HealthCheckResponse(
             status="healthy",
             version="1.0.0",
@@ -367,7 +326,6 @@ class TestHealthCheckResponse:
         assert response.is_healthy is True
 
     def test_is_healthy_property(self):
-        """Test is_healthy property."""
         # Healthy status
         response = HealthCheckResponse(status="healthy", version="1.0.0", uptime_seconds=100)
         assert response.is_healthy is True
@@ -382,10 +340,7 @@ class TestHealthCheckResponse:
 
 
 class TestMetricsResponse:
-    """Test MetricsResponse model."""
-
     def test_metrics_response_creation(self):
-        """Test basic metrics response creation."""
         response = MetricsResponse(
             request_count=1000,
             error_count=50,
@@ -403,7 +358,6 @@ class TestMetricsResponse:
         assert response.failed_tasks == 50
 
     def test_error_rate_calculation(self):
-        """Test error rate calculation."""
         response = MetricsResponse(request_count=1000, error_count=50)
         assert response.error_rate == 5.0  # 50/1000 * 100
 
@@ -412,16 +366,12 @@ class TestMetricsResponse:
         assert response.error_rate == 0.0
 
     def test_success_rate_calculation(self):
-        """Test success rate calculation."""
         response = MetricsResponse(request_count=1000, error_count=50)
         assert response.success_rate == 95.0  # 100 - 5.0
 
 
 class TestValidators:
-    """Test API validators."""
-
     def test_task_request_validator(self):
-        """Test task request validator."""
         validator = TaskRequestValidator(TaskRequest)
 
         # Test dangerous function name warning
@@ -460,7 +410,6 @@ class TestValidators:
         assert "associated user" in result.suggestions[0]
 
     def test_api_error_validator(self):
-        """Test API error validator."""
         validator = APIErrorValidator(APIError)
 
         # Test vague error message suggestion
@@ -491,7 +440,6 @@ class TestValidators:
         assert "sensitive information" in result.warnings[0]
 
     def test_pagination_validator(self):
-        """Test pagination validator."""
         validator = PaginationValidator(PaginationParams)
 
         # Test large page size warning
@@ -509,7 +457,6 @@ class TestValidators:
         assert "alphanumeric" in result.warnings[0]
 
     def test_composite_api_validator(self):
-        """Test composite API validator."""
         composite_validator = create_api_validator()
 
         # Test with valid request
@@ -525,10 +472,7 @@ class TestValidators:
 
 
 class TestModelSerialization:
-    """Test Pydantic v2 serialization methods."""
-
     def test_task_request_serialization(self):
-        """Test task request serialization."""
         request = TaskRequest(
             task_id="task-123", function_name="test_function", parameters={"input": "test"}, priority=TaskPriority.HIGH
         )
@@ -553,7 +497,6 @@ class TestModelSerialization:
         assert request == request3
 
     def test_api_error_serialization(self):
-        """Test API error serialization."""
         error = APIError(
             error_type=ErrorType.VALIDATION_ERROR,
             error_code="INVALID_INPUT",
@@ -577,7 +520,6 @@ class TestModelSerialization:
         assert error.details == error2.details
 
     def test_health_check_response_serialization(self):
-        """Test health check response serialization."""
         response = HealthCheckResponse(
             status="healthy", version="1.0.0", uptime_seconds=3600, services={"db": {"status": "healthy"}}
         )

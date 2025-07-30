@@ -22,11 +22,8 @@ def load_callable(path: str | None) -> Callable[..., Any] | None:
 
 
 class TaskValidator:
-    """Validate A2A task compliance and structure."""
-
     @staticmethod
     def validate_task(task: Task) -> list[str]:
-        """Validate task structure and return list of errors."""
         errors = []
 
         # Check required fields
@@ -50,12 +47,10 @@ class TaskValidator:
 
     @staticmethod
     def is_valid_task(task: Task) -> bool:
-        """Check if task is valid."""
         return len(TaskValidator.validate_task(task)) == 0
 
 
 def extract_parameter(text: str, param_name: str) -> str | None:
-    """Extract parameter value from text using simple pattern matching."""
     import re
 
     # Pattern for "param_name: value" or "param_name = value"
@@ -67,7 +62,6 @@ def extract_parameter(text: str, param_name: str) -> str | None:
 
 
 def format_response(content: str, format_type: str = "plain") -> str:
-    """Format response content based on type."""
     if format_type == "markdown":
         # Simple markdown formatting
         content = content.replace("\n\n", "\n\n---\n\n")
@@ -92,7 +86,6 @@ def format_response(content: str, format_type: str = "plain") -> str:
 
 
 def sanitize_input(text: str) -> str:
-    """Sanitize user input for security."""
     # Remove potentially dangerous characters
     text = text.replace("<script", "&lt;script")
     text = text.replace("</script>", "&lt;/script&gt;")
@@ -107,14 +100,12 @@ def sanitize_input(text: str) -> str:
 
 
 def generate_task_id() -> str:
-    """Generate a unique task ID."""
     import uuid
 
     return str(uuid.uuid4())
 
 
 def get_timestamp() -> str:
-    """Get current timestamp in ISO format."""
     return datetime.utcnow().isoformat()
 
 

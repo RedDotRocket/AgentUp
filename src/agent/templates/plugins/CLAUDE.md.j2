@@ -88,11 +88,11 @@ The plugin is registered via entry point in `pyproject.toml`:
 #### 1. Capability Registration
 ```python
 @hookimpl
-def register_capability(self) -> CapabilityInfo:
-    return CapabilityInfo(
+def register_capability(self) -> PluginDefinition:
+    return PluginDefinition(
         id="{{ capability_id }}",
         name="{{ display_name }}",
-        version="0.3.0",
+        version="0.4.0",
         description="{{ description }}",
         capabilities=[CapabilityType.TEXT],  # Add capabilities as needed
         tags=["{{ plugin_name }}", "custom"],

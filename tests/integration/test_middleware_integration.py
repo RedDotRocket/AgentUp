@@ -18,20 +18,17 @@ pytestmark = pytest.mark.integration
 
 @pytest_asyncio.fixture
 async def server_url():
-    """Base URL for the test server."""
     return "http://localhost:8000"
 
 
 @pytest_asyncio.fixture
 async def client(server_url):
-    """HTTP client for making requests to the test server."""
     async with httpx.AsyncClient(base_url=server_url, timeout=30.0) as client:
         yield client
 
 
 @pytest_asyncio.fixture
 async def ensure_server_running(client):
-    """Ensure the test server is running before tests."""
     try:
         response = await client.get("/health")
         assert response.status_code == 200
@@ -40,7 +37,6 @@ async def ensure_server_running(client):
 
 
 def extract_response_content(response: dict[str, Any]) -> str:
-    """Extract content from A2A Task response."""
     result = response.get("result", {})
 
     # Try to get from task history first
@@ -72,7 +68,6 @@ def extract_response_content(response: dict[str, Any]) -> str:
 
 
 async def send_message(client: httpx.AsyncClient, content: str, skill_id: str = None) -> dict[str, Any]:
-    """Send a message to the agent and return the response."""
     payload = {
         "jsonrpc": "2.0",
         "method": "message/send",
@@ -95,11 +90,8 @@ async def send_message(client: httpx.AsyncClient, content: str, skill_id: str = 
 
 
 class TestMiddlewareIntegration:
-    """Integration tests for middleware system."""
-
     @pytest.mark.asyncio
     async def test_rate_limiting_integration(self, client, ensure_server_running):
-        """Test rate limiting middleware integration."""
         # Send multiple rapid requests to trigger rate limiting
         requests = 10
 
@@ -136,7 +128,6 @@ class TestMiddlewareIntegration:
 
     @pytest.mark.asyncio
     async def test_caching_integration(self, client, ensure_server_running):
-        """Test caching middleware integration."""
         # Send identical requests to test caching
         content = "cache test message"
 
@@ -170,7 +161,6 @@ class TestMiddlewareIntegration:
 
     @pytest.mark.asyncio
     async def test_retry_integration(self, client, ensure_server_running):
-        """Test retry middleware integration."""
         # Test with a handler that might retry under certain conditions
 
         # Send a request that could potentially trigger retries
@@ -195,7 +185,6 @@ class TestMiddlewareIntegration:
 
     @pytest.mark.asyncio
     async def test_logging_middleware_integration(self, client, ensure_server_running):
-        """Test logging middleware integration."""
         # This test validates that logging middleware doesn't break functionality
         # Actual log validation would require access to server logs
 
@@ -216,7 +205,6 @@ class TestMiddlewareIntegration:
 
     @pytest.mark.asyncio
     async def test_timing_middleware_integration(self, client, ensure_server_running):
-        """Test timing middleware integration."""
         # This test validates that timing middleware doesn't break functionality
         # Actual timing validation would require access to server logs
 
@@ -237,7 +225,6 @@ class TestMiddlewareIntegration:
 
     @pytest.mark.asyncio
     async def test_multiple_middleware_integration(self, client, ensure_server_running):
-        """Test multiple middleware working together."""
         # Send requests that should trigger multiple middleware
         content = "multi-middleware test"
 
@@ -265,7 +252,6 @@ class TestMiddlewareIntegration:
 
     @pytest.mark.asyncio
     async def test_middleware_error_handling(self, client, ensure_server_running):
-        """Test middleware error handling."""
         # Send requests that might trigger middleware errors
 
         # Test with invalid skill_id
@@ -297,7 +283,6 @@ class TestMiddlewareIntegration:
 
     @pytest.mark.asyncio
     async def test_middleware_configuration_validation(self, client, ensure_server_running):
-        """Test that middleware configuration is properly applied."""
         # This test validates that middleware is actually configured and working
 
         # Test rate limiting configuration
@@ -339,7 +324,6 @@ class TestMiddlewareIntegration:
 
     @pytest.mark.asyncio
     async def test_middleware_performance_impact(self, client, ensure_server_running):
-        """Test middleware performance impact."""
         # Measure request times with middleware active
         content = "performance test"
         request_count = 10
@@ -366,18 +350,14 @@ class TestMiddlewareIntegration:
 
 
 class TestMiddlewareStressTest:
-    """Stress tests for middleware under load."""
-
     @pytest_asyncio.fixture
     async def stress_client(self, server_url):
-        """HTTP client for stress testing with higher limits."""
         limits = httpx.Limits(max_keepalive_connections=50, max_connections=100)
         async with httpx.AsyncClient(base_url=server_url, timeout=60.0, limits=limits) as client:
             yield client
 
     @pytest_asyncio.fixture
     async def ensure_server_running_stress(self, stress_client):
-        """Ensure the test server is running before stress tests."""
         try:
             response = await stress_client.get("/health")
             assert response.status_code == 200
@@ -387,7 +367,6 @@ class TestMiddlewareStressTest:
     async def send_stress_message(
         self, client: httpx.AsyncClient, content: str, skill_id: str = None
     ) -> dict[str, Any]:
-        """Send a message for stress testing."""
         payload = {
             "jsonrpc": "2.0",
             "method": "message/send",
@@ -410,7 +389,6 @@ class TestMiddlewareStressTest:
     @pytest.mark.asyncio
     @pytest.mark.stress
     async def test_rate_limiting_stress(self, stress_client, ensure_server_running_stress):
-        """Stress test rate limiting with high concurrent load."""
         concurrent_requests = 20  # Reduced for more realistic testing
         total_requests = concurrent_requests
 
@@ -461,7 +439,6 @@ class TestMiddlewareStressTest:
     @pytest.mark.asyncio
     @pytest.mark.stress
     async def test_caching_stress(self, stress_client, ensure_server_running_stress):
-        """Stress test caching with repeated requests."""
         concurrent_requests = 15  # Reduced for more realistic testing
         unique_contents = 3  # Number of unique cache keys
         requests_per_content = concurrent_requests // unique_contents
@@ -509,7 +486,6 @@ class TestMiddlewareStressTest:
     @pytest.mark.asyncio
     @pytest.mark.stress
     async def test_mixed_middleware_stress(self, stress_client, ensure_server_running_stress):
-        """Stress test with multiple middleware types active."""
         concurrent_requests = 12  # Reduced for more realistic testing
 
         print(f"Starting mixed middleware stress test with {concurrent_requests} concurrent requests")

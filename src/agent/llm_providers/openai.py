@@ -25,8 +25,6 @@ logger = structlog.get_logger(__name__)
 
 
 class OpenAIProvider(BaseLLMService):
-    """OpenAI LLM provider with full function calling support."""
-
     def __init__(self, name: str, config: dict[str, Any]):
         super().__init__(name, config)
         self.client: httpx.AsyncClient | None = None
@@ -43,7 +41,6 @@ class OpenAIProvider(BaseLLMService):
         self.default_top_p = config.get("top_p", 1.0)
 
     async def initialize(self) -> None:
-        """Initialize the OpenAI service."""
         if not self.api_key:
             logger.error(
                 f"OpenAI service '{self.name}' initialization failed: API key not found. Check that 'api_key' is set in configuration and OPENAI_API_KEY environment variable is available. Service will be unavailable."
@@ -76,18 +73,15 @@ class OpenAIProvider(BaseLLMService):
             raise LLMProviderError(f"Failed to initialize OpenAI service: {e}") from e
 
     async def close(self) -> None:
-        """Close the OpenAI service."""
         if self.client:
             await self.client.aclose()
         self._initialized = False
         self._available = False
 
     def is_available(self) -> bool:
-        """Check if the OpenAI service is available for use."""
         return self._available
 
     async def health_check(self) -> dict[str, Any]:
-        """Check OpenAI service health."""
         try:
             response = await self.client.get("/models")
             return {
@@ -100,7 +94,6 @@ class OpenAIProvider(BaseLLMService):
             return {"status": "unhealthy", "error": str(e), "model": self.model}
 
     async def complete(self, prompt: str, **kwargs) -> LLMResponse:
-        """Generate completion from prompt using chat/completions endpoint."""
         if not self._initialized:
             await self.initialize()
 
@@ -109,7 +102,6 @@ class OpenAIProvider(BaseLLMService):
         return await self.chat_complete(messages, **kwargs)
 
     async def chat_complete(self, messages: list[ChatMessage], **kwargs) -> LLMResponse:
-        """Generate chat completion from messages."""
         if not self._initialized:
             await self.initialize()
 
@@ -156,7 +148,6 @@ class OpenAIProvider(BaseLLMService):
     async def _chat_complete_with_functions_native(
         self, messages: list[ChatMessage], functions: list[dict[str, Any]], **kwargs
     ) -> LLMResponse:
-        """Native OpenAI function calling implementation."""
         if not self._initialized:
             await self.initialize()
 
@@ -230,7 +221,6 @@ class OpenAIProvider(BaseLLMService):
             raise LLMProviderAPIError(f"Invalid OpenAI API response format: {e}") from e
 
     async def _embed_impl(self, text: str) -> list[float]:
-        """Generate embeddings using OpenAI."""
         if not self._initialized:
             await self.initialize()
 
@@ -257,7 +247,6 @@ class OpenAIProvider(BaseLLMService):
             raise LLMProviderAPIError(f"Invalid OpenAI embeddings API response format: {e}") from e
 
     def _chat_message_to_dict(self, message: ChatMessage) -> dict[str, Any]:
-        """Convert ChatMessage to OpenAI format, supporting vision inputs."""
         # Handle structured content for vision models
         if isinstance(message.content, list):
             # Multi-modal content (text + images)
@@ -278,8 +267,6 @@ class OpenAIProvider(BaseLLMService):
         return msg_dict
 
     async def stream_chat_complete(self, messages: list[ChatMessage], **kwargs):
-        """Stream chat completion."""
-
         if not self._initialized:
             await self.initialize()
 

@@ -14,13 +14,11 @@ class PushNotificationService(Service):
     """
 
     def __init__(self, config_manager: ConfigurationManager):
-        """Initialize the push notification service."""
         super().__init__(config_manager)
         self._push_notifier = None
         self._backend = None
 
     async def initialize(self) -> None:
-        """Initialize push notification service."""
         self.logger.info("Initializing push notification service")
 
         push_config = self.config.get("push_notifications", {})
@@ -45,12 +43,10 @@ class PushNotificationService(Service):
             raise
 
     async def shutdown(self) -> None:
-        """Cleanup push notification resources."""
         self.logger.debug("Shutting down push notification service")
         self._push_notifier = None
 
     async def _setup_memory_backend(self) -> None:
-        """Setup memory-based push notifications."""
         import httpx
 
         from agent.push.notifier import EnhancedPushNotifier
@@ -60,7 +56,6 @@ class PushNotificationService(Service):
         self.logger.debug("Using memory push notifier")
 
     async def _setup_valkey_backend(self, push_config: dict[str, Any]) -> None:
-        """Setup Valkey-based push notifications."""
         try:
             import httpx
             import valkey.asyncio as valkey
@@ -105,5 +100,4 @@ class PushNotificationService(Service):
 
     @property
     def push_notifier(self):
-        """Get the push notifier instance."""
         return self._push_notifier

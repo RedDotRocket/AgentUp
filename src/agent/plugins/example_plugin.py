@@ -7,9 +7,9 @@ import pluggy
 from .models import (
     AIFunction,
     CapabilityContext,
-    CapabilityInfo,
     CapabilityResult,
     CapabilityType,
+    PluginDefinition,
     PluginValidationResult,
 )
 
@@ -18,17 +18,13 @@ hookimpl = pluggy.HookimplMarker("agentup")
 
 
 class ExamplePlugin:
-    """Example capability plugin for testing and demonstration."""
-
     def __init__(self):
-        """Initialize the plugin."""
         self.name = "example"
         self.llm_service = None
 
     @hookimpl
-    def register_capability(self) -> CapabilityInfo:
-        """Register the example capability."""
-        return CapabilityInfo(
+    def register_capability(self) -> PluginDefinition:
+        return PluginDefinition(
             id="example",
             name="Example Capability",
             version="1.0.0",
@@ -46,7 +42,6 @@ class ExamplePlugin:
 
     @hookimpl
     def validate_config(self, config: dict) -> PluginValidationResult:
-        """Validate the configuration."""
         errors = []
         warnings = []
 
@@ -61,7 +56,6 @@ class ExamplePlugin:
 
     @hookimpl
     def can_handle_task(self, context: CapabilityContext) -> float:
-        """Check if we can handle this task."""
         # Get the task content
         content = ""
         if hasattr(context.task, "history") and context.task.history:
@@ -81,7 +75,6 @@ class ExamplePlugin:
 
     @hookimpl
     def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
-        """Execute the example skill."""
         # Get configuration
         config = context.config
         greeting = config.get("greeting", "Hello")
@@ -101,7 +94,6 @@ class ExamplePlugin:
 
     @hookimpl
     def get_ai_functions(self) -> list[AIFunction]:
-        """Provide AI functions for LLM function calling."""
         return [
             AIFunction(
                 name="greet_user",
@@ -136,7 +128,6 @@ class ExamplePlugin:
         ]
 
     async def _greet_user(self, task, context: CapabilityContext) -> CapabilityResult:
-        """Handle the greet_user function."""
         # Extract parameters from task metadata
         params = context.metadata.get("parameters", {})
         name = params.get("name", "Friend")
@@ -153,7 +144,6 @@ class ExamplePlugin:
         return CapabilityResult(content=greeting, success=True)
 
     async def _echo_message(self, task, context: CapabilityContext) -> CapabilityResult:
-        """Handle the echo_message function."""
         params = context.metadata.get("parameters", {})
         message = params.get("message", "")
         uppercase = params.get("uppercase", False)
@@ -163,23 +153,19 @@ class ExamplePlugin:
 
     @hookimpl
     def configure_services(self, services: dict) -> None:
-        """Configure services for the plugin."""
         # Store reference to LLM service if available
         if "llm" in services:
             self.llm_service = services["llm"]
 
     @hookimpl
     def get_middleware_config(self) -> list[dict]:
-        """Request middleware for this capability."""
         return [{"type": "rate_limit", "requests_per_minute": 100}, {"type": "logging", "level": "INFO"}]
 
     @hookimpl
     def get_health_status(self) -> dict:
-        """Report health status."""
         return {"status": "healthy", "version": "1.0.0", "has_llm": self.llm_service is not None}
 
     def _extract_user_input(self, context: CapabilityContext) -> str:
-        """Extract user input from the task."""
         if hasattr(context.task, "history") and context.task.history:
             last_msg = context.task.history[-1]
             if hasattr(last_msg, "parts") and last_msg.parts:

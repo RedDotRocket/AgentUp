@@ -1,15 +1,12 @@
 import pytest
 
-from agent.plugins import CapabilityContext, CapabilityInfo, CapabilityResult, PluginManager
+from agent.plugins import CapabilityContext, CapabilityResult, PluginDefinition, PluginManager
 from agent.plugins.example_plugin import ExamplePlugin
 from tests.utils.plugin_testing import MockTask, create_test_plugin
 
 
 class TestPluginSystem:
-    """Test the plugin system functionality."""
-
     def test_plugin_manager_creation(self):
-        """Test that plugin manager can be created."""
         manager = PluginManager()
         assert manager is not None
         assert hasattr(manager, "pm")
@@ -17,18 +14,16 @@ class TestPluginSystem:
         assert hasattr(manager, "capabilities")
 
     def test_example_plugin_registration(self):
-        """Test that the example plugin registers correctly."""
         plugin = ExamplePlugin()
         capability_info = plugin.register_capability()
 
-        assert isinstance(capability_info, CapabilityInfo)
+        assert isinstance(capability_info, PluginDefinition)
         assert capability_info.id == "example"
         assert capability_info.name == "Example Capability"
         assert "text" in [cap.value for cap in capability_info.capabilities]
         assert "ai_function" in [cap.value for cap in capability_info.capabilities]
 
     def test_example_plugin_execution(self):
-        """Test that the example plugin can execute."""
         plugin = ExamplePlugin()
 
         # Create test context
@@ -43,7 +38,6 @@ class TestPluginSystem:
         assert "Hello, you said: Hello, world!" in result.content
 
     def test_example_plugin_routing(self):
-        """Test that the example plugin routing works."""
         plugin = ExamplePlugin()
 
         # Test with matching keywords
@@ -59,7 +53,6 @@ class TestPluginSystem:
         assert confidence2 == 0
 
     def test_example_plugin_ai_functions(self):
-        """Test that the example plugin provides AI functions."""
         plugin = ExamplePlugin()
         ai_functions = plugin.get_ai_functions()
 
@@ -68,7 +61,6 @@ class TestPluginSystem:
         assert any(f.name == "echo_message" for f in ai_functions)
 
     def test_plugin_manager_capability_registration(self):
-        """Test registering a capability with the plugin manager."""
         manager = PluginManager()
 
         # Create and register a test plugin
@@ -91,7 +83,6 @@ class TestPluginSystem:
         assert capability.name == "Test Skill"
 
     def test_plugin_manager_execution(self):
-        """Test executing a capability through the plugin manager."""
         manager = PluginManager()
 
         # Register example plugin
@@ -108,7 +99,6 @@ class TestPluginSystem:
         assert result.content
 
     def test_plugin_adapter_integration(self):
-        """Test the plugin adapter integration."""
         from src.agent.plugins.adapter import PluginAdapter
 
         # Create adapter with a manager
@@ -119,7 +109,10 @@ class TestPluginSystem:
         manager.pm.register(plugin, name="example_plugin")
         manager._register_plugin_capability("example_plugin", plugin)
 
-        adapter = PluginAdapter(manager)
+        from src.agent.config.settings import Settings
+
+        config = Settings()
+        adapter = PluginAdapter(config, plugin_manager=manager)
 
         # Test listing capabilitys
         capabilitys = adapter.list_available_capabilities()
@@ -132,7 +125,6 @@ class TestPluginSystem:
 
     @pytest.mark.asyncio
     async def test_plugin_async_execution(self):
-        """Test async plugin execution."""
         from tests.utils.plugin_testing import test_plugin_async
 
         plugin = ExamplePlugin()
@@ -147,7 +139,6 @@ class TestPluginSystem:
             assert "success" in exec_result
 
     def test_plugin_validation(self):
-        """Test plugin configuration validation."""
         plugin = ExamplePlugin()
 
         # Test valid config
@@ -161,7 +152,6 @@ class TestPluginSystem:
         assert len(invalid_result.errors) > 0
 
     def test_plugin_middleware_config(self):
-        """Test plugin middleware configuration."""
         plugin = ExamplePlugin()
         middleware = plugin.get_middleware_config()
 
@@ -170,7 +160,6 @@ class TestPluginSystem:
         assert any(m["type"] == "logging" for m in middleware)
 
     def test_plugin_health_status(self):
-        """Test plugin health status reporting."""
         plugin = ExamplePlugin()
         health = plugin.get_health_status()
 

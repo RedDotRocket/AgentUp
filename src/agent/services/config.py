@@ -7,14 +7,13 @@ class ConfigurationManager:
     """Singleton configuration manager with caching.
 
     This class provides a centralized, cached access to application configuration,
-    eliminating the need for repeated load_config() calls throughout the codebase.
+    eliminating the need for repeated Config access throughout the codebase.
     """
 
     _instance: Optional["ConfigurationManager"] = None
     _config: dict[str, Any] | None = None
 
     def __new__(cls):
-        """Ensure only one instance of ConfigurationManager exists."""
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance.logger = structlog.get_logger(__name__)
@@ -29,9 +28,9 @@ class ConfigurationManager:
         """
         if self._config is None:
             self.logger.debug("Loading configuration for the first time")
-            from agent.config import load_config
+            from agent.config import Config
 
-            self._config = load_config(configure_logging=False)
+            self._config = Config.model_dump()
             self.logger.info("Configuration loaded successfully")
         return self._config
 
@@ -98,7 +97,7 @@ class ConfigurationManager:
         agent_config = self.get("agent", {})
         return {
             "name": agent_config.get("name", "Agent"),
-            "version": agent_config.get("version", "0.3.0"),
+            "version": agent_config.get("version", "0.4.0"),
             "description": agent_config.get("description", "AgentUp Agent"),
         }
 

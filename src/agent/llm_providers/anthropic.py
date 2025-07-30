@@ -63,18 +63,15 @@ class AnthropicProvider(BaseLLMService):
             raise LLMProviderError(f"Failed to initialize Anthropic service: {e}") from e
 
     async def close(self) -> None:
-        """Close the Anthropic service."""
         if self.client:
             await self.client.aclose()
         self._initialized = False
         self._available = False
 
     def is_available(self) -> bool:
-        """Check if the Anthropic service is available for use."""
         return self._available
 
     async def health_check(self) -> dict[str, Any]:
-        """Check Anthropic service health."""
         try:
             # Test with a simple message
             test_payload = {"model": self.model, "max_tokens": 10, "messages": [{"role": "user", "content": "Hi"}]}
@@ -90,7 +87,6 @@ class AnthropicProvider(BaseLLMService):
             return {"status": "unhealthy", "error": str(e), "model": self.model}
 
     async def complete(self, prompt: str, **kwargs) -> LLMResponse:
-        """Generate completion from prompt using messages endpoint."""
         if not self._initialized:
             await self.initialize()
 
@@ -99,7 +95,6 @@ class AnthropicProvider(BaseLLMService):
         return await self.chat_complete(messages, **kwargs)
 
     async def chat_complete(self, messages: list[ChatMessage], **kwargs) -> LLMResponse:
-        """Generate chat completion from messages."""
         if not self._initialized:
             await self.initialize()
 
@@ -161,8 +156,6 @@ class AnthropicProvider(BaseLLMService):
             raise LLMProviderAPIError(f"Invalid Anthropic API response format: {e}") from e
 
     async def stream_chat_complete(self, messages: list[ChatMessage], **kwargs):
-        """Stream chat completion."""
-
         if not self._initialized:
             await self.initialize()
 
@@ -212,7 +205,6 @@ class AnthropicProvider(BaseLLMService):
             raise LLMProviderAPIError(f"Anthropic streaming API request failed: {e}") from e
 
     def get_model_info(self) -> dict[str, Any]:
-        """Get information about the model."""
         info = super().get_model_info()
         info.update(
             {
@@ -224,7 +216,6 @@ class AnthropicProvider(BaseLLMService):
         return info
 
     def _get_max_context_tokens(self) -> int:
-        """Get max context tokens for the model."""
         if "claude-3" in self.model:
             return 200000  # Claude 3 models have 200k context
         elif "claude-2" in self.model:

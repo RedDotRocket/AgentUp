@@ -16,22 +16,16 @@ from src.agent.state.decorators import (
 
 
 def create_test_task(task_id: str = "test-123", context_id: str = "context-123") -> Task:
-    """Create a test Task with all required fields."""
     return Task(id=task_id, context_id=context_id, status=TaskStatus(state=TaskState.submitted), history=[])
 
 
 def create_test_message(role: Role = Role.user, text: str = "Hello") -> Message:
-    """Create a test Message with all required fields."""
     text_part = Part(root=TextPart(text=text))
     return Message(message_id="msg-123", role=role, parts=[text_part])
 
 
 class TestPreserveAIAttributes:
-    """Test AI attribute preservation functionality."""
-
     def test_preserve_ai_attributes_with_attributes(self):
-        """Test that AI attributes are preserved correctly."""
-
         # Create original function with AI attributes
         async def original_func():
             pass
@@ -53,8 +47,6 @@ class TestPreserveAIAttributes:
         assert wrapper._ai_function_schema == {"type": "function", "name": "test"}
 
     def test_preserve_ai_attributes_without_attributes(self):
-        """Test that function without AI attributes doesn't cause errors."""
-
         async def original_func():
             pass
 
@@ -70,11 +62,7 @@ class TestPreserveAIAttributes:
 
 
 class TestInjectStateIfSupported:
-    """Test state injection functionality."""
-
     def test_inject_state_with_context_support(self):
-        """Test state injection for function that accepts context."""
-
         async def handler(task: Task, context=None):
             return "test"
 
@@ -96,8 +84,6 @@ class TestInjectStateIfSupported:
             mock_get_context.assert_called_once_with(backend)
 
     def test_inject_state_with_context_id_support(self):
-        """Test state injection for function that accepts context_id."""
-
         async def handler(task: Task, context_id=None):
             return "test"
 
@@ -118,8 +104,6 @@ class TestInjectStateIfSupported:
             assert kwargs["context_id"] == context_id
 
     def test_inject_state_with_both_parameters(self):
-        """Test state injection for function that accepts both context and context_id."""
-
         async def handler(task: Task, context=None, context_id=None):
             return "test"
 
@@ -142,8 +126,6 @@ class TestInjectStateIfSupported:
             assert kwargs["context_id"] == context_id
 
     def test_inject_state_no_support(self):
-        """Test state injection for function that doesn't accept state parameters."""
-
         async def handler(task: Task):
             return "test"
 
@@ -162,12 +144,8 @@ class TestInjectStateIfSupported:
 
 
 class TestCreateStateWrapper:
-    """Test state wrapper creation functionality."""
-
     @pytest.mark.asyncio
     async def test_create_state_wrapper_success(self):
-        """Test successful state wrapper creation and execution."""
-
         # Create mock function
         async def mock_handler(task: Task, context=None):
             return f"Handled: {task.id}"
@@ -195,8 +173,6 @@ class TestCreateStateWrapper:
 
     @pytest.mark.asyncio
     async def test_create_state_wrapper_with_exception(self):
-        """Test state wrapper handles exceptions gracefully."""
-
         # Create mock function that raises an exception on first call (with context)
         # but succeeds on second call (without context)
         async def mock_handler(task: Task, context=None):
@@ -231,11 +207,8 @@ class TestCreateStateWrapper:
 
 
 class TestWithStateDecorator:
-    """Test with_state decorator functionality."""
-
     @pytest.mark.asyncio
     async def test_with_state_enabled(self):
-        """Test with_state decorator when state is enabled."""
         # Create state config
         state_configs = [{"enabled": True, "backend": "memory", "config": {"max_size": 1000}}]
 
@@ -257,7 +230,6 @@ class TestWithStateDecorator:
 
     @pytest.mark.asyncio
     async def test_with_state_disabled(self):
-        """Test with_state decorator when state is disabled."""
         # Create state config with disabled state
         state_configs = [{"enabled": False, "backend": "memory", "config": {}}]
 
@@ -275,8 +247,6 @@ class TestWithStateDecorator:
 
     @pytest.mark.asyncio
     async def test_with_state_empty_config(self):
-        """Test with_state decorator with empty config."""
-
         # Create handler with empty config
         @with_state([])
         async def test_handler(task: Task):
@@ -291,11 +261,8 @@ class TestWithStateDecorator:
 
 
 class TestStatefulConversationDecorator:
-    """Test stateful_conversation decorator functionality."""
-
     @pytest.mark.asyncio
     async def test_stateful_conversation_context_id(self):
-        """Test stateful_conversation generates correct context ID."""
         # Test with conversation_id (using metadata since A2A Task doesn't allow custom attributes)
         task = create_test_task()
         task.metadata = {"conversation_id": "conv-456"}
@@ -328,7 +295,6 @@ class TestStatefulConversationDecorator:
 
     @pytest.mark.asyncio
     async def test_stateful_conversation_fallback_to_task_id(self):
-        """Test stateful_conversation falls back to task ID when no conversation_id."""
         # Test without conversation_id
         task = create_test_task()
 
@@ -360,11 +326,8 @@ class TestStatefulConversationDecorator:
 
 
 class TestStatefulUserDecorator:
-    """Test stateful_user decorator functionality."""
-
     @pytest.mark.asyncio
     async def test_stateful_user_with_user_id(self):
-        """Test stateful_user generates correct context ID with user_id."""
         # Test with user_id
         task = create_test_task()
         task.metadata = {"user_id": "user-789"}
@@ -391,7 +354,6 @@ class TestStatefulUserDecorator:
 
     @pytest.mark.asyncio
     async def test_stateful_user_anonymous(self):
-        """Test stateful_user falls back to anonymous when no user_id."""
         # Test without user_id
         task = create_test_task()
 
@@ -417,12 +379,8 @@ class TestStatefulUserDecorator:
 
 
 class TestStatefulSessionDecorator:
-    """Test stateful_session decorator functionality."""
-
     @pytest.mark.asyncio
     async def test_stateful_session_with_session_id(self):
-        """Test stateful_session generates correct context ID with session_id."""
-
         # Create handler
         @stateful_session(backend="memory")
         async def test_handler(task: Task, context=None, context_id=None):
@@ -452,8 +410,6 @@ class TestStatefulSessionDecorator:
 
     @pytest.mark.asyncio
     async def test_stateful_session_fallback_to_task_id(self):
-        """Test stateful_session falls back to task ID when no session_id."""
-
         # Create handler
         @stateful_session(backend="memory")
         async def test_handler(task: Task, context=None, context_id=None):
@@ -482,12 +438,8 @@ class TestStatefulSessionDecorator:
 
 
 class TestStatefulLegacyDecorator:
-    """Test legacy stateful decorator functionality."""
-
     @pytest.mark.asyncio
     async def test_stateful_legacy_with_context_id(self):
-        """Test legacy stateful decorator generates correct context ID."""
-
         # Create handler
         @stateful(storage="memory")
         async def test_handler(task: Task, context=None, context_id=None):
@@ -517,8 +469,6 @@ class TestStatefulLegacyDecorator:
 
     @pytest.mark.asyncio
     async def test_stateful_legacy_fallback_to_task_id(self):
-        """Test legacy stateful decorator falls back to task ID."""
-
         # Create handler
         @stateful(storage="memory")
         async def test_handler(task: Task, context=None, context_id=None):
@@ -547,11 +497,8 @@ class TestStatefulLegacyDecorator:
 
 
 class TestIntegrationScenarios:
-    """Test integration scenarios with real A2A Task objects."""
-
     @pytest.mark.asyncio
     async def test_real_task_with_state(self):
-        """Test state decorator with real A2A Task structure."""
         # Create a real A2A Task with proper Message and Part structure
         message = create_test_message(text="Hello, remember my name is Alice")
         task = create_test_task(task_id="task-123")
@@ -578,8 +525,6 @@ class TestIntegrationScenarios:
 
     @pytest.mark.asyncio
     async def test_multiple_decorators_composition(self):
-        """Test that multiple state decorators can be composed."""
-
         # Create handler with multiple decorators
         @stateful_conversation(backend="memory")
         @stateful_user(backend="file", storage_dir="/tmp")

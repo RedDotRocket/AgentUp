@@ -7,8 +7,6 @@ logger = structlog.get_logger(__name__)
 
 
 class MCPHTTPClient:
-    """MCP client for connecting to other agents via HTTP transport."""
-
     def __init__(self, agent_url: str, auth_config: dict[str, Any] | None = None):
         """
         Initialize MCP HTTP client.
@@ -25,7 +23,6 @@ class MCPHTTPClient:
         self._agent_card = None
 
     async def connect(self) -> bool:
-        """Connect to the agent and discover capabilities."""
         try:
             # First, discover the agent via AgentCard
             await self._discover_agent()
@@ -45,7 +42,6 @@ class MCPHTTPClient:
             return False
 
     async def _discover_agent(self) -> None:
-        """Discover agent capabilities via AgentCard."""
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.get(f"{self.agent_url}/.well-known/agent.json")
@@ -66,7 +62,6 @@ class MCPHTTPClient:
             raise
 
     async def _authenticate(self) -> None:
-        """Authenticate with OAuth2 if configured."""
         try:
             token_url = self.auth_config.get("token_url")
             client_id = self.auth_config.get("client_id")
@@ -97,7 +92,6 @@ class MCPHTTPClient:
             # Continue without auth - agent might not require it
 
     async def _discover_tools(self) -> None:
-        """Discover available MCP tools from the agent."""
         try:
             headers = self._get_headers()
 
@@ -124,7 +118,6 @@ class MCPHTTPClient:
             # Continue - we might still be able to use the agent via A2A
 
     def _get_headers(self) -> dict[str, str]:
-        """Get headers including auth token if available."""
         headers = {"Content-Type": "application/json"}
 
         if self._access_token:
@@ -133,7 +126,6 @@ class MCPHTTPClient:
         return headers
 
     async def call_tool(self, tool_name: str, arguments: dict[str, Any]) -> str:
-        """Call an MCP tool on the remote agent."""
         try:
             headers = self._get_headers()
 
@@ -211,19 +203,15 @@ class MCPHTTPClient:
 
     # Backward compatibility method
     async def call_agent_skill(self, capability_id: str, message: str, metadata: dict | None = None) -> str:
-        """Backward compatibility alias for call_agent_capability."""
         return await self.call_agent_capability(capability_id, message, metadata)
 
     def get_available_tools(self) -> list[dict[str, Any]]:
-        """Get list of available MCP tools."""
         return list(self._tools.values())
 
     def get_agent_info(self) -> dict[str, Any] | None:
-        """Get discovered agent information."""
         return self._agent_card
 
     async def close(self) -> None:
-        """Close the client connection."""
         self._tools.clear()
         self._access_token = None
         self._agent_card = None
@@ -231,8 +219,6 @@ class MCPHTTPClient:
 
 
 class MCPHTTPClientService:
-    """Service wrapper for managing multiple MCP HTTP clients."""
-
     def __init__(self, name: str, config: dict[str, Any]):
         self.name = name
         self.config = config
@@ -253,7 +239,6 @@ class MCPHTTPClientService:
         logger.info(f"MCP HTTP client service initialized with {len(self._clients)} connections")
 
     async def _connect_to_http_server(self, server_config: dict[str, Any]) -> None:
-        """Connect to an HTTP-based MCP server."""
         server_name = server_config.get("name", "unknown")
         server_url = server_config.get("url", "")
 
@@ -277,7 +262,6 @@ class MCPHTTPClientService:
             logger.error(f"Error connecting to HTTP MCP server {server_name}: {e}")
 
     async def call_tool(self, tool_name: str, arguments: dict[str, Any]) -> str:
-        """Call a tool on any connected server."""
         # Parse server:tool format
         if ":" in tool_name:
             server_name, actual_tool_name = tool_name.split(":", 1)
@@ -295,7 +279,6 @@ class MCPHTTPClientService:
             raise ValueError(f"Tool {tool_name} not found on any connected server")
 
     async def get_available_tools(self) -> list[dict[str, Any]]:
-        """Get all available tools from all connected servers."""
         all_tools = []
 
         for server_name, client in self._clients.items():
@@ -310,11 +293,9 @@ class MCPHTTPClientService:
         return all_tools
 
     def list_servers(self) -> list[str]:
-        """list connected server names."""
         return list(self._clients.keys())
 
     async def close(self) -> None:
-        """Close all client connections."""
         for client in self._clients.values():
             await client.close()
 
@@ -323,5 +304,4 @@ class MCPHTTPClientService:
 
     @property
     def is_initialized(self) -> bool:
-        """Check if service is initialized."""
         return self._initialized

@@ -22,16 +22,12 @@ def initialize_git_repo(project_path: Path) -> bool:
         as long as the entry point is the CLI command and the project_path is controlled.
     """
     try:
-        # Check if git is available
         subprocess.run(["git", "--version"], check=True, capture_output=True)  # nosec
 
-        # Initialize git repository
         subprocess.run(["git", "init"], cwd=project_path, check=True, capture_output=True)  # nosec
 
-        # Add all files to git
         subprocess.run(["git", "add", "."], cwd=project_path, check=True, capture_output=True)  # nosec
 
-        # Create initial commit
         subprocess.run(["git", "commit", "-m", "Initial commit"], cwd=project_path, check=True, capture_output=True)  # nosec
 
         return True
@@ -84,10 +80,8 @@ def create_agent(
     click.echo(click.style("Create your AI agent:", fg="white", dim=True))
     click.echo(click.style("-" * 40, fg="white", dim=True))
 
-    # Get project configuration
     project_config = {}
 
-    # Project name
     if not name:
         name = questionary.text("Agent name:", style=custom_style, validate=lambda x: len(x.strip()) > 0).ask()
         if not name:
@@ -96,7 +90,6 @@ def create_agent(
 
     project_config["name"] = name
 
-    # Output directory
     if not output_dir:
         # Normalize the name for directory: lowercase and replace spaces with underscores
         dir_name = name.lower().replace(" ", "_")
@@ -104,7 +97,6 @@ def create_agent(
     else:
         output_dir = Path(output_dir)
 
-    # Check if directory exists
     if output_dir.exists():
         if quick:
             # In quick mode, automatically overwrite if directory exists
@@ -116,20 +108,16 @@ def create_agent(
                 click.echo("Cancelled.")
                 return
 
-    # Quick mode - use minimal features
     if quick:
         project_config["description"] = f"AI Agent {name} Project."
         project_config["features"] = []  # Empty features for quick mode
         project_config["feature_config"] = {}
     else:
-        # Project description
         description = questionary.text("Description:", default=f"AI Agent {name} Project.", style=custom_style).ask()
         project_config["description"] = description
 
-        # Start with empty features
         project_config["features"] = []
 
-        # Ask if user wants to customize features
         if questionary.confirm("Would you like to customize the features?", default=False, style=custom_style).ask():
             # Get all available feature choices
             feature_choices = get_feature_choices()
@@ -220,7 +208,6 @@ def create_agent(
 
 
 def configure_features(features: list) -> dict[str, Any]:
-    """Configure selected features with additional options."""
     config = {}
 
     if "middleware" in features:

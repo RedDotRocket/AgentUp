@@ -11,7 +11,6 @@ logger = structlog.get_logger(__name__)
 
 
 def _preserve_ai_attributes(wrapper: Callable, original: Callable) -> None:
-    """Preserve AI function attributes and middleware/state flags on the wrapper."""
     if hasattr(original, "_is_ai_function"):
         wrapper._is_ai_function = original._is_ai_function
     if hasattr(original, "_ai_function_schema"):
@@ -25,7 +24,6 @@ def _preserve_ai_attributes(wrapper: Callable, original: Callable) -> None:
 def _inject_state_if_supported(
     func: Callable, task: Task, backend: str, backend_config: dict, context_id: str, kwargs: dict
 ) -> None:
-    """Inject state context into kwargs if the function supports it."""
     sig = inspect.signature(func)
     accepts_context = "context" in sig.parameters
     accepts_context_id = "context_id" in sig.parameters
@@ -42,8 +40,6 @@ def _inject_state_if_supported(
 def _create_state_wrapper(
     func: Callable, backend: str, backend_config: dict, context_id_generator: Callable[[Task], str], error_prefix: str
 ) -> Callable:
-    """Create a state management wrapper for a function."""
-
     async def wrapper(task: Task, *args, **kwargs):
         try:
             context_id = context_id_generator(task)
@@ -58,8 +54,6 @@ def _create_state_wrapper(
 
 
 def with_state(state_configs: list[dict[str, Any]]):
-    """Apply state management based on configuration."""
-
     def decorator(func: Callable) -> Callable:
         if not state_configs:
             return func
@@ -86,8 +80,6 @@ def with_state(state_configs: list[dict[str, Any]]):
 
 
 def stateful_conversation(backend: str = "memory", **backend_config):
-    """Decorator for conversation-specific state management."""
-
     def decorator(func: Callable) -> Callable:
         def context_id_generator(task: Task) -> str:
             # Check metadata for conversation_id first, then context_id, then fall back to task.id
@@ -104,8 +96,6 @@ def stateful_conversation(backend: str = "memory", **backend_config):
 
 
 def stateful_user(backend: str = "memory", **backend_config):
-    """Decorator for user-specific state management."""
-
     def decorator(func: Callable) -> Callable:
         def context_id_generator(task: Task) -> str:
             # Check metadata for user_id first, then fall back to anonymous
@@ -120,8 +110,6 @@ def stateful_user(backend: str = "memory", **backend_config):
 
 
 def stateful_session(backend: str = "memory", **backend_config):
-    """Decorator for session-specific state management."""
-
     def decorator(func: Callable) -> Callable:
         def context_id_generator(task: Task) -> str:
             # Check metadata for session_id first, then fall back to task id
@@ -136,8 +124,6 @@ def stateful_session(backend: str = "memory", **backend_config):
 
 
 def stateful(storage: str = "memory", **storage_kwargs):
-    """Legacy decorator to add state management to handlers."""
-
     def decorator(func: Callable) -> Callable:
         def context_id_generator(task: Task) -> str:
             # Check metadata for context_id first, then context_id, then fall back to task id

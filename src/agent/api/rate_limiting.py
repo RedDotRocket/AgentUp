@@ -70,7 +70,6 @@ class NetworkRateLimitMiddleware(BaseHTTPMiddleware):
         return client_ip
 
     def _get_endpoint_config(self, path: str) -> dict[str, Any]:
-        """Get rate limit configuration for an endpoint."""
         # Exact match first
         if path in self.endpoint_limits:
             return self.endpoint_limits[path]
@@ -158,7 +157,6 @@ class NetworkRateLimitMiddleware(BaseHTTPMiddleware):
                 return True  # Rate limited
 
     async def dispatch(self, request: Request, call_next):
-        """Handle incoming requests with rate limiting."""
         start_time = time.time()
 
         # Get client identifier and endpoint config
@@ -234,7 +232,6 @@ class NetworkRateLimitMiddleware(BaseHTTPMiddleware):
         return response
 
     def get_rate_limit_stats(self) -> dict[str, Any]:
-        """Get current rate limiting statistics for monitoring."""
         current_time = time.time()
         stats = {
             "total_clients": len(self.client_buckets),

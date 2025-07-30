@@ -1,10 +1,23 @@
 # AgentUp Development Makefile
 # Useful commands for testing, template generation, and development
 
-.PHONY: help install test test-coverage lint format clean build docs
-.PHONY: template-test agent-create agent-test type-check
-.PHONY: dev-server example-client check-deps sync-templates example-agent
-.PHONY: docker-build docker-run release validate-all template-test-syntax
+.DEFAULT_GOAL := help
+
+.PHONY: help install install-dev check-deps pre-commit-install
+.PHONY: test test-unit test-unit-coverage test-unit-fast test-unit-watch test-integration
+.PHONY: lint lint-fix format format-check
+.PHONY: security security-report security-full
+.PHONY: validate-code validate-ci validate-all
+.PHONY: template-test-syntax
+.PHONY: pre-commit
+.PHONY: agent-create agent-create-minimal agent-create-advanced agent-test
+.PHONY: dev-server dev-server-test
+.PHONY: docs-serve
+.PHONY: build build-check
+.PHONY: clean clean-agents clean-all
+.PHONY: ci-deps ci-test
+.PHONY: version env-info
+.PHONY: dev-setup dev-test dev-full
 
 # Default target
 help: ## Show this help message
@@ -12,6 +25,12 @@ help: ## Show this help message
 	@echo "=========================="
 	@echo ""
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+	@echo ""
+	@echo "Useful commands:"
+	@echo "  make dev-setup          # Install and configure everything"
+	@echo "  make pre-commit         # Run all quality checks"
+	@echo "  make dev-test           # Quick test & lint cycle"
+	@echo "  make pre-commit-install # Install pre-commit hooks"
 
 # Environment setup
 install: ## Install dependencies with uv
@@ -26,6 +45,12 @@ install-dev: ## Install development dependencies
 check-deps: ## Check for missing dependencies
 	uv pip check
 	@echo "All dependencies satisfied"
+
+pre-commit-install: ## Install and configure pre-commit
+	uv pip install pre-commit
+	pre-commit install
+	pre-commit autoupdate
+	@echo "✓ pre-commit installed and configured"
 
 # Testing commands
 test: ## Run all tests (unit + integration + e2e)
@@ -49,19 +74,20 @@ test-integration: ## Run bash integration tests only
 	chmod +x tests/integration/int.sh
 	./tests/integration/int.sh
 
+# Template validation
 template-test-syntax: ## Test template syntax only (quick)
 	uv run python -c "from jinja2 import Environment, FileSystemLoader; env = Environment(loader=FileSystemLoader('src/agent/templates')); [env.get_template(t) for t in ['config/agentup_minimal.yml.j2', 'config/agentup_full.yml.j2']]"
 	@echo "Template syntax validated"
 
 # Code quality
-lint: ## Run linting checks
+lint: ## Run linting checks (parallel)
 	uv run ruff check src/ tests/
 
 lint-fix: ## Fix linting issues automatically
 	uv run ruff check --fix src/ tests/
 	uv run ruff format src/ tests/
 
-format: ## Format code with ruff
+format: ## Format code with ruff (parallel)
 	uv run ruff format src/ tests/
 
 format-check: ## Check code formatting
@@ -77,22 +103,43 @@ security-report: ## Generate bandit security report in JSON
 security-full: ## Run full security scan with medium severity
 	uv run bandit -r src/ -l
 
+# Combined validation
+validate-code: ## Run format, lint, and security checks
+	make format
+	make lint
+	make security
+	@echo "✓ Code quality checks passed"
+
+validate-ci: validate-code test-unit template-test-syntax format lint security ## Run full CI checks
+	@echo "✓ All CI validation passed"
+
+validate-all: lint test template-test-syntax ## Run all validation checks
+	@echo "✓ All validation checks passed"
+
+# CI-specific
 ci-deps: ## Check dependencies for CI
 	uv pip check
 	uv pip freeze > requirements-ci.txt
+
+ci-test: ## Run CI test suite
+	uv run pytest --cov=src --cov-report=xml --cov-report=term
+	uv run ruff check src/ tests/
+
+# Pre-commit
+pre-commit: ## Run pre-commit hooks
+	uv run pre-commit run --all-files
 
 # Agent creation and testing
 agent-create: ## Create a test agent (interactive)
 	uv run agentup agent create --no-git
 
-agent-create-minimal:
+agent-create-minimal: ## Create minimal test agent
 	@echo "Creating minimal test agent..."
 	uv run agentup agent create \
 		--quick test-minimal \
 		--no-git \
 		--output-dir ./test-agents/minimal
 	@echo "Minimal agent created in ./test-agents/minimal"
-
 
 agent-create-advanced: ## Create advanced test agent
 	@echo "Creating advanced test agent..."
@@ -112,7 +159,7 @@ agent-test: ## Test a generated agent
 		echo "✗ No test agent found. Run 'make agent-create-minimal' first"; \
 	fi
 
-# Development server commands
+# Development server
 dev-server: ## Start development server for reference implementation
 	uv run uvicorn src.agent.main:app --reload --port 8000
 
@@ -125,19 +172,7 @@ dev-server-test: ## Start test agent server
 		echo "✗ No test agent found. Run 'make agent-create-minimal' first"; \
 	fi
 
-
-# Testing with curl
-test-ping: ## Test server health endpoint
-	@echo "Testing health endpoint..."
-	curl -s http://localhost:8000/health | python -m json.tool || echo "✗ Server not running"
-
-test-hello: ## Test hello endpoint with curl
-	@echo "Testing hello endpoint..."
-	curl -X POST http://localhost:8000/ \
-		-H 'Content-Type: application/json' \
-		-d '{"jsonrpc": "2.0", "method": "send_message", "params": {"messages": [{"role": "user", "content": "Hello!"}]}, "id": "1"}' \
-		| python -m json.tool || echo "✗ Server not running"
-
+# Docs
 docs-serve: ## Serve documentation locally
 	@if command -v mkdocs >/dev/null 2>&1; then \
 		mkdocs serve; \
@@ -146,7 +181,7 @@ docs-serve: ## Serve documentation locally
 		open docs/routing-and-function-calling.md; \
 	fi
 
-# Build and release
+# Build & Release
 build: ## Build package
 	uv build
 	@echo "Package built in dist/"
@@ -154,52 +189,21 @@ build: ## Build package
 build-check: ## Check package build
 	uv run twine check dist/*
 
-release-test: ## Upload to test PyPI
-	uv run twine upload --repository testpypi dist/*
-
-release: ## Upload to PyPI (production)
-	uv run twine upload dist/*
-
-# Docker commands
-docker-build: ## Build Docker image
-	docker build -t agentup:latest .
-
-docker-run: ## Run Docker container
-	docker run -p 8000:8000 agentup:latest
-
-docker-test: ## Test Docker build
-	docker build -t agentup:test . && \
-	docker run --rm agentup:test python -c "import agentup; print('✓ Package works in Docker')"
-
-# Cleanup commands
+# Cleanup
 clean: ## Clean temporary files
-	rm -rf build/
-	rm -rf dist/
-	rm -rf *.egg-info/
-	rm -rf .pytest_cache/
-	rm -rf htmlcov/
-	rm -rf .coverage
-	rm -rf test-render/
+	rm -rf build/ dist/ *.egg-info/ .pytest_cache/ htmlcov/ .coverage test-render/
 	find . -type d -name __pycache__ -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
-	@echo "🧹 Cleaned temporary files"
+	@echo "Cleaned temporary files"
 
 clean-agents: ## Clean test agents
 	rm -rf test-agents/
-	@echo "🧹 Cleaned test agents"
+	@echo "Cleaned test agents"
 
 clean-all: clean clean-agents ## Clean everything
-	@echo "🧹 Cleaned everything"
+	@echo "Cleaned everything"
 
-# Validation and CI commands
-validate-all: lint test template-test ## Run all validation checks
-	@echo "✓ All validation checks passed"
-
-ci-test: ## Run CI test suite
-	uv run pytest --cov=src --cov-report=xml --cov-report=term
-	uv run ruff check src/ tests/
-
-# Utility commands
+# Utility
 version: ## Show current version
 	@python -c "import toml; print('AgentUp version:', toml.load('pyproject.toml')['project']['version'])"
 
@@ -212,17 +216,17 @@ env-info: ## Show environment information
 	@echo "Git branch: $$(git branch --show-current 2>/dev/null || echo 'Not a git repo')"
 	@echo "Git status: $$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ') files changed"
 
-# Quick development workflows
-dev-setup: install-dev ## Complete development setup
+# Dev workflows
+dev-setup: install-dev pre-commit-install ## Complete development setup
 	@echo "Running complete development setup..."
 	make check-deps
-	make test-fast
+	make test-unit-fast
 	@echo "Development environment ready!"
 
 dev-test: ## Quick development test cycle
 	@echo "Running development test cycle..."
 	make lint-fix
-	make test-fast
+	make test-unit-fast
 	make template-test-syntax
 	@echo "Development tests passed!"
 
@@ -234,63 +238,3 @@ dev-full: ## Full development validation
 	make agent-create-minimal
 	make agent-test
 	@echo "Full development validation completed!"
-
-# Agent development helpers
-add-skill: ## Add skill to existing agent (interactive)
-	uv run agentup add-skill
-
-validate-config: ## Validate agent configuration
-	uv run agentup validate
-
-# Middleware testing commands
-test-middleware: ## Run unit tests for middleware
-	uv run pytest tests/test_core/test_middleware.py -v
-
-test-middleware-integration: ## Run integration tests for middleware (requires running server)
-	uv run pytest tests/integration/test_middleware_integration.py -v -m integration
-
-test-middleware-stress: ## Run stress tests for middleware (requires running server)
-	uv run pytest tests/integration/test_middleware_integration.py -v -m stress
-
-test-middleware-all: test-middleware test-middleware-integration ## Run all middleware tests
-
-test-middleware-scripts: ## Run middleware testing scripts
-	@echo "Running rate limiting tests..."
-	chmod +x scripts/test_rate_limit.sh
-	./scripts/test_rate_limit.sh || echo "Rate limit test completed (server may not be running)"
-	@echo ""
-	@echo "Running retry tests..."
-	chmod +x scripts/test_retry.sh
-	./scripts/test_retry.sh || echo "Retry test completed (server may not be running)"
-
-benchmark-middleware: ## Run middleware performance benchmarks (requires running server)
-	uv run python scripts/benchmark_middleware.py
-
-benchmark-middleware-full: ## Run comprehensive middleware benchmarks (requires running server)
-	uv run python scripts/benchmark_middleware.py --requests 200 --concurrent 20 --tests rate_limiting caching timing throughput stress
-
-test-middleware-cli: ## Test middleware using CLI command (requires running server)
-	uv run agentup agent test-middleware --verbose
-
-middleware-help: ## Show middleware testing help
-	@echo "Middleware Testing Commands:"
-	@echo "=========================="
-	@echo ""
-	@echo "Prerequisites:"
-	@echo "  Start an agent server: make dev-server (or agentup agent serve)"
-	@echo ""
-	@echo "Unit Tests (no server required):"
-	@echo "  make test-middleware              # Run middleware unit tests"
-	@echo ""
-	@echo "Integration Tests (server required):"
-	@echo "  make test-middleware-integration  # Basic integration tests"
-	@echo "  make test-middleware-stress       # Stress tests"
-	@echo "  make test-middleware-scripts      # Shell script tests"
-	@echo "  make test-middleware-cli          # CLI-based tests"
-	@echo ""
-	@echo "Performance Testing (server required):"
-	@echo "  make benchmark-middleware         # Basic benchmarks"
-	@echo "  make benchmark-middleware-full    # Comprehensive benchmarks"
-	@echo ""
-	@echo "Combined:"
-	@echo "  make test-middleware-all          # Unit + integration tests"

@@ -150,7 +150,6 @@ async def _initialize_mcp_server(services, server_config: dict[str, Any]) -> Non
 
 
 async def _expose_handlers_as_mcp_tools(mcp_server) -> None:
-    """Expose AgentUp handlers as MCP tools."""
     try:
         # Get registered handlers from the function registry
         from agent.core.dispatcher import get_function_registry
@@ -187,9 +186,8 @@ async def _expose_handlers_as_mcp_tools(mcp_server) -> None:
 
 
 async def _register_mcp_tools_as_capabilities(mcp_client, available_tools, servers_config):
-    """Register MCP tools as capabilities using the new design pattern."""
     try:
-        from agent.capabilities.executors import register_mcp_tool_as_capability
+        from agent.capabilities.manager import register_mcp_tool_as_capability
 
         # Extract tool scopes from server configuration
         tool_scopes = {}
@@ -224,7 +222,6 @@ async def _register_mcp_tools_as_capabilities(mcp_client, available_tools, serve
 
 
 async def _register_mcp_tools_with_scopes(registry, mcp_client, available_tools, servers_config):
-    """Register MCP tools with scope enforcement based on server configuration."""
     try:
         # Extract tool scopes from server configuration
         tool_scopes = {}
@@ -296,8 +293,6 @@ async def _register_mcp_tools_with_scopes(registry, mcp_client, available_tools,
 
 
 async def _start_mcp_server_background(mcp_server, port: int) -> None:
-    """Start MCP server in background task."""
-
     try:
         await mcp_server.start_server(port=port)
     except Exception as e:

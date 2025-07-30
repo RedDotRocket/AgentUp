@@ -7,7 +7,6 @@ from .commands.plugin import plugin
 
 
 def configure_cli_logging():
-    """Configure logging for CLI commands."""
     # Suppress most logs for CLI usage unless explicitly set
     import os
 
@@ -48,10 +47,9 @@ def configure_cli_logging():
     logging.getLogger("pluggy").setLevel(logging.WARNING)
 
 
-@click.group()
-@click.version_option(version="0.3.0", prog_name="agentup")
+@click.group(help="AgentUp CLI - Create and Manage agents and plugins.\n\nUse one of the subcommands below.")
+@click.version_option(version="0.4.0", prog_name="agentup")
 def cli():
-    """AgentUp - Create, build, manage, and deploy AI agents."""
     # Configure logging for all CLI commands
     configure_cli_logging()
 

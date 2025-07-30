@@ -7,21 +7,16 @@ logger = structlog.get_logger(__name__)
 
 
 class ConversationManager:
-    """Manages Agent conversation history and context."""
-
     def __init__(self):
         self.conversation_history: dict[str, list[dict[str, Any]]] = {}
 
     async def prepare_llm_conversation(
         self, user_input: str | dict[str, Any], conversation: list[dict[str, Any]], skill_id: str | None = None
     ) -> list[dict[str, str]]:
-        """Prepare conversation for LLM with system prompt and history."""
-
         # Get system prompt from config
-        from agent.config import load_config
+        from agent.config import Config
 
-        config = load_config()
-        ai_config = config.get("ai", {})
+        ai_config = Config.ai
 
         # Check if we have a skill-specific system prompt
         skill_system_prompt = None
@@ -77,11 +72,9 @@ Always be helpful, accurate, and maintain a friendly tone.""",
         return messages
 
     def get_conversation_history(self, context_id: str) -> list[dict[str, Any]]:
-        """Get conversation history for context."""
         return self.conversation_history.get(context_id, [])
 
     def update_conversation_history(self, context_id: str, user_input: str, response: str):
-        """Update conversation history."""
         if context_id not in self.conversation_history:
             self.conversation_history[context_id] = []
 

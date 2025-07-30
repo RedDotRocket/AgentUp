@@ -3,7 +3,7 @@ from typing import Any
 import structlog
 from pydantic import BaseModel, Field
 
-from agent.config import load_config
+from agent.config import Config
 from agent.config.model import AgentConfig, ServiceConfig
 from agent.llm_providers.anthropic import AnthropicProvider
 from agent.llm_providers.ollama import OllamaProvider
@@ -17,14 +17,10 @@ logger = structlog.get_logger(__name__)
 
 
 class ServiceError(Exception):
-    """Custom exception for service-related errors."""
-
     pass
 
 
 class Service(BaseModel):
-    """Base service class using Pydantic models."""
-
     model_config = {"arbitrary_types_allowed": True}
 
     name: str = Field(..., description="Service name")
@@ -32,7 +28,6 @@ class Service(BaseModel):
     initialized: bool = Field(default=False, exclude=True, description="Initialization status", alias="_initialized")
 
     def __init__(self, name: str = None, config: dict[str, Any] = None, **data):
-        """Initialize service with backward-compatible constructor."""
         if name is not None and config is not None:
             # Old-style positional arguments
             super().__init__(name=name, config=config, **data)
@@ -108,8 +103,6 @@ class CacheService(Service):
 
 
 class WebAPIService(Service):
-    """Web API service with Pydantic model support."""
-
     base_url: str = Field(default="", description="Base URL for API")
     api_key: str = Field(default="", description="API key for authentication")
     headers: dict[str, str] = Field(default_factory=dict, description="HTTP headers")
@@ -150,7 +143,6 @@ class WebAPIService(Service):
         return {"result": "api_response"}
 
     async def post(self, endpoint: str, data: dict | None = None) -> Any:
-        """Make POST request."""
         if not self.initialized:
             await self.initialize()
 
@@ -178,7 +170,7 @@ class ServiceRegistry(BaseModel):
     factories: dict[str, Any] = Field(default_factory=dict, exclude=True, description="Service factories")
 
     def __init__(self, config: AgentConfig | None = None, **data):
-        raw = load_config() if config is None else config.model_dump()
+        raw = Config.model_dump() if config is None else config.model_dump()
         agent_config = AgentConfig.model_validate(raw)
 
         # Initialize Pydantic fields
@@ -213,26 +205,21 @@ class ServiceRegistry(BaseModel):
     # Backward compatibility properties
     @property
     def _services(self) -> dict[str, Service]:
-        """Get service instances (backward compatibility)."""
         return self.service_instances
 
     @property
     def _llm_providers(self) -> dict[str, Any]:
-        """Get LLM providers (backward compatibility)."""
         return self.llm_providers
 
     @property
     def _service_types(self) -> dict[str, Any]:
-        """Get service types (backward compatibility)."""
         return self.service_types
 
     @property
     def _factories(self) -> dict[str, Any]:
-        """Get factories (backward compatibility)."""
         return self.factories
 
     def initialize_all(self):
-        """Instantiate every service declared in `config.services`."""
         for name, raw_svc in (self.config.services or {}).items():
             svc_conf = ServiceConfig.model_validate(raw_svc)
 
@@ -314,7 +301,6 @@ class ServiceRegistry(BaseModel):
         return self.service_instances.get(name)
 
     def get_llm(self, name: str) -> Service | None:
-        """Get LLM service by name."""
         service = self.get_service(name)
         if service and hasattr(service, "chat_complete"):
             return service

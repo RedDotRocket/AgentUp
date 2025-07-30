@@ -2,7 +2,6 @@ import questionary
 
 
 def get_feature_choices() -> list[questionary.Choice]:
-    """Get available features for custom template."""
     return [
         questionary.Choice("Authentication Method (API Key, Bearer(JWT), OAuth2)", value="auth", checked=True),
         questionary.Choice(

@@ -123,6 +123,10 @@ src/agent/
 - **Import from typing**: Only `Union`, `Literal`, `Any`, `TypeVar`, `Generic`, `Protocol`
 - **See**: `docs/MODERN_TYPING_GUIDE.md` for complete typing conventions
 
+## Development Guidelines
+
+- **Pydantic Handling**:
+  - ALWAYS USE PYDANTIC NATIVE METHODS, NEVER USE .get dict[x,x]
 
 ## Task Completion Workflow
 

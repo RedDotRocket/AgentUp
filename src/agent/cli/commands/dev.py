@@ -4,9 +4,6 @@ import sys
 from pathlib import Path
 
 import click
-import structlog
-
-logger = structlog.get_logger(__name__)
 
 
 @click.command(context_settings={"help_option_names": ["-h", "--help"]})
@@ -40,9 +37,8 @@ logger = structlog.get_logger(__name__)
 )
 @click.version_option("1.0.0", prog_name="dev-server")
 def dev(config: Path, host: str, port: int, reload: bool):
-    """Start the development server."""
-    logger.info(f"Using config: {config}")
-    logger.info(f"Starting dev server at http://{host}:{port}  (reload={reload})")
+    click.secho(f"Using config: {config}", fg="green")
+    click.secho(f"Starting dev server at http://{host}:{port}  (reload={reload})", fg="green")
 
     # Resolve project root: ensure config exists at given path
     if not config.exists():
@@ -62,7 +58,7 @@ def dev(config: Path, host: str, port: int, reload: bool):
     if reload:
         cmd.append("--reload")
 
-    logger.debug(f"Running command: {' '.join(cmd)}")
+    click.secho(f"Running command: {' '.join(cmd)}", fg="green")
 
     import signal
 

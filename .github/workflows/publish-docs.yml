@@ -7,7 +7,7 @@ on:
       - 'docs/**'
       - 'mkdocs.yml'
       - 'docker/docs/**'
-      - '.github/workflows/build-docs.yml'
+      - '.github/workflows/publish-docs.yml'
 
 env:
   REGISTRY: ghcr.io
@@ -26,7 +26,7 @@ jobs:
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
     - name: Setup Python
-      uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c # v4
+      uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v4
       with:
         python-version: '3.x'
 
@@ -60,7 +60,7 @@ jobs:
           type=ref,event=branch,prefix=docs-
 
     - name: Build and push
-      uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5
+      uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v5
       with:
         context: .
         file: ./docker/docs/Dockerfile-docs

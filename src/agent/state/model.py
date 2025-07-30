@@ -21,8 +21,6 @@ T = TypeVar("T")
 
 
 class StateVariableType(str, Enum):
-    """Types of state variables."""
-
     STRING = "string"
     INTEGER = "integer"
     FLOAT = "float"
@@ -34,8 +32,6 @@ class StateVariableType(str, Enum):
 
 
 class StateVariable(BaseModel, Generic[T]):
-    """Typed state variable with metadata."""
-
     key: str = Field(..., description="Variable key")
     value: T = Field(..., description="Variable value")
     type_name: StateVariableType = Field(..., description="Variable type")
@@ -52,7 +48,6 @@ class StateVariable(BaseModel, Generic[T]):
     @field_validator("key")
     @classmethod
     def validate_key(cls, v: str) -> str:
-        """Validate variable key format."""
         if not v or len(v) > 256:
             raise ValueError("Key must be 1-256 characters")
         # Allow alphanumeric, dots, hyphens, underscores
@@ -65,21 +60,18 @@ class StateVariable(BaseModel, Generic[T]):
     @field_validator("ttl")
     @classmethod
     def validate_ttl(cls, v: TTL | None) -> TTL | None:
-        """Validate TTL value."""
         if v is not None and v <= 0:
             raise ValueError("TTL must be positive")
         return v
 
     @property
     def is_expired(self) -> bool:
-        """Check if variable has expired."""
         if not self.ttl:
             return False
         expires_at = self.updated_at + timedelta(seconds=self.ttl)
         return datetime.utcnow() > expires_at
 
     def touch(self) -> None:
-        """Update the last modified timestamp."""
         self.updated_at = datetime.utcnow()
         self.version += 1
 
@@ -87,8 +79,6 @@ class StateVariable(BaseModel, Generic[T]):
 
 
 class ConversationRole(str, Enum):
-    """Roles in a conversation."""
-
     USER = "user"
     ASSISTANT = "assistant"
     SYSTEM = "system"
@@ -97,8 +87,6 @@ class ConversationRole(str, Enum):
 
 
 class ConversationMessage(BaseModel):
-    """Single message in conversation history."""
-
     id: str = Field(..., description="Message identifier")
     role: ConversationRole = Field(..., description="Message role")
     content: str = Field(..., description="Message content")
@@ -120,7 +108,6 @@ class ConversationMessage(BaseModel):
     @field_validator("content")
     @classmethod
     def validate_content(cls, v: str) -> str:
-        """Validate message content."""
         if len(v) > 1_000_000:  # 1MB limit
             raise ValueError("Message content too large (max 1MB)")
         return v
@@ -128,15 +115,12 @@ class ConversationMessage(BaseModel):
     @field_validator("id")
     @classmethod
     def validate_id(cls, v: str) -> str:
-        """Validate message ID format."""
         if not v or len(v) > 128:
             raise ValueError("Message ID must be 1-128 characters")
         return v
 
 
 class ConversationSummary(BaseModel):
-    """Summary of conversation history."""
-
     total_messages: int = Field(..., description="Total number of messages")
     user_messages: int = Field(..., description="Number of user messages")
     assistant_messages: int = Field(..., description="Number of assistant messages")
@@ -148,8 +132,6 @@ class ConversationSummary(BaseModel):
 
 
 class ConversationState(BaseModel):
-    """Complete conversation state management."""
-
     context_id: str = Field(..., description="Conversation context identifier")
     user_id: UserId | None = Field(None, description="Associated user")
     session_id: SessionId | None = Field(None, description="Session identifier")
@@ -181,7 +163,6 @@ class ConversationState(BaseModel):
     @field_validator("context_id")
     @classmethod
     def validate_context_id(cls, v: str) -> str:
-        """Validate context ID format."""
         if not v or len(v) > 128:
             raise ValueError("Context ID must be 1-128 characters")
         return v
@@ -189,7 +170,6 @@ class ConversationState(BaseModel):
     @field_validator("max_history_size", "max_variable_count")
     @classmethod
     def validate_limits(cls, v: int) -> int:
-        """Validate size limits."""
         if v <= 0:
             raise ValueError("Limits must be positive")
         if v > 10000:
@@ -197,7 +177,6 @@ class ConversationState(BaseModel):
         return v
 
     def add_message(self, message: ConversationMessage) -> None:
-        """Add message with size limit enforcement."""
         self.history.append(message)
         self.last_activity = datetime.utcnow()
         self.updated_at = self.last_activity
@@ -213,7 +192,6 @@ class ConversationState(BaseModel):
                 self.archived_messages += len(removed)
 
     def set_variable(self, key: str, value: Any, ttl: TTL | None = None) -> None:
-        """Set a state variable."""
         if len(self.variables) >= self.max_variable_count and key not in self.variables:
             raise ValueError(f"Maximum variable count ({self.max_variable_count}) exceeded")
 
@@ -234,7 +212,6 @@ class ConversationState(BaseModel):
         self.updated_at = datetime.utcnow()
 
     def get_variable(self, key: str, default: Any = None) -> Any:
-        """Get a state variable value."""
         if key not in self.variables:
             return default
 
@@ -246,7 +223,6 @@ class ConversationState(BaseModel):
         return var.value
 
     def delete_variable(self, key: str) -> bool:
-        """Delete a state variable."""
         if key in self.variables:
             del self.variables[key]
             self.updated_at = datetime.utcnow()
@@ -254,7 +230,6 @@ class ConversationState(BaseModel):
         return False
 
     def cleanup_expired_variables(self) -> int:
-        """Remove expired variables and return count removed."""
         expired_keys = [key for key, var in self.variables.items() if var.is_expired]
 
         for key in expired_keys:
@@ -266,7 +241,6 @@ class ConversationState(BaseModel):
         return len(expired_keys)
 
     def get_summary_stats(self) -> ConversationSummary:
-        """Generate conversation summary statistics."""
         user_msgs = sum(1 for msg in self.history if msg.role == ConversationRole.USER)
         assistant_msgs = sum(1 for msg in self.history if msg.role == ConversationRole.ASSISTANT)
         total_tokens = sum(msg.tokens or 0 for msg in self.history if msg.tokens)
@@ -286,7 +260,6 @@ class ConversationState(BaseModel):
         )
 
     def _determine_type(self, value: Any) -> StateVariableType:
-        """Determine the type of a value."""
         if isinstance(value, str):
             return StateVariableType.STRING
         elif isinstance(value, bool):
@@ -305,7 +278,6 @@ class ConversationState(BaseModel):
             return StateVariableType.JSON
 
     def _archive_old_messages(self) -> None:
-        """Archive old messages when history is full."""
         # Keep recent messages, archive the rest
         keep_count = self.max_history_size // 2
         to_archive = self.history[:-keep_count]
@@ -323,8 +295,6 @@ class ConversationState(BaseModel):
 
 
 class StateBackendType(str, Enum):
-    """State storage backend types."""
-
     MEMORY = "memory"
     REDIS = "redis"
     FILE = "file"
@@ -332,8 +302,6 @@ class StateBackendType(str, Enum):
 
 
 class StateBackendConfig(BaseModel):
-    """Configuration for state storage backend."""
-
     type: StateBackendType = Field(..., description="Backend type")
 
     # Common settings
@@ -368,7 +336,6 @@ class StateBackendConfig(BaseModel):
     @field_validator("ttl", "max_size")
     @classmethod
     def validate_positive_values(cls, v: int) -> int:
-        """Validate positive values."""
         if v <= 0:
             raise ValueError("Value must be positive")
         return v
@@ -376,7 +343,6 @@ class StateBackendConfig(BaseModel):
     @field_validator("port")
     @classmethod
     def validate_port(cls, v: int | None) -> int | None:
-        """Validate port number."""
         if v is not None and not (1 <= v <= 65535):
             raise ValueError("Port must be between 1 and 65535")
         return v
@@ -384,25 +350,21 @@ class StateBackendConfig(BaseModel):
     @computed_field  # Modern Pydantic v2 computed property
     @property
     def is_memory_backend(self) -> bool:
-        """Check if this is a memory backend."""
         return self.type == StateBackendType.MEMORY
 
     @computed_field
     @property
     def is_persistent_backend(self) -> bool:
-        """Check if this backend persists data."""
         return self.type in (StateBackendType.REDIS, StateBackendType.FILE, StateBackendType.DATABASE)
 
     @computed_field
     @property
     def requires_authentication(self) -> bool:
-        """Check if backend requires authentication."""
         return self.username is not None or self.password is not None
 
     @computed_field
     @property
     def connection_url(self) -> str | None:
-        """Build connection URL from components."""
         if self.connection_string:
             return self.connection_string
 
@@ -422,7 +384,6 @@ class StateBackendConfig(BaseModel):
     @computed_field
     @property
     def performance_score(self) -> float:
-        """Calculate performance score based on configuration (0.0 to 1.0)."""
         score = 0.0
 
         # Backend type score (0.0 to 0.4)
@@ -449,8 +410,6 @@ class StateBackendConfig(BaseModel):
 
 
 class StateOperationType(str, Enum):
-    """Types of state operations."""
-
     GET = "get"
     SET = "set"
     DELETE = "delete"
@@ -459,8 +418,6 @@ class StateOperationType(str, Enum):
 
 
 class StateOperation(BaseModel):
-    """State operation for logging and debugging."""
-
     operation_id: str = Field(..., description="Operation identifier")
     operation_type: StateOperationType = Field(..., description="Operation type")
     context_id: str = Field(..., description="Context identifier")
@@ -480,8 +437,6 @@ class StateOperation(BaseModel):
 
 
 class StateMetrics(BaseModel):
-    """State management metrics."""
-
     # Counts
     total_contexts: int = Field(0, description="Total conversation contexts")
     total_variables: int = Field(0, description="Total state variables")
@@ -505,8 +460,6 @@ class StateMetrics(BaseModel):
 
 
 class StateConfig(BaseModel):
-    """Complete state management configuration."""
-
     enabled: bool = Field(True, description="Enable state management")
 
     # Backend configuration
@@ -534,7 +487,6 @@ class StateConfig(BaseModel):
     @field_validator("default_max_history", "default_max_variables", "cache_size")
     @classmethod
     def validate_positive_limits(cls, v: int) -> int:
-        """Validate positive limit values."""
         if v <= 0:
             raise ValueError("Limit must be positive")
         return v

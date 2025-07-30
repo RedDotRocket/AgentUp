@@ -1,5 +1,3 @@
-"""State management service for AgentUp framework."""
-
 from typing import Any
 
 from .base import Service
@@ -16,14 +14,12 @@ class StateManager(Service):
     """
 
     def __init__(self, config_manager: ConfigurationManager):
-        """Initialize the state manager."""
         super().__init__(config_manager)
         self._context_manager = None
         self._backend = None
         self._backend_config = {}
 
     async def initialize(self) -> None:
-        """Initialize the state manager."""
         self.logger.info("Initializing state manager")
 
         state_config = self.config.get("state_management", {})
@@ -48,7 +44,6 @@ class StateManager(Service):
             raise
 
     async def shutdown(self) -> None:
-        """Cleanup state resources."""
         if self._context_manager:
             try:
                 # Cleanup old contexts
@@ -61,7 +56,6 @@ class StateManager(Service):
         self._context_manager = None
 
     def _prepare_backend_config(self, state_config: dict[str, Any]) -> dict[str, Any]:
-        """Prepare backend-specific configuration."""
         backend_config = {}
 
         if self._backend == "valkey":
@@ -80,14 +74,11 @@ class StateManager(Service):
 
     @property
     def context_manager(self):
-        """Get the context manager instance."""
         return self._context_manager
 
     @property
     def backend_type(self) -> str:
-        """Get the configured backend type."""
         return self._backend
 
     def is_enabled(self) -> bool:
-        """Check if state management is enabled."""
         return self._context_manager is not None

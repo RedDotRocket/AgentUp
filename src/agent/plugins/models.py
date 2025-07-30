@@ -1,10 +1,3 @@
-"""
-Pydantic models for the AgentUp plugin system.
-
-This module defines all plugin-related data structures using Pydantic models
-for type safety and validation.
-"""
-
 from __future__ import annotations
 
 from enum import Enum
@@ -19,8 +12,6 @@ from ..utils.validation import ValidationResult as FrameworkValidationResult
 
 
 class PluginStatus(str, Enum):
-    """Plugin status states."""
-
     LOADED = "loaded"
     ENABLED = "enabled"
     DISABLED = "disabled"
@@ -28,8 +19,6 @@ class PluginStatus(str, Enum):
 
 
 class CapabilityType(str, Enum):
-    """Capability feature types."""
-
     TEXT = "text"
     MULTIMODAL = "multimodal"
     AI_FUNCTION = "ai_function"
@@ -38,8 +27,6 @@ class CapabilityType(str, Enum):
 
 
 class PluginInfo(BaseModel):
-    """Information about a loaded plugin."""
-
     name: str = Field(..., description="Plugin name", min_length=1, max_length=100)
     version: str = Field(..., description="Plugin version")
     author: str | None = Field(None, description="Plugin author")
@@ -53,7 +40,6 @@ class PluginInfo(BaseModel):
     @field_validator("name")
     @classmethod
     def validate_plugin_name(cls, v: str) -> str:
-        """Validate plugin name format."""
         import re
 
         if not re.match(r"^[a-z][a-z0-9_-]*$", v):
@@ -63,7 +49,6 @@ class PluginInfo(BaseModel):
     @field_validator("version")
     @classmethod
     def validate_version(cls, v: str) -> str:
-        """Validate semantic version format."""
         import re
 
         if not re.match(r"^\d+\.\d+\.\d+(-[\w\.-]+)?(\+[\w\.-]+)?$", v):
@@ -72,7 +57,6 @@ class PluginInfo(BaseModel):
 
     @model_validator(mode="after")
     def validate_plugin_consistency(self) -> PluginInfo:
-        """Validate plugin state consistency."""
         if self.status == PluginStatus.ERROR and not self.error:
             raise ValueError("ERROR status requires error message")
 
@@ -84,19 +68,16 @@ class PluginInfo(BaseModel):
     @computed_field  # Modern Pydantic v2 computed property
     @property
     def is_operational(self) -> bool:
-        """Check if plugin is operational (enabled or loaded)."""
         return self.status in (PluginStatus.ENABLED, PluginStatus.LOADED)
 
     @computed_field
     @property
     def has_error(self) -> bool:
-        """Check if plugin has an error."""
         return self.status == PluginStatus.ERROR or self.error is not None
 
     @computed_field
     @property
     def display_name(self) -> str:
-        """Get display name with author if available."""
         if self.author:
             return f"{self.name} by {self.author}"
         return self.name
@@ -104,18 +85,14 @@ class PluginInfo(BaseModel):
     @computed_field
     @property
     def full_version_info(self) -> str:
-        """Get full version information."""
         return f"{self.name}@{self.version}"
 
     @field_serializer("status")
     def serialize_status(self, value: PluginStatus) -> str:
-        """Serialize status to string."""
         return value.value
 
 
-class CapabilityInfo(BaseModel):
-    """Information about a capability provided by a plugin."""
-
+class PluginDefinition(BaseModel):
     id: str = Field(..., description="Capability identifier", min_length=1, max_length=128)
     name: str = Field(..., description="Human-readable capability name", min_length=1, max_length=100)
     version: str = Field(..., description="Capability version")
@@ -134,7 +111,6 @@ class CapabilityInfo(BaseModel):
     @field_validator("id")
     @classmethod
     def validate_capability_id(cls, v: str) -> str:
-        """Validate capability ID format."""
         import re
 
         if not re.match(r"^[a-zA-Z][a-zA-Z0-9_-]*$", v):
@@ -144,7 +120,6 @@ class CapabilityInfo(BaseModel):
     @field_validator("version")
     @classmethod
     def validate_version(cls, v: str) -> str:
-        """Validate semantic version format."""
         import re
 
         if not re.match(r"^\d+\.\d+\.\d+(-[\w\.-]+)?(\+[\w\.-]+)?$", v):
@@ -154,7 +129,6 @@ class CapabilityInfo(BaseModel):
     @field_validator("input_mode", "output_mode")
     @classmethod
     def validate_modes(cls, v: str) -> str:
-        """Validate input/output modes."""
         valid_modes = {"text", "json", "binary", "stream", "multimodal"}
         if v not in valid_modes:
             raise ValueError(f"Mode must be one of {valid_modes}")
@@ -163,7 +137,6 @@ class CapabilityInfo(BaseModel):
     @field_validator("tags")
     @classmethod
     def validate_tags(cls, v: list[str]) -> list[str]:
-        """Validate tags format."""
         for tag in v:
             if not tag or not tag.replace("-", "").replace("_", "").isalnum():
                 raise ValueError(f"Invalid tag format: '{tag}'")
@@ -172,13 +145,11 @@ class CapabilityInfo(BaseModel):
     @computed_field  # Modern Pydantic v2 computed property
     @property
     def is_ai_capability(self) -> bool:
-        """Check if this is an AI function capability."""
         return CapabilityType.AI_FUNCTION in self.capabilities
 
     @computed_field
     @property
     def is_multimodal(self) -> bool:
-        """Check if capability supports multimodal input/output."""
         return (
             CapabilityType.MULTIMODAL in self.capabilities
             or self.input_mode == "multimodal"
@@ -188,7 +159,6 @@ class CapabilityInfo(BaseModel):
     @computed_field
     @property
     def is_streaming(self) -> bool:
-        """Check if capability supports streaming."""
         return (
             CapabilityType.STREAMING in self.capabilities or self.input_mode == "stream" or self.output_mode == "stream"
         )
@@ -196,13 +166,11 @@ class CapabilityInfo(BaseModel):
     @computed_field
     @property
     def is_high_priority(self) -> bool:
-        """Check if capability has high priority."""
         return self.priority >= 80
 
     @computed_field
     @property
     def full_id(self) -> str:
-        """Get full capability identifier with plugin name."""
         if self.plugin_name:
             return f"{self.plugin_name}.{self.id}"
         return self.id
@@ -210,7 +178,6 @@ class CapabilityInfo(BaseModel):
     @computed_field
     @property
     def security_score(self) -> float:
-        """Calculate security score based on required scopes (0.0 to 1.0)."""
         if not self.required_scopes:
             return 0.0  # No scopes = low security
 
@@ -226,13 +193,10 @@ class CapabilityInfo(BaseModel):
 
     @field_serializer("capabilities")
     def serialize_capabilities(self, value: list[CapabilityType]) -> list[str]:
-        """Serialize capability types to strings."""
         return [cap.value for cap in value]
 
 
 class AIFunction(BaseModel):
-    """AI function definition for LLM function calling."""
-
     name: str = Field(..., description="Function name", min_length=1, max_length=64)
     description: str = Field(..., description="Function description", min_length=10, max_length=1024)
     parameters: dict[str, Any] = Field(..., description="JSON schema for parameters")
@@ -244,7 +208,6 @@ class AIFunction(BaseModel):
     @field_validator("name")
     @classmethod
     def validate_function_name(cls, v: str) -> str:
-        """Validate function name format."""
         import re
 
         if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", v):
@@ -259,7 +222,6 @@ class AIFunction(BaseModel):
     @field_validator("parameters")
     @classmethod
     def validate_parameters_schema(cls, v: dict[str, Any]) -> dict[str, Any]:
-        """Validate JSON schema for parameters."""
         if not isinstance(v, dict):
             raise ValueError("Parameters must be a valid JSON schema object")
 
@@ -271,8 +233,6 @@ class AIFunction(BaseModel):
 
 
 class CapabilityContext(BaseModel):
-    """Runtime context provided to capability execution."""
-
     task: Task = Field(..., description="Task being executed")
     config: dict[str, JsonValue] = Field(default_factory=dict, description="Capability configuration")
     services: Any = Field(default_factory=dict, description="Service registry instance")
@@ -283,8 +243,6 @@ class CapabilityContext(BaseModel):
 
 
 class CapabilityResult(BaseModel):
-    """Result from capability execution."""
-
     content: str = Field(..., description="Result content")
     success: bool = Field(True, description="Whether execution was successful")
     error: str | None = Field(None, description="Error message if execution failed")
@@ -294,7 +252,6 @@ class CapabilityResult(BaseModel):
 
     @model_validator(mode="after")
     def validate_result_consistency(self) -> CapabilityResult:
-        """Validate result consistency."""
         if not self.success and not self.error:
             raise ValueError("Failed execution must have error message")
 
@@ -305,8 +262,6 @@ class CapabilityResult(BaseModel):
 
 
 class PluginValidationResult(BaseModel):
-    """Result from plugin configuration validation."""
-
     valid: bool = Field(..., description="Whether validation passed")
     errors: list[str] = Field(default_factory=list, description="Validation errors")
     warnings: list[str] = Field(default_factory=list, description="Validation warnings")
@@ -314,17 +269,14 @@ class PluginValidationResult(BaseModel):
 
     @property
     def has_errors(self) -> bool:
-        """Check if validation has errors."""
         return len(self.errors) > 0
 
     @property
     def has_warnings(self) -> bool:
-        """Check if validation has warnings."""
         return len(self.warnings) > 0
 
     @property
     def summary(self) -> str:
-        """Get validation summary."""
         if self.valid:
             parts = ["Validation passed"]
             if self.warnings:
@@ -338,8 +290,6 @@ class PluginValidationResult(BaseModel):
 
 # Plugin Validators using validation framework
 class PluginInfoValidator(BaseValidator[PluginInfo]):
-    """Business rule validator for plugin information."""
-
     def validate(self, model: PluginInfo) -> FrameworkValidationResult:
         result = FrameworkValidationResult(valid=True)
 
@@ -361,10 +311,8 @@ class PluginInfoValidator(BaseValidator[PluginInfo]):
         return result
 
 
-class CapabilityInfoValidator(BaseValidator[CapabilityInfo]):
-    """Business rule validator for capability information."""
-
-    def validate(self, model: CapabilityInfo) -> FrameworkValidationResult:
+class PluginDefinitionValidator(BaseValidator[PluginDefinition]):
+    def validate(self, model: PluginDefinition) -> FrameworkValidationResult:
         result = FrameworkValidationResult(valid=True)
 
         # Check for missing descriptions on important capabilities
@@ -389,8 +337,6 @@ class CapabilityInfoValidator(BaseValidator[CapabilityInfo]):
 
 
 class AIFunctionValidator(BaseValidator[AIFunction]):
-    """Business rule validator for AI function definitions."""
-
     def validate(self, model: AIFunction) -> FrameworkValidationResult:
         result = FrameworkValidationResult(valid=True)
 
@@ -415,7 +361,6 @@ class AIFunctionValidator(BaseValidator[AIFunction]):
 
 # Composite validator for plugin models
 def create_plugin_validator() -> CompositeValidator[PluginInfo]:
-    """Create a comprehensive plugin validator."""
     validators = [
         PluginInfoValidator(PluginInfo),
     ]
@@ -427,13 +372,13 @@ __all__ = [
     "PluginStatus",
     "CapabilityType",
     "PluginInfo",
-    "CapabilityInfo",
+    "PluginDefinition",
     "AIFunction",
     "CapabilityContext",
     "CapabilityResult",
     "PluginValidationResult",
     "PluginInfoValidator",
-    "CapabilityInfoValidator",
+    "PluginDefinitionValidator",
     "AIFunctionValidator",
     "create_plugin_validator",
 ]

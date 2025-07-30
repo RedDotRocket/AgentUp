@@ -23,10 +23,7 @@ from agent.state.model import (
 
 
 class TestStateVariable:
-    """Test StateVariable model."""
-
     def test_string_state_variable(self):
-        """Test string state variable."""
         var = StateVariable[str](
             key="user_name", value="John Doe", type_name=StateVariableType.STRING, description="User's full name"
         )
@@ -38,7 +35,6 @@ class TestStateVariable:
         assert not var.is_expired
 
     def test_integer_state_variable(self):
-        """Test integer state variable."""
         var = StateVariable[int](
             key="user_age",
             value=25,
@@ -52,7 +48,6 @@ class TestStateVariable:
         assert var.ttl == 3600
 
     def test_dict_state_variable(self):
-        """Test dictionary state variable."""
         config_data = {"theme": "dark", "notifications": True}
         var = StateVariable[dict](
             key="user_config", value=config_data, type_name=StateVariableType.DICT, tags=["config", "user"]
@@ -64,7 +59,6 @@ class TestStateVariable:
         assert "config" in var.tags
 
     def test_key_validation(self):
-        """Test state variable key validation."""
         # Valid keys
         StateVariable(key="valid_key", value="test", type_name=StateVariableType.STRING)
         StateVariable(key="valid.key", value="test", type_name=StateVariableType.STRING)
@@ -82,7 +76,6 @@ class TestStateVariable:
             StateVariable(key="a" * 257, value="test", type_name=StateVariableType.STRING)  # Too long
 
     def test_ttl_validation(self):
-        """Test TTL validation."""
         # Valid TTL
         StateVariable(key="test", value="test", type_name=StateVariableType.STRING, ttl=3600)
         StateVariable(key="test", value="test", type_name=StateVariableType.STRING, ttl=None)
@@ -95,7 +88,6 @@ class TestStateVariable:
             StateVariable(key="test", value="test", type_name=StateVariableType.STRING, ttl=-1)
 
     def test_expiration_checking(self):
-        """Test variable expiration."""
         # Non-expiring variable
         var = StateVariable(key="test", value="test", type_name=StateVariableType.STRING)
         assert not var.is_expired
@@ -119,7 +111,6 @@ class TestStateVariable:
         assert not fresh_var.is_expired
 
     def test_touch_method(self):
-        """Test the touch method for updating timestamps."""
         var = StateVariable(key="test", value="test", type_name=StateVariableType.STRING)
         original_version = var.version
         original_time = var.updated_at
@@ -136,10 +127,7 @@ class TestStateVariable:
 
 
 class TestConversationMessage:
-    """Test ConversationMessage model."""
-
     def test_basic_message_creation(self):
-        """Test creating basic messages."""
         message = ConversationMessage(id="msg_123", role=ConversationRole.USER, content="Hello, how are you?", tokens=5)
 
         assert message.id == "msg_123"
@@ -149,7 +137,6 @@ class TestConversationMessage:
         assert isinstance(message.timestamp, datetime)
 
     def test_function_message(self):
-        """Test function call message."""
         message = ConversationMessage(
             id="msg_func",
             role=ConversationRole.FUNCTION,
@@ -163,7 +150,6 @@ class TestConversationMessage:
         assert message.function_call["location"] == "New York"
 
     def test_tool_calls_message(self):
-        """Test message with tool calls."""
         message = ConversationMessage(
             id="msg_tool",
             role=ConversationRole.ASSISTANT,
@@ -179,7 +165,6 @@ class TestConversationMessage:
         assert message.tool_calls[1]["tool"] == "search"
 
     def test_threaded_message(self):
-        """Test message with threading."""
         message = ConversationMessage(
             id="msg_reply",
             role=ConversationRole.USER,
@@ -192,7 +177,6 @@ class TestConversationMessage:
         assert message.thread_id == "thread_123"
 
     def test_content_validation(self):
-        """Test message content validation."""
         # Valid content
         ConversationMessage(id="test", role=ConversationRole.USER, content="Normal message")
 
@@ -203,7 +187,6 @@ class TestConversationMessage:
         assert "too large" in str(exc_info.value)
 
     def test_message_id_validation(self):
-        """Test message ID validation."""
         # Valid IDs
         ConversationMessage(id="msg_123", role=ConversationRole.USER, content="test")
         ConversationMessage(id="a", role=ConversationRole.USER, content="test")  # Minimum
@@ -218,10 +201,7 @@ class TestConversationMessage:
 
 
 class TestConversationState:
-    """Test ConversationState model."""
-
     def test_basic_conversation_state(self):
-        """Test basic conversation state creation."""
         state = ConversationState(context_id="conv_123", user_id="user_456", session_id="session_789")
 
         assert state.context_id == "conv_123"
@@ -233,7 +213,6 @@ class TestConversationState:
         assert state.auto_summarize is True
 
     def test_add_message(self):
-        """Test adding messages to conversation."""
         state = ConversationState(context_id="test")
 
         message1 = ConversationMessage(id="msg1", role=ConversationRole.USER, content="Hello")
@@ -248,7 +227,6 @@ class TestConversationState:
         assert state.last_activity > state.created_at
 
     def test_message_history_limit(self):
-        """Test message history size limiting."""
         state = ConversationState(context_id="test", max_history_size=3)
 
         # Add more messages than the limit
@@ -261,7 +239,6 @@ class TestConversationState:
         assert state.archived_messages > 0
 
     def test_set_and_get_variable(self):
-        """Test setting and getting state variables."""
         state = ConversationState(context_id="test")
 
         # Set variables
@@ -281,7 +258,6 @@ class TestConversationState:
         assert state.variables["user_age"].ttl is None
 
     def test_variable_count_limit(self):
-        """Test variable count limiting."""
         state = ConversationState(context_id="test", max_variable_count=2)
 
         # Set variables up to limit
@@ -298,7 +274,6 @@ class TestConversationState:
         assert state.get_variable("var1") == "new_value1"
 
     def test_delete_variable(self):
-        """Test deleting state variables."""
         state = ConversationState(context_id="test")
 
         state.set_variable("test_var", "test_value")
@@ -314,7 +289,6 @@ class TestConversationState:
         assert result is False
 
     def test_cleanup_expired_variables(self):
-        """Test cleaning up expired variables."""
         state = ConversationState(context_id="test")
 
         # Set variables with different TTLs
@@ -337,7 +311,6 @@ class TestConversationState:
         assert "fresh" in state.variables
 
     def test_summary_stats(self):
-        """Test conversation summary statistics."""
         state = ConversationState(context_id="test")
 
         # Add some messages
@@ -366,7 +339,6 @@ class TestConversationState:
         assert summary.topics == ["greeting", "casual"]
 
     def test_context_id_validation(self):
-        """Test context ID validation."""
         # Valid IDs
         ConversationState(context_id="conv_123")
         ConversationState(context_id="a")  # Minimum
@@ -380,7 +352,6 @@ class TestConversationState:
             ConversationState(context_id="x" * 129)
 
     def test_limits_validation(self):
-        """Test conversation limits validation."""
         # Valid limits
         ConversationState(context_id="test", max_history_size=1, max_variable_count=1)
         ConversationState(context_id="test", max_history_size=10000, max_variable_count=10000)
@@ -397,10 +368,7 @@ class TestConversationState:
 
 
 class TestStateBackendConfig:
-    """Test state backend configuration."""
-
     def test_memory_backend_config(self):
-        """Test memory backend configuration."""
         config = StateBackendConfig(type=StateBackendType.MEMORY, max_size=5000, ttl=1800)
 
         assert config.type == StateBackendType.MEMORY
@@ -408,7 +376,6 @@ class TestStateBackendConfig:
         assert config.ttl == 1800
 
     def test_redis_backend_config(self):
-        """Test Redis backend configuration."""
         config = StateBackendConfig(
             type=StateBackendType.REDIS,
             host="localhost",
@@ -423,7 +390,6 @@ class TestStateBackendConfig:
         assert config.redis_settings["db"] == 0
 
     def test_file_backend_config(self):
-        """Test file backend configuration."""
         config = StateBackendConfig(type=StateBackendType.FILE, file_path="/var/lib/agentup/state.db", compression=True)
 
         assert config.type == StateBackendType.FILE
@@ -431,7 +397,6 @@ class TestStateBackendConfig:
         assert config.compression is True
 
     def test_database_backend_config(self):
-        """Test database backend configuration."""
         config = StateBackendConfig(
             type=StateBackendType.DATABASE,
             connection_string="postgresql://user:pass@localhost/agentup",
@@ -445,7 +410,6 @@ class TestStateBackendConfig:
         assert config.connection_pool_size == 20
 
     def test_backend_validation(self):
-        """Test backend configuration validation."""
         # Valid values
         StateBackendConfig(type=StateBackendType.MEMORY, ttl=1, max_size=1)
         StateBackendConfig(type=StateBackendType.REDIS, port=1)
@@ -466,10 +430,7 @@ class TestStateBackendConfig:
 
 
 class TestStateOperation:
-    """Test state operation tracking."""
-
     def test_state_operation_creation(self):
-        """Test creating state operations."""
         operation = StateOperation(
             operation_id="op_123",
             operation_type=StateOperationType.SET,
@@ -488,7 +449,6 @@ class TestStateOperation:
         assert isinstance(operation.timestamp, datetime)
 
     def test_failed_operation(self):
-        """Test failed state operation."""
         operation = StateOperation(
             operation_id="op_fail",
             operation_type=StateOperationType.GET,
@@ -505,10 +465,7 @@ class TestStateOperation:
 
 
 class TestStateMetrics:
-    """Test state metrics model."""
-
     def test_state_metrics(self):
-        """Test state metrics creation."""
         metrics = StateMetrics(
             total_contexts=150,
             total_variables=1200,
@@ -530,10 +487,7 @@ class TestStateMetrics:
 
 
 class TestStateConfig:
-    """Test complete state configuration."""
-
     def test_default_state_config(self):
-        """Test default state configuration."""
         backend = StateBackendConfig(type=StateBackendType.MEMORY)
         config = StateConfig(backend=backend)
 
@@ -546,7 +500,6 @@ class TestStateConfig:
         assert config.metrics_enabled is True
 
     def test_custom_state_config(self):
-        """Test custom state configuration."""
         backend = StateBackendConfig(type=StateBackendType.REDIS, host="redis.example.com", port=6379)
         config = StateConfig(
             enabled=True,
@@ -566,7 +519,6 @@ class TestStateConfig:
         assert config.operation_logging is True
 
     def test_state_config_validation(self):
-        """Test state configuration validation."""
         backend = StateBackendConfig(type=StateBackendType.MEMORY)
 
         # Valid configurations
@@ -584,10 +536,7 @@ class TestStateConfig:
 
 
 class TestModelIntegration:
-    """Test model integration and complex scenarios."""
-
     def test_full_conversation_workflow(self):
-        """Test a complete conversation workflow."""
         # Create conversation state
         state = ConversationState(context_id="full_test", user_id="user123", max_history_size=5)
 
@@ -625,7 +574,6 @@ class TestModelIntegration:
         assert summary.assistant_messages >= 1
 
     def test_state_persistence_simulation(self):
-        """Test state persistence-like operations."""
         # Simulate saving/loading state
         original_state = ConversationState(context_id="persist_test", user_id="user456")
 
@@ -644,7 +592,6 @@ class TestModelIntegration:
         assert len(loaded_state.history) == len(original_state.history)
 
     def test_variable_type_detection(self):
-        """Test automatic variable type detection."""
         state = ConversationState(context_id="type_test")
 
         # Test different value types

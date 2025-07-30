@@ -1,7 +1,7 @@
 #  Agent Information
 name: My Agent
 description: AI Agent My Agent Project.
-version: 0.3.0
+version: 0.4.0
 
 # Core plugins configuration with capability-based structure
 plugins:
