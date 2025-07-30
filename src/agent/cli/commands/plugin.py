@@ -274,7 +274,7 @@ def _validate_plugin_name(name: str) -> tuple[bool, str]:
     return True, ""
 
 
-@click.group()
+@click.group("plugin", help="Manage plugins and their configurations.")
 def plugin():
     pass
 

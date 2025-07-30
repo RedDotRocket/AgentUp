@@ -1,7 +1,7 @@
 import click
 
 
-@click.group()
+@click.group("agent", help="Manage agents and their configurations.")
 def agent():
     pass
 
