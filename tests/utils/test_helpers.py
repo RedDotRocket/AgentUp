@@ -30,7 +30,7 @@ def create_test_agent_config(
     agent_name: str = "test-agent", llm_service: str = "openai", llm_model: str = "gpt-4o-mini", **kwargs
 ) -> dict[str, Any]:
     config = {
-        "agent": {"name": agent_name, "description": f"Test agent {agent_name}", "version": "0.3.0"},
+        "agent": {"name": agent_name, "description": f"Test agent {agent_name}", "version": "0.4.0"},
         "routing": {"default_mode": "ai", "fallback_capability": "ai_assistant"},
         "skills": [
             {
@@ -208,7 +208,7 @@ class AgentConfigBuilder:
     def __init__(self):
         self.config = {}
 
-    def with_agent(self, name: str = "test-agent", description: str = None, version: str = "0.3.0"):
+    def with_agent(self, name: str = "test-agent", description: str = None, version: str = "0.4.0"):
         self.config["agent"] = {"name": name, "description": description or f"Test agent {name}", "version": version}
         return self
 

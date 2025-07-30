@@ -315,7 +315,7 @@ data:
     agent:
       name: {agent_name}
       description: A2A Agent deployed on Kubernetes
-      version: 0.3.0
+      version: 0.4.0
     skills:
       - skill_id: hello_world
         name: Hello World
@@ -385,8 +385,8 @@ def generate_helm_files(output_dir: Path, agent_name: str, image_name: str, port
 name: {agent_name}
 description: A Helm chart for {agent_name} A2A Agent
 type: application
-version: 0.3.0
-appVersion: "0.3.0"
+version: 0.4.0
+appVersion: "0.4.0"
 keywords:
   - a2a
   - agent
@@ -467,7 +467,7 @@ agentConfig: |
   agent:
     name: {agent_name}
     description: A2A Agent deployed with Helm
-    version: 0.3.0
+    version: 0.4.0
   skills:
     - skill_id: hello_world
       name: Hello World

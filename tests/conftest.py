@@ -23,7 +23,7 @@ def sample_agent_config() -> dict[str, Any]:
     return {
         "name": "test-agent",  # Use new format
         "description": "Test Agent for Unit Testing",
-        "version": "0.3.0",
+        "version": "0.4.0",
         "plugins": [
             {
                 "plugin_id": "ai_assistant",
@@ -69,7 +69,7 @@ def sample_agent_config() -> dict[str, Any]:
 @pytest.fixture
 def minimal_agent_config() -> dict[str, Any]:
     return {
-        "agent": {"name": "minimal-test", "description": "Minimal Test Agent", "version": "0.3.0"},
+        "agent": {"name": "minimal-test", "description": "Minimal Test Agent", "version": "0.4.0"},
         "plugins": [
             {
                 "plugin_id": "echo",
@@ -89,7 +89,7 @@ def minimal_agent_config() -> dict[str, Any]:
 @pytest.fixture
 def ollama_agent_config() -> dict[str, Any]:
     return {
-        "agent": {"name": "ollama-test", "description": "Ollama Test Agent", "version": "0.3.0"},
+        "agent": {"name": "ollama-test", "description": "Ollama Test Agent", "version": "0.4.0"},
         "ai_provider": {
             "provider": "ollama",
             "model": "qwen3:0.6b",
@@ -105,7 +105,7 @@ def ollama_agent_config() -> dict[str, Any]:
 @pytest.fixture
 def anthropic_agent_config() -> dict[str, Any]:
     return {
-        "agent": {"name": "anthropic-test", "description": "Anthropic Test Agent", "version": "0.3.0"},
+        "agent": {"name": "anthropic-test", "description": "Anthropic Test Agent", "version": "0.4.0"},
         "ai_provider": {
             "provider": "anthropic",
             "api_key": "${ANTHROPIC_API_KEY}",

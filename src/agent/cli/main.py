@@ -48,7 +48,7 @@ def configure_cli_logging():
 
 
 @click.group(help="AgentUp CLI - Create and Manage agents and plugins.\n\nUse one of the subcommands below.")
-@click.version_option(version="0.3.0", prog_name="agentup")
+@click.version_option(version="0.4.0", prog_name="agentup")
 def cli():
     # Configure logging for all CLI commands
     configure_cli_logging()

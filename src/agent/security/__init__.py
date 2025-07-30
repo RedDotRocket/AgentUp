@@ -205,6 +205,6 @@ __all__ = [
 
 
 # Version info
-__version__ = "0.3.0"
-__author__ = "AgentUp Security Team"
+__version__ = "0.4.0"
+__author__ = "AgentUp Team"
 __description__ = "security module for AgentUp agents"
