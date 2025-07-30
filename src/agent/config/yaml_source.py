@@ -6,6 +6,8 @@ import yaml
 from pydantic.fields import FieldInfo
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource
 
+from .model import expand_env_vars
+
 
 class YamlConfigSettingsSource(PydanticBaseSettingsSource):
     """
@@ -41,7 +43,10 @@ class YamlConfigSettingsSource(PydanticBaseSettingsSource):
                 # Handle the 'name' alias for 'project_name'
                 if "name" in content and "project_name" not in content:
                     content["project_name"] = content["name"]
-                return content
+                # Apply environment variable expansion
+                expanded_content = expand_env_vars(content)
+                # Type cast since we know YAML content is a dict
+                return expanded_content if isinstance(expanded_content, dict) else {}
         except Exception:
             # If there's any error reading the file, return empty dict
             return {}
