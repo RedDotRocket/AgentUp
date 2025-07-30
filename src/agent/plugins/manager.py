@@ -12,8 +12,8 @@ from .hookspecs import CapabilitySpec
 from .models import (
     AIFunction,
     CapabilityContext,
-    CapabilityInfo,
     CapabilityResult,
+    PluginDefinition,
     PluginInfo,
     PluginStatus,
     PluginValidationResult,
@@ -37,7 +37,7 @@ class PluginManager:
         self.pm.add_hookspecs(CapabilitySpec)
 
         self.plugins: dict[str, PluginInfo] = {}
-        self.capabilities: dict[str, CapabilityInfo] = {}
+        self.capabilities: dict[str, PluginDefinition] = {}
         self.capability_to_plugin: dict[str, str] = {}
 
         # Track plugin hooks for each capability
@@ -53,9 +53,9 @@ class PluginManager:
                 from agent.config import Config
 
                 self._config = Config.model_dump()
-            except ImportError:
-                logger.warning("Could not load configuration, using empty config")
-                self._config = {}
+            except ImportError as e:
+                logger.error("Failed to load configuration module")
+                raise ImportError("Configuration module not found. Ensure 'agent.config' is available") from e
         return self._config
 
     def discover_plugins(self) -> None:
@@ -260,12 +260,26 @@ class PluginManager:
                 # Check if this result came from our plugin
                 if hasattr(plugin_instance, "register_capability"):
                     test_result = plugin_instance.register_capability()
-                    if test_result == result:
-                        plugin_result = result
-                        break
+                    # Handle both single capability and list of capabilities
+                    if isinstance(test_result, list) and isinstance(result, list):
+                        # Compare lists by checking if they contain the same capability IDs
+                        test_ids = {cap.id for cap in test_result if hasattr(cap, "id")}
+                        result_ids = {cap.id for cap in result if hasattr(cap, "id")}
+                        if test_ids == result_ids:
+                            plugin_result = result
+                            break
+                    elif not isinstance(test_result, list) and not isinstance(result, list):
+                        # Compare single capabilities by ID
+                        if hasattr(test_result, "id") and hasattr(result, "id") and test_result.id == result.id:
+                            plugin_result = result
+                            break
 
             if plugin_result is None:
-                plugin_result = results[-1]  # Fallback to last result
+                logger.error(
+                    f"Cannot determine which capability belongs to plugin '{plugin_name}'. "
+                    f"Plugin returned a capability but ownership cannot be verified. Skipping registration."
+                )
+                return
 
             # Handle both single capability and list of capabilities
             capabilities_to_register = []
@@ -276,12 +290,12 @@ class PluginManager:
 
             # Register each capability
             for capability_info in capabilities_to_register:
-                # Check if this is a CapabilityInfo object (handle different import paths)
+                # Check if this is a PluginDefinition object (handle different import paths)
                 if not (
                     hasattr(capability_info, "id")
                     and hasattr(capability_info, "name")
                     and hasattr(capability_info, "capabilities")
-                    and type(capability_info).__name__ == "CapabilityInfo"
+                    and type(capability_info).__name__ == "PluginDefinition"
                 ):
                     logger.error(f"Plugin {plugin_name} returned invalid capability info: {type(capability_info)}")
                     continue
@@ -302,10 +316,10 @@ class PluginManager:
         except Exception:
             return "unknown"
 
-    def get_capability(self, capability_id: str) -> CapabilityInfo | None:
+    def get_capability(self, capability_id: str) -> PluginDefinition | None:
         return self.capabilities.get(capability_id)
 
-    def list_capabilities(self) -> list[CapabilityInfo]:
+    def list_capabilities(self) -> list[PluginDefinition]:
         return list(self.capabilities.values())
 
     def list_plugins(self) -> list[PluginInfo]:
@@ -313,7 +327,7 @@ class PluginManager:
 
     def can_handle_task(self, capability_id: str, context: CapabilityContext) -> bool | float:
         if capability_id not in self.capability_hooks:
-            return False
+            raise ValueError(f"Capability '{capability_id}' not found")
 
         plugin = self.capability_hooks[capability_id]
         if hasattr(plugin, "can_handle_task"):
@@ -321,7 +335,7 @@ class PluginManager:
                 return plugin.can_handle_task(context)
             except Exception as e:
                 logger.error(f"Error checking if capability {capability_id} can handle task: {e}")
-                return False
+                raise RuntimeError(f"Failed to check if capability '{capability_id}' can handle task: {e}") from e
         return True  # Default to true if no handler
 
     def execute_capability(self, capability_id: str, context: CapabilityContext) -> CapabilityResult:
@@ -346,7 +360,7 @@ class PluginManager:
 
     def get_ai_functions(self, capability_id: str) -> list[AIFunction]:
         if capability_id not in self.capability_hooks:
-            return []
+            raise ValueError(f"Capability '{capability_id}' not found")
 
         plugin = self.capability_hooks[capability_id]
         if hasattr(plugin, "get_ai_functions"):
@@ -355,6 +369,7 @@ class PluginManager:
                 return plugin.get_ai_functions(capability_id=capability_id)
             except Exception as e:
                 logger.error(f"Error getting AI functions from capability {capability_id}: {e}")
+                raise RuntimeError(f"Failed to get AI functions from capability '{capability_id}': {e}") from e
         return []
 
     def validate_config(self, capability_id: str, config: dict) -> PluginValidationResult:
@@ -427,12 +442,13 @@ class PluginManager:
                 return True
             else:
                 # Entry point plugins can't be reloaded easily
-                logger.warning(f"Cannot reload entry point plugin {plugin_name}")
-                return False
+                error_msg = f"Cannot reload entry point plugin '{plugin_name}' - entry point plugins require restart"
+                logger.error(error_msg)
+                raise NotImplementedError(error_msg)
 
         except Exception as e:
             logger.error(f"Failed to reload plugin {plugin_name}: {e}")
-            return False
+            raise RuntimeError(f"Failed to reload plugin '{plugin_name}': {e}") from e
 
 
 # Global plugin manager instance

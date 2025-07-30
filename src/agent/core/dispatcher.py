@@ -68,7 +68,6 @@ class FunctionRegistry:
     def get_available_tools_for_ai(self, user_scopes: set[str]) -> list[dict[str, Any]]:
         """Filter tools based on user scopes - AI sees only what it can use.
 
-        This function implements the scope-based AI tool filtering as specified in SCOPE_DESIGN.md.
         The AI will only see tools that the user has permission to use, providing transparent
         security without the AI needing to know about scopes.
 

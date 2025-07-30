@@ -7,9 +7,9 @@ import pluggy
 from .models import (
     AIFunction,
     CapabilityContext,
-    CapabilityInfo,
     CapabilityResult,
     CapabilityType,
+    PluginDefinition,
     PluginValidationResult,
 )
 
@@ -23,8 +23,8 @@ class ExamplePlugin:
         self.llm_service = None
 
     @hookimpl
-    def register_capability(self) -> CapabilityInfo:
-        return CapabilityInfo(
+    def register_capability(self) -> PluginDefinition:
+        return PluginDefinition(
             id="example",
             name="Example Capability",
             version="1.0.0",

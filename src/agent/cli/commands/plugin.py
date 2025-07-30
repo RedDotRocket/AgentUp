@@ -40,6 +40,237 @@ def _to_snake_case(name: str) -> str:
     return name.lower()
 
 
+def _validate_plugin_name(name: str) -> tuple[bool, str]:
+    """Validate plugin name to ensure it won't conflict with Python builtins or reserved names.
+
+    Returns:
+        tuple: (is_valid, error_message)
+    """
+    # Check basic format
+    if not name or not name.replace("-", "").replace("_", "").isalnum():
+        return False, "Plugin name must contain only letters, numbers, hyphens, and underscores"
+
+    # Normalize to check against Python modules
+    normalized_name = name.lower().replace("-", "_")
+
+    stdlib_modules = {
+        # Core builtins
+        "builtins",
+        "__builtin__",
+        "__future__",
+        "sys",
+        "os",
+        "io",
+        "re",
+        "json",
+        "xml",
+        "csv",
+        "urllib",
+        "http",
+        "email",
+        "html",
+        "collections",
+        "itertools",
+        "functools",
+        "operator",
+        "pathlib",
+        "glob",
+        "shutil",
+        "tempfile",
+        "datetime",
+        "time",
+        "calendar",
+        "hashlib",
+        "hmac",
+        "secrets",
+        "random",
+        "math",
+        "cmath",
+        "decimal",
+        "fractions",
+        "statistics",
+        "array",
+        "struct",
+        "codecs",
+        "unicodedata",
+        "stringprep",
+        "readline",
+        "rlcompleter",
+        "pickle",
+        "copyreg",
+        "copy",
+        "pprint",
+        "reprlib",
+        "enum",
+        "types",
+        "weakref",
+        "gc",
+        "inspect",
+        "site",
+        "importlib",
+        "pkgutil",
+        "modulefinder",
+        "runpy",
+        "traceback",
+        "faulthandler",
+        "pdb",
+        "profile",
+        "pstats",
+        "timeit",
+        "trace",
+        "contextlib",
+        "abc",
+        "atexit",
+        "tracemalloc",
+        "warnings",
+        "dataclasses",
+        "contextvar",
+        "concurrent",
+        "threading",
+        "multiprocessing",
+        "subprocess",
+        "sched",
+        "queue",
+        "select",
+        "selectors",
+        "asyncio",
+        "socket",
+        "ssl",
+        "signal",
+        "mmap",
+        "ctypes",
+        "logging",
+        "getopt",
+        "argparse",
+        "fileinput",
+        "linecache",
+        "shlex",
+        "configparser",
+        "netrc",
+        "mailcap",
+        "mimetypes",
+        "base64",
+        "binhex",
+        "binascii",
+        "quopri",
+        "uu",
+        "sqlite3",
+        "zlib",
+        "gzip",
+        "bz2",
+        "lzma",
+        "zipfile",
+        "tarfile",
+        "getpass",
+        "cmd",
+        "turtle",
+        "wsgiref",
+        "unittest",
+        "doctest",
+        "test",
+        "2to3",
+        "lib2to3",
+        "venv",
+        "ensurepip",
+        "zipapp",
+        "platform",
+        "errno",
+        "msilib",
+        "msvcrt",
+        "winreg",
+        "winsound",
+        "posix",
+        "pwd",
+        "spwd",
+        "grp",
+        "crypt",
+        "termios",
+        "tty",
+        "pty",
+        "fcntl",
+        "pipes",
+        "resource",
+        "nis",
+        "syslog",
+        "optparse",
+        "imp",
+        "zipimport",
+        "ast",
+        "symtable",
+        "token",
+        "keyword",
+        "tokenize",
+        "tabnanny",
+        "pyclbr",
+        "py_compile",
+        "compileall",
+        "dis",
+        "pickletools",
+        "formatter",
+        "parser",
+        "symbol",
+        "compiler",
+    }
+
+    if normalized_name in stdlib_modules:
+        return False, f"'{name}' conflicts with Python standard library module '{normalized_name}'"
+
+    # Check against commonly reserved names and project terms
+    reserved_names = {
+        "test",
+        "tests",
+        "setup",
+        "install",
+        "build",
+        "dist",
+        "egg",
+        "develop",
+        "docs",
+        "doc",
+        "src",
+        "lib",
+        "bin",
+        "scripts",
+        "tools",
+        "util",
+        "utils",
+        "common",
+        "core",
+        "main",
+        "__pycache__",
+        "node_modules",
+        ".git",
+        ".venv",
+        "venv",
+        "env",
+        "virtual",
+        "virtualenv",
+        "requirements",
+        "config",
+        "conf",
+        "settings",
+        "data",
+        "tmp",
+        "temp",
+        "cache",
+        "log",
+        "logs",
+        "admin",
+        "root",
+        "user",
+        "api",
+    }
+
+    if normalized_name in reserved_names:
+        return False, f"'{name}' is a reserved name that may cause conflicts"
+
+    # Check if it's too short
+    if len(name) < 3:
+        return False, "Plugin name should be at least 3 characters long"
+
+    return True, ""
+
+
 @click.group()
 def plugin():
     pass
@@ -286,9 +517,15 @@ def create(plugin_name: str | None, template: str, output_dir: str | None, no_gi
 
     # Interactive prompts if not provided
     if not plugin_name:
+
+        def validate_name(name: str) -> bool | str:
+            """Validator for questionary that returns True or error message."""
+            is_valid, error_msg = _validate_plugin_name(name)
+            return True if is_valid else error_msg
+
         plugin_name = questionary.text(
             "Plugin name:",
-            validate=lambda x: len(x.strip()) > 0 and x.replace("-", "").replace("_", "").isalnum(),
+            validate=validate_name,
         ).ask()
 
         if not plugin_name:
@@ -297,6 +534,12 @@ def create(plugin_name: str | None, template: str, output_dir: str | None, no_gi
 
     # Normalize plugin name
     plugin_name = plugin_name.lower().replace(" ", "-")
+
+    # Validate the name even if provided via CLI
+    is_valid, error_msg = _validate_plugin_name(plugin_name)
+    if not is_valid:
+        console.print(f"[red]Error: {error_msg}[/red]")
+        return
 
     # Get plugin details
     display_name = questionary.text("Display name:", default=plugin_name.replace("-", " ").title()).ask()

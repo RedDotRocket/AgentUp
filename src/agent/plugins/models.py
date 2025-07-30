@@ -1,10 +1,3 @@
-"""
-Pydantic models for the AgentUp plugin system.
-
-This module defines all plugin-related data structures using Pydantic models
-for type safety and validation.
-"""
-
 from __future__ import annotations
 
 from enum import Enum
@@ -99,7 +92,7 @@ class PluginInfo(BaseModel):
         return value.value
 
 
-class CapabilityInfo(BaseModel):
+class PluginDefinition(BaseModel):
     id: str = Field(..., description="Capability identifier", min_length=1, max_length=128)
     name: str = Field(..., description="Human-readable capability name", min_length=1, max_length=100)
     version: str = Field(..., description="Capability version")
@@ -318,8 +311,8 @@ class PluginInfoValidator(BaseValidator[PluginInfo]):
         return result
 
 
-class CapabilityInfoValidator(BaseValidator[CapabilityInfo]):
-    def validate(self, model: CapabilityInfo) -> FrameworkValidationResult:
+class PluginDefinitionValidator(BaseValidator[PluginDefinition]):
+    def validate(self, model: PluginDefinition) -> FrameworkValidationResult:
         result = FrameworkValidationResult(valid=True)
 
         # Check for missing descriptions on important capabilities
@@ -379,13 +372,13 @@ __all__ = [
     "PluginStatus",
     "CapabilityType",
     "PluginInfo",
-    "CapabilityInfo",
+    "PluginDefinition",
     "AIFunction",
     "CapabilityContext",
     "CapabilityResult",
     "PluginValidationResult",
     "PluginInfoValidator",
-    "CapabilityInfoValidator",
+    "PluginDefinitionValidator",
     "AIFunctionValidator",
     "create_plugin_validator",
 ]

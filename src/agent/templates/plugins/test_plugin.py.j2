@@ -1,7 +1,7 @@
 """Tests for {{ display_name }} plugin."""
 
 import pytest
-from agent.plugins.models import CapabilityContext, CapabilityInfo
+from agent.plugins.models import CapabilityContext, PluginDefinition
 from {{ plugin_name_snake }}.plugin import Plugin
 
 
@@ -10,7 +10,7 @@ def test_plugin_registration():
     plugin = Plugin()
     capability_info = plugin.register_capability()
 
-    assert isinstance(capability_info, CapabilityInfo)
+    assert isinstance(capability_info, PluginDefinition)
     assert capability_info.id == "{{ capability_id }}"
     assert capability_info.name == "{{ display_name }}"
 

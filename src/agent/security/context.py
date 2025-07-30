@@ -230,8 +230,9 @@ def log_capability_access(
     """
     Comprehensive audit logging for capability access.
 
-    This implements the audit trail requirement from SCOPE_DESIGN.md to log
-    all capability access with user context for security monitoring.
+    This implements the audit trail requirement for all capability access,
+    including scope checks and execution time. It logs both successful and failed
+    capability accesses, providing a complete audit trail for security monitoring.
 
     Args:
         capability_id: ID of the capability being accessed

@@ -95,8 +95,6 @@ _capabilities: dict[str, Callable[[Task], str]] = {}
 
 def register_plugin_capability(plugin_config: dict[str, Any]) -> None:
     """Register plugin capability with framework scope enforcement.
-
-    This function implements the exact pattern specified in SCOPE_DESIGN.md.
     It wraps plugin capabilities with scope enforcement at the framework level.
 
     Args:
@@ -188,7 +186,6 @@ def register_plugin_capability(plugin_config: dict[str, Any]) -> None:
 def register_mcp_tool_as_capability(tool_name: str, mcp_client, tool_scopes: list[str]) -> None:
     """Register MCP tool as capability with scope enforcement.
 
-    This function implements the exact pattern specified in SCOPE_DESIGN.md.
     It registers external MCP tools as capabilities with the same scope enforcement
     as local plugin capabilities.
 

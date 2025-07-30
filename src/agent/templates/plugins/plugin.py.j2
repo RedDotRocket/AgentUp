@@ -5,7 +5,7 @@
 """
 
 import pluggy
-from agent.plugins import CapabilityInfo, CapabilityContext, CapabilityResult, PluginValidationResult, CapabilityType{% if template == "ai" %}, AIFunction{% endif %}
+from agent.plugins import PluginDefinition, CapabilityContext, CapabilityResult, PluginValidationResult, CapabilityType{% if template == "ai" %}, AIFunction{% endif %}
 
 hookimpl = pluggy.HookimplMarker("agentup")
 
@@ -22,9 +22,9 @@ class Plugin:
         {% endif %}
 
     @hookimpl
-    def register_capability(self) -> CapabilityInfo:
+    def register_capability(self) -> PluginDefinition:
         """Register the capability with AgentUp."""
-        return CapabilityInfo(
+        return PluginDefinition(
             id="{{ capability_id }}",
             name="{{ display_name }}",
             version="0.3.0",

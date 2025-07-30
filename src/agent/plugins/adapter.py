@@ -1,4 +1,4 @@
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 from a2a.types import Task
@@ -8,13 +8,17 @@ from agent.core.dispatcher import FunctionRegistry
 from .manager import PluginManager, get_plugin_manager
 from .models import CapabilityContext, CapabilityResult
 
+if TYPE_CHECKING:
+    from agent.config.settings import Settings
+
 logger = structlog.get_logger(__name__)
 
 
 class PluginAdapter:
-    def __init__(self, plugin_manager: PluginManager | None = None):
+    def __init__(self, config: "Settings", plugin_manager: PluginManager | None = None):
         self.plugin_manager = plugin_manager or get_plugin_manager()
         self._function_registry: FunctionRegistry | None = None
+        self._config = config
 
     def integrate_with_function_registry(
         self, registry: FunctionRegistry, enabled_capabilities: dict[str, list[str]] | None = None
@@ -69,9 +73,7 @@ class PluginAdapter:
             Dict mapping capability_id to required_scopes for enabled capabilities.
         """
         try:
-            from agent.config import Config
-
-            configured_plugins = Config.plugins
+            configured_plugins = self._config.plugins
 
             enabled_capabilities = {}
 
@@ -90,8 +92,8 @@ class PluginAdapter:
             return enabled_capabilities
 
         except Exception as e:
-            logger.warning(f"Could not load enabled capabilities from config: {e}")
-            return {}
+            logger.error(f"Failed to load enabled capabilities from config: {e}")
+            raise RuntimeError(f"Failed to load plugin capabilities configuration: {e}") from e
 
     def _create_ai_function_handler(self, capability_id: str, ai_func):
         async def handler(task: Task) -> str:
@@ -145,9 +147,7 @@ class PluginAdapter:
         and returns its configuration from agentup.yml.
         """
         try:
-            from agent.config import Config
-
-            configured_plugins = Config.plugins
+            configured_plugins = self._config.plugins
 
             # For AI function calls, we need to determine which plugin is being used
             # Check if we can determine the plugin from the function call context
@@ -163,16 +163,14 @@ class PluginAdapter:
                         if function_name in plugin_functions:
                             return plugin_config.config or {}
 
-            # Fallback: if we can't determine specific plugin, try RAG plugin as that's most common
-            for plugin_config in configured_plugins:
-                if plugin_config.plugin_id == "rag":
-                    return plugin_config.config or {}
-
-            return {}
+            # No fallback - if we can't determine the plugin, raise an error
+            error_msg = f"Cannot determine plugin configuration for function '{function_name}'"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
 
         except Exception as e:
-            logger.warning(f"Could not load plugin config for task: {e}")
-            return {}
+            logger.error(f"Could not load plugin config for task: {e}")
+            raise
 
     def _get_plugin_function_names(self, plugin_id: str) -> list[str]:
         try:
@@ -185,8 +183,9 @@ class PluginAdapter:
                     ai_functions = self.plugin_manager.get_ai_functions(capability_id)
                     function_names.extend([func.name for func in ai_functions])
             return function_names
-        except Exception:
-            return []
+        except Exception as e:
+            logger.error(f"Failed to get function names for plugin '{plugin_id}': {e}")
+            raise RuntimeError(f"Failed to retrieve function names for plugin '{plugin_id}': {e}") from e
 
     def _create_capability_context_for_capability(self, task: Task, capability_id: str) -> CapabilityContext:
         # Extract metadata
@@ -212,9 +211,7 @@ class PluginAdapter:
 
     def _get_plugin_config_for_capability(self, capability_id: str) -> dict[str, Any]:
         try:
-            from agent.config import Config
-
-            configured_plugins = Config.plugins
+            configured_plugins = self._config.plugins
 
             # Find which plugin provides this capability
             plugin_id = self.plugin_manager.capability_to_plugin.get(capability_id)
@@ -225,11 +222,14 @@ class PluginAdapter:
                     if plugin_config.plugin_id == plugin_id:
                         return plugin_config.config or {}
 
-            return {}
+            # No plugin found for this capability
+            error_msg = f"No plugin configuration found for capability '{capability_id}'"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
 
         except Exception as e:
-            logger.warning(f"Could not load plugin config for capability {capability_id}: {e}")
-            return {}
+            logger.error(f"Failed to load plugin config for capability {capability_id}: {e}")
+            raise
 
     def get_capability_executor_for_capability(self, capability_id: str):
         async def executor(task: Task) -> str:
@@ -249,7 +249,7 @@ class PluginAdapter:
     def get_capability_info(self, capability_id: str) -> dict[str, Any]:
         capability = self.plugin_manager.get_capability(capability_id)
         if not capability:
-            return {}
+            raise ValueError(f"Capability '{capability_id}' not found")
 
         # Get the plugin name that provides this capability
         plugin_name = self.plugin_manager.capability_to_plugin.get(capability_id, "unknown")
@@ -280,13 +280,3 @@ class PluginAdapter:
 #     adapter = PluginAdapter()
 #     adapter.integrate_with_function_registry(registry)
 #     return adapter
-
-
-def replace_capability_loader() -> PluginAdapter:
-    """
-    Replace the current capability loading system with plugins.
-
-    This returns an adapter that can be used as a drop-in replacement
-    for the current capability loading mechanism.
-    """
-    return PluginAdapter()
