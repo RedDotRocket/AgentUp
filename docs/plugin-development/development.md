@@ -1,6 +1,10 @@
 # Plugin Development Guide
 
-This comprehensive guide covers everything you need to know about developing  AgentUp plugins, from basic concepts to advanced features like state management, external APIs, and custom middleware.
+!!! warning
+    Development is moving fast, and this document may not reflect the latest changes. Once updated, we will remove this warning.
+
+This comprehensive guide covers everything you need to know about developing  AgentUp plugins,
+from basic concepts to advanced features like state management, external APIs, and custom middleware.
 
 ## Plugin Architecture Deep Dive
 
@@ -47,7 +51,7 @@ them up to date using standard approaches such as dependabot etc.
 
 | Hook | Purpose | Return Type | Required |
 |------|---------|-------------|----------|
-| `register_skill` | Provide plugin metadata | `SkillInfo` | ✓ Yes |
+| `register_skill` | Provide plugin metadata | `PluginInfo` | ✓ Yes |
 | `can_handle_task` | Routing decision | `bool` or `float` | ✓ Yes |
 | `execute_skill` | Main skill logic | `SkillResult` | ✓ Yes |
 | `validate_config` | Config validation | `ValidationResult` | ✗ No |

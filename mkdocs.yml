@@ -1,122 +1,146 @@
-site_name: AgentUp Docs
-site_description: Documentation for AgentUp, a framework for building AI agents.
-site_url: https://github.com/RedDotRocket/agentup
-repo_url: https://github.com/RedDotRocket/agentup
-repo_name: RedDotRocket/agentup
+site_name: AgentUp Documentation
+site_description: AgentUp is a powerful framework for building AI agents with advanced capabilities.
+site_url: https://docs.agentup.dev
+site_author: AgentUp Team
+repo_url: https://github.com/RedDotRocket/AgentUp
+repo_name: RedDotRocket/AgentUp
+
 theme:
   name: material
-  font:
-    text: Nunito
-    code: Fira Code
-  logo: images/icon.png
+  logo: images/compie.png
   favicon: images/favicon.ico
   features:
-    - navigation.top
+    - content.action.edit
+    - content.action.view
+    - content.code.annotate
+    - content.code.copy
+    - content.tabs.link
+    - content.tooltips
+    - navigation.tabs
+    - navigation.sections
     - navigation.footer
     - navigation.indexes
-    - navigation.instant
-    - navigation.prune
-    - navigation.sections
-    - navigation.tabs
-    - navigation.tabs.sticky
+    - navigation.top
+    - navigation.tracking
     - search.highlight
     - search.share
     - search.suggest
-    - toc.integrate
     - toc.follow
     - content.code.copy
     - content.code.annotate
     - content.tooltips
-    - content.tabs.link
-  palette:
-    # Light Mode (Retro Comic Theme)
-    - scheme: default
-      toggle:
-        icon: material/weather-night
-        name: Switch to dark mode
-      primary: custom
-      accent: custom
 
-    # Dark Mode (Retro Comic Dark)
-    - scheme: slate
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: deep orange
       toggle:
-        icon: material/weather-sunny
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: deep orange
+      toggle:
+        icon: material/brightness-4
         name: Switch to light mode
-      primary: custom
-      accent: custom
+  font:
+    text: Roboto
+    code: Roboto Mono
+
+plugins:
+  - glightbox:
+      touchNavigation: false
+      loop: false
+      effect: zoom
+      width: 100%
+      height: auto
+      zoomable: true
+      draggable: true
+  - search:
+      separator: '[\s\-,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
+  - minify:
+      minify_html: true
+  - tags:
+
+# extra:
+#   analytics:
+#     provider: google
+#     property: !ENV GOOGLE_ANALYTICS_KEY
 
 extra_css:
   - stylesheets/extra.css
 
+
 markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - admonition
+  - pymdownx.arithmatex:
+      generic: true
+  - footnotes
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.mark
   - attr_list
-  - md_in_html
   - pymdownx.emoji:
       emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
-  - pymdownx.highlight:
-      anchor_linenums: true
-      line_spans: __span
-      pygments_lang_class: true
-  - pymdownx.inlinehilite
-  - pymdownx.snippets
+  - md_in_html
   - pymdownx.superfences:
       custom_fences:
         - name: mermaid
           class: mermaid
           format: !!python/name:pymdownx.superfences.fence_code_format
-  - pymdownx.tabbed:
-      alternate_style: true
-  - admonition
-  - pymdownx.details
+
+copyright: Copyright &copy; 2025 Red Dot Rocket
 
 nav:
   - Home: index.md
-  - Getting Started: 
-    - getting-started/index.md
+  - Getting Started:
+    - Overview: getting-started/index.md
     - Installation: getting-started/installation.md
     - First Agent: getting-started/first-agent.md
     - AI Agent: getting-started/ai-agent.md
     - Core Concepts: getting-started/core-concepts.md
   - Middleware:
-    - middleware/index.md
+    - Middleware: middleware/index.md
+    - A2A Protocol: middleware/a2a-protocol.md
     - Logging: middleware/logging.md
     - State Management: middleware/state-management.md
     - Cache Management: middleware/cache-management.md
     - Rate Limiting: middleware/rate-limiting.md
-  - Plugins and MCP:
-
+  - MCP Integration: mcp/mcp-integration.md
   - Security:
-    - security/index.md
+    - Security: security/index.md
     - API Keys: security/api-keys.md
-    - JWT: security/jwt.md
-    - OAuth2: security/oauth2.md
+    - Bearer Tokens: security/jwt-tokens.md
+    - OAuth2: security/oauth2-tokens.md
     - OAuth2 Provider Configuration: security/oauth2-provider-configuration.md
+    - GitHub OAuth2 Setup: security/github_oauth2_setup.md
+    - Scope-based Authorization: security/scope-based-authorization.md
   - Plugin Development:
-    - plugins/index.md
-    - Creating Plugins: plugins/creating-plugins.md
-    - Plugin Types: plugins/plugin-types.md
-    - Plugin Configuration: plugins/plugin-configuration.md
-    - Plugin Development: plugins/plugin-development.md
+    - Plugin Development: plugin-development/index.md
+    - Getting Started: plugin-development/getting-started.md
+    - AI Functions: plugin-development/ai-functions.md
+    - CLI Reference: plugin-development/cli-reference.md
+    - Plugin System Prompts: plugin-development/plugin-system-prompts.md
+    - Plugins as Tools: plugin-development/plugins-as-tools-explanation.md
+    - Scopes and Security: plugin-development/scopes-and-security.md
+    - Testing: plugin-development/testing.md
+    - Development: plugin-development/development.md
   - AgentUp Development:
-    - Overview: development/overview.md
-    - Architecture: development/architecture.md
-    - Testing: development/testing.md
-    - Contributing: development/contributing.md
+    - AgentUp Development: agentup-development/index.md
+    - Configuration: agentup-development/configuration.md
+    - Customization: agentup-development/customization.md
+    - Template System: agentup-development/template-system.md
   - Advanced:
-    - Configuration: advanced/configuration.md
-    - Performance Tuning: advanced/performance-tuning.md
-    - Debugging: advanced/debugging.md
-  - Architecture:
-    - Overview: architecture/overview.md
-    - Components: architecture/components.md
-    - Data Flow: architecture/data-flow.md
-  - Documentation:
-    - MkDocs: documentation/mkdocs.md
-    - Sphinx: documentation/sphinx.md
-  - API Reference: api/index.md
-  - Changelog: changelog.md
-  
-
-
-copyright: Copyright &copy; 2025 Red Dot Rocket
+    - Push Notifications: advanced/push-notifications.md
+    - Streaming: advanced/streaming.md
+  - Reference:
+    - CLI Reference: reference/cli-reference.md
+    - Configuration: reference/configuration.md

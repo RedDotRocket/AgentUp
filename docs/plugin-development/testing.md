@@ -119,7 +119,7 @@ class TestWeatherPlugin:
     def test_plugin_registration(self, plugin):
         """Test that the plugin registers correctly."""
         capability_info = plugin.register_capability()
-        
+
         assert isinstance(capability_info, CapabilityInfo)
         assert capability_info.id == "weather"
         assert capability_info.name == "Weather Information"
@@ -163,21 +163,21 @@ class TestWeatherPlugin:
             "What's the temperature outside?",
             "Weather forecast for tomorrow"
         ]
-        
+
         for query in high_confidence_queries:
             task = self._create_mock_task(query)
             context = CapabilityContext(task=task)
             confidence = plugin.can_handle_task(context)
             assert confidence >= 0.8, f"Low confidence for: {query}"
 
-        # Low confidence non-weather queries  
+        # Low confidence non-weather queries
         low_confidence_queries = [
             "What time is it?",
             "How do I cook pasta?",
             "What's the capital of France?",
             "Calculate 2 + 2"
         ]
-        
+
         for query in low_confidence_queries:
             task = self._create_mock_task(query)
             context = CapabilityContext(task=task)
@@ -194,7 +194,7 @@ class TestWeatherPlugin:
             ("Weather for London, UK", "London, UK"),
             ("Tell me about weather in Los Angeles, CA", "Los Angeles, CA"),
         ]
-        
+
         for user_input, expected_location in test_cases:
             location = plugin._extract_location(user_input)
             assert location == expected_location, f"Failed for: {user_input}"
@@ -207,12 +207,12 @@ class TestWeatherPlugin:
         mock_response.json.return_value = mock_weather_data
         mock_response.raise_for_status = Mock()
         plugin.http_client.get.return_value = mock_response
-        
+
         # Mock cache miss
         plugin.cache.get.return_value = None
-        
+
         result = await plugin._get_current_weather("New York", "imperial")
-        
+
         assert result == mock_weather_data
         plugin.http_client.get.assert_called_once()
         plugin.cache.set.assert_called_once()
@@ -222,9 +222,9 @@ class TestWeatherPlugin:
         """Test weather data retrieval from cache."""
         # Mock cache hit
         plugin.cache.get.return_value = mock_weather_data
-        
+
         result = await plugin._get_current_weather("New York", "imperial")
-        
+
         assert result == mock_weather_data
         # Should not call API when cached
         plugin.http_client.get.assert_not_called()
@@ -234,21 +234,21 @@ class TestWeatherPlugin:
         """Test handling of API errors."""
         # Mock API error
         plugin.http_client.get.side_effect = httpx.HTTPStatusError(
-            "API Error", 
-            request=Mock(), 
+            "API Error",
+            request=Mock(),
             response=Mock(status_code=401)
         )
         plugin.cache.get.return_value = None
-        
+
         with pytest.raises(httpx.HTTPStatusError):
             await plugin._get_current_weather("Invalid", "imperial")
 
     def test_format_current_weather(self, plugin, mock_weather_data):
         """Test weather data formatting."""
         plugin.config = {"default_units": "imperial"}
-        
+
         formatted = plugin._format_current_weather(mock_weather_data, "New York")
-        
+
         assert "New York" in formatted
         assert "72.5°F" in formatted
         assert "partly cloudy" in formatted.lower()
@@ -262,7 +262,7 @@ class TestWeatherPlugin:
             (180, "S"), (225, "SW"), (270, "W"), (315, "NW"),
             (360, "N")  # Full circle
         ]
-        
+
         for degrees, expected in test_cases:
             direction = plugin._wind_direction(degrees)
             assert direction == expected
@@ -288,16 +288,16 @@ class TestWeatherPlugin:
             config=plugin.config,
             state={}
         )
-        
+
         # Mock API response
         mock_response = Mock()
         mock_response.json.return_value = mock_weather_data
         mock_response.raise_for_status = Mock()
         plugin.http_client.get.return_value = mock_response
         plugin.cache.get.return_value = None
-        
+
         result = plugin.execute_capability(context)
-        
+
         assert result.success
         assert "Boston" in result.content
         assert isinstance(result.state_updates, dict)
@@ -312,9 +312,9 @@ class TestWeatherPlugin:
             config={},  # No API key
             state={}
         )
-        
+
         result = plugin.execute_capability(context)
-        
+
         assert not result.success
         assert "not configured" in result.content.lower()
         assert result.error == "Missing API key"
@@ -356,13 +356,13 @@ class TestWeatherAPIIntegration:
             },
             status=200
         )
-        
+
         result = await plugin._get_current_weather("Boston", "imperial")
-        
+
         assert result["main"]["temp"] == 68.0
         assert result["name"] == "Boston"
 
-    @responses.activate  
+    @responses.activate
     @pytest.mark.asyncio
     async def test_real_api_call_error(self, plugin):
         """Test API error handling."""
@@ -372,10 +372,10 @@ class TestWeatherAPIIntegration:
             json={"cod": 401, "message": "Invalid API key"},
             status=401
         )
-        
+
         with pytest.raises(httpx.HTTPStatusError) as exc_info:
             await plugin._get_current_weather("Boston", "imperial")
-        
+
         assert exc_info.value.response.status_code == 401
 ```
 
@@ -395,21 +395,21 @@ class TestWeatherAIFunctions:
     def test_ai_function_registration(self, plugin):
         """Test that AI functions are properly registered."""
         ai_functions = plugin.get_ai_functions()
-        
+
         # Check we have the expected functions
         function_names = [f.name for f in ai_functions]
         expected_functions = ["get_weather", "get_forecast"]
-        
+
         for expected in expected_functions:
             assert expected in function_names
-        
+
         # Validate function schemas
         for func in ai_functions:
             assert "name" in func.__dict__
             assert "description" in func.__dict__
             assert "parameters" in func.__dict__
             assert "handler" in func.__dict__
-            
+
             # Validate OpenAI function calling schema
             params = func.parameters
             assert params["type"] == "object"
@@ -420,15 +420,15 @@ class TestWeatherAIFunctions:
         """Test AI function parameter schemas."""
         ai_functions = plugin.get_ai_functions()
         get_weather_func = next(f for f in ai_functions if f.name == "get_weather")
-        
+
         params = get_weather_func.parameters
         properties = params["properties"]
-        
+
         # Test location parameter
         assert "location" in properties
         assert properties["location"]["type"] == "string"
         assert "description" in properties["location"]
-        
+
         # Test required fields
         assert "location" in params["required"]
 
@@ -439,7 +439,7 @@ class TestWeatherAIFunctions:
         plugin.config = {"api_key": "test_key", "default_units": "imperial"}
         plugin.http_client = AsyncMock()
         plugin.cache = AsyncMock()
-        
+
         # Mock API response
         mock_response = Mock()
         mock_response.json.return_value = {
@@ -449,7 +449,7 @@ class TestWeatherAIFunctions:
         }
         plugin.http_client.get.return_value = mock_response
         plugin.cache.get.return_value = None
-        
+
         # Create test context
         task = Mock()
         context = CapabilityContext(
@@ -461,10 +461,10 @@ class TestWeatherAIFunctions:
                 }
             }
         )
-        
+
         # Execute the AI function
         result = await plugin._get_weather_function(task, context)
-        
+
         assert result.success
         assert "Miami" in result.content
         assert "75.0°F" in result.content
@@ -474,15 +474,15 @@ class TestWeatherAIFunctions:
     async def test_ai_function_error_handling(self, plugin):
         """Test AI function error handling."""
         plugin.config = {}  # Missing API key
-        
+
         task = Mock()
         context = CapabilityContext(
             task=task,
             metadata={"parameters": {"location": "Boston"}}
         )
-        
+
         result = await plugin._get_weather_function(task, context)
-        
+
         assert not result.success
         assert "Missing API key" in result.error
         assert "not configured" in result.content.lower()
@@ -491,15 +491,15 @@ class TestWeatherAIFunctions:
     async def test_ai_function_missing_parameters(self, plugin):
         """Test AI function with missing required parameters."""
         plugin.config = {"api_key": "test_key"}
-        
+
         task = Mock()
         context = CapabilityContext(
             task=task,
             metadata={"parameters": {}}  # Missing location
         )
-        
+
         result = await plugin._get_weather_function(task, context)
-        
+
         assert not result.success
         assert "location" in result.content.lower()
 ```
@@ -511,26 +511,26 @@ def test_function_schema_validation():
     """Test that function schemas are valid OpenAI format."""
     plugin = Plugin()
     ai_functions = plugin.get_ai_functions()
-    
+
     for func in ai_functions:
         schema = func.parameters
-        
+
         # Must be object type
         assert schema["type"] == "object"
-        
+
         # Must have properties
         assert "properties" in schema
         assert isinstance(schema["properties"], dict)
-        
+
         # Required must be a list
         if "required" in schema:
             assert isinstance(schema["required"], list)
-            
+
         # Each property must have type and description
         for prop_name, prop_schema in schema["properties"].items():
             assert "type" in prop_schema
             assert "description" in prop_schema
-            
+
             # Validate enum fields
             if "enum" in prop_schema:
                 assert isinstance(prop_schema["enum"], list)
@@ -549,26 +549,26 @@ class TestWeatherPluginIntegration:
     def plugin_manager(self):
         """Create plugin manager with weather plugin."""
         from agent.plugins import PluginManager
-        
+
         manager = PluginManager()
         plugin = Plugin()
-        
+
         # Register plugin manually
         manager.pm.register(plugin, name="weather_plugin")
-        
+
         # Register skill info
         capability_info = plugin.register_capability()
         manager.skills[skill_info.id] = skill_info
         manager.skill_to_plugin[skill_info.id] = "weather_plugin"
         manager.skill_hooks[skill_info.id] = plugin
-        
+
         return manager
 
     def test_plugin_manager_integration(self, plugin_manager):
         """Test plugin works with plugin manager."""
         # Test skill is registered
         assert "weather" in plugin_manager.skills
-        
+
         # Test skill retrieval
         skill = plugin_manager.get_skill("weather")
         assert skill is not None
@@ -582,7 +582,7 @@ class TestWeatherPluginIntegration:
         weather_plugin.config = {"api_key": "test_key"}
         weather_plugin.http_client = AsyncMock()
         weather_plugin.cache = AsyncMock()
-        
+
         # Mock API response
         mock_response = Mock()
         mock_response.json.return_value = {
@@ -592,29 +592,29 @@ class TestWeatherPluginIntegration:
         }
         weather_plugin.http_client.get.return_value = mock_response
         weather_plugin.cache.get.return_value = None
-        
+
         # Create task context
         task = Mock()
         task.history = [Mock()]
         task.history[0].parts = [Mock()]
         task.history[0].parts[0].text = "Weather in Seattle"
-        
+
         context = CapabilityContext(
             task=task,
             config={"api_key": "test_key"},
             state={}
         )
-        
+
         # Execute through manager
         result = plugin_manager.execute_skill("weather", context)
-        
+
         assert result.success
         assert "Seattle" in result.content
 
     def test_ai_function_registration_via_manager(self, plugin_manager):
         """Test AI functions are available through manager."""
         ai_functions = plugin_manager.get_ai_functions("weather")
-        
+
         assert len(ai_functions) > 0
         function_names = [f.name for f in ai_functions]
         assert "get_weather" in function_names
@@ -624,18 +624,18 @@ class TestWeatherPluginIntegration:
         """Test integration with FunctionRegistry."""
         from agent.plugins.adapter import PluginAdapter
         from agentup.core.dispatcher import FunctionRegistry
-        
+
         # Create adapter and registry
         adapter = PluginAdapter()
         registry = FunctionRegistry()
-        
+
         # Integrate plugins
         adapter.integrate_with_function_registry(registry)
-        
+
         # Test functions are registered
         schemas = registry.get_function_schemas()
         assert len(schemas) > 0
-        
+
         # Test function names
         function_names = [s["name"] for s in schemas]
         # Should include any AI functions from discovered plugins
@@ -672,7 +672,7 @@ class TestWeatherPluginPerformance:
         }
         plugin.http_client.get.return_value = mock_response
         plugin.cache.get.return_value = None
-        
+
         # Create multiple concurrent requests
         tasks = []
         for i in range(50):
@@ -680,14 +680,14 @@ class TestWeatherPluginPerformance:
                 plugin._get_current_weather(f"City{i}", "imperial")
             )
             tasks.append(task)
-        
+
         start_time = time.time()
         results = await asyncio.gather(*tasks)
         end_time = time.time()
-        
+
         # All requests should succeed
         assert len(results) == 50
-        
+
         # Should complete within reasonable time (adjust based on expectations)
         assert end_time - start_time < 2.0
 
@@ -696,40 +696,40 @@ class TestWeatherPluginPerformance:
         """Test caching improves performance."""
         # First call - cache miss
         plugin.cache.get.return_value = None
-        
+
         start_time = time.time()
         await plugin._get_current_weather("Boston", "imperial")
         first_call_time = time.time() - start_time
-        
+
         # Second call - cache hit
         plugin.cache.get.return_value = {"cached": "data"}
-        
+
         start_time = time.time()
         await plugin._get_current_weather("Boston", "imperial")
         second_call_time = time.time() - start_time
-        
+
         # Cached call should be significantly faster
         assert second_call_time < first_call_time * 0.1
 
     def test_memory_usage(self, plugin):
         """Test plugin doesn't leak memory."""
         import tracemalloc
-        
+
         tracemalloc.start()
-        
+
         # Simulate many plugin operations
         for i in range(1000):
             task = Mock()
             task.history = [Mock()]
             task.history[0].parts = [Mock()]
             task.history[0].parts[0].text = f"Weather in City{i}"
-            
+
             context = CapabilityContext(task=task)
             plugin.can_handle_task(context)
-        
+
         current, peak = tracemalloc.get_traced_memory()
         tracemalloc.stop()
-        
+
         # Memory usage should be reasonable (adjust threshold as needed)
         assert peak < 10 * 1024 * 1024  # 10MB peak
 ```
@@ -747,26 +747,26 @@ class TestWeatherPluginE2E:
         """Test complete user interaction workflow."""
         # This test would require a running AgentUp agent
         # For demonstration, we'll simulate the key components
-        
+
         # 1. User sends request
         user_request = "What's the weather like in Paris?"
-        
+
         # 2. Plugin routing
         plugin = Plugin()
         task = Mock()
         task.history = [Mock()]
         task.history[0].parts = [Mock()]
         task.history[0].parts[0].text = user_request
-        
+
         context = CapabilityContext(task=task)
         confidence = plugin.can_handle_task(context)
         assert confidence > 0.8  # Should be routed to weather plugin
-        
+
         # 3. Plugin execution
         plugin.config = {"api_key": "test_key"}
         plugin.http_client = AsyncMock()
         plugin.cache = AsyncMock()
-        
+
         # Mock API response
         mock_response = Mock()
         mock_response.json.return_value = {
@@ -776,12 +776,12 @@ class TestWeatherPluginE2E:
         }
         plugin.http_client.get.return_value = mock_response
         plugin.cache.get.return_value = None
-        
+
         context.config = plugin.config
         context.state = {}
-        
+
         result = plugin.execute_capability(context)
-        
+
         # 4. Verify response
         assert result.success
         assert "Paris" in result.content
@@ -794,7 +794,7 @@ class TestWeatherPluginE2E:
         plugin = Plugin()
         plugin.config = {"api_key": "test_key"}
         plugin.http_client = AsyncMock()
-        
+
         # Simulate LLM function call
         task = Mock()
         context = CapabilityContext(
@@ -806,7 +806,7 @@ class TestWeatherPluginE2E:
                 }
             }
         )
-        
+
         # Mock API response
         mock_response = Mock()
         mock_response.json.return_value = {
@@ -817,9 +817,9 @@ class TestWeatherPluginE2E:
         plugin.http_client.get.return_value = mock_response
         plugin.cache = AsyncMock()
         plugin.cache.get.return_value = None
-        
+
         result = await plugin._get_weather_function(task, context)
-        
+
         assert result.success
         assert "Tokyo" in result.content
         assert "25.0°C" in result.content
@@ -835,10 +835,10 @@ from datetime import datetime
 
 class WeatherDataFactory(factory.Factory):
     """Factory for generating test weather data."""
-    
+
     class Meta:
         model = dict
-    
+
     main = factory.SubFactory('tests.factories.MainWeatherFactory')
     weather = factory.List([
         factory.SubFactory('tests.factories.WeatherDescriptionFactory')
@@ -848,10 +848,10 @@ class WeatherDataFactory(factory.Factory):
 
 class MainWeatherFactory(factory.Factory):
     """Factory for main weather data."""
-    
+
     class Meta:
         model = dict
-    
+
     temp = factory.Faker('pyfloat', min_value=-30, max_value=45)
     feels_like = factory.LazyAttribute(lambda obj: obj.temp + factory.Faker('pyfloat', min_value=-5, max_value=5).generate())
     humidity = factory.Faker('pyint', min_value=20, max_value=100)
@@ -859,10 +859,10 @@ class MainWeatherFactory(factory.Factory):
 
 class WeatherDescriptionFactory(factory.Factory):
     """Factory for weather descriptions."""
-    
+
     class Meta:
         model = dict
-    
+
     main = factory.Faker('random_element', elements=['Clear', 'Clouds', 'Rain', 'Snow'])
     description = factory.LazyAttribute(lambda obj: f"{obj.main.lower()} sky")
 
@@ -870,9 +870,9 @@ class WeatherDescriptionFactory(factory.Factory):
 def test_with_factory_data(plugin):
     """Test using factory-generated data."""
     weather_data = WeatherDataFactory()
-    
+
     formatted = plugin._format_current_weather(weather_data, "Test City")
-    
+
     assert "Test City" in formatted
     assert str(weather_data['main']['temp']) in formatted
 ```
@@ -937,24 +937,24 @@ jobs:
     strategy:
       matrix:
         python-version: [3.9, 3.10, 3.11, 3.12]
-    
+
     steps:
     - uses: actions/checkout@v3
-    
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
-    
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -e ".[test]"
-    
+
     - name: Run tests
       run: |
         pytest tests/ -v --cov=weather_plugin --cov-report=xml
-    
+
     - name: Upload coverage
       uses: codecov/codecov-action@v3
       with:
@@ -990,7 +990,7 @@ class Plugin:
     def __init__(self, http_client=None, cache=None):
         self.http_client = http_client or httpx.AsyncClient()
         self.cache = cache
-        
+
     # This makes testing easier:
     # plugin = Plugin(http_client=mock_client, cache=mock_cache)
 ```
@@ -1014,7 +1014,7 @@ testpaths = tests
 python_files = test_*.py
 python_classes = Test*
 python_functions = test_*
-addopts = 
+addopts =
     --strict-markers
     --disable-warnings
     -ra

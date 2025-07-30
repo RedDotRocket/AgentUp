@@ -1,5 +1,8 @@
 # Scope-Based Authorization
 
+!!! warning
+    Development is moving fast, and this document may not reflect the latest changes. Once updated, we will remove this warning.
+
 **Fine-grained permission control with declarative plugin security**
 
 AgentUp implements a comprehensive scope-based authorization system that provides fine-grained
@@ -456,11 +459,3 @@ plugins:
 # Check agent configuration
 agentup agent validate
 ```
-
----
-
-**Related Documentation:**
-- [Authentication Overview](index.md) - Authentication methods and setup
-- [API Keys](api-keys.md) - API key authentication with scopes
-- [OAuth2](oauth2.md) - OAuth2 integration and scope mapping
-- [Plugin Development](../plugin-development/) - Creating plugins with scope declarations

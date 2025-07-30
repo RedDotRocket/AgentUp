@@ -21,8 +21,3 @@ By the end of this section, you'll:
 - Have created and tested your first agent
 - Know how to customize and extend your agents
 
-### Need Help?
-
-- Check the [Troubleshooting](../troubleshooting/) section for common issues
-- Review the [Reference](../reference/) documentation for detailed specifications
-- Explore [Examples](../examples/) for practical implementations

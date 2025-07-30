@@ -2,44 +2,42 @@
 
 **Enterprise-grade authentication with comprehensive scope-based authorization and AgentUp Security Framework integration**
 
-OAuth2 authentication in AgentUp integrates with the AgentUp Security Framework to provide enterprise-grade security with comprehensive protection across all endpoint types,  middleware selection, and  scope-based authorization. This authentication method serves as the foundation for enterprise deployments while maintaining optimal performance through context-aware security decisions.
-
-## Table of Contents
-
-- [Overview](#overview)
-- [Unified Security Integration](#unified-security-integration)
-- [When to Use OAuth2](#when-to-use-oauth2)
-- [Quick Setup](#quick-setup)
-- [Configuration Options](#configuration-options)
-- [Validation Strategies](#validation-strategies)
-- [Scope-Based Authorization](#scope-based-authorization)
-- [Popular Providers](#popular-providers)
-- [Plugin Integration](#plugin-integration)
-- [Enhanced Authentication Context](#enhanced-authentication-context)
-- [Security Considerations](#security-considerations)
-- [Troubleshooting](#troubleshooting)
+OAuth2 authentication in AgentUp integrates with the AgentUp Security Framework to provide enterprise-grade security with comprehensive
+protection across all endpoint types,  middleware selection, and  scope-based authorization. This authentication method serves as
+the foundation for enterprise deployments while maintaining optimal performance through context-aware security decisions.
 
 ## Overview
 
-OAuth2 authentication in AgentUp integrates with the AgentUp Security Framework to provide enterprise-grade security with comprehensive protection and  security decisions.
+OAuth2 authentication in AgentUp integrates with the AgentUp Security Framework to provide enterprise-grade security with
+comprehensive protection and  security decisions.
 
 ### Core OAuth2 Features
 
-The OAuth2 authentication system provides JWT token validation with both symmetric and asymmetric key support, enabling flexible cryptographic approaches for different organizational requirements. Token introspection capabilities offer real-time validation for dynamic token scenarios, while JWKS integration provides automatic key rotation and management.
+The OAuth2 authentication system provides JWT token validation with both symmetric and asymmetric key support, enabling flexible
+cryptographic approaches for different organizational requirements. Token introspection capabilities offer real-time validation for
+dynamic token scenarios, while JWKS integration provides automatic key rotation and management.
 
-The system includes comprehensive scope-based authorization with hierarchical permission inheritance, enabling  access control patterns that adapt to organizational requirements. Popular OAuth2 provider support includes seamless integration with Google, Auth0, Azure AD, GitHub, and custom OAuth2 implementations.
+The system includes comprehensive scope-based authorization with hierarchical permission inheritance, enabling  access control patterns
+that adapt to organizational requirements. Popular OAuth2 provider support includes seamless integration with Google, Auth0, Azure AD,
+GitHub, and custom OAuth2 implementations.
 
 ### Unified Architecture Integration
 
-OAuth2 authentication integrates  with the AgentUp Security Framework, providing consistent behavior across all endpoint types including JSON-RPC, MCP, and push notification systems. The system ensures that OAuth2 validation and scope-based authorization work uniformly across all components.
+OAuth2 authentication integrates  with the AgentUp Security Framework, providing consistent behavior across all endpoint types including
+JSON-RPC, MCP, and push notification systems. The system ensures that OAuth2 validation and scope-based authorization work uniformly
+across all components.
 
-The authentication method supports context-aware middleware selection based on plugin classification and operational characteristics. This ensures that security measures are appropriate for each component while maintaining comprehensive OAuth2 protection.
+The authentication method supports context-aware middleware selection based on plugin classification and operational characteristics. 
+
+This ensures that security measures are appropriate for each component while maintaining comprehensive OAuth2 protection.
 
 ### Enterprise-Ready Features
 
-The OAuth2 system includes environment variable support for secure credential management, full A2A protocol compliance with proper security scheme advertising, and performance optimization through  caching and validation strategies.
+The OAuth2 system includes environment variable support for secure credential management, full A2A protocol compliance with proper
+security scheme advertising, and performance optimization through  caching and validation strategies.
 
-Multi-tenant capabilities enable different OAuth2 configurations for different organizational units, while comprehensive audit logging provides visibility into authentication decisions and OAuth2 token usage patterns.
+Multi-tenant capabilities enable different OAuth2 configurations for different organizational units, while comprehensive audit logging
+provides visibility into authentication decisions and OAuth2 token usage patterns.
 
 ### How It Works
 
@@ -55,53 +53,15 @@ graph LR
     F -->|Valid| G
 ```
 
-## Unified Security Integration
-
 ### Comprehensive Endpoint Protection
 
-The AgentUp Security Framework ensures that OAuth2 authentication protects all AgentUp endpoints. OAuth2 validation now covers JSON-RPC endpoints, previously unprotected MCP endpoints, and push notification systems with consistent security application.
+The AgentUp Security Framework ensures that OAuth2 authentication protects all AgentUp endpoints. OAuth2 validation now covers
+JSON-RPC endpoints, previously unprotected MCP endpoints, and push notification systems with consistent security application.
 
-Each endpoint type receives appropriate OAuth2 validation measures based on its operational characteristics. The system ensures that OAuth2 token validation, scope checking, and authorization decisions are applied consistently across all endpoint types while maintaining protocol compliance and operational efficiency.
+Each endpoint type receives appropriate OAuth2 validation measures based on its operational characteristics. The system ensures that
+OAuth2 token validation, scope checking, and authorization decisions are applied consistently across all endpoint types while
+maintaining protocol compliance and operational efficiency.
 
-### Context-Aware Middleware Selection
-
-OAuth2 authentication integrates with the context-aware middleware system to provide  security measures based on plugin classification and operational requirements. The system automatically applies appropriate middleware configurations while maintaining comprehensive OAuth2 protection.
-
-LOCAL plugins receive optimized OAuth2 validation with minimal overhead, while NETWORK plugins get comprehensive protection including retry logic and enhanced validation. The middleware integration ensures that OAuth2 authentication scales from simple development scenarios to  enterprise deployments.
-
-### Plugin Classification Integration
-
-The OAuth2 authentication system works  with the plugin classification system to provide automatic scope suggestions and validation. Plugin types influence OAuth2 scope requirements, with the system providing  defaults based on operational characteristics.
-
-AI_FUNCTION plugins automatically receive AI-related scope suggestions, while NETWORK plugins get API access scope recommendations. The system reduces configuration overhead while ensuring appropriate OAuth2 authorization for different plugin types.
-
-### Enhanced Security Context
-
-OAuth2 authentication provides comprehensive security context through the EnhancedCapabilityContext system. This context flows through all plugin executions, providing consistent access to OAuth2 token information, user claims, and authorization scopes.
-
-```python
-@dataclass
-class EnhancedCapabilityContext:
-    # OAuth2-specific authentication context
-    auth: AuthContext
-    oauth2_token: OAuth2TokenInfo
-    user_scopes: list[str]
-    token_claims: dict[str, Any]
-
-    # Plugin classification integration
-    plugin_classification: PluginCharacteristics
-    request_id: str
-
-    # OAuth2 authorization helpers
-    def require_oauth2_scope(self, scope: str) -> None:
-        """Require specific OAuth2 scope for operation"""
-
-    def has_oauth2_scope(self, scope: str) -> bool:
-        """Check if OAuth2 token has specific scope"""
-
-    def get_oauth2_claim(self, claim: str) -> Any:
-        """Get OAuth2 token claim value"""
-```
 
 ## When to Use OAuth2
 
@@ -169,7 +129,8 @@ plugins:
 
 ### Method 2: Token Introspection with Unified Security
 
-For dynamic token validation or when you don't have access to JWT keys, introspection with AgentUp Security Framework provides real-time validation with comprehensive protection:
+For dynamic token validation or when you don't have access to JWT keys, introspection with AgentUp Security
+provides real-time validation with comprehensive protection:
 
 ```yaml
 # OAuth2 Token Introspection with Unified Security
@@ -213,7 +174,9 @@ plugins:
 
 ### Testing Your Setup with Comprehensive Endpoint Coverage
 
-The AgentUp Security Framework now protects all AgentUp endpoints with OAuth2 authentication. Test all endpoint types to verify comprehensive protection:
+The AgentUp Security Framework now protects all AgentUp endpoints with OAuth2 authentication.
+
+Test all endpoint types to verify comprehensive protection:
 
 1. **Start your agent**:
    ```bash
@@ -224,7 +187,7 @@ The AgentUp Security Framework now protects all AgentUp endpoints with OAuth2 au
 
 3. **Test comprehensive endpoint protection**:
    ```bash
-   # Test JSON-RPC endpoint (main A2A protocol)
+   # Test JSON-RPC endpoint
    curl -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
         -H "Content-Type: application/json" \
         -d '{"jsonrpc":"2.0","method":"capabilities","id":"test-1"}' \
@@ -515,10 +478,10 @@ security:
 
 Enable debug logging to troubleshoot OAuth2 issues:
 
-```python
-import logging
-logging.getLogger("src.agent.security").setLevel(logging.DEBUG)
+```yaml
 ```
+
+
 
 ### Testing Tools
 
@@ -564,27 +527,3 @@ except Exception as e:
 "
 ```
 
-## Next Steps
-
-### Advanced Configuration
-- **[Multiple Authentication Types](../configuration/security.md#multiple-auth)**
-- **[Custom Scope Validation](../reference/custom-auth.md#scopes)**
-- **[Token Caching Strategies](../configuration/middleware.md#caching)**
-
-### Integration Examples
-- **[Google Workspace Integration](../examples/google-workspace.md)**
-- **[Microsoft 365 Integration](../examples/microsoft-365.md)**
-- **[Multi-Tenant SaaS](../examples/multi-tenant.md)**
-
-### Production Deployment
-- **[Environment Configuration](../examples/enterprise-agent.md#oauth2)**
-- **[Monitoring and Alerts](../configuration/middleware.md#monitoring)**
-- **[High Availability Setup](../examples/ha-deployment.md)**
-
----
-
-**Quick Links:**
-- [Authentication Overview](quick-start.md)
-- [Provider Examples](providers.md)
-- [Troubleshooting Guide](../troubleshooting/authentication.md)
-- [Configuration Reference](../reference/config-schema.md#oauth2)

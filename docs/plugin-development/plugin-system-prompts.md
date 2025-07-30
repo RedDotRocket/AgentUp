@@ -4,14 +4,14 @@ AgentUp supports skill-specific system prompts that allow plugins to customize t
 
 ## Overview
 
-By default, AgentUp uses a global system prompt defined in `agent_config.yaml`. However, plugins can override this with their own specialized system prompts that are automatically used when their skills are invoked.
+By default, AgentUp uses a global system prompt defined in `agentup.yml`. However, plugins can override this with their own specialized system prompts that are automatically used when their capabilities are invoked.
 
 ## How It Works
 
-When a plugin skill is executed:
+When a plugin capability is executed:
 
-1. **Plugin Registration**: Plugin defines a custom system prompt in its `SkillInfo`
-2. **Skill Invocation**: AgentUp identifies which skill is being used
+1. **Plugin Registration**: Plugin defines a custom system prompt in its `PluginDefinition`
+2. **Capability Invocation**: AgentUp identifies which capability is being used
 3. **System Prompt Selection**: Framework uses the plugin's system prompt instead of the global one
 4. **Specialized Behavior**: The LLM receives domain-specific instructions
 
@@ -19,21 +19,21 @@ When a plugin skill is executed:
 
 ### In Plugin Code
 
-Add a `system_prompt` field to your `SkillInfo` during registration:
+Add a `system_prompt` field to your `PluginDefinition` during registration:
 
 ```python
-from agentup.plugins.hookspecs import hookimpl
-from agentup.plugins.models import SkillInfo, SkillCapability
+from agent.plugins.hookspecs import hookimpl
+from agent.plugins.models import PluginDefinition, CapabilityType
 
 class MyPlugin:
     @hookimpl
-    def register_skill(self) -> SkillInfo:
-        return SkillInfo(
+    def register_capability(self) -> PluginDefinition:
+        return PluginDefinition(
             id="my_plugin.specialized_skill",
             name="Specialized Assistant",
             version="1.0.0",
             description="A specialized AI assistant for my domain",
-            capabilities=[SkillCapability.TEXT, SkillCapability.AI_FUNCTION],
+            capabilities=[CapabilityType.TEXT, CapabilityType.AI_FUNCTION],
             system_prompt="""You are a specialized assistant for [your domain].
 
 Your role:
@@ -47,8 +47,7 @@ When helping users:
 2. [Domain-specific instruction 2]
 3. [Domain-specific instruction 3]
 
-Maintain a [tone/style] while being [characteristics].""",
-        )
+Maintain a [tone/style] while being [characteristics].""")
 ```
 
 ### System Prompt Best Practices
@@ -71,8 +70,8 @@ Code Assistant Plugin - Demonstrates system prompt customization
 import logging
 from typing import Any
 
-from agentup.plugins.hookspecs import hookimpl
-from agentup.plugins.models import SkillCapability, SkillContext, SkillInfo, SkillResult
+from agent.plugins.hookspecs import hookimpl
+from agent.plugins.models import CapabilityType, CapabilityContext, PluginDefinition, CapabilityResult
 
 logger = logging.getLogger(__name__)
 
@@ -81,14 +80,14 @@ class CodeAssistantPlugin:
     """A specialized coding assistant with custom system prompt."""
 
     @hookimpl
-    def register_skill(self) -> SkillInfo:
+    def register_capability(self) -> PluginDefinition:
         """Register the code assistant skill with a custom system prompt."""
-        return SkillInfo(
+        return PluginDefinition(
             id="code_assistant.python_helper",
             name="Python Code Assistant",
             version="1.0.0",
             description="A specialized Python coding assistant",
-            capabilities=[SkillCapability.TEXT, SkillCapability.AI_FUNCTION],
+            capabilities=[CapabilityType.TEXT, CapabilityType.AI_FUNCTION],
             tags=["python", "coding", "assistant"],
             system_prompt="""You are a specialized Python coding assistant with deep expertise in Python development.
 
@@ -112,17 +111,17 @@ Be thorough, accurate, and maintain a professional tone while being approachable
         )
 
     @hookimpl
-    def execute_skill(self, context: SkillContext) -> SkillResult:
+    def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
         """Execute the Python helper skill."""
         # Your skill implementation here
-        return SkillResult(
+        return CapabilityResult(
             content="Python coding assistance with specialized system prompt",
             success=True,
             metadata={"system_prompt_used": True},
         )
 
     @hookimpl
-    def can_handle_task(self, context: SkillContext) -> float:
+    def can_handle_task(self, context: CapabilityContext) -> float:
         """Check if this skill can handle the task."""
         # Your task routing logic here
         return 0.8  # High confidence for Python-related tasks
@@ -130,13 +129,19 @@ Be thorough, accurate, and maintain a professional tone while being approachable
 
 ## Usage in Agent Configuration
 
-Configure the plugin skill in your agent's `agent_config.yaml`:
+Configure the plugin capability in your agent's `agentup.yml`:
 
 ```yaml
-skills:
-  - skill_id: code_assistant.python_helper
-    handler: plugin
-    priority: 60
+plugins:
+  - plugin_id: code_assistant.python_helper
+    name: Python Helper
+    description: Specialized Python coding assistant
+    enabled: true
+    capabilities:
+      - capability_id: python_helper
+        name: Python Helper Capability
+        description: Python coding assistance capability
+        enabled: true
     config:
       # Any plugin-specific configuration
 ```
@@ -146,7 +151,7 @@ skills:
 AgentUp uses the following priority order for system prompts:
 
 1. **Plugin System Prompt** (highest priority) - Used when a plugin skill defines one
-2. **Global System Prompt** - From `agent_config.yaml` under `ai.system_prompt`
+2. **Global System Prompt** - From `agentup.yml` under `ai_provider.system_prompt`
 3. **Default System Prompt** - Built-in fallback prompt
 
 ## Examples of Effective System Prompts
@@ -253,10 +258,3 @@ The system prompt feature is fully backward compatible:
 5. **Keep It Focused**: Avoid overly broad or generic instructions
 6. **Document Well**: Include examples and explanations in your plugin documentation
 7. **Consider Token Usage**: Balance specificity with prompt length efficiency
-
-## Related Documentation
-
-- [Plugin Development Guide](plugin-development.md)
-- [Agent Configuration](agent-configuration.md)
-- [Skill System](skill-system.md)
-- [AI Provider Configuration](ai-providers.md)

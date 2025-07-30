@@ -1,6 +1,26 @@
 # AgentUp Documentation
 
-Welcome to the AgentUp documentation! 
+<p align="center">
+  <img src="images/compie.png" alt="AgentUp Logo" width="150"/>
+</p>
+
+<p align="center">
+  <a href="https://opensource.org/licenses/Apache-2.0"><img src="https://img.shields.io/badge/License-Apache2.0-brightgreen.svg?style=flat" alt="License: Apache 2.0"/></a>
+  |
+  <a href="https://github.com/RedDotRocket/AgentUp/actions/workflows/ci.yml"><img src="https://github.com/RedDotRocket/AgentUp/actions/workflows/ci.yml/badge.svg" alt="CI"/></a>
+  |
+  <a href="https://discord.gg/pPcjYzGvbS"><img src="https://img.shields.io/discord/1384081906773131274?label=Discord&logo=discord" alt="Discord"/></a>
+  |
+  <a href="https://pypi.org/project/AgentUp/"><img src="https://img.shields.io/pypi/v/AgentUp.svg" alt="PyPI Version"/></a>
+  |
+  <a href="https://pepy.tech/project/agentup"><img src="https://static.pepy.tech/badge/agentup" alt="Downloads"/></a>
+</p>
+
+<p align="center">
+  Designed with security, scalability, and extensibility at its foundation, AgentUp streamlines development through a configuration-driven architecture.
+</p>
+
+## Welcome to the AgentUp documentation! 
 
 You'll find everything you need here to get started with AgentUp, from installation to advanced configuration and troubleshooting.
 
@@ -64,4 +84,4 @@ Should you need help or want to connect with other users, we have several option
 
 ## Contributing
 
-We welcome contributions to improve this documentation, code, and overall experience! Please see our [Contributing Guide](../CONTRIBUTING.md) for details on how to help make AgentUp better for everyone.
+We welcome contributions to improve this documentation, code, and overall experience!

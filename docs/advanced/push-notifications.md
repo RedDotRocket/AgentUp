@@ -1,6 +1,10 @@
 # Push Notifications
 
-AgentUp provides comprehensive push notification capabilities that enable your agents to send asynchronous webhooks when tasks complete, change state, or require user attention. This allows for real-time integration with external systems and long-running task management.
+!!! warning
+    Development is moving fast, and this document may not reflect the latest changes. Once updated, we will remove this warning.
+
+AgentUp provides comprehensive push notification capabilities that enable your agents to send asynchronous webhooks when tasks complete,
+change state, or require user attention. This allows for real-time integration with external systems and long-running task management.
 
 ## Overview
 

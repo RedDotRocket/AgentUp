@@ -35,7 +35,7 @@ Fill in the following details:
 ## Step 2: Configure AgentUp Agent
 
 ### 2.1 Create Agent Configuration
-Create a new file `agent_config.yaml` in your agent directory with the following content:
+Create a new file `agentup.yml` in your agent directory with the following content:
 
 ```yaml
 # Agent Configuration with GitHub OAuth2
@@ -51,17 +51,17 @@ security:
     oauth2:
       # Use introspection strategy for GitHub (opaque tokens)
       validation_strategy: "introspection"
-      
+
       # GitHub token introspection endpoint
       introspection_endpoint: "https://api.github.com/applications/{CLIENT_ID}/token"
-      
+
       # Your GitHub OAuth app credentials
       client_id: "${GITHUB_CLIENT_ID}"
       client_secret: "${GITHUB_CLIENT_SECRET}"
-      
+
       # Required GitHub scopes
       required_scopes: ["user", "user:email"]
-  
+
   # Scope hierarchy for your agent
   scope_hierarchy:
     admin: ["*"]
@@ -219,7 +219,7 @@ curl -X POST http://localhost:8000/ \
    POST https://api.github.com/applications/{client_id}/token
    Authorization: Basic {base64(client_id:client_secret)}
    Content-Type: application/json
-   
+
    {"access_token": "github_token"}
    ```
 4. GitHub responds with token validity and user info

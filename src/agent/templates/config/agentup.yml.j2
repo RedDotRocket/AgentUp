@@ -3,8 +3,8 @@ name: {{ project_name }}
 description: {{ description }}
 version: 0.4.0
 
-# Core plugins configuration with AgentUp Security Framework integration
-plugins:
+# Agent Plugin Configuration
+{# plugins:
   # Hello plugin - basic example (can be removed)
   - plugin_id: hello
     name: Hello Plugin
@@ -18,74 +18,9 @@ plugins:
     capabilities:
       - capability_id: hello
         required_scopes: ["api:read"]
-        enabled: true
-{% for plugin in selected_plugins %}
-{% if plugin == 'ai_assistant' %}
-  - plugin_id: ai_assistant
-    name: AI Assistant
-    description: AI-powered assistant for various tasks
-    tags: [ai, assistant, helper]
-    input_mode: text
-    output_mode: text
-    priority: 100
-    middleware_override:
-      - name: "rate_limited"
-        params:
-          requests_per_minute: 20  # Lower rate for AI operations
-      - name: "timed"
-        params: {}
-{% elif plugin == 'document_processor' %}
-  - plugin_id: document_processor
-    name: Document Processor
-    description: Process and analyze documents
-    tags: [document, processing, analysis]
-    input_mode: text
-    output_mode: text
-    priority: 90
-    middleware_override:
-      - name: "cached"
-        params:
-          ttl: 600  # Cache document processing results longer
-{% elif plugin == 'data_analyzer' %}
-  - plugin_id: data_analyzer
-    name: Data Analyzer
-    description: Analyze and visualize data
-    tags: [data, analysis, visualization]
-    input_mode: text
-    output_mode: text
-    priority: 90
-    middleware_override:
-      - name: "cached"
-        params:
-          ttl: 300  # Standard cache for analysis
-      - name: "rate_limited"
-        params:
-          requests_per_minute: 30
-{% elif plugin == 'hello_world' %}
-  - plugin_id: hello_world
-    name: Hello World
-    description: Simple greeting handler
-    tags: [greeting, basic, direct]
-    input_mode: text
-    output_mode: text
-    keywords: [hello, hi, hey, greetings]
-    patterns: ['hello.*', 'hi\\s+.*', 'greet.*']
-    priority: 30
-{% elif plugin == 'conversation' %}
-  - plugin_id: conversation
-    name: Conversation
-    description: Basic conversation handler
-    tags: [conversation, chat, direct]
-    input_mode: text
-    output_mode: text
-    keywords: [chat, talk, conversation]
-    patterns: ['chat.*', 'talk.*', 'conversation.*']
-    priority: 40
-{% endif %}
-{% endfor %}
+        enabled: true #}
 
-
-# Unified Security Configuration
+# Security Configuration
 security:
   enabled: {{ security_enabled | default(false) }}
 {% if security_enabled %}

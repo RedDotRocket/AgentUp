@@ -7,7 +7,6 @@ API key authentication provides a straightforward way to secure your AgentUp age
 ## Table of Contents
 
 - [Overview](#overview)
-- [Unified Security Integration](#unified-security-integration)
 - [Quick Setup](#quick-setup)
 - [Configuration Options](#configuration-options)
 - [Multiple API Keys with Scopes](#multiple-api-keys-with-scopes)
@@ -19,39 +18,45 @@ API key authentication provides a straightforward way to secure your AgentUp age
 
 ## Overview
 
-API key authentication in AgentUp integrates with the AgentUp Security Framework to provide comprehensive protection across all endpoint types with middleware selection and scope-based authorization capabilities.
+API key authentication in AgentUp integrates with the AgentUp Security Framework to provide comprehensive protection across all
+endpoint types with middleware selection and scope-based authorization capabilities.
 
 ### Enhanced Security Features
 
-The API key system provides simple setup with comprehensive protection, flexible configuration options including headers, query parameters, and cookies, and support for multiple keys with individual scope assignments. The system includes automatic rejection of weak keys and A2A spec compliance with proper security scheme advertising through the Agent Card endpoint.
+The API key system provides simple setup with comprehensive protection, flexible configuration options including headers, query
+parameters, and cookies, and support for multiple keys with individual scope assignments. The system includes automatic rejection
+of weak keys and A2A spec compliance with proper security scheme advertising through the Agent Card endpoint.
 
-The enhanced system now supports scope-based authorization, allowing different API keys to have different permission levels. Context-aware middleware selection ensures optimal security measures based on plugin characteristics, while comprehensive endpoint protection covers all AgentUp endpoints including MCP and push notification systems.
+The enhanced system now supports scope-based authorization, allowing different API keys to have different permission levels. Context-aware
+middleware selection ensures optimal security measures based on plugin characteristics, while comprehensive endpoint protection
+covers all AgentUp endpoints including MCP and push notification systems.
 
 ### When to Use API Keys
 
-API key authentication is ideal for development and testing environments, internal APIs, service-to-service authentication, simple authentication scenarios, and microservices architectures.
+API key authentication is ideal for development and testing environments, internal APIs, service-to-service authentication, simple
+authentication scenarios, and microservices architectures.
 
-The system now supports complex authorization needs through scope integration, making API keys suitable for a broader range of use cases while maintaining the simplicity that makes them attractive for straightforward authentication scenarios.
+The system now supports complex authorization needs through scope integration, making API keys suitable for a broader range of use cases
+while maintaining the simplicity that makes them attractive for straightforward authentication scenarios.
 
 ## Integration
 
 ### Comprehensive Endpoint Protection
 
-The AgentUp Security Framework ensures that API key authentication protects all AgentUp endpoints. MCP endpoints at `/mcp`, push notification configuration endpoints, and all JSON-RPC endpoints now require proper API key authentication.
+The AgentUp Security Framework ensures that API key authentication protects all AgentUp endpoints. MCP endpoints at `/mcp`, push notification
+configuration endpoints, and all JSON-RPC endpoints now require proper API key authentication.
 
-This comprehensive protection eliminates security gaps while maintaining the simplicity that makes API keys attractive for development and internal use. The system ensures consistent behavior across all endpoint types while providing appropriate security measures for each operational context.
-
-### Context-Aware Middleware Integration
-
-API key authentication integrates with the context-aware middleware system to provide  security measures based on plugin classification and operational characteristics. LOCAL plugins receive optimized validation with minimal overhead, while NETWORK plugins get comprehensive protection including rate limiting and retry logic.
-
-The middleware integration ensures that API key authentication scales from simple development scenarios to  production deployments without requiring additional configuration overhead. The system automatically applies appropriate middleware based on plugin characteristics and operational requirements.
+This comprehensive protection eliminates security gaps while maintaining the simplicity that makes API keys attractive for
+development and internal use. The system ensures consistent behavior across all endpoint types while providing appropriate
+security measures for each operational context.
 
 ### Scope-Based Authorization Support
 
-The enhanced API key system supports scope-based authorization, allowing different keys to have different permission levels. This enables  access control patterns while maintaining the operational simplicity that makes API keys attractive for internal use.
+The enhanced API key system supports scope-based authorization, allowing different keys to have different permission levels. This enables
+access control patterns while maintaining the operational simplicity that makes API keys attractive for internal use.
 
-API keys can be associated with specific scopes through configuration, enabling fine-grained access control that adapts to organizational requirements. The scope system integrates with the plugin classification system to provide automatic scope suggestions and validation.
+API keys can be associated with specific scopes through configuration, enabling fine-grained access control that adapts to organizational
+requirements. The scope system integrates with the plugin classification system to provide automatic scope suggestions and validation.
 
 ## Quick Setup
 
@@ -200,15 +205,21 @@ curl -H "Cookie: auth_token=sk-your-key-here" http://localhost:8000/agent/card
 
 ### Use Cases for Multiple Keys with Scope-Based Authorization
 
-The AgentUp Security Framework enhances multiple API key support with comprehensive scope-based authorization. Different API keys can have different permission levels, enabling  access control patterns while maintaining the operational simplicity that makes API keys attractive for internal use.
+The AgentUp Security Framework enhances multiple API key support with comprehensive scope-based authorization. Different API keys
+can have different permission levels, enabling  access control patterns while maintaining the operational simplicity that makes API
+keys attractive for internal use.
 
-**Environment Separation with Scopes**: Different keys for dev/staging/prod environments, each with appropriate permission levels for their operational context. Production keys receive restrictive scopes while development keys get broader permissions for testing flexibility.
+**Environment Separation with Scopes**: Different keys for dev/staging/prod environments, each with appropriate permission levels
+for their operational context. Production keys receive restrictive scopes while development keys get broader permissions for testing flexibility.
 
-**Role-Based Access Control**: API keys can represent different organizational roles, each with specific scope assignments that match their operational responsibilities. This enables fine-grained access control without complex authentication flows.
+**Role-Based Access Control**: API keys can represent different organizational roles, each with specific scope assignments that match
+their operational responsibilities. This enables fine-grained access control without complex authentication flows.
 
-**Client Segmentation with Permissions**: Separate keys for different applications or services, each with scopes tailored to their specific integration requirements. This ensures that each client has only the permissions necessary for their intended operations.
+**Client Segmentation with Permissions**: Separate keys for different applications or services, each with scopes tailored to their
+specific integration requirements. This ensures that each client has only the permissions necessary for their intended operations.
 
-**Team-Based Authorization**: Different teams receive API keys with scopes matching their operational needs and security clearance levels. Development teams might receive broader scopes for testing, while production teams get restrictive operational scopes.
+**Team-Based Authorization**: Different teams receive API keys with scopes matching their operational needs and security clearance
+levels. Development teams might receive broader scopes for testing, while production teams get restrictive operational scopes.
 
 ### Configuration with Scope Integration
 
@@ -314,7 +325,7 @@ security:
   type: "api_key"
   api_key: "sk-prod-key-strong-and-secure"
 
-# agent_config.staging.yaml  
+# agent_config.staging.yaml
 security:
   enabled: true
   type: "api_key"
@@ -402,14 +413,6 @@ variables:
 
 ## Plugin Integration
 
-### Context-Aware Security with Plugin Classification
-
-API key authentication integrates  with the AgentUp Security Framework's plugin classification system to provide context-aware security measures. The system automatically adapts protection levels based on plugin characteristics while ensuring comprehensive authorization through scope-based permissions.
-
-LOCAL plugins receive optimized API key validation with minimal overhead since they operate on system resources and have predictable execution patterns. NETWORK plugins get comprehensive protection including enhanced validation and  middleware application to handle external service interactions securely.
-
-The plugin classification system works with API key scopes to provide automatic scope suggestions based on plugin characteristics. System plugins automatically suggest system-related scopes, while API plugins receive recommendations for external service access permissions.
-
 ### Enhanced Capability Context Integration
 
 API key authentication provides comprehensive security context through the EnhancedCapabilityContext system. This context flows through all plugin executions, ensuring that plugins have consistent access to authentication and authorization information.
@@ -418,14 +421,14 @@ API key authentication provides comprehensive security context through the Enhan
 @hookimpl
 def execute_capability(self, context: EnhancedCapabilityContext) -> CapabilityResult:
     """Execute capability with API key authentication context."""
-    
+
     # Access API key authentication information
     api_key_id = context.auth.metadata.get("api_key_id")
     auth_method = context.auth.method  # "api_key"
-    
+
     # Validate specific scopes for API key operations
     context.require_scope("api:read")
-    
+
     # Conditional logic based on API key permissions
     if context.has_scope("api:write"):
         # Allow write operations for keys with appropriate permissions
@@ -433,60 +436,56 @@ def execute_capability(self, context: EnhancedCapabilityContext) -> CapabilityRe
     else:
         # Restrict to read-only operations
         result = self._perform_read_operation(context)
-    
-    # Access plugin classification information
-    plugin_type = context.plugin_classification.plugin_type
-    if plugin_type == PluginType.NETWORK:
-        # Additional validation for network operations
-        context.require_scope("api:external")
-    
+
     return result
 ```
 
 ### Scope Validation in Plugin Operations
 
-Plugins can implement  authorization logic beyond basic API key validation using the scope-based authorization system. This enables runtime permission checking and conditional logic based on the specific API key's assigned permissions.
+Plugins can implement  authorization logic beyond basic API key validation using the scope-based authorization system.
+This enables runtime permission checking and conditional logic based on the specific API key's assigned permissions.
 
 ```python
 @hookimpl
 def validate_plugin_access(self, context: EnhancedCapabilityContext) -> bool:
     """Custom authorization logic for API key authenticated requests."""
-    
+
     # Basic API key scope validation
     if not context.has_scope("files:read"):
         return False
-    
+
     # API key specific validation
     api_key_metadata = context.auth.metadata
-    
+
     # Time-based restrictions for API keys
     if api_key_metadata.get("access_hours"):
         current_hour = datetime.datetime.now().hour
         allowed_hours = api_key_metadata["access_hours"]
         if current_hour not in allowed_hours:
             return False
-    
+
     # Department-based access control
     key_department = api_key_metadata.get("department")
     requested_resource = context.metadata.get("resource_path", "")
-    
+
     if requested_resource.startswith("/departments/"):
         resource_dept = requested_resource.split("/")[2]
         if key_department != resource_dept and not context.has_scope("admin"):
             return False
-    
+
     # Rate limiting based on API key tier
     key_tier = api_key_metadata.get("tier", "basic")
     if key_tier == "basic":
         # Additional rate limiting for basic tier keys
         return self._check_basic_tier_limits(context)
-    
+
     return True
 ```
 
 ### Plugin Configuration with API Key Scopes
 
-Plugin configurations integrate with the API key scope system to provide automatic authorization configuration. Plugins specify their required scopes, and the system ensures that API keys have appropriate permissions before allowing plugin execution.
+Plugin configurations integrate with the API key scope system to provide automatic authorization configuration. Plugins specify
+their required scopes, and the system ensures that API keys have appropriate permissions before allowing plugin execution.
 
 ```yaml
 # Plugin configuration with API key scope requirements
@@ -498,7 +497,7 @@ plugins:
     api_key_specific:
       minimum_tier: "basic"
       department_access: ["IT", "Operations"]
-      
+
   - plugin_id: "external_api_client"
     name: "External API Client"
     plugin_type: "network"
@@ -509,7 +508,7 @@ plugins:
         basic: 10  # requests per minute for basic keys
         premium: 50
         enterprise: 200
-        
+
   - plugin_id: "file_manager"
     name: "File Manager"
     plugin_type: "local"
@@ -521,7 +520,8 @@ plugins:
 
 ### Middleware Integration for API Keys
 
-API key authentication integrates with the context-aware middleware system to provide  security measures based on both API key characteristics and plugin classification. The system applies appropriate middleware configurations while maintaining performance.
+API key authentication integrates with the context-aware middleware system to provide  security measures based on both API key
+characteristics and plugin classification. The system applies appropriate middleware configurations while maintaining performance.
 
 ```yaml
 # Middleware configuration with API key integration
@@ -571,25 +571,33 @@ plugins:
 
 The AgentUp Security Framework ensures that API key authentication protects all AgentUp endpoints.
 
-**JSON-RPC Endpoint Protection**: The main JSON-RPC endpoint at `/` receives comprehensive API key authentication with proper scope validation for all A2A protocol methods. This ensures that all agent-to-agent communication is properly authenticated and authorized.
+**JSON-RPC Endpoint Protection**: The main JSON-RPC endpoint at `/` receives comprehensive API key authentication with proper scope
+validation for all A2A protocol methods. This ensures that all agent-to-agent communication is properly authenticated and authorized.
 
-**MCP Endpoint Security**: Previously unprotected MCP endpoints at `/mcp` now require proper API key authentication, eliminating a critical security vulnerability. MCP operations integrate with the scope-based authorization system while maintaining protocol compliance.
+**MCP Endpoint Security**: Previously unprotected MCP endpoints at `/mcp` now require proper API key authentication, eliminating a
+critical security vulnerability. MCP operations integrate with the scope-based authorization system while maintaining protocol compliance.
 
-**Agent Card Protection**: The agent discovery endpoint at `/.well-known/agent.json` receives appropriate protection while maintaining A2A protocol compliance. The system ensures that agent capabilities are only exposed to properly authenticated clients.
+**Agent Card Protection**: The agent discovery endpoint at `/.well-known/agent.json` receives appropriate protection while maintaining
+A2A protocol compliance. The system ensures that agent capabilities are only exposed to properly authenticated clients.
 
-**Push Notification Security**: Push notification configuration endpoints require API key authentication with appropriate scopes for notification management. This prevents unauthorized notification configuration while enabling legitimate push notification operations.
+**Push Notification Security**: Push notification configuration endpoints require API key authentication with appropriate scopes
+for notification management. This prevents unauthorized notification configuration while enabling legitimate push notification operations.
 
 ### API Key Validation Across All Endpoints
 
-The AgentUp Security Framework provides consistent API key validation across all endpoint types with appropriate performance optimization for each operational context. The system ensures comprehensive protection while maintaining optimal performance characteristics.
+The AgentUp Security Framework provides consistent API key validation across all endpoint types with appropriate performance
+optimization for each operational context. The system ensures comprehensive protection while maintaining optimal performance characteristics.
 
-Network endpoints receive enhanced validation with comprehensive scope checking and middleware protection. Local endpoints get optimized validation that maintains security while minimizing overhead for high-frequency operations.
+Network endpoints receive enhanced validation with comprehensive scope checking and middleware protection. Local endpoints get
+optimized validation that maintains security while minimizing overhead for high-frequency operations.
 
-The validation system supports all API key location options (headers, query parameters, cookies) across all endpoint types, providing flexible authentication approaches while maintaining security consistency.
+The validation system supports all API key location options (headers, query parameters, cookies) across all endpoint types, providing
+flexible authentication approaches while maintaining security consistency.
 
 ### Scope-Based Endpoint Access Control
 
-Different endpoints require different scope combinations based on their operational characteristics and security requirements. The system provides  scope requirements while supporting custom configurations for specialized use cases.
+Different endpoints require different scope combinations based on their operational characteristics and security requirements. The system
+provides  scope requirements while supporting custom configurations for specialized use cases.
 
 ```yaml
 # Endpoint-specific scope requirements
@@ -597,21 +605,21 @@ endpoint_scopes:
   "/.well-known/agent.json":
     required_scopes: []  # Public discovery endpoint
     optional_scopes: ["agent:enhanced_info"]
-    
+
   "/":  # JSON-RPC endpoint
     required_scopes: ["api:read"]
     method_specific:
       "capabilities": ["api:read"]
       "execute": ["plugin:execute"]
       "status": ["system:read"]
-      
+
   "/mcp":  # MCP endpoint
     required_scopes: ["mcp:access"]
     method_specific:
       "tools/list": ["mcp:tools:read"]
       "tools/call": ["mcp:tools:execute"]
       "resources/list": ["mcp:resources:read"]
-      
+
   "/push/configure":  # Push notification configuration
     required_scopes: ["push:configure"]
     additional_validation: true
@@ -763,7 +771,7 @@ if [ "$STATUS" = "200" ]; then
     echo "   Valid API key accepted"
     AGENT_NAME=$(echo "$BODY" | python -c "import sys, json; print(json.load(sys.stdin).get('name', 'Unknown Agent'))")
     echo "   Connected to: $AGENT_NAME"
-    
+
     # Check security scheme in response
     SECURITY_SCHEME=$(echo "$BODY" | python -c "
 import sys, json
@@ -794,55 +802,55 @@ import sys
 
 def validate_api_key(api_key):
     """Validate API key strength and format."""
-    
+
     issues = []
-    
+
     # Length check
     if len(api_key) < 8:
         issues.append("Key too short (minimum 8 characters)")
-    
+
     # Weak patterns check
     weak_patterns = ['password', 'test', 'admin', 'key', '123', 'abc']
     for pattern in weak_patterns:
         if pattern.lower() in api_key.lower():
             issues.append(f"Contains weak pattern: {pattern}")
-    
+
     # Character diversity check
     if not re.search(r'[A-Za-z]', api_key):
         issues.append("No letters found")
-    
+
     if not re.search(r'[0-9]', api_key):
         issues.append("No numbers found")
-    
+
     # Good patterns check
     good_patterns = []
     if api_key.startswith('sk-'):
         good_patterns.append("Good prefix (sk-)")
-    
+
     if len(api_key) >= 20:
         good_patterns.append("Good length (20+ characters)")
-    
+
     if re.search(r'[A-Z]', api_key) and re.search(r'[a-z]', api_key):
         good_patterns.append("Mixed case letters")
-    
+
     return issues, good_patterns
 
 def main():
     if len(sys.argv) != 2:
         print("Usage: python validate-api-key.py <api_key>")
         sys.exit(1)
-    
+
     api_key = sys.argv[1]
     issues, good_patterns = validate_api_key(api_key)
-    
+
     print(f"API Key Validation: {api_key}")
     print("=" * 50)
-    
+
     if good_patterns:
         print("Strengths:")
         for pattern in good_patterns:
             print(f"   • {pattern}")
-    
+
     if issues:
         print("Issues:")
         for issue in issues:
@@ -870,36 +878,36 @@ def agent_app():
     from src.agent.main import app
     return app
 
-@pytest.fixture 
+@pytest.fixture
 def client(agent_app):
     """Create test client."""
     return TestClient(agent_app)
 
 def test_api_key_authentication(client):
     """Test API key authentication flow."""
-    
+
     # Test 1: Discovery endpoint (no auth required)
     response = client.get("/.well-known/agent.json")
     assert response.status_code == 200
-    
+
     # Test 2: Protected endpoint without key
     response = client.get("/agent/card")
     assert response.status_code == 401
-    
+
     # Test 3: Protected endpoint with invalid key
     response = client.get(
         "/agent/card",
         headers={"X-API-Key": "invalid-key"}
     )
     assert response.status_code == 401
-    
+
     # Test 4: Protected endpoint with valid key
     response = client.get(
-        "/agent/card", 
+        "/agent/card",
         headers={"X-API-Key": "sk-test-key-for-testing"}
     )
     assert response.status_code == 200
-    
+
     # Verify security scheme in response
     agent_card = response.json()
     assert "securitySchemes" in agent_card
@@ -915,7 +923,7 @@ def test_api_key_authentication(client):
 agent:
   name: "My Agent"
 
-# After: API key security  
+# After: API key security
 agent:
   name: "My Agent"
 
@@ -953,30 +961,6 @@ security:
 # Before
 curl -H "Authorization: Bearer your-bearer-token" URL
 
-# After  
+# After
 curl -H "X-API-Key: sk-your-api-key" URL
 ```
-
-## Next Steps
-
-### Enhanced Security
-- **[Bearer Token Authentication](bearer-tokens.md)** - JWT tokens
-- **[OAuth2 Authentication](oauth2.md)** - Enterprise integration
-- **[Multi-Factor Authentication](../configuration/security.md#mfa)** - Additional security layers
-
-### Production Deployment
-- **[Environment Management](../examples/enterprise-agent.md#environments)**
-- **[Key Rotation Automation](../configuration/security.md#rotation)**
-- **[Monitoring and Alerting](../configuration/middleware.md#monitoring)**
-
-### Advanced Configuration
-- **[Custom Headers](../reference/config-schema.md#api-key-headers)**
-- **[Rate Limiting](../configuration/middleware.md#rate-limiting)**
-- **[Audit Logging](../configuration/security.md#auditing)**
-
----
-
-**Quick Links:**
-- [Documentation Home](../index.md)
-- [Authentication Quick Start](quick-start.md)
-- [Troubleshooting Guide](../troubleshooting/authentication.md)

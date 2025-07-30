@@ -69,7 +69,7 @@ A plugin that provides Time Plugin functionality
 """
 
 import pluggy
-from agent.plugins import CapabilityInfo, CapabilityContext, CapabilityResult, PluginValidationResult, CapabilityType
+from agent.plugins import PluginDefinition, CapabilityContext, CapabilityResult, PluginValidationResult, CapabilityType
 
 hookimpl = pluggy.HookimplMarker("agentup")
 
@@ -81,9 +81,9 @@ class Plugin:
         self.name = "time-plugin"
 
     @hookimpl
-    def register_capability(self) -> CapabilityInfo:
+    def register_capability(self) -> PluginDefinition:
         """Register the capability with AgentUp."""
-        return CapabilityInfo(
+        return PluginDefinition(
             id="time_plugin",
             name="Time Plugin",
             version="0.1.0",
@@ -107,7 +107,7 @@ class Plugin:
             metadata={"skill": "time_plugin"},
         )
 
-    def _extract_user_input(self, context: SkillContext) -> str:
+    def _extract_user_input(self, context: CapabilityContext) -> str:
         """Extract user input from the task."""
         if hasattr(context.task, "history") and context.task.history:
             last_msg = context.task.history[-1]
@@ -120,7 +120,7 @@ class Plugin:
 
 ## Step 3: Implement Time Functionality
 
-Let's replace the basic logic with actual time functionality. Update the `execute_skill` method:
+Let's replace the basic logic with actual time functionality. Update the `execute_capability` method:
 
 ```python
 import datetime
@@ -410,7 +410,7 @@ def get_ai_functions(self) -> list[AIFunction]:
         )
     ]
 
-async def _get_time_function(self, task, context: SkillContext) -> SkillResult:
+async def _get_time_function(self, task, context: CapabilityContext) -> CapabilityResult:
     """Handle the get_current_time AI function."""
     params = context.metadata.get("parameters", {})
     timezone = params.get("timezone", "local")
@@ -438,7 +438,7 @@ async def _get_time_function(self, task, context: SkillContext) -> SkillResult:
             error=str(e),
         )
 
-async def _get_date_function(self, task, context: SkillContext) -> SkillResult:
+async def _get_date_function(self, task, context: CapabilityContext) -> CapabilityResult:
     """Handle the get_current_date AI function."""
     params = context.metadata.get("parameters", {})
     format_type = params.get("format", "long")
@@ -468,7 +468,7 @@ async def _get_date_function(self, task, context: SkillContext) -> SkillResult:
 Don't forget to import `AIFunction`:
 
 ```python
-from agent.plugins import CapabilityInfo, CapabilityContext, CapabilityResult, PluginValidationResult, CapabilityType, AIFunction
+from agent.plugins import PluginDefinition, CapabilityContext, CapabilityResult, PluginValidationResult, CapabilityType, AIFunction
 ```
 
 ## Step 8: Test AI Functions
@@ -533,18 +533,18 @@ Your plugin already has a test file. Let's add some real tests:
 
 import pytest
 import datetime
-from agent.plugins.models import SkillContext, SkillInfo
+from agent.plugins.models import CapabilityContext, PluginDefinition
 from time_plugin.plugin import Plugin
 
 
 def test_plugin_registration():
     """Test that the plugin registers correctly."""
     plugin = Plugin()
-    skill_info = plugin.register_skill()
+    plugin_def = plugin.register_capability()
 
-    assert isinstance(skill_info, SkillInfo)
-    assert skill_info.id == "time_plugin"
-    assert skill_info.name == "Time Plugin"
+    assert isinstance(plugin_def, PluginDefinition)
+    assert plugin_def.id == "time_plugin"
+    assert plugin_def.name == "Time Plugin"
 
 
 def test_time_request():
@@ -558,9 +558,9 @@ def test_time_request():
     task.history[0].parts = [Mock()]
     task.history[0].parts[0].text = "What time is it?"
 
-    context = SkillContext(task=task)
+    context = CapabilityContext(task=task)
 
-    result = plugin.execute_skill(context)
+    result = plugin.execute_capability(context)
 
     assert result.success
     assert "time" in result.content.lower()
@@ -576,9 +576,9 @@ def test_date_request():
     task.history[0].parts = [Mock()]
     task.history[0].parts[0].text = "What's today's date?"
 
-    context = SkillContext(task=task)
+    context = CapabilityContext(task=task)
 
-    result = plugin.execute_skill(context)
+    result = plugin.execute_capability(context)
 
     assert result.success
     assert "today" in result.content.lower() or "date" in result.content.lower()
@@ -597,14 +597,14 @@ def test_routing_confidence():
     task.history[0].parts = [Mock()]
     task.history[0].parts[0].text = "what time is it?"
 
-    context = SkillContext(task=task)
+    context = CapabilityContext(task=task)
     confidence = plugin.can_handle_task(context)
 
     assert confidence == 1.0  # Should be maximum confidence
 
     # Test unrelated query - should be low confidence
     task.history[0].parts[0].text = "what's the weather like?"
-    context = SkillContext(task=task)
+    context = CapabilityContext(task=task)
     confidence = plugin.can_handle_task(context)
 
     assert confidence == 0.0  # Should be no confidence
@@ -623,7 +623,7 @@ async def test_ai_functions():
     # Test time function
     from unittest.mock import Mock
     task = Mock()
-    context = SkillContext(
+    context = CapabilityContext(
         task=task,
         metadata={"parameters": {"format": "24hour"}}
     )
@@ -668,14 +668,6 @@ pip install time-plugin
 
 And it will automatically work with any AgentUp agent!
 
-## What's Next?
-
-You've successfully created a working AgentUp plugin! Here are some next steps:
-
-1. **[Plugin Development Guide](development.md)** - Learn advanced features like state management and middleware
-2. **[AI Functions Deep Dive](ai-functions.md)** - Build  LLM-callable functions
-3. **[Testing Guide](testing.md)** - Comprehensive testing strategies
-4. **[Publishing Guide](publishing.md)** - Share your plugins with the community
 
 ## Troubleshooting
 

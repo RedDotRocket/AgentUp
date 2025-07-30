@@ -549,10 +549,3 @@ agentup agent validate --strict
 # Check agent status
 agentup agent status --format json
 ```
-
----
-
-For more detailed examples and guides, see:
-- **[Getting Started](../getting-started/)** - Basic usage tutorials
-- **[Agent Development](../guides/agent-development/)** - Agent configuration guides  
-- **[Plugin Development](../guides/plugin-development/)** - Plugin creation guides

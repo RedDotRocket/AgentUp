@@ -1,8 +1,12 @@
 # A2A Streaming Test Guide for AgentUp
 
+!!! warning
+    Development is moving fast, and this document may not reflect the latest changes. Once updated, we will remove this warning.
+
 ## Overview
 
-This guide covers testing the AgentUp streaming functionality using the `message/stream` endpoint. AgentUp implements streaming using Server-Sent Events (SSE) to provide real-time responses for long-running AI tasks.
+This guide covers testing the AgentUp streaming functionality using the `message/stream` endpoint. AgentUp
+implements streaming using Server-Sent Events (SSE) to provide real-time responses for long-running AI tasks.
 
 ## Streaming Implementation Details
 

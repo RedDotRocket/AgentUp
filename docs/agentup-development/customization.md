@@ -1,6 +1,10 @@
 # AgentUp CLI Customization Guide
 
-This document explains how to customize the `agentup agent create` CLI command, including adding new options, modifying existing features, and working with the Jinja2 template system.
+!!! warning
+    Development is moving fast, and this document may not reflect the latest changes. Once updated, we will remove this warning.
+
+This document explains how to customize the `agentup agent create` CLI command, including adding new options, modifying existing features,
+and working with the Jinja2 template system.
 
 ## Overview
 

@@ -1,12 +1,16 @@
 # Model Context Protocol (MCP) Integration
 
-AgentUp provides comprehensive support for the Model Context Protocol (MCP), enabling seamless integration with MCP-compliant tools and servers. This allows your agents to leverage external tools and services through a standardized protocol.
+!!! warning
+    Development is moving fast, and this document may not reflect the latest changes. Once updated, we will remove this warning.
+
+AgentUp provides comprehensive support for the Model Context Protocol (MCP), enabling seamless integration
+with MCP-compliant tools and servers. This allows your agents to leverage external tools and services through a standardized protocol.
 
 ## Overview
 
 MCP (Model Context Protocol) is an open standard that enables Language Models to interact with external tools and data sources in a secure, controlled manner. AgentUp's MCP integration allows your agents to:
 
-- **Connect to MCP servers** via stdio, HTTP, or SSE transports
+- **Connect to MCP servers** via stdio or HTTP transports
 - **Use MCP tools** as native agent capabilities
 - **Map MCP tools to AgentUp scopes** for fine-grained access control
 - **Serve agent capabilities** as MCP tools for other systems
@@ -19,16 +23,16 @@ MCP support is configured in the `mcp` section of your `agentup.yml`:
 ```yaml
 mcp:
   enabled: true
-  
+
   # MCP Client - Connect to external MCP servers
   client_enabled: true
   client_timeout: 30            # Timeout for MCP operations
-  
+
   # MCP Server - Expose agent capabilities via MCP
   server_enabled: false         # Set to true to expose your agent as MCP server
   server_host: "localhost"
   server_port: 8080
-  
+
   # MCP Server Connections
   servers: []                   # List of MCP servers to connect to
 ```
@@ -50,12 +54,32 @@ mcp:
       args: ["mcp-server-filesystem", "/workspace"]
       env:
         WORKSPACE_ROOT: "/workspace"
+      working_dir: "/project"          # Optional: Set working directory for the server process
       # Map MCP tools to AgentUp security scopes
       tool_scopes:
         read_file: ["files:read"]
         write_file: ["files:write"]
         list_directory: ["files:read"]
         delete_file: ["files:write", "files:delete"]
+```
+
+### Tool Filtering
+
+You can control which MCP tools are available from a server using `allowed_tools` and `blocked_tools`:
+
+```yaml
+servers:
+  - name: "filesystem"
+    type: "stdio"
+    command: "uvx"
+    args: ["mcp-server-filesystem", "/workspace"]
+    # Only allow specific tools (if specified, all others are blocked)
+    allowed_tools: ["read_file", "list_directory"]
+    # Or block specific tools (these are excluded even if in allowed_tools)
+    blocked_tools: ["delete_file", "write_file"]
+    tool_scopes:
+      read_file: ["files:read"]
+      list_directory: ["files:read"]
 ```
 
 ### HTTP-based MCP Servers
@@ -72,6 +96,7 @@ mcp:
       url: "http://localhost:3000/mcp"
       headers:
         Authorization: "Bearer ${GITHUB_TOKEN}"
+      timeout: 30                      # Request timeout in seconds (default: 30)
       # Map tools to scopes
       tool_scopes:
         create_issue: ["github:write"]
@@ -80,24 +105,6 @@ mcp:
         search_code: ["github:read"]
 ```
 
-### SSE-based MCP Servers
-
-Connect to MCP servers using Server-Sent Events:
-
-```yaml
-mcp:
-  enabled: true
-  client_enabled: true
-  servers:
-    - name: "analytics"
-      type: "sse"
-      url: "http://analytics-server:8080/mcp/sse"
-      headers:
-        X-API-Key: "${ANALYTICS_API_KEY}"
-      tool_scopes:
-        query_metrics: ["analytics:read"]
-        generate_report: ["analytics:read", "analytics:export"]
-```
 
 ## Security and Scopes
 
@@ -122,32 +129,18 @@ servers:
       query: ["db:read"]
       list_tables: ["db:read"]
       describe_table: ["db:read"]
-      
+
       # Write operations
       insert: ["db:write"]
       update: ["db:write"]
       delete: ["db:write", "db:delete"]
-      
+
       # Admin operations
       create_table: ["db:admin"]
       drop_table: ["db:admin", "db:delete"]
       backup: ["db:admin", "db:backup"]
 ```
 
-### Default Scopes
-
-You can set default scopes for all tools from a server:
-
-```yaml
-servers:
-  - name: "internal-tools"
-    type: "http"
-    url: "http://internal.company.com/mcp"
-    # Default scopes apply to all tools unless overridden
-    default_scopes: ["internal:access"]
-    tool_scopes:
-      sensitive_operation: ["internal:access", "internal:sensitive"]
-```
 
 ## Using MCP Tools in Your Agent
 
@@ -185,43 +178,8 @@ mcp:
   server_enabled: true
   server_host: "0.0.0.0"  # Listen on all interfaces
   server_port: 8080
-  
-  # Configure which capabilities to expose
-  exposed_capabilities:
-    - plugin_id: "text_processing"
-      capabilities: ["summarize", "translate"]
-    - plugin_id: "data_analysis"
-      capabilities: ["analyze_csv", "generate_chart"]
 ```
 
-## Advanced Configuration
-
-### Connection Management
-
-```yaml
-mcp:
-  # Reconnection settings
-  reconnect_enabled: true
-  reconnect_delay: 5          # Seconds
-  max_reconnect_attempts: 10
-  
-  # Health checks
-  health_check_interval: 30   # Seconds
-  health_check_timeout: 5
-```
-
-### Performance Tuning
-
-```yaml
-mcp:
-  # Connection pooling
-  max_concurrent_requests: 10
-  request_timeout: 30
-  
-  # Response caching
-  cache_enabled: true
-  cache_ttl: 300             # Cache MCP responses for 5 minutes
-```
 
 ## Troubleshooting
 
@@ -278,12 +236,13 @@ mcp:
   enabled: true
   client_enabled: true
   client_timeout: 30
-  
+  client_retry_attempts: 3             # Client retry attempts (default: 3)
+
   # Optional: Expose agent as MCP server
   server_enabled: true
   server_host: "localhost"
   server_port: 8080
-  
+
   # Connected MCP servers
   servers:
     # Filesystem access
@@ -300,7 +259,7 @@ mcp:
         list_directory: ["files:read"]
         create_directory: ["files:write"]
         delete_file: ["files:delete"]
-    
+
     # GitHub integration
     - name: "github"
       type: "http"
@@ -308,30 +267,29 @@ mcp:
       headers:
         Authorization: "Bearer ${GITHUB_TOKEN}"
         Accept: "application/vnd.github.v3+json"
+      timeout: 30
       tool_scopes:
         # Repository operations
         list_repos: ["github:read"]
         create_repo: ["github:write"]
         delete_repo: ["github:admin"]
-        
+
         # Issue operations
         list_issues: ["github:read"]
         create_issue: ["github:write"]
         update_issue: ["github:write"]
         close_issue: ["github:write"]
-        
+
         # PR operations
         list_prs: ["github:read"]
         create_pr: ["github:write"]
         merge_pr: ["github:write", "github:merge"]
-    
+
     # Database access
     - name: "postgres"
       type: "stdio"
       command: "mcp-server-postgres"
       args: ["--connection-string", "${DATABASE_URL}"]
-      # Strict security for database access
-      default_scopes: ["db:connect"]
       tool_scopes:
         query: ["db:connect", "db:read"]
         insert: ["db:connect", "db:write"]
@@ -339,9 +297,3 @@ mcp:
         delete: ["db:connect", "db:write", "db:delete"]
         execute_ddl: ["db:connect", "db:admin"]
 ```
-
-## Further Reading
-
-- [MCP Specification](https://modelcontextprotocol.io/)
-- [AgentUp Security Model](/security/scope-based-authorization)
-- [Creating MCP Servers](https://modelcontextprotocol.io/docs/server/create)

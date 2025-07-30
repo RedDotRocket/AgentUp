@@ -8,10 +8,14 @@ In this tutorial, you'll create a simple as they come, out of the box, basic Age
     - Basic understanding of YAML configuration
     - Terminal/command prompt access
     - Familiarity with JSON-RPC (optional, but helpful)
+
 ## Create the Agent Project
 
+Creating an agent project is straightforward. Use the `agentup agent create` command to scaffold a new agent project.
+
+Open your terminal and run:
+
 ```bash
-# Create a new agent project
 agentup agent create
 ```
 
@@ -35,7 +39,7 @@ o toggle, <i> to invert)
    ○ Development Features (filesystem plugins, debug mode)
 ```
 
-After selecting only "Authentication Method", you select "API Key":
+After selecting only `Authentication Method`, you select `API Key`:
 
 ```bash hl_lines="2"
 ? Select authentication method: (Use arrow keys)
@@ -88,6 +92,8 @@ Let's examine the generated configuration:
 cat agentup.yml
 ```
 
+### Agent Basic Configuration
+
 First we have our basic agent configuration:
 
 ```yaml
@@ -96,87 +102,7 @@ description: "AI Agent Basic Agent Project"
 version: "0.1.0"
 ```
 
-Next our where plugins are defined
-
-#### Plugins
-
-Plugins are where the magic happens. They define the capabilities your agent can perform. In this case, we have a simple "Hello Plugin" that responds to greetings. Quite boring, but it serves as a good starting point.
-
-```yaml
-plugins:
-  - plugin_id: hello (1)!
-    name: Hello Plugin
-    description: Simple greeting plugin for testing and examples
-    tags: [hello, basic, example]
-    input_mode: text
-    output_mode: text
-    keywords: [hi, greetings]
-    patterns: ['^hello']
-    priority: 50
-    capabilities:
-      - capability_id: hello
-        required_scopes: ["api:read"]
-        enabled: true
-```
-
-
-Some key points about this plugin configuration:
-
-  Let's explain the plugin configuration in a more visually pleasing way:
-
-  | Property | Description | Example |
-  |----------|-------------|---------|
-  | **input_mode** | Format the plugin accepts | `text` |
-  | **output_mode** | Format the plugin returns | `text` |
-  | **keywords** | Trigger words for this plugin | `[hi, greetings]` |
-  | **patterns** | Regex patterns to match | `['^hello']` |
-  | **priority** | Execution order (lower = higher) | `50` |
-  | **capabilities** | Functions this plugin provides | hello |
-  | **required_scopes** | Access permissions needed | `["api:read"]` |
-
-??? question "AgentUp Routing Logic"
-    AgentUp uses an **implicit routing system**, where routing is determined by the presence (or absence) of keywords and patterns in the user input. This allows
-    deterministic routing, using keywords and patterns to decide which plugin to invoke.
-
-    **Keywords:**
-
-    Array of keywords that trigger direct routing to this plugin when found in user input.
-
-    *Example:* `["file", "directory", "ls", "cat"]`
-
-    **Patterns:**
-
-    Array of regex patterns that trigger direct routing to this plugin when matched against user input.
-
-    *Example:* `["^create file .*", "^delete .*"]`
-
-    If keywords or patterns are matched, the plugin is invoked directly. If no keywords or patterns match, the request is pickedup by the LLM who will then decide which plugin to use based on the natural language used in the request.
-
-#### capabilities
-
-The `capabilities` section defines the specific functions this plugin provides. Each capability will inform on the scopes it requires, which is important for security and access control. More on that later.
-
-### Middleware Configuration
-
-```yaml
-middleware:
-  - name: timed
-    params: {}
-  - name: rate_limiting
-    config:
-      requests_per_minute: 60
-```
-
-Middleware allows you to add cross-cutting concerns like logging, timing, and rate limiting. In this example:
-
-- **`timed`**: Measures the time taken to process requests.
-- **`rate_limiting`**: Limits requests to 60 per minute to prevent abuse
-
-??? tip "plugin middleware"
-    Middleware can also be applied to specific plugins or globally. This allows you to control how middleware behaves for different capabilities of your agent. We will cover this in more detail in the advanced tutorials.
-
-
-### Security Configuration
+### Agent Security Configuration
 
 AgentUp provides a flexible security model to protect your agent's capabilities.
 
@@ -186,33 +112,26 @@ It supports multiple authentication methods:
 - **JWT Bearer**: Signed with scopes declared inside the token body
 - **OAuth2**: Signed with scopes, but can also be integrated with external providers
 
+As we selected `API Key` during project creation, the configuration will look like this:
+
 ```yaml
 security:
-  enabled: true
-  type: api_key
+  enabled: True
   auth:
-    # Default to API key authentication
     api_key:
-      header_name: "X-API-Key"
-      location: "header"  # Options: header, query, cookie
+      header_name: X-API-Key
+      location: header
       keys:
-        - key: "24vgyiyNuzvPdtRG5R80YR4_eKXC9dk0"
-          scopes: ["api:read", "api:write", "system:read"]  # Permissions for demo plugin
-  # Basic scope hierarchy for minimal template
+        # Note, the following key is randomly generated during AgentUp project creation
+        - key: "-4-lxNfzffZ3NhqYKIWoVX53BIXI5xSF"
+          scopes: ["api:read", "files:read"]
+  # Scope hierarchy for fine-grained authorization
   scope_hierarchy:
-    # Role-based scopes
-    admin: ["*"]
-    manager: ["files:admin", "system:read", "web:search", "image:read"]
-    developer: ["files:write", "web:search", "api:write"]
-    analyst: ["files:read", "web:search", "image:read"]
-    readonly: ["files:read"]
-
-    # Domain hierarchies
-    files:admin: ["files:write", "files:read"]
     api:write: ["api:read"]
+    api:read: []
     files:write: ["files:read"]
-    system:admin: ["system:write", "system:read"]
-    system:write: ["system:read"]
+    files:read: []
+    system:read: []
 ```
 
 #### Key Configuration Options
@@ -228,18 +147,21 @@ security:
 
 #### Understanding Scopes & Permissions
 
-The `scope_hierarchy` defines a permission system for your agent:
+`scope_hierarchy` defines relationships between different permission scopes, allowing a more flexible
+and intuitive way to manage access control.
 
 ```yaml
-scope_hierarchy:
-  admin: ["*"]                    # Full access to everything
-  api:write: ["api:read"]         # Write access (includes read)
-  api:read: []                    # Basic read-only access
-  system:read: []                 # System information access
-  files:read: []                  # File reading permissions
+  scope_hierarchy:
+    api:write: ["api:read"]
+    api:read: []
+    files:write: ["files:read"]
+    files:read: []
+    system:read: []
 ```
 
-This allows you to control which API keys can access specific capabilities. For example, the `hello` capability requires the `api:read` scope, so only API keys with that scope can invoke it.
+
+Each scope may inherit the permissions of one or more "child" scopes. If a user is granted a higher-level
+(or "parent") scope, they automatically receive the permissions of all lower-level (or "child") scopes listed under it.
 
 The `scope_hierarchy` system is more detailed then what we cover here. But to
 put it succinctly a plugin says what it needs "api:read" and then you, the user,
@@ -265,11 +187,39 @@ This means the `hello` plugin requires the `api:read` scope to be invoked. If an
           scopes: ["api:read"] # - I allow this scope to invoked
 ```
 
-
-
 !!! warning "Scope Security"
     In the above example, we are using scopes with **basic API keys**. More secure options are **OAuth2** and **JWT** tokens where scopes are cryptographically secured and cannot be tampered with. The expectation is that an external policy and authorization server will mint the tokens and manage the scopes. AgentUp will
     ensure they are enforced at runtime.
+
+### Middleware Configuration
+
+```yaml
+# Middleware configuration
+middleware:
+  enabled: False
+  rate_limiting:
+    enabled: false
+    requests_per_minute: 60
+    burst_size: 72
+  caching:
+    enabled: false
+    backend: memory
+    default_ttl: 300
+    max_size: 1000
+  retry:
+    enabled: false
+    max_attempts: 3
+    initial_delay: 1.0
+    max_delay: 60.0
+```
+
+Middleware allows you to add cross-cutting concerns like logging, timing, and rate limiting. In this example:
+
+- **`timed`**: Measures the time taken to process requests.
+- **`rate_limiting`**: Limits requests to 60 per minute to prevent abuse
+
+??? tip "plugin middleware"
+    Middleware can also be applied to specific plugins or globally. This allows you to control how middleware behaves for different capabilities of your agent. We will cover this in more detail in the advanced tutorials.
 
 ## Next Steps
 
@@ -364,7 +314,7 @@ curl -X POST http://localhost:8000/ \
 ```
 
 !!! tip "A2A Spec and JSON-RPC"
-    AgentUp uses the [A2A Specification](https://a2a.spec) for its API design, which is based on JSON-RPC 2.0. This means there is a single endpoint (`/`) for all requests, and you can use JSON-RPC methods to interact with the agent. The `message/send` method is used to send messages to the agent.
+    AgentUp uses the [A2A Specification](../middleware/a2a-protocol.md) for its API design, which is based on JSON-RPC 2.0. This means there is a single endpoint (`/`) for all requests, and you can use JSON-RPC methods to interact with the agent. The `message/send` method is used to send messages to the agent.
 
 We should see an A2A response like this:
 

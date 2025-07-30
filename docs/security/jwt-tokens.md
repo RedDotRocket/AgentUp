@@ -2,22 +2,8 @@
 
 **Stateless JWT authentication for modern applications**
 
-Bearer token authentication in AgentUp provides JWT (JSON Web Token) validation for stateless, secure authentication. This guide covers setup, configuration, and best practices for implementing bearer token authentication.
-
-> ** NEW: Comprehensive JWT Authentication**
-> For production-ready JWT authentication with scope-based authorization, see the [**JWT Authentication Guide**](jwt-authentication.md) which includes the complete implementation with authentication context, scope-based access control, and production deployment patterns.
-
-## Table of Contents
-
-- [Overview](#overview)
-- [Unified Security Integration](#unified-security-integration)
-- [Quick Setup](#quick-setup)
-- [JWT Token Validation](#jwt-token-validation)
-- [Scope-Based Authorization](#scope-based-authorization)
-- [Configuration Options](#configuration-options)
-- [Custom JWT Claims](#custom-jwt-claims)
-- [Environment Variables](#environment-variables)
-- [Testing and Validation](#testing-and-validation)
+Bearer token authentication in AgentUp provides JWT (JSON Web Token) validation for stateless, secure authentication. This guide covers
+setup, configuration, and best practices for implementing bearer token authentication.
 
 ## Overview
 
@@ -45,27 +31,6 @@ Bearer token authentication in AgentUp provides comprehensive JWT-based authenti
 
 Bearer token authentication is fully integrated with AgentUp's AgentUp Security Framework, providing enhanced protection.
 
-
-### Enhanced Capability Context
-
-Bearer token authentication integrates with the new `EnhancedCapabilityContext` system:
-
-```python
-# Enhanced context provides security information
-@capability_handler("protected_operation")
-async def handle_protected_operation(context: EnhancedCapabilityContext):
-    # Access authentication information
-    user_id = context.auth_context.user_id
-    scopes = context.auth_context.scopes
-    plugin_type = context.plugin_type
-
-    # Automatic scope validation
-    if not context.has_scope("api:write"):
-        raise AuthorizationError("Insufficient permissions")
-
-    # Plugin-aware security measures automatically applied
-    return await process_operation(context)
-```
 
 ### Middleware Integration
 
@@ -428,6 +393,9 @@ Different scope configurations for various user types:
 ```
 
 ### Generating Custom Tokens
+
+Note, the following scripts are for validation and development, tokens should be generated in secure
+vault, preferably with a hardware backend.
 
 ```python
 #!/usr/bin/env python3
@@ -827,13 +795,13 @@ def test_bearer_token_authentication(client, test_jwt_token):
 - **Algorithm specification** - Always specify allowed algorithms
 
 #### Common Vulnerabilities
-- **None algorithm attack** - Always validate algorithm
+- **None algorithm attack** - Always validate algorithms are present
 - **Weak secrets** - Use strong, random secrets (256+ bits)
 - **Token in URLs** - Never put tokens in query parameters or URLs
 - **XSS exposure** - Protect against cross-site scripting
 - **Replay attacks** - Use short expiration and secure transmission
 
-### 🛡️ AgentUp Security Features
+### AgentUp Security Features
 
 - **Format validation** - Proper Bearer token format checking
 - **Constant-time comparison** - Protection against timing attacks
@@ -867,78 +835,3 @@ curl -H "X-API-Key: sk-your-api-key" URL
 # After: Bearer token in Authorization header
 curl -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIs..." URL
 ```
-
-### To OAuth2 (Recommended for Production)
-
-For production JWT validation with full cryptographic verification and enterprise features, consider migrating to OAuth2:
-
-```yaml
-# Upgrade to OAuth2 for comprehensive AgentUp Security Framework
-security:
-  enabled: true
-  type: "oauth2"
-  oauth2:
-    validation_strategy: "jwt"
-    jwks_url: "https://your-provider.com/.well-known/jwks.json"
-    jwt_algorithm: "RS256"
-    jwt_issuer: "https://your-provider.com"
-    jwt_audience: "your-agent"
-
-    # Enhanced scope hierarchy for enterprise
-    scope_hierarchy:
-      admin: ["*"]
-      system:admin: ["system:write", "system:read", "files:admin"]
-      api:admin: ["api:write", "api:read", "network:admin"]
-      files:admin: ["files:write", "files:read", "files:sensitive"]
-      api:write: ["api:read"]
-      api:read: []
-      files:read: []
-      system:read: []
-```
-
-OAuth2 provides enhanced capabilities over Bearer token authentication:
-- **Full JWT Cryptographic Validation** - Complete signature and claims verification
-- **JWKS Integration** - Automatic key rotation and certificate validation
-- **Enterprise Provider Support** - Integration with Auth0, Okta, Azure AD, Google Cloud Identity
-- **Advanced Scope Management** - Complex hierarchical permission systems
-- **Token Introspection** - Real-time token validation and revocation support
-- **Multi-Tenant Support** - Audience and issuer validation for complex deployments
-
-### Unified Security Architecture Benefits
-
-Both Bearer token and OAuth2 authentication benefit from the AgentUp Security Framework improvements:
-
-- **Critical Vulnerability Fixes** - MCP endpoints and other previously unprotected endpoints now secured
-- **Plugin Classification** - Automatic security optimization based on plugin types
-- **Context-Aware Middleware** - Intelligent middleware selection based on authentication and plugin context
-- **Enhanced Monitoring** - Better security event logging and audit trails
-- **Performance Optimization** - Reduced overhead through  middleware application
-
-## Next Steps
-
-### Enhanced Authentication
-- **[OAuth2 Authentication](oauth2.md)** - Full JWT validation and enterprise providers with AgentUp Security Framework
-- **[API Key Authentication](api-keys.md)** - Simple key-based authentication with endpoint protection
-- **[JWT Authentication](jwt-authentication.md)** - Production-ready JWT implementation with scope-based authorization
-
-### Unified Security Architecture
-- **[Unified Security Documentation](unified-security.md)** - Complete guide to the AgentUp Security Framework
-- **[Scope-Based Authorization](scope-based-authorization.md)** - Hierarchical permission systems and advanced patterns
-
-### Advanced Security Features
-- **[Plugin Classification](unified-security.md#plugin-classification)** - Automatic security optimization based on plugin types
-- **[Context-Aware Middleware](unified-security.md#context-aware-middleware)** - Intelligent middleware selection
-- **[Enhanced Capability Context](unified-security.md#enhanced-capability-context)** - Security-aware request processing
-
-### Production Deployment
-- **[Environment Management](../examples/enterprise-agent.md#environments)** - Multi-environment security configurations
-- **[Security Best Practices](../configuration/security.md#production)** - Production security hardening
-- **[Monitoring and Logging](../configuration/middleware.md#monitoring)** - Security event monitoring and audit trails
-
----
-
-**Quick Links:**
-- [Documentation Home](../index.md)
-- [Authentication Quick Start](quick-start.md)
-- [OAuth2 Guide](oauth2.md)
-- [Troubleshooting Guide](../troubleshooting/authentication.md)

@@ -1,5 +1,8 @@
 # AgentUp Templating System Guide
 
+!!! warning
+    Development is moving fast, and this document may not reflect the latest changes. Once updated, we will remove this warning.
+
 ## Overview
 
 AgentUp uses Jinja2 templating to generate project configuration files. The main template
@@ -227,20 +230,3 @@ Many template variables are not defined in the generator context, causing:
    - Push notification variables (`push_enabled`, `push_backend`, etc.)
    - State management variables (`state_ttl`, `state_storage_dir`, etc.)
    - Logging variables (`logging_enabled`, `log_level`, etc.)
-
-### Long-term Improvements:
-
-1. **Create comprehensive variable mapping** between CLI feature selection and template variables
-2. **Add validation** to ensure all template variables are defined
-3. **Create tests** to verify template variable availability
-4. **Document variable dependencies** for each feature
-
-## Current Status
-
-- ✅ Template system consolidated to single `agentup.yml.j2`
-- ✅ Whitespace formatting improved
-- ❌ **Major bug**: Authentication always shows `enabled: False`
-- ❌ **Missing variables**: Many template variables undefined in generator
-- ❌ **Inconsistent defaults**: Template defaults don't match feature selections
-
-The templating system works but has significant variable mapping issues that prevent proper configuration generation for many features.

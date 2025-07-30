@@ -1,8 +1,12 @@
 # OAuth2 Provider Integration Guide
 
+!!! warning
+    Development is moving fast, and this document may not reflect the latest changes. Once updated, we will remove this warning.
+
 **Step-by-step setup for popular OAuth2 providers**
 
-This guide provides complete setup instructions for integrating AgentUp with popular OAuth2 providers. Each section includes provider-specific configuration, setup steps, and testing instructions.
+This guide provides complete setup instructions for integrating AgentUp with popular OAuth2 providers
+ Each section includes provider-specific configuration, setup steps, and testing instructions.
 
 ## Table of Contents
 
@@ -601,17 +605,3 @@ curl -u "client_id:secret" \
      -d "token=YOUR_TOKEN" \
      https://provider.com/oauth/introspect | jq .
 ```
-
-## Next Steps
-
-- **[OAuth2 Configuration Reference](oauth2.md#configuration-options)**
-- **[Authentication Troubleshooting](../troubleshooting/authentication.md)**
-- **[Production Deployment Guide](../examples/enterprise-agent.md)**
-- **[Custom Authentication Development](../reference/custom-auth.md)**
-
----
-
-**Quick Links:**
-- 🔙 [OAuth2 Guide](oauth2.md)
-- 🏠 [Documentation Home](../index.md)
-- 🛠️ [Configuration Reference](../reference/config-schema.md)

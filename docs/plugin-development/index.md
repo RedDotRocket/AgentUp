@@ -124,8 +124,3 @@ Provide LLM-callable functions for agent interactions.
 The plugin system provides clean interfaces between your code and the agent infrastructure,
 making plugin development straightforward and maintainable, and best of all,
 sharable with the community.
-
-## Next Steps
-
-Ready to build your first plugin? Start with our [Getting Started Guide](getting-started.md)
-and have a working plugin in just 5 minutes!

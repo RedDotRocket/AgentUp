@@ -2,7 +2,6 @@
 
 Now we should be able to make our agent AI capable by adding an AI provider (openAI) and a plugin that can provide more complex interactions. In this section, we will create a basic agent that can respond to simple greetings using a plugin.
 
-
 ### System Tools Plugin
 
 The `sys_tools` plugin provides access to operating system tools to work with files, directories, and system information. It allows your agent to perform tasks like listing directories, getting system info, and calculating file hashes.
@@ -103,6 +102,25 @@ plugins:
    required_scopes: ["files:read"]
    enabled: true 
 ```
+
+??? question "AgentUp Routing Logic"
+    AgentUp uses an **implicit routing system**, where routing is determined by the presence (or absence) of keywords and patterns in the user input. This allows
+    deterministic routing, using keywords and patterns to decide which plugin to invoke.
+
+    **Keywords:**
+
+    Array of keywords that trigger direct routing to this plugin when found in user input.
+
+    *Example:* `["file", "directory", "ls", "cat"]`
+
+    **Patterns:**
+
+    Array of regex patterns that trigger direct routing to this plugin when matched against user input.
+
+    *Example:* `["^create file .*", "^delete .*"]`
+
+    If keywords or patterns are matched, the plugin is invoked directly. If no keywords or patterns match, the request is pickedup by the LLM who will then decide which plugin to use based on the natural language used in the request.
+
 
 ### Create an AI Provider
 

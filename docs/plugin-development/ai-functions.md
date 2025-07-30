@@ -37,7 +37,7 @@ Edit `src/calculator_plugin/plugin.py`:
 import math
 import pluggy
 from agent.plugins import (
-    CapabilityInfo, CapabilityContext, CapabilityResult, AIFunction, CapabilityType
+    PluginDefinition, CapabilityContext, CapabilityResult, AIFunction, CapabilityType
 )
 
 hookimpl = pluggy.HookimplMarker("agentup")
@@ -46,9 +46,9 @@ class Plugin:
     """Calculator plugin with AI functions."""
 
     @hookimpl
-    def register_capability(self) -> CapabilityInfo:
+    def register_capability(self) -> PluginDefinition:
         """Register the calculator capability."""
-        return CapabilityInfo(
+        return PluginDefinition(
             id="calculator",
             name="Calculator",
             version="1.0.0",
@@ -83,7 +83,7 @@ class Plugin:
                 },
                 handler=self._calculate_function,
             ),
-            
+
             AIFunction(
                 name="convert_units",
                 description="Convert between different units of measurement",
@@ -99,7 +99,7 @@ class Plugin:
                             "description": "Source unit (e.g., 'fahrenheit', 'meters', 'pounds')",
                         },
                         "to_unit": {
-                            "type": "string", 
+                            "type": "string",
                             "description": "Target unit (e.g., 'celsius', 'feet', 'kilograms')",
                         }
                     },
@@ -107,7 +107,7 @@ class Plugin:
                 },
                 handler=self._convert_units_function,
             ),
-            
+
             AIFunction(
                 name="solve_equation",
                 description="Solve mathematical equations (quadratic, linear, etc.)",
@@ -139,22 +139,22 @@ async def _calculate_function(self, task, context: CapabilityContext) -> Capabil
     params = context.metadata.get("parameters", {})
     expression = params.get("expression", "")
     precision = params.get("precision", 2)
-    
+
     try:
         # Sanitize expression for safety
         safe_expression = self._sanitize_expression(expression)
-        
+
         # Evaluate the expression
         result = eval(safe_expression, {"__builtins__": {}, "math": math})
-        
+
         # Format with specified precision
         if isinstance(result, float):
             formatted_result = round(result, precision)
         else:
             formatted_result = result
-        
+
         response = f"{expression} = {formatted_result}"
-        
+
         return CapabilityResult(
             content=response,
             success=True,
@@ -164,7 +164,7 @@ async def _calculate_function(self, task, context: CapabilityContext) -> Capabil
                 "result": formatted_result,
             },
         )
-        
+
     except Exception as e:
         return CapabilityResult(
             content=f"Error calculating '{expression}': {str(e)}",
@@ -175,19 +175,19 @@ async def _calculate_function(self, task, context: CapabilityContext) -> Capabil
 def _sanitize_expression(self, expression: str) -> str:
     """Sanitize mathematical expression for safe evaluation."""
     import re
-    
+
     # Remove any non-mathematical characters
     safe_chars = r'0-9+\-*/().^ \t'
     expression = re.sub(f'[^{safe_chars}]', '', expression)
-    
+
     # Replace ^ with ** for Python exponentiation
     expression = expression.replace('^', '**')
-    
+
     # Add math. prefix to known functions
     math_functions = ['sin', 'cos', 'tan', 'log', 'sqrt', 'abs']
     for func in math_functions:
         expression = expression.replace(func, f'math.{func}')
-    
+
     return expression
 
 async def _convert_units_function(self, task, context: CapabilityContext) -> CapabilityResult:
@@ -196,12 +196,12 @@ async def _convert_units_function(self, task, context: CapabilityContext) -> Cap
     value = params.get("value")
     from_unit = params.get("from_unit", "").lower()
     to_unit = params.get("to_unit", "").lower()
-    
+
     try:
         converted_value = self._perform_unit_conversion(value, from_unit, to_unit)
-        
+
         response = f"{value} {from_unit} = {converted_value:.4g} {to_unit}"
-        
+
         return CapabilityResult(
             content=response,
             success=True,
@@ -213,7 +213,7 @@ async def _convert_units_function(self, task, context: CapabilityContext) -> Cap
                 "to_unit": to_unit,
             },
         )
-        
+
     except Exception as e:
         return CapabilityResult(
             content=f"Error converting {value} {from_unit} to {to_unit}: {str(e)}",
@@ -232,7 +232,7 @@ def _perform_unit_conversion(self, value: float, from_unit: str, to_unit: str) -
         return value + 273.15
     elif from_unit in ['kelvin', 'k'] and to_unit in ['celsius', 'c']:
         return value - 273.15
-    
+
     # Length conversions (to meters, then to target)
     length_to_meters = {
         'meters': 1, 'm': 1, 'meter': 1,
@@ -243,11 +243,11 @@ def _perform_unit_conversion(self, value: float, from_unit: str, to_unit: str) -
         'kilometers': 1000, 'km': 1000, 'kilometer': 1000,
         'centimeters': 0.01, 'cm': 0.01, 'centimeter': 0.01,
     }
-    
+
     if from_unit in length_to_meters and to_unit in length_to_meters:
         meters = value * length_to_meters[from_unit]
         return meters / length_to_meters[to_unit]
-    
+
     # Weight conversions (to grams, then to target)
     weight_to_grams = {
         'grams': 1, 'g': 1, 'gram': 1,
@@ -255,11 +255,11 @@ def _perform_unit_conversion(self, value: float, from_unit: str, to_unit: str) -
         'pounds': 453.592, 'lb': 453.592, 'lbs': 453.592, 'pound': 453.592,
         'ounces': 28.3495, 'oz': 28.3495, 'ounce': 28.3495,
     }
-    
+
     if from_unit in weight_to_grams and to_unit in weight_to_grams:
         grams = value * weight_to_grams[from_unit]
         return grams / weight_to_grams[to_unit]
-    
+
     raise ValueError(f"Unsupported conversion: {from_unit} to {to_unit}")
 
 async def _solve_equation_function(self, task, context: CapabilityContext) -> CapabilityResult:
@@ -267,10 +267,10 @@ async def _solve_equation_function(self, task, context: CapabilityContext) -> Ca
     params = context.metadata.get("parameters", {})
     equation = params.get("equation", "")
     variable = params.get("variable", "x")
-    
+
     try:
         solutions = self._solve_equation(equation, variable)
-        
+
         if len(solutions) == 0:
             response = f"No solutions found for: {equation}"
         elif len(solutions) == 1:
@@ -278,7 +278,7 @@ async def _solve_equation_function(self, task, context: CapabilityContext) -> Ca
         else:
             solutions_str = ", ".join(str(s) for s in solutions)
             response = f"Solutions: {variable} = {solutions_str}"
-        
+
         return CapabilityResult(
             content=response,
             success=True,
@@ -289,7 +289,7 @@ async def _solve_equation_function(self, task, context: CapabilityContext) -> Ca
                 "solutions": solutions,
             },
         )
-        
+
     except Exception as e:
         return CapabilityResult(
             content=f"Error solving equation '{equation}': {str(e)}",
@@ -301,33 +301,33 @@ def _solve_equation(self, equation: str, variable: str) -> list:
     """Solve mathematical equations."""
     # This is a simplified solver - in practice, you'd use sympy or similar
     import re
-    
+
     # Handle simple linear equations: ax + b = c
     linear_pattern = rf'(-?\d*\.?\d*)\s*\*?\s*{variable}\s*([+-]\s*\d+\.?\d*)\s*=\s*(-?\d+\.?\d*)'
     match = re.match(linear_pattern, equation.replace(' ', ''))
-    
+
     if match:
         a = float(match.group(1) or '1')
         b = float(match.group(2).replace(' ', ''))
         c = float(match.group(3))
-        
+
         if a == 0:
             raise ValueError("Not a linear equation in the variable")
-        
+
         solution = (c - b) / a
         return [round(solution, 6)]
-    
+
     # Handle simple quadratic equations: ax^2 + bx + c = 0
     quad_pattern = rf'(-?\d*\.?\d*)\s*\*?\s*{variable}\^?2\s*([+-]\s*\d*\.?\d*)\s*\*?\s*{variable}\s*([+-]\s*\d+\.?\d*)\s*=\s*0'
     match = re.match(quad_pattern, equation.replace(' ', ''))
-    
+
     if match:
         a = float(match.group(1) or '1')
         b = float(match.group(2).replace(' ', '') or '0')
         c = float(match.group(3).replace(' ', ''))
-        
+
         discriminant = b**2 - 4*a*c
-        
+
         if discriminant < 0:
             return []  # No real solutions
         elif discriminant == 0:
@@ -338,7 +338,7 @@ def _solve_equation(self, equation: str, variable: str) -> list:
             sol1 = (-b + sqrt_discriminant) / (2*a)
             sol2 = (-b - sqrt_discriminant) / (2*a)
             return [round(sol1, 6), round(sol2, 6)]
-    
+
     raise ValueError("Unsupported equation format")
 ```
 
@@ -380,20 +380,20 @@ async def _statistical_analysis_function(self, task, context: CapabilityContext)
     params = context.metadata.get("parameters", {})
     data = params.get("data", [])
     analyses = params.get("analyses", ["mean", "median", "std_dev"])
-    
+
     if not data:
         return CapabilityResult(
             content="No data provided for analysis",
             success=False,
             error="Empty dataset",
         )
-    
+
     results = {}
-    
+
     try:
         if "mean" in analyses:
             results["mean"] = sum(data) / len(data)
-        
+
         if "median" in analyses:
             sorted_data = sorted(data)
             n = len(sorted_data)
@@ -401,19 +401,19 @@ async def _statistical_analysis_function(self, task, context: CapabilityContext)
                 results["median"] = (sorted_data[n//2-1] + sorted_data[n//2]) / 2
             else:
                 results["median"] = sorted_data[n//2]
-        
+
         if "std_dev" in analyses:
             mean = sum(data) / len(data)
             variance = sum((x - mean) ** 2 for x in data) / len(data)
             results["std_dev"] = math.sqrt(variance)
-        
+
         # Format results
         formatted_results = []
         for analysis, value in results.items():
             formatted_results.append(f"{analysis.replace('_', ' ').title()}: {value:.4f}")
-        
+
         response = "Statistical Analysis Results:\n" + "\n".join(formatted_results)
-        
+
         return CapabilityResult(
             content=response,
             success=True,
@@ -423,7 +423,7 @@ async def _statistical_analysis_function(self, task, context: CapabilityContext)
                 "results": results,
             },
         )
-        
+
     except Exception as e:
         return CapabilityResult(
             content=f"Error performing statistical analysis: {str(e)}",
@@ -465,14 +465,14 @@ async def _currency_convert_function(self, task, context: CapabilityContext) -> 
     amount = params.get("amount")
     from_currency = params.get("from_currency", "").upper()
     to_currency = params.get("to_currency", "").upper()
-    
+
     try:
         # Get exchange rate (with caching)
         exchange_rate = await self._get_exchange_rate(from_currency, to_currency)
         converted_amount = amount * exchange_rate
-        
+
         response = f"{amount} {from_currency} = {converted_amount:.2f} {to_currency}"
-        
+
         return CapabilityResult(
             content=response,
             success=True,
@@ -485,7 +485,7 @@ async def _currency_convert_function(self, task, context: CapabilityContext) -> 
                 "to_currency": to_currency,
             },
         )
-        
+
     except Exception as e:
         return CapabilityResult(
             content=f"Error converting {amount} {from_currency} to {to_currency}: {str(e)}",
@@ -496,33 +496,33 @@ async def _currency_convert_function(self, task, context: CapabilityContext) -> 
 async def _get_exchange_rate(self, from_currency: str, to_currency: str) -> float:
     """Get current exchange rate from API."""
     cache_key = f"exchange_rate:{from_currency}:{to_currency}"
-    
+
     # Check cache first
     if self.cache:
         cached_rate = await self.cache.get(cache_key)
         if cached_rate:
             return float(cached_rate)
-    
+
     # API call to exchange rate service
     api_key = self.config.get("exchange_api_key")
     if not api_key:
         raise ValueError("Exchange rate API key not configured")
-    
+
     url = f"https://api.exchangerate-api.com/v4/latest/{from_currency}"
-    
+
     response = await self.http_client.get(url)
     response.raise_for_status()
-    
+
     data = response.json()
     rate = data["rates"].get(to_currency)
-    
+
     if rate is None:
         raise ValueError(f"Exchange rate not available for {to_currency}")
-    
+
     # Cache for 1 hour
     if self.cache:
         await self.cache.set(cache_key, str(rate), ttl=3600)
-    
+
     return float(rate)
 ```
 
@@ -643,7 +643,7 @@ from calculator_plugin.plugin import Plugin
 async def test_calculate_function():
     """Test the calculate AI function."""
     plugin = Plugin()
-    
+
     # Mock task and context
     task = Mock()
     context = CapabilityContext(
@@ -655,19 +655,19 @@ async def test_calculate_function():
             }
         }
     )
-    
+
     # Test the function
     result = await plugin._calculate_function(task, context)
-    
+
     assert result.success
     assert "2 + 3 * 4 = 14" in result.content
     assert result.metadata["result"] == 14
 
-@pytest.mark.asyncio 
+@pytest.mark.asyncio
 async def test_unit_conversion_function():
     """Test the unit conversion AI function."""
     plugin = Plugin()
-    
+
     task = Mock()
     context = CapabilityContext(
         task=task,
@@ -679,9 +679,9 @@ async def test_unit_conversion_function():
             }
         }
     )
-    
+
     result = await plugin._convert_units_function(task, context)
-    
+
     assert result.success
     assert "32 fahrenheit = 0 celsius" in result.content
     assert result.metadata["converted_value"] == 0.0
@@ -689,12 +689,12 @@ async def test_unit_conversion_function():
 def test_expression_sanitization():
     """Test expression sanitization for security."""
     plugin = Plugin()
-    
+
     # Safe expressions
     assert plugin._sanitize_expression("2 + 3") == "2 + 3"
     assert plugin._sanitize_expression("sin(30)") == "math.sin(30)"
     assert plugin._sanitize_expression("2^3") == "2**3"
-    
+
     # Potentially dangerous expressions should be cleaned
     dangerous = "__import__('os').system('rm -rf /')"
     sanitized = plugin._sanitize_expression(dangerous)
@@ -710,14 +710,14 @@ async def test_ai_function_registration():
     """Test that AI functions are properly registered."""
     plugin = Plugin()
     ai_functions = plugin.get_ai_functions()
-    
+
     assert len(ai_functions) == 3
-    
+
     function_names = [f.name for f in ai_functions]
     assert "calculate" in function_names
     assert "convert_units" in function_names
     assert "solve_equation" in function_names
-    
+
     # Test function schemas
     calc_function = next(f for f in ai_functions if f.name == "calculate")
     assert "expression" in calc_function.parameters["properties"]
@@ -740,7 +740,7 @@ async def _calculate_function(self, task, context: CapabilityContext) -> Capabil
     """Handle calculations with comprehensive error handling."""
     params = context.metadata.get("parameters", {})
     expression = params.get("expression", "")
-    
+
     # Validate input
     if not expression.strip():
         return CapabilityResult(
@@ -748,11 +748,11 @@ async def _calculate_function(self, task, context: CapabilityContext) -> Capabil
             success=False,
             error="Empty expression",
         )
-    
+
     try:
         # Attempt calculation
         result = self._safe_eval(expression)
-        
+
         # Check for special values
         if math.isnan(result):
             return CapabilityResult(
@@ -760,35 +760,35 @@ async def _calculate_function(self, task, context: CapabilityContext) -> Capabil
                 success=False,
                 error="Undefined result",
             )
-        
+
         if math.isinf(result):
             return CapabilityResult(
                 content=f"The expression '{expression}' resulted in infinity.",
                 success=False,
                 error="Infinite result",
             )
-        
+
         # Successful calculation
         return CapabilityResult(
             content=f"{expression} = {result}",
             success=True,
             metadata={"expression": expression, "result": result},
         )
-        
+
     except ZeroDivisionError:
         return CapabilityResult(
             content=f"Cannot divide by zero in expression: {expression}",
             success=False,
             error="Division by zero",
         )
-    
+
     except SyntaxError:
         return CapabilityResult(
             content=f"Invalid mathematical expression: {expression}",
             success=False,
             error="Syntax error",
         )
-    
+
     except Exception as e:
         return CapabilityResult(
             content=f"Error calculating '{expression}': Please check the expression format.",
@@ -809,14 +809,14 @@ def _validate_equation(self, equation: str) -> tuple[bool, str]:
     """Validate equation format."""
     if not equation.strip():
         return False, "Empty equation"
-    
+
     if '=' not in equation:
         return False, "Equation must contain '=' sign"
-    
+
     parts = equation.split('=')
     if len(parts) != 2:
         return False, "Equation must have exactly one '=' sign"
-    
+
     return True, ""
 ```
 
@@ -828,11 +828,11 @@ def _validate_equation(self, equation: str) -> tuple[bool, str]:
 async def _expensive_calculation_function(self, task, context: CapabilityContext) -> CapabilityResult:
     """Function with result caching."""
     params = context.metadata.get("parameters", {})
-    
+
     # Create cache key from parameters
     import json
     cache_key = f"calc_expensive:{hashlib.md5(json.dumps(params, sort_keys=True).encode()).hexdigest()}"
-    
+
     # Check cache
     if self.cache:
         cached_result = await self.cache.get(cache_key)
@@ -842,15 +842,15 @@ async def _expensive_calculation_function(self, task, context: CapabilityContext
                 success=True,
                 metadata={"cached": True},
             )
-    
+
     # Perform expensive calculation
     result = await self._perform_expensive_calculation(params)
-    
+
     # Cache result for 1 hour
     if self.cache:
         await self.cache.set(cache_key, result, ttl=3600)
-    
-    return SkillResult(
+
+    return CapabilityResult(
         content=str(result),
         success=True,
         metadata={"cached": False},
@@ -864,40 +864,40 @@ async def _multi_calculation_function(self, task, context: CapabilityContext) ->
     """Function that performs multiple calculations in parallel."""
     params = context.metadata.get("parameters", {})
     expressions = params.get("expressions", [])
-    
+
     if not expressions:
         return CapabilityResult(
             content="No expressions provided",
             success=False,
             error="Empty input",
         )
-    
+
     # Execute calculations in parallel
     tasks = [
-        self._calculate_single_expression(expr) 
+        self._calculate_single_expression(expr)
         for expr in expressions
     ]
-    
+
     results = await asyncio.gather(*tasks, return_exceptions=True)
-    
+
     # Process results
     successful_results = []
     errors = []
-    
+
     for i, result in enumerate(results):
         if isinstance(result, Exception):
             errors.append(f"Expression {i+1}: {str(result)}")
         else:
             successful_results.append(f"{expressions[i]} = {result}")
-    
+
     if successful_results:
         response = "Calculation Results:\n" + "\n".join(successful_results)
         if errors:
             response += "\n\nErrors:\n" + "\n".join(errors)
     else:
         response = "All calculations failed:\n" + "\n".join(errors)
-    
-    return SkillResult(
+
+    return CapabilityResult(
         content=response,
         success=len(successful_results) > 0,
         metadata={
@@ -923,23 +923,23 @@ async def _monte_carlo_simulation(self, task, context: CapabilityContext) -> Cap
     """Run Monte Carlo simulation with progress updates."""
     params = context.metadata.get("parameters", {})
     iterations = params.get("iterations", 10000)
-    
+
     # This would stream results if the agent supports it
     # For now, we'll just return final result
-    
+
     total = 0
     for i in range(iterations):
         # Simulate some calculation
         total += random.random()
-        
+
         # Could yield intermediate results here in a streaming implementation
         if i % 1000 == 0:
             progress = (i / iterations) * 100
             # In a streaming implementation: yield f"Progress: {progress:.1f}%"
-    
+
     result = total / iterations
-    
-    return SkillResult(
+
+    return CapabilityResult(
         content=f"Monte Carlo simulation complete. Average: {result:.6f}",
         success=True,
         metadata={
@@ -958,29 +958,29 @@ async def _comprehensive_analysis_function(self, task, context: CapabilityContex
     """Perform comprehensive analysis by calling multiple functions."""
     params = context.metadata.get("parameters", {})
     data = params.get("data", [])
-    
+
     # Chain multiple analysis functions
     results = {}
-    
+
     # Statistical analysis
-    stats_context = SkillContext(
+    stats_context = CapabilityContext(
         task=task,
         metadata={"parameters": {"data": data, "analyses": ["mean", "std_dev"]}}
     )
     stats_result = await self._statistical_analysis_function(task, stats_context)
     results["statistics"] = stats_result.metadata.get("results", {})
-    
+
     # Trend analysis
-    trend_context = SkillContext(
+    trend_context = CapabilityContext(
         task=task,
         metadata={"parameters": {"data": data}}
     )
     trend_result = await self._trend_analysis_function(task, trend_context)
     results["trend"] = trend_result.metadata.get("trend", "unknown")
-    
+
     # Generate summary
     summary = f"""Comprehensive Analysis Results:
-    
+
 Statistics:
 - Mean: {results['statistics'].get('mean', 'N/A'):.4f}
 - Standard Deviation: {results['statistics'].get('std_dev', 'N/A'):.4f}
@@ -989,8 +989,8 @@ Trend: {results['trend']}
 
 Sample Size: {len(data)} data points
 """
-    
-    return SkillResult(
+
+    return CapabilityResult(
         content=summary,
         success=True,
         metadata={"comprehensive_results": results},

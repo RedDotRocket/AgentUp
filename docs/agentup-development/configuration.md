@@ -4,7 +4,7 @@ Master the `agent_config.yaml` file to customize your agent's behavior.
 
 ## Overview
 
-AgentUp uses a single configuration file (`agent_config.yaml`) to control all aspects of your agent. This configuration-driven approach makes it easy to customize behavior without writing code.
+AgentUp uses a single configuration file (`agentup.yaml`) to control all aspects of your agent. This configuration-driven approach makes it easy to customize behavior without writing code.
 
 ## Basic Configuration Structure
 
@@ -360,13 +360,6 @@ production:
     - plugin_id: monitoring
 ```
 
-## Configuration Reference
-
-For complete configuration options, see:
-- **[Configuration Schema](../../reference/configuration-schema.md)** - All available options
-- **[Plugin Configuration](../plugin-development/configuration.md)** - Plugin-specific settings
-- **[Middleware Reference](../configuration/middleware.md)** - Middleware options
-- **[Authentication Guide](../authentication/)** - Security configuration
 
 ## Troubleshooting Configuration
 
@@ -390,10 +383,3 @@ agentup agent validate --debug
 3. **Plugin Not Found**: Ensure plugin is installed and plugin_id is correct
 4. **Middleware Order**: Authentication should come before other middleware
 5. **Invalid References**: Check that all referenced files and resources exist
-
-## Next Steps
-
-- **[Customization Guide](customization.md)** - Customize CLI and templates
-- **[Deployment Guide](deployment.md)** - Deploy your configured agent
-- **[Middleware Configuration](../configuration/middleware.md)** - Advanced middleware setup
-- **[Plugin Development](../plugin-development/)** - Create custom plugins

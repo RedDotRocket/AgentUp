@@ -847,13 +847,6 @@ If upgrading from AgentUp versions without state management:
 2. **Update handlers** to use `@stateful` decorator
 3. **Test with existing agent** to ensure compatibility
 
-## Examples
-
-See the complete examples in the repository:
-
-- [`demo_conversation_memory_skill.py`](../demo_conversation_memory_skill.py) - Conversation memory demonstration
-- [`demo_multi_session_task_skill.py`](../demo_multi_session_task_skill.py) - Multi-session task management
-- [`test_*_storage.py`](../) - Comprehensive testing scripts
 
 ## Best Practices
 

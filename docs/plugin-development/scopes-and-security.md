@@ -1,21 +1,29 @@
 # Plugin Security and Scopes Guide
 
-This guide provides comprehensive information for plugin maintainers on implementing security, authentication scopes, and authorization in AgentUp plugins.
+!!! warning
+    Development is moving fast, and this document may not reflect the latest changes. Once updated, we will remove this warning.
+
+This guide provides comprehensive information for plugin maintainers on implementing security, authentication
+scopes, and authorization in AgentUp plugins.
+
+> **Note**: The security system in AgentUp is currently under development. Some of the security features described
+> in this document represent planned functionality and may not be fully implemented in the current version.
+> The plugin system currently focuses on basic capability registration and execution.
 
 ## Overview
 
-AgentUp uses scope-based authentication and context-aware middleware. Plugins must define their security requirements and implement proper authorization checks to ensure secure operation.
+AgentUp uses scope-based authentication and context-aware middleware. Plugins must define their
+security requirements and implement proper authorization checks to ensure secure operation.
 
 ## Table of Contents
 
 1. [Authentication Scopes](#authentication-scopes)
-2. [Plugin Classification](#plugin-classification)
-3. [Security Context](#security-context)
-4. [Implementing Security in Plugins](#implementing-security-in-plugins)
-5. [Scope Hierarchy](#scope-hierarchy)
-6. [Best Practices](#best-practices)
-7. [Examples](#examples)
-8. [Migration Guide](#migration-guide)
+2. [Security Context](#security-context)
+3. [Implementing Security in Plugins](#implementing-security-in-plugins)
+4. [Scope Hierarchy](#scope-hierarchy)
+5. [Best Practices](#best-practices)
+6. [Examples](#examples)
+7. [Migration Guide](#migration-guide)
 
 ---
 
@@ -23,7 +31,8 @@ AgentUp uses scope-based authentication and context-aware middleware. Plugins mu
 
 ### What are Scopes?
 
-Scopes are permission strings that define what operations a user is authorized to perform. They follow a hierarchical structure and support inheritance.
+Scopes are permission strings that define what operations a user is authorized to perform. They
+follow a hierarchical structure and support inheritance.
 
 ### Scope Naming Convention
 
@@ -58,7 +67,6 @@ Scopes are permission strings that define what operations a user is authorized t
 ### Plugin Characteristics
 
 ```python
-@dataclass
 class PluginCharacteristics:
     plugin_type: PluginType
     network_dependent: bool = False
@@ -70,38 +78,6 @@ class PluginCharacteristics:
     performance_critical: bool = False
 ```
 
-### Classification Examples
-
-#### Local System Plugin
-```python
-def get_plugin_characteristics(self) -> PluginCharacteristics:
-    return PluginCharacteristics(
-        plugin_type=PluginType.LOCAL,
-        network_dependent=False,
-        cacheable=True,
-        cache_ttl=300,  # 5 minutes
-        retry_suitable=False,  # Local operations don't fail network-wise
-        rate_limit_required=False,  # Local operations are fast
-        auth_scopes=["system:read"],
-        performance_critical=False
-    )
-```
-
-#### Network API Plugin
-```python
-def get_plugin_characteristics(self) -> PluginCharacteristics:
-    return PluginCharacteristics(
-        plugin_type=PluginType.NETWORK,
-        network_dependent=True,
-        cacheable=True,
-        cache_ttl=600,  # 10 minutes
-        retry_suitable=True,  # Network calls can fail
-        rate_limit_required=True,  # Respect external API limits
-        auth_scopes=["api:external"],
-        performance_critical=False
-    )
-```
-
 ---
 
 ## Security Context
@@ -111,7 +87,6 @@ def get_plugin_characteristics(self) -> PluginCharacteristics:
 The `CapabilityContext` provides plugins with comprehensive security information:
 
 ```python
-@dataclass
 class CapabilityContext:
     # Core fields
     task: Task
@@ -158,9 +133,49 @@ def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
 
 ## Implementing Security in Plugins
 
-### Required Hook Methods
+### Available and Planned Hook Methods
 
-#### 1. Plugin Characteristics
+> **Implementation Status**: The methods below show the planned security architecture. Currently, only basic plugin registration and execution hooks are implemented. Advanced security features are planned for future releases.
+
+#### Currently Available Hooks
+
+These hooks are currently implemented and available for use:
+
+```python
+@hookimpl
+def register_capability(self) -> PluginDefinition:
+    """Register the capability with AgentUp (AVAILABLE)."""
+    return PluginDefinition(
+        id="my_capability",
+        name="My Capability",
+        version="1.0.0",
+        description="My capability description",
+        capabilities=[CapabilityType.TEXT],
+        required_scopes=["api:read"],  # Basic scope definition
+    )
+
+@hookimpl
+def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
+    """Execute the capability (AVAILABLE)."""
+    # Basic security can be implemented here manually
+    return CapabilityResult(content="Result", success=True)
+
+@hookimpl
+def can_handle_task(self, context: CapabilityContext) -> bool | float:
+    """Check if capability can handle task (AVAILABLE)."""
+    return 0.8
+
+@hookimpl
+def get_ai_functions(self) -> list[AIFunction]:
+    """Get AI functions for LLM integration (AVAILABLE)."""
+    return []
+```
+
+#### Planned Security Hooks
+
+The following hooks represent the planned security architecture:
+
+#### 1. Plugin Characteristics (Planned)
 
 ```python
 @hookimpl
@@ -178,7 +193,7 @@ def get_plugin_characteristics(self) -> PluginCharacteristics:
     )
 ```
 
-#### 2. Required Scopes
+#### 2. Required Scopes (Planned)
 
 ```python
 @hookimpl
@@ -193,7 +208,7 @@ def get_required_scopes(self, capability_id: str) -> list[str]:
     return scope_map.get(capability_id, ["default:access"])
 ```
 
-#### 3. Custom Authorization
+#### 3. Custom Authorization (Planned)
 
 ```python
 @hookimpl
@@ -220,7 +235,7 @@ def validate_access(self, context: CapabilityContext) -> bool:
     return True
 ```
 
-#### 4. Middleware Preferences
+#### 4. Middleware Preferences (Planned)
 
 ```python
 @hookimpl
@@ -263,56 +278,58 @@ def get_middleware_preferences(self, capability_id: str) -> dict[str, Any]:
     return {}  # Use defaults
 ```
 
-### Enhanced Capability Execution
+### Current Security Implementation Approach
+
+Since the advanced security hooks are not yet implemented, plugins can implement basic security manually in their `execute_capability` method:
 
 ```python
 @hookimpl
 def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
-    """Execute capability with comprehensive security checks."""
+    """Execute capability with basic security checks."""
 
     try:
-        # 1. Validate authentication
-        if not context.auth:
-            raise UnauthorizedError("Authentication required")
+        # Basic validation using available context fields
+        # Note: Advanced auth fields may not be available yet
 
-        # 2. Check required scopes (automatically done by framework)
-        # Additional scope checks can be done manually:
-        capability_id = context.metadata.get("capability_id")
-        if capability_id == "admin_operation":
-            context.require_scope("admin")
+        # 1. Check if this is a sensitive operation
+        operation = context.metadata.get("operation", "")
+        if operation in ["admin", "delete", "sensitive"]:
+            # Implement your own auth checks here
+            # This is plugin-specific until framework auth is available
+            if not self._check_admin_permission(context):
+                return CapabilityResult(
+                    content="Access denied: insufficient permissions",
+                    success=False,
+                    error="PERMISSION_DENIED"
+                )
 
-        # 3. Custom authorization
-        if not self.validate_access(context):
-            raise ForbiddenError("Access denied by custom authorization")
-
-        # 4. Audit logging
-        self._log_access(context)
-
-        # 5. Execute the actual operation
+        # 2. Execute the actual operation
         result = self._execute_operation(context)
 
-        # 6. Add security metadata to result
+        # 3. Add metadata for audit purposes
         result.metadata.update({
-            "user_id": context.get_user_id(),
-            "auth_type": context.auth.auth_type,
-            "scopes_used": context.user_scopes,
-            "request_id": context.request_id
+            "executed_at": datetime.utcnow().isoformat(),
+            "operation": operation,
         })
 
         return result
 
-    except (UnauthorizedError, ForbiddenError) as e:
-        # Log security violations
-        self._log_security_violation(context, str(e))
-        raise
     except Exception as e:
-        # Log and handle other errors
-        self._log_error(context, str(e))
         return CapabilityResult(
             content=f"Operation failed: {str(e)}",
             success=False,
             error=str(e)
         )
+
+def _check_admin_permission(self, context: CapabilityContext) -> bool:
+    """Plugin-specific permission check until framework auth is available."""
+    # Implement your security logic here
+    # This could check API keys, user roles, etc.
+    return True  # Placeholder
+
+def _execute_operation(self, context: CapabilityContext) -> CapabilityResult:
+    """Execute the actual capability operation."""
+    return CapabilityResult(content="Operation completed", success=True)
 
 def _log_access(self, context: CapabilityContext):
     """Log successful access for audit trail."""
@@ -505,75 +522,97 @@ def _log_operation(self, context: EnhancedCapabilityContext, operation: str, res
 
 ## Examples
 
-### Example 1: File System Plugin
+### Example 1: Current File System Plugin Implementation
 
 ```python
 class FileSystemPlugin:
-    """Plugin for file system operations with proper security."""
+    """Plugin for file system operations with current security approach."""
 
     @hookimpl
-    def get_plugin_characteristics(self) -> PluginCharacteristics:
-        return PluginCharacteristics(
-            plugin_type=PluginType.LOCAL,
-            network_dependent=False,
-            cacheable=False,  # File contents change
-            retry_suitable=False,
-            rate_limit_required=False,
-            auth_scopes=["files:read"],
-            performance_critical=True
+    def register_capability(self) -> PluginDefinition:
+        """Register file system capability."""
+        return PluginDefinition(
+            id="file_system",
+            name="File System Operations",
+            version="1.0.0",
+            description="Read and write files with security checks",
+            capabilities=[CapabilityType.TEXT],
+            required_scopes=["files:read", "files:write"],  # Basic scope definition
         )
 
     @hookimpl
-    def get_required_scopes(self, capability_id: str) -> list[str]:
-        return {
-            "read_file": ["files:read"],
-            "write_file": ["files:write"],
-            "delete_file": ["files:write", "files:admin"],
-            "read_sensitive": ["files:read", "files:sensitive"],
-        }.get(capability_id, ["files:read"])
+    def can_handle_task(self, context: CapabilityContext) -> float:
+        """Check if this capability can handle file operations."""
+        # Simple keyword-based routing for now
+        if hasattr(context.task, 'history') and context.task.history:
+            last_msg = context.task.history[-1]
+            if hasattr(last_msg, 'parts') and last_msg.parts:
+                content = last_msg.parts[0].text if hasattr(last_msg.parts[0], 'text') else ""
+                if any(word in content.lower() for word in ['file', 'read', 'write', 'save']):
+                    return 0.8
+        return 0.0
 
     @hookimpl
-    def validate_access(self, context: CapabilityContext) -> bool:
-        """Additional file-specific authorization."""
-        file_path = context.metadata.get("file_path", "")
+    def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
+        """Execute file operations with current security approach."""
+        try:
+            # Basic security checks using available context
+            operation = context.metadata.get("operation", "")
+            file_path = context.metadata.get("file_path", "")
 
+            # Manual security validation since advanced auth hooks not available
+            if not self._validate_file_access(file_path, operation):
+                return CapabilityResult(
+                    content="Access denied: insufficient file permissions",
+                    success=False,
+                    error="PERMISSION_DENIED"
+                )
+
+            if operation == "read_file":
+                return self._read_file(context, file_path)
+            elif operation == "write_file":
+                return self._write_file(context, file_path)
+            else:
+                return CapabilityResult(
+                    content="Unknown file operation",
+                    success=False,
+                    error="INVALID_OPERATION"
+                )
+
+        except Exception as e:
+            return CapabilityResult(
+                content=f"File operation failed: {str(e)}",
+                success=False,
+                error=str(e)
+            )
+
+    def _validate_file_access(self, file_path: str, operation: str) -> bool:
+        """Manual file access validation."""
         # Restrict access to system files
-        if file_path.startswith("/etc/") or file_path.startswith("/sys/"):
-            return context.has_scope("system:admin")
+        if file_path.startswith(("/etc/", "/sys/", "/proc/")):
+            return False  # Would check admin permissions when available
 
         # Restrict access to sensitive directories
         sensitive_dirs = ["/home/", "/Users/", "/.ssh/"]
         if any(file_path.startswith(d) for d in sensitive_dirs):
-            return context.has_scope("files:sensitive")
+            return False  # Would check sensitive file permissions when available
 
         return True
 
-    @hookimpl
-    def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
-        capability_id = context.metadata.get("capability_id")
-        file_path = context.metadata.get("file_path")
-
-        if capability_id == "read_file":
-            return self._read_file(context, file_path)
-        elif capability_id == "write_file":
-            return self._write_file(context, file_path)
-        # ... other operations
-
-    def _read_file(self, context: EnhancedCapabilityContext, file_path: str) -> CapabilityResult:
+    def _read_file(self, context: CapabilityContext, file_path: str) -> CapabilityResult:
+        """Read file with basic error handling."""
         try:
-            # Security is already validated by framework + validate_access
             with open(file_path, 'r') as f:
                 content = f.read()
-
-            self._log_operation(context, "read_file", "success")
 
             return CapabilityResult(
                 content=content,
                 success=True,
                 metadata={
                     "file_path": file_path,
-                    "user_id": context.get_user_id(),
-                    "size": len(content)
+                    "operation": "read_file",
+                    "size": len(content),
+                    "executed_at": datetime.utcnow().isoformat()
                 }
             )
         except FileNotFoundError:
@@ -588,74 +627,113 @@ class FileSystemPlugin:
                 success=False,
                 error="PERMISSION_DENIED"
             )
+
+    def _write_file(self, context: CapabilityContext, file_path: str) -> CapabilityResult:
+        """Write file with basic error handling."""
+        content_to_write = context.metadata.get("content", "")
+        try:
+            with open(file_path, 'w') as f:
+                f.write(content_to_write)
+
+            return CapabilityResult(
+                content=f"Successfully wrote {len(content_to_write)} characters to {file_path}",
+                success=True,
+                metadata={
+                    "file_path": file_path,
+                    "operation": "write_file",
+                    "bytes_written": len(content_to_write),
+                    "executed_at": datetime.utcnow().isoformat()
+                }
+            )
+        except PermissionError:
+            return CapabilityResult(
+                content="Permission denied",
+                success=False,
+                error="PERMISSION_DENIED"
+            )
 ```
 
-### Example 2: External API Plugin
+### Example 2: Current External API Plugin Implementation
 
 ```python
 class WeatherAPIPlugin:
-    """Plugin for weather API with network-aware security."""
+    """Plugin for weather API with current implementation approach."""
 
     @hookimpl
-    def get_plugin_characteristics(self) -> PluginCharacteristics:
-        return PluginCharacteristics(
-            plugin_type=PluginType.NETWORK,
-            network_dependent=True,
-            cacheable=True,
-            cache_ttl=1800,  # 30 minutes
-            retry_suitable=True,
-            rate_limit_required=True,
-            auth_scopes=["api:external", "weather:read"],
-            performance_critical=False
+    def register_capability(self) -> PluginDefinition:
+        """Register weather API capability."""
+        return PluginDefinition(
+            id="weather_api",
+            name="Weather API",
+            version="1.0.0",
+            description="Get weather information from external APIs",
+            capabilities=[CapabilityType.TEXT, CapabilityType.AI_FUNCTION],
+            required_scopes=["api:external", "weather:read"],
         )
 
     @hookimpl
-    def get_required_scopes(self, capability_id: str) -> list[str]:
-        return {
-            "get_weather": ["weather:read", "api:external"],
-            "get_forecast": ["weather:read", "api:external"],
-            "get_alerts": ["weather:read", "weather:alerts", "api:external"],
-        }.get(capability_id, ["weather:read"])
+    def can_handle_task(self, context: CapabilityContext) -> float:
+        """Check if this capability can handle weather requests."""
+        if hasattr(context.task, 'history') and context.task.history:
+            last_msg = context.task.history[-1]
+            if hasattr(last_msg, 'parts') and last_msg.parts:
+                content = last_msg.parts[0].text if hasattr(last_msg.parts[0], 'text') else ""
+                if any(word in content.lower() for word in ['weather', 'temperature', 'forecast', 'rain']):
+                    return 0.9
+        return 0.0
 
     @hookimpl
-    def get_middleware_preferences(self, capability_id: str) -> dict[str, Any]:
-        return {
-            "cached": {
-                "enabled": True,
-                "ttl": 1800,
-                "key_strategy": "location_aware"
-            },
-            "rate_limited": {
-                "enabled": True,
-                "requests_per_minute": 30,  # API limit
-                "per_user": True
-            },
-            "retryable": {
-                "enabled": True,
-                "max_attempts": 3,
-                "backoff_factor": 2.0
-            }
-        }
+    def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
+        """Execute weather API operations with current security approach."""
+        try:
+            operation = context.metadata.get("operation", "get_weather")
+            location = context.metadata.get("location", "")
 
-    @hookimpl
-    def validate_access(self, context: CapabilityContext) -> bool:
-        """Custom authorization for weather API."""
-        # Check if user has remaining API quota
-        user_id = context.get_user_id()
-        if not self._check_api_quota(user_id):
-            return False
+            # Basic validation
+            if not location:
+                return CapabilityResult(
+                    content="Location is required for weather queries",
+                    success=False,
+                    error="MISSING_LOCATION"
+                )
 
-        # Premium features require premium scope
-        capability_id = context.metadata.get("capability_id")
-        if capability_id == "get_alerts":
-            return context.has_scope("weather:premium")
+            # Manual rate limiting check (would be framework-handled in future)
+            if not self._check_rate_limit():
+                return CapabilityResult(
+                    content="Rate limit exceeded. Please try again later.",
+                    success=False,
+                    error="RATE_LIMIT_EXCEEDED"
+                )
 
-        return True
+            # Execute weather API call
+            weather_data = self._get_weather_data(location)
 
-    def _check_api_quota(self, user_id: str) -> bool:
-        """Check if user has remaining API quota."""
-        # Implementation would check against quota system
-        return True
+            return CapabilityResult(
+                content=f"Weather in {location}: {weather_data}",
+                success=True,
+                metadata={
+                    "operation": operation,
+                    "location": location,
+                    "executed_at": datetime.utcnow().isoformat()
+                }
+            )
+
+        except Exception as e:
+            return CapabilityResult(
+                content=f"Weather API error: {str(e)}",
+                success=False,
+                error=str(e)
+            )
+
+    def _check_rate_limit(self) -> bool:
+        """Basic rate limiting check."""
+        # Plugin-specific rate limiting until framework support
+        return True  # Placeholder
+
+    def _get_weather_data(self, location: str) -> str:
+        """Get weather data from external API."""
+        # Actual API implementation would go here
+        return f"Sunny, 22°C"  # Placeholder
 ```
 
 ---
@@ -880,15 +958,51 @@ The visibility system integrates with the A2A protocol:
 - **Extended Agent Card** (`/agent/authenticatedExtendedCard`): Shows all plugins
 - **supportsAuthenticatedExtendedCard**: Automatically set based on extended plugin presence
 
-For complete details, see the [A2A Extended Card documentation](../a2a-extended-card.md).
+For complete details, see the [A2A Extended Card documentation](../middleware/a2a-protocol.md#authenticated-extended-card).
 
 ---
 
+## Current State and Future Roadmap
+
+### What's Available Now
+
+- **Basic Plugin Registration**: Use `register_capability()` to define capabilities with basic scope requirements
+- **Capability Execution**: Implement security checks manually in `execute_capability()`
+- **Task Routing**: Use `can_handle_task()` for simple keyword-based routing
+- **AI Functions**: Integrate with LLMs through `get_ai_functions()`
+
+### Planned Security Features
+
+The following features are planned for future releases:
+
+- **Advanced Authentication**: Comprehensive auth context with user information and token validation
+- **Automatic Scope Validation**: Framework-level scope checking based on `required_scopes`
+- **Plugin Characteristics**: Detailed plugin metadata for middleware selection
+- **Middleware Integration**: Automatic rate limiting, caching, and retry logic
+- **Custom Authorization Hooks**: Plugin-specific access control beyond scopes
+- **Audit Logging**: Built-in security event logging and monitoring
+
+### Migration Path
+
+When advanced security features become available:
+
+1. **Current plugins will continue to work** - no breaking changes
+2. **Add security hooks gradually** - implement new hooks as they become available
+3. **Remove manual security code** - replace plugin-specific auth with framework features
+4. **Enhanced configuration** - use declarative security configuration
+
+## Best Practices for Current Implementation
+
+1. **Implement basic validation** in `execute_capability()`
+2. **Use `required_scopes` in `PluginDefinition`** to document intended permissions
+3. **Return clear error messages** for security violations
+4. **Log security events** for audit purposes
+5. **Validate input parameters** thoroughly
+6. **Follow principle of least privilege** in your security checks
+
 ## Conclusion
 
-The Agentup Security Framework model provides comprehensive protection while maintaining flexibility for different plugin types. By following this guide, plugin maintainers can implement robust security that integrates  with AgentUp's middleware and authentication system.
-
-The plugin visibility system adds an additional layer of control for enterprise deployments, allowing you to provide different capability levels to public versus authenticated clients.
+While AgentUp's advanced security system is under development, plugin maintainers can still implement secure plugins using the current hooks and manual security validation. The planned security features will provide a more comprehensive and automated approach to plugin security.
 
 For additional support or questions, refer to the main AgentUp documentation or reach out to the development team.
 
