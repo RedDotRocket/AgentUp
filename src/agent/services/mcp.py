@@ -1,5 +1,5 @@
 from .base import Service
-from .capabilities import CapabilityRegistry
+from .builtin_capabilities import BuiltinCapabilityRegistry
 from .config import ConfigurationManager
 
 
@@ -12,7 +12,7 @@ class MCPService(Service):
     - MCP HTTP server setup
     """
 
-    def __init__(self, config_manager: ConfigurationManager, capability_registry: CapabilityRegistry):
+    def __init__(self, config_manager: ConfigurationManager, capability_registry: BuiltinCapabilityRegistry):
         super().__init__(config_manager)
         self.capabilities = capability_registry
         self._mcp_client = None

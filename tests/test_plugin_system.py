@@ -1,6 +1,6 @@
 import pytest
 
-from agent.plugins import CapabilityContext, CapabilityResult, PluginDefinition, PluginManager
+from agent.plugins import CapabilityContext, CapabilityDefinition, CapabilityResult, PluginManager
 from agent.plugins.example_plugin import ExamplePlugin
 from tests.utils.plugin_testing import MockTask, create_test_plugin
 
@@ -17,7 +17,7 @@ class TestPluginSystem:
         plugin = ExamplePlugin()
         capability_info = plugin.register_capability()
 
-        assert isinstance(capability_info, PluginDefinition)
+        assert isinstance(capability_info, CapabilityDefinition)
         assert capability_info.id == "example"
         assert capability_info.name == "Example Capability"
         assert "text" in [cap.value for cap in capability_info.capabilities]

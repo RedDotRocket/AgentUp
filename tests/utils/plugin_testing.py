@@ -4,7 +4,7 @@ from unittest.mock import Mock
 
 from a2a.types import Task, TaskState, TaskStatus
 
-from src.agent.plugins.models import CapabilityContext, CapabilityResult, PluginDefinition
+from src.agent.plugins.models import CapabilityContext, CapabilityDefinition, CapabilityResult
 
 
 class MockTask:
@@ -46,8 +46,8 @@ class PluginTestCase:
             metadata=metadata or {},
         )
 
-    def assert_capability_info_valid(self, capability_info: PluginDefinition) -> None:
-        assert isinstance(capability_info, PluginDefinition)
+    def assert_capability_info_valid(self, capability_info: CapabilityDefinition) -> None:
+        assert isinstance(capability_info, CapabilityDefinition)
         assert capability_info.id
         assert capability_info.name
         assert capability_info.version
@@ -79,7 +79,7 @@ class PluginTestRunner:
     def test_registration(self) -> bool:
         try:
             capability_info = self.plugin.register_capability()
-            assert isinstance(capability_info, PluginDefinition)
+            assert isinstance(capability_info, CapabilityDefinition)
             assert capability_info.id
             assert capability_info.name
             return True
@@ -143,8 +143,8 @@ class PluginTestRunner:
 
 def create_test_plugin(skill_id: str, name: str) -> type:
     class TestPlugin:
-        def register_capability(self) -> PluginDefinition:
-            return PluginDefinition(
+        def register_capability(self) -> CapabilityDefinition:
+            return CapabilityDefinition(
                 id=skill_id,
                 name=name,
                 version="1.0.0",

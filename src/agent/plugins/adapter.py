@@ -51,6 +51,9 @@ class PluginAdapter:
             # Get AI functions from the capability
             ai_functions = self.plugin_manager.get_ai_functions(capability_id)
 
+            # Get plugin name for better logging
+            plugin_name = self.plugin_manager.capability_to_plugin.get(capability_id, "unknown")
+
             for ai_func in ai_functions:
                 # Create OpenAI-compatible function schema
                 schema = {
@@ -64,7 +67,7 @@ class PluginAdapter:
 
                 # Register with the function registry
                 registry.register_function(ai_func.name, handler, schema)
-                logger.info(f"Registered AI function '{ai_func.name}' from capability '{capability_id}'")
+                logger.info(f"Registered AI function '{ai_func.name}' from plugin '{plugin_name}'")
 
     def _load_enabled_capabilities(self) -> dict[str, list[str]]:
         """Load enabled capabilities from agent configuration.
@@ -268,15 +271,3 @@ class PluginAdapter:
 
     def get_ai_functions(self, capability_id: str):
         return self.plugin_manager.get_ai_functions(capability_id)
-
-
-# TODO: I think this is dead code, but commenting for noew
-# def integrate_plugins_with_registry(registry: FunctionRegistry) -> PluginAdapter:
-#     """
-#     Integrate the plugin system with an existing function registry.
-
-#     This is the main entry point for adding plugin support to AgentUp.
-#     """
-#     adapter = PluginAdapter()
-#     adapter.integrate_with_function_registry(registry)
-#     return adapter

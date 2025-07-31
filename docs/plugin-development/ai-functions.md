@@ -37,7 +37,7 @@ Edit `src/calculator_plugin/plugin.py`:
 import math
 import pluggy
 from agent.plugins import (
-    PluginDefinition, CapabilityContext, CapabilityResult, AIFunction, CapabilityType
+    CapabilityDefinition, CapabilityContext, CapabilityResult, AIFunction, CapabilityType
 )
 
 hookimpl = pluggy.HookimplMarker("agentup")
@@ -46,9 +46,9 @@ class Plugin:
     """Calculator plugin with AI functions."""
 
     @hookimpl
-    def register_capability(self) -> PluginDefinition:
+    def register_capability(self) -> CapabilityDefinition:
         """Register the calculator capability."""
-        return PluginDefinition(
+        return CapabilityDefinition(
             id="calculator",
             name="Calculator",
             version="1.0.0",

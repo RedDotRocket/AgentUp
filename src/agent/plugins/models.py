@@ -7,8 +7,6 @@ from a2a.types import Task
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_serializer, field_validator, model_validator
 
 from ..types import JsonValue
-from ..utils.validation import BaseValidator, CompositeValidator
-from ..utils.validation import ValidationResult as FrameworkValidationResult
 
 
 class PluginStatus(str, Enum):
@@ -26,7 +24,7 @@ class CapabilityType(str, Enum):
     STATEFUL = "stateful"
 
 
-class PluginInfo(BaseModel):
+class PluginDefinition(BaseModel):
     name: str = Field(..., description="Plugin name", min_length=1, max_length=100)
     version: str = Field(..., description="Plugin version")
     author: str | None = Field(None, description="Plugin author")
@@ -56,7 +54,7 @@ class PluginInfo(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def validate_plugin_consistency(self) -> PluginInfo:
+    def validate_plugin_consistency(self) -> PluginDefinition:
         if self.status == PluginStatus.ERROR and not self.error:
             raise ValueError("ERROR status requires error message")
 
@@ -92,7 +90,7 @@ class PluginInfo(BaseModel):
         return value.value
 
 
-class PluginDefinition(BaseModel):
+class CapabilityDefinition(BaseModel):
     id: str = Field(..., description="Capability identifier", min_length=1, max_length=128)
     name: str = Field(..., description="Human-readable capability name", min_length=1, max_length=100)
     version: str = Field(..., description="Capability version")
@@ -288,97 +286,14 @@ class PluginValidationResult(BaseModel):
             return f"Validation failed: {len(self.errors)} errors"
 
 
-# Plugin Validators using validation framework
-class PluginInfoValidator(BaseValidator[PluginInfo]):
-    def validate(self, model: PluginInfo) -> FrameworkValidationResult:
-        result = FrameworkValidationResult(valid=True)
-
-        # Check for suspicious plugin names
-        suspicious_patterns = ["malware", "virus", "hack", "exploit"]
-        name_lower = model.name.lower()
-        for pattern in suspicious_patterns:
-            if pattern in name_lower:
-                result.add_warning(f"Plugin name contains suspicious pattern: '{pattern}'")
-
-        # Validate author field for public plugins
-        if not model.author and model.status == PluginStatus.ENABLED:
-            result.add_suggestion("Consider adding author information for enabled plugins")
-
-        # Check for very long error messages
-        if model.error and len(model.error) > 500:
-            result.add_warning("Error message is very long - consider summarizing")
-
-        return result
-
-
-class PluginDefinitionValidator(BaseValidator[PluginDefinition]):
-    def validate(self, model: PluginDefinition) -> FrameworkValidationResult:
-        result = FrameworkValidationResult(valid=True)
-
-        # Check for missing descriptions on important capabilities
-        if not model.description and CapabilityType.AI_FUNCTION in model.capabilities:
-            result.add_suggestion("AI functions should have descriptions for better user understanding")
-
-        # Validate priority ranges for different capability types
-        if CapabilityType.AI_FUNCTION in model.capabilities and model.priority < 20:
-            result.add_warning("AI functions typically should have higher priority (>= 20)")
-
-        # Check for excessive required scopes
-        if len(model.required_scopes) > 10:
-            result.add_warning("Capability requires many scopes - consider if all are necessary")
-
-        # Validate tags are meaningful
-        meaningless_tags = {"test", "debug", "temp", "todo"}
-        for tag in model.tags:
-            if tag.lower() in meaningless_tags:
-                result.add_suggestion(f"Consider using more descriptive tag instead of '{tag}'")
-
-        return result
-
-
-class AIFunctionValidator(BaseValidator[AIFunction]):
-    def validate(self, model: AIFunction) -> FrameworkValidationResult:
-        result = FrameworkValidationResult(valid=True)
-
-        # Check for dangerous function names
-        dangerous_patterns = ["delete", "remove", "destroy", "kill", "terminate"]
-        name_lower = model.name.lower()
-        for pattern in dangerous_patterns:
-            if pattern in name_lower:
-                result.add_warning(f"Function name contains potentially dangerous pattern: '{pattern}'")
-
-        # Validate parameter complexity
-        params_str = str(model.parameters)
-        if len(params_str) > 3000:  # 3KB
-            result.add_warning("Function parameters schema is very complex")
-
-        # Check for examples on complex functions
-        if not model.examples and len(params_str) > 1000:
-            result.add_suggestion("Complex functions should include usage examples")
-
-        return result
-
-
-# Composite validator for plugin models
-def create_plugin_validator() -> CompositeValidator[PluginInfo]:
-    validators = [
-        PluginInfoValidator(PluginInfo),
-    ]
-    return CompositeValidator(PluginInfo, validators)
-
-
 # Re-export key models
 __all__ = [
     "PluginStatus",
     "CapabilityType",
-    "PluginInfo",
     "PluginDefinition",
+    "CapabilityDefinition",
     "AIFunction",
     "CapabilityContext",
     "CapabilityResult",
     "PluginValidationResult",
-    "PluginInfoValidator",
-    "PluginDefinitionValidator",
-    "AIFunctionValidator",
-    "create_plugin_validator",
 ]

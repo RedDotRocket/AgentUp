@@ -261,6 +261,84 @@ The framework automatically enforces the configured tool scopes for MCP tools ju
 
 ## AI Integration and Security
 
+### Understanding Plugin Security vs LLM Fallback
+
+AgentUp implements a **dual-layer approach** to AI capabilities that distinguishes between secured plugin tools and native LLM capabilities:
+
+#### Plugin Tool Security (Primary Path)
+- **Plugin functions** like `analyze_image`, `file_read`, etc. are fully secured by scopes
+- Users must have appropriate scopes (`image:read`, `files:read`) to access plugin tools
+- AI receives function schemas only for tools the user can access
+- Enhanced functionality with plugin-specific features
+
+#### LLM Native Fallback (Secondary Path)  
+- When plugin tools are denied, AI falls back to **native LLM capabilities**
+- OpenAI's vision API, text processing, etc. continue to work
+- No plugin functions are called - pure LLM processing
+- Basic functionality without plugin enhancements
+
+#### Example: Image Analysis Security
+
+**User with `image:read` scope:**
+```yaml
+security:
+  auth:
+    api_key:
+      keys:
+        - key: "user-key"
+          scopes: ["image:read"]
+```
+```
+Request: "Analyze this image"
+✅ AI gets analyze_image function schema
+✅ AI calls plugin function with enhanced features
+✅ Result: Advanced analysis with metadata, confidence scores
+```
+
+**User without `image:read` scope:**
+```yaml
+security:
+  auth:
+    api_key:
+      keys:
+        - key: "basic-key"  
+          scopes: ["files:read"]  # No image scope
+```
+```
+Request: "Analyze this image"  
+❌ AI gets no image plugin functions (filtered by security)
+✅ AI falls back to OpenAI's native vision capabilities
+✅ Result: Basic image analysis without plugin features
+```
+
+#### Security Logs Show Both Scenarios
+
+**Plugin tool denied (expected):**
+```
+WARNING: Security event: function_access_denied 
+- resource: analyze_image
+- user_scopes: ["files:read"] 
+- required_scopes: ["image:read"]
+```
+
+**LLM fallback used (by design):**
+```
+INFO: AI tool filtering completed: 0 tools available for user
+WARNING: No function schemas available for AI - this will prevent tool calling
+INFO: Using direct LLM response (no tools available)
+```
+
+### Design Rationale
+
+This dual-layer approach provides:
+
+1. **Graceful User Experience**: Requests don't fail completely - users get basic LLM functionality
+2. **Clear Security Boundaries**: Plugin tools are properly secured, native LLM remains available  
+3. **Audit Transparency**: Logs clearly distinguish plugin denials from LLM fallback usage
+4. **Flexible Deployment**: Organizations can choose between enhanced plugin features vs basic LLM access
+
+## AI Integration and Security
+
 ### Automatic Tool Filtering
 
 The framework automatically filters which tools are available to AI based on the user's scopes. This means:

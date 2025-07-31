@@ -5,7 +5,7 @@
 """
 
 import pluggy
-from agent.plugins import PluginDefinition, CapabilityContext, CapabilityResult, PluginValidationResult, CapabilityType{% if template == "ai" %}, AIFunction{% endif %}
+from agent.plugins import CapabilityDefinition, CapabilityContext, CapabilityResult, PluginValidationResult, CapabilityType{% if template == "ai" %}, AIFunction{% endif %}
 
 hookimpl = pluggy.HookimplMarker("agentup")
 
@@ -16,16 +16,20 @@ class Plugin:
     def __init__(self):
         """Initialize the plugin."""
         self.name = "{{ plugin_name }}"
-        {% if template == "ai" %}self.llm_service = None
+        {% if template == "advanced" %}
+        self.services = {}
+        self.config = {}
+        {% elif template == "ai" %}
+        self.llm_service = None
         {% endif %}
 
     @hookimpl
-    def register_capability(self) -> PluginDefinition:
+    def register_capability(self) -> CapabilityDefinition:
         """Register the capability with AgentUp."""
-        return PluginDefinition(
+        return CapabilityDefinition(
             id="{{ capability_id }}",
             name="{{ display_name }}",
-            version="0.4.0",
+            version="0.3.0",
             description="{{ description }}",
             capabilities=[CapabilityType.TEXT{% if template == "ai" %}, CapabilityType.AI_FUNCTION{% endif %}],
             tags=["{{ plugin_name }}"{% if template == "ai" %}, "ai", "llm"{% endif %}, "custom"],
@@ -48,6 +52,7 @@ class Plugin:
         self.llm_service = services.get("llm")
 
     {% endif %}
+
     @hookimpl
     def can_handle_task(self, context: CapabilityContext) -> bool:
         """Check if this capability can handle the task."""
@@ -81,7 +86,38 @@ class Plugin:
         )
         {% endif %}
 
-    {% if template == "ai" %}@hookimpl
+    {% if template == "advanced" %}@hookimpl
+    def get_middleware_config(self) -> list[dict]:
+        """Request middleware for this capability."""
+        return [
+            {"type": "rate_limit", "requests_per_minute": 60},
+            {"type": "cache", "ttl": 300},
+            {"type": "logging", "level": "INFO"},
+        ]
+
+    @hookimpl
+    def get_state_schema(self) -> dict:
+        """Define state schema for stateful operations."""
+        return {
+            "type": "object",
+            "properties": {
+                "last_processed": {"type": "string"},
+                "process_count": {"type": "integer"},
+                "user_preferences": {"type": "object"},
+            },
+        }
+
+    @hookimpl
+    def get_health_status(self) -> dict:
+        """Report health status of the plugin."""
+        return {
+            "status": "healthy",
+            "version": "0.4.0",
+            "services_available": list(self.services.keys()),
+            "config_loaded": bool(self.config),
+        }
+
+    {% elif template == "ai" %}@hookimpl
     def get_ai_functions(self) -> list[AIFunction]:
         """Provide AI functions for LLM function calling."""
         return [

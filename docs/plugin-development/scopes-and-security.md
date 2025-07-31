@@ -143,9 +143,9 @@ These hooks are currently implemented and available for use:
 
 ```python
 @hookimpl
-def register_capability(self) -> PluginDefinition:
+def register_capability(self) -> CapabilityDefinition:
     """Register the capability with AgentUp (AVAILABLE)."""
-    return PluginDefinition(
+    return CapabilityDefinition(
         id="my_capability",
         name="My Capability",
         version="1.0.0",
@@ -529,9 +529,9 @@ class FileSystemPlugin:
     """Plugin for file system operations with current security approach."""
 
     @hookimpl
-    def register_capability(self) -> PluginDefinition:
+    def register_capability(self) -> CapabilityDefinition:
         """Register file system capability."""
-        return PluginDefinition(
+        return CapabilityDefinition(
             id="file_system",
             name="File System Operations",
             version="1.0.0",
@@ -660,9 +660,9 @@ class WeatherAPIPlugin:
     """Plugin for weather API with current implementation approach."""
 
     @hookimpl
-    def register_capability(self) -> PluginDefinition:
+    def register_capability(self) -> CapabilityDefinition:
         """Register weather API capability."""
-        return PluginDefinition(
+        return CapabilityDefinition(
             id="weather_api",
             name="Weather API",
             version="1.0.0",
@@ -962,6 +962,58 @@ For complete details, see the [A2A Extended Card documentation](../middleware/a2
 
 ---
 
+## Important: LLM Native Capabilities vs Plugin Tools
+
+### Understanding the Security Model
+
+AgentUp's security system protects **plugin capabilities** but allows **native LLM capabilities** to continue functioning. This is by design and creates two execution paths:
+
+#### Secured Path (Plugin Tools Available)
+When users have appropriate scopes:
+- AI receives function schemas for plugin capabilities 
+- AI can call specific plugin functions (e.g., `analyze_image`)
+- Plugin functions execute with full security enforcement
+- Users access enhanced, plugin-specific functionality
+
+#### Fallback Path (No Plugin Tools Available)
+When users lack required scopes:
+- AI receives no function schemas (tools filtered by security)
+- AI falls back to native LLM capabilities (OpenAI vision, etc.)
+- No plugin functions are called - pure LLM processing
+- Users get basic LLM functionality without plugin enhancements
+
+### Example: Image Analysis
+
+**With `image:read` scope:**
+```
+User: "What's in this image?"
+→ AI calls analyze_image plugin function
+→ Plugin processes image with custom logic
+→ Enhanced analysis with metadata, confidence scores, etc.
+```
+
+**Without `image:read` scope:**
+```
+User: "What's in this image?"
+→ No plugin tools available to AI
+→ AI uses OpenAI's native vision capabilities
+→ Basic image analysis without plugin enhancements
+```
+
+### Why This Design?
+
+1. **Graceful Degradation**: Users still get basic functionality even without plugin permissions
+2. **Clear Separation**: Plugin security vs native LLM capabilities are distinct layers
+3. **User Experience**: Requests don't fail completely - they fall back to basic LLM processing
+4. **Transparency**: Security logs clearly show when plugin tools are denied vs when fallback occurs
+
+### Security Considerations
+
+- **Plugin tools are properly secured** - scope enforcement works correctly
+- **Native LLM capabilities remain available** - this is intentional, not a bypass
+- **Audit logs track both scenarios** - plugin denials and fallback usage are logged
+- **Users understand the difference** - enhanced plugin features vs basic LLM functionality
+
 ## Current State and Future Roadmap
 
 ### What's Available Now
@@ -994,7 +1046,7 @@ When advanced security features become available:
 ## Best Practices for Current Implementation
 
 1. **Implement basic validation** in `execute_capability()`
-2. **Use `required_scopes` in `PluginDefinition`** to document intended permissions
+2. **Use `required_scopes` in `CapabilityDefinition`** to document intended permissions
 3. **Return clear error messages** for security violations
 4. **Log security events** for audit purposes
 5. **Validate input parameters** thoroughly

@@ -342,10 +342,10 @@ AGENTUP_LOG_LEVEL=DEBUG agentup agent serve
 
 ```bash
 # Wrong import path
-from agentup.plugins import PluginInfo  # ✗ Wrong
+from agentup.plugins import PluginDefinition  # ✗ Wrong
 
 # Correct import path
-from agent.plugins import PluginInfo    # ✓ Correct
+from agent.plugins import PluginDefinition    # ✓ Correct
 
 # Check your plugin's imports
 grep -r "from agentup" src/

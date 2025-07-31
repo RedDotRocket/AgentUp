@@ -245,7 +245,7 @@ class UnifiedAuthenticationManager:
         self._initialize_providers()
 
         logger.info(
-            "ASF authentication manager initialized",
+            "Security authentication manager initialized",
             enabled=self.auth_enabled,
             providers=[p.get_auth_type().value for p in self.auth_providers],
         )

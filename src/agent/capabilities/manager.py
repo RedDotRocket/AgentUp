@@ -348,8 +348,11 @@ def _load_middleware_config() -> list[dict[str, Any]]:
                                 },
                             }
                         )
-
-        logger.debug(f"Loaded middleware config: {_middleware_config}")
+        if not _middleware_config:
+            logger.debug("No middleware configured for capability")
+        else:
+            # Log the loaded middleware configuration
+            logger.debug(f"Loaded middleware config: {_middleware_config}")
         return _middleware_config
     except Exception as e:
         logger.warning(f"Could not load middleware config: {e}")
@@ -479,10 +482,6 @@ def _resolve_middleware_config(capability_id: str) -> list[dict[str, Any]]:
 def _apply_middleware_to_capability(executor: Callable, capability_id: str) -> Callable:
     middleware_configs = _resolve_middleware_config(capability_id)
 
-    if not middleware_configs:
-        logger.debug(f"No middleware to apply to {capability_id}")
-        return executor
-
     try:
         # Mark the original executor as having middleware applied before wrapping
         executor._agentup_middleware_applied = True
@@ -496,25 +495,52 @@ def _apply_middleware_to_capability(executor: Callable, capability_id: str) -> C
 
 def register_capability(capability_id: str):
     def decorator(func: Callable[[Task], str]):
+        features_applied = []
+
         # Apply authentication context first
         wrapped_func = _apply_auth_to_capability(func, capability_id)
+        features_applied.append("auth")
+
         # Apply middleware automatically based on agent config
-        wrapped_func = _apply_middleware_to_capability(wrapped_func, capability_id)
+        middleware_configs = _resolve_middleware_config(capability_id)
+        if middleware_configs:
+            wrapped_func = _apply_middleware_to_capability(wrapped_func, capability_id)
+            features_applied.append("middleware")
+
         # Apply state management automatically based on agent config
-        wrapped_func = _apply_state_to_capability(wrapped_func, capability_id)
+        state_config = _resolve_state_config(capability_id)
+        if state_config.get("enabled", False):
+            wrapped_func = _apply_state_to_capability(wrapped_func, capability_id)
+            features_applied.append("state")
+
         _capabilities[capability_id] = wrapped_func
-        logger.debug(f"Registered capability with auth, middleware and state: {capability_id}")
+        logger.debug(f"Registered capability '{capability_id}' with: {', '.join(features_applied)}")
         return wrapped_func
 
     return decorator
 
 
 def register_capability_function(capability_id: str, executor: Callable[[Task], str]) -> None:
+    features_applied = []
+
+    # Apply authentication context first
     wrapped_executor = _apply_auth_to_capability(executor, capability_id)
-    wrapped_executor = _apply_middleware_to_capability(wrapped_executor, capability_id)
-    wrapped_executor = _apply_state_to_capability(wrapped_executor, capability_id)
+    features_applied.append("auth")
+
+    # Apply middleware automatically based on agent config
+    middleware_configs = _resolve_middleware_config(capability_id)
+    if middleware_configs:
+        wrapped_executor = _apply_middleware_to_capability(wrapped_executor, capability_id)
+        features_applied.append("middleware")
+
+    # Apply state management automatically based on agent config
+    state_config = _resolve_state_config(capability_id)
+    if state_config.get("enabled", False):
+        wrapped_executor = _apply_state_to_capability(wrapped_executor, capability_id)
+        features_applied.append("state")
+
     _capabilities[capability_id] = wrapped_executor
-    logger.debug(f"Registered capability function with auth, middleware and state: {capability_id}")
+    logger.debug(f"Registered capability '{capability_id}' with: {', '.join(features_applied)}")
 
 
 def get_capability_executor(capability_id: str) -> Callable[[Task], str] | None:

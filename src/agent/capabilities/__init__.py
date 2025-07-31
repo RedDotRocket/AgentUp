@@ -37,22 +37,16 @@ def discover_and_import_capabilities():
             # Try to import the module
             importlib.import_module(f".{module_name}", package=__name__)
             discovered_modules.append(module_name)
-            logger.debug(f"Successfully imported capability module: {module_name}")
 
         except ImportError as e:
             failed_imports.append((module_name, f"ImportError: {e}"))
-            logger.warning(f"Failed to import capability module {module_name}: {e}")
+            logger.error(f"Failed to import capability module {module_name}: {e}")
         except SyntaxError as e:
             failed_imports.append((module_name, f"SyntaxError: {e}"))
             logger.error(f"Syntax error in capability module {module_name}: {e}")
         except Exception as e:
             failed_imports.append((module_name, f"Exception: {e}"))
             logger.error(f"Unexpected error importing capability module {module_name}: {e}", exc_info=True)
-
-    if discovered_modules:
-        logger.info(
-            f"Successfully imported {len(discovered_modules)} capability modules: {', '.join(discovered_modules)}"
-        )
 
     if failed_imports:
         logger.warning(f"Failed to import {len(failed_imports)} capability modules:")

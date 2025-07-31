@@ -3,10 +3,10 @@ from .manager import PluginManager, get_plugin_manager
 from .models import (
     AIFunction,
     CapabilityContext,
+    CapabilityDefinition,
     CapabilityResult,
     CapabilityType,
     PluginDefinition,
-    PluginInfo,
     PluginValidationResult,
 )
 
@@ -19,10 +19,10 @@ __all__ = [
     "get_plugin_manager",
     # Data models
     "CapabilityContext",
-    "PluginDefinition",
+    "CapabilityDefinition",
     "CapabilityResult",
     "CapabilityType",
-    "PluginInfo",
+    "PluginDefinition",
     "AIFunction",
     "PluginValidationResult",
 ]

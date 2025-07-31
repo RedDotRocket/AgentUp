@@ -1,7 +1,7 @@
 from typing import Any
 
 from .base import Service
-from .capabilities import CapabilityRegistry
+from .builtin_capabilities import BuiltinCapabilityRegistry
 from .config import ConfigurationManager
 
 
@@ -15,7 +15,7 @@ class PluginService(Service):
     - Plugin lifecycle management
     """
 
-    def __init__(self, config_manager: ConfigurationManager, capability_registry: CapabilityRegistry):
+    def __init__(self, config_manager: ConfigurationManager, capability_registry: BuiltinCapabilityRegistry):
         """Initialize the plugin service.
 
         Args:
@@ -28,8 +28,6 @@ class PluginService(Service):
         self._plugin_adapter = None
 
     async def initialize(self) -> None:
-        self.logger.info("Initializing plugin service")
-
         plugin_config = self.config.get("plugins", {})
 
         # Check if plugins are enabled

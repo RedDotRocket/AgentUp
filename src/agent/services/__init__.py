@@ -5,7 +5,7 @@ encapsulating core functionality into cohesive, testable services.
 
 New Services:
 - ConfigurationManager: Singleton configuration management with caching
-- CapabilityRegistry: Unified capability registration and execution
+- BuiltinCapabilityRegistry: Unified capability registration and execution
 - AgentBootstrapper: Orchestrates service initialization
 - SecurityService: Authentication and authorization
 - MiddlewareManager: Middleware configuration and application
@@ -26,7 +26,7 @@ from agent.config import Config
 
 from .base import Service
 from .bootstrap import AgentBootstrapper
-from .capabilities import CapabilityMetadata, CapabilityRegistry
+from .builtin_capabilities import BuiltinCapabilityRegistry, CapabilityMetadata
 from .config import ConfigurationManager
 from .mcp import MCPService
 from .middleware import MiddlewareManager
@@ -51,7 +51,7 @@ __all__ = [
     # New service layer
     "Service",
     "ConfigurationManager",
-    "CapabilityRegistry",
+    "BuiltinCapabilityRegistry",
     "CapabilityMetadata",
     "AgentBootstrapper",
     "SecurityService",

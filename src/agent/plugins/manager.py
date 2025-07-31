@@ -12,9 +12,9 @@ from .hookspecs import CapabilitySpec
 from .models import (
     AIFunction,
     CapabilityContext,
+    CapabilityDefinition,
     CapabilityResult,
     PluginDefinition,
-    PluginInfo,
     PluginStatus,
     PluginValidationResult,
 )
@@ -36,8 +36,8 @@ class PluginManager:
         self.pm = pluggy.PluginManager("agentup")
         self.pm.add_hookspecs(CapabilitySpec)
 
-        self.plugins: dict[str, PluginInfo] = {}
-        self.capabilities: dict[str, PluginDefinition] = {}
+        self.plugins: dict[str, PluginDefinition] = {}
+        self.capabilities: dict[str, CapabilityDefinition] = {}
         self.capability_to_plugin: dict[str, str] = {}
 
         # Track plugin hooks for each capability
@@ -82,11 +82,14 @@ class PluginManager:
                 # Python 3.9
                 capability_entries = entry_points.get("agentup.capabilities", [])
 
-            logger.debug(f"Discovered {len(capability_entries)} Plugins")
+            if len(capability_entries) == 1:
+                logger.debug("Discovered 1 Plugin")
+            elif len(capability_entries) > 1:
+                logger.debug(f"Discovered {len(capability_entries)} Plugins")
 
             for entry_point in capability_entries:
                 try:
-                    logger.debug(f"Querying: {entry_point.name}")
+                    logger.debug(f"Discovering capabilities from plugin: {entry_point.name}")
                     plugin_class = entry_point.load()
                     plugin_instance = plugin_class()
 
@@ -94,7 +97,7 @@ class PluginManager:
                     self.pm.register(plugin_instance, name=entry_point.name)
 
                     # Track plugin info
-                    plugin_info = PluginInfo(
+                    plugin_info = PluginDefinition(
                         name=entry_point.name,
                         version=entry_point.dist.version
                         if entry_point.dist
@@ -115,7 +118,7 @@ class PluginManager:
 
                 except Exception as e:
                     logger.error(f"Failed to load entry point {entry_point.name}: {e}")
-                    self.plugins[entry_point.name] = PluginInfo(
+                    self.plugins[entry_point.name] = PluginDefinition(
                         name=entry_point.name, version="0.0.0", status=PluginStatus.ERROR, error=str(e)
                     )
         except Exception as e:
@@ -227,7 +230,7 @@ class PluginManager:
                 metadata = yaml.safe_load(f) or {}
 
         # Track plugin info
-        plugin_info = PluginInfo(
+        plugin_info = PluginDefinition(
             name=plugin_name,
             version=metadata.get("version", "1.0.0"),
             author=metadata.get("author"),
@@ -290,12 +293,12 @@ class PluginManager:
 
             # Register each capability
             for capability_info in capabilities_to_register:
-                # Check if this is a PluginDefinition object (handle different import paths)
+                # Check if this is a CapabilityDefinition object (handle different import paths)
                 if not (
                     hasattr(capability_info, "id")
                     and hasattr(capability_info, "name")
                     and hasattr(capability_info, "capabilities")
-                    and type(capability_info).__name__ == "PluginDefinition"
+                    and type(capability_info).__name__ == "CapabilityDefinition"
                 ):
                     logger.error(f"Plugin {plugin_name} returned invalid capability info: {type(capability_info)}")
                     continue
@@ -316,13 +319,13 @@ class PluginManager:
         except Exception:
             return "unknown"
 
-    def get_capability(self, capability_id: str) -> PluginDefinition | None:
+    def get_capability(self, capability_id: str) -> CapabilityDefinition | None:
         return self.capabilities.get(capability_id)
 
-    def list_capabilities(self) -> list[PluginDefinition]:
+    def list_capabilities(self) -> list[CapabilityDefinition]:
         return list(self.capabilities.values())
 
-    def list_plugins(self) -> list[PluginInfo]:
+    def list_plugins(self) -> list[PluginDefinition]:
         return list(self.plugins.values())
 
     def can_handle_task(self, capability_id: str, context: CapabilityContext) -> bool | float:

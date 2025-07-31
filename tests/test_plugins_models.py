@@ -8,17 +8,13 @@ from pydantic import ValidationError
 
 from src.agent.plugins.models import (
     AIFunction,
-    AIFunctionValidator,
     CapabilityContext,
+    CapabilityDefinition,
     CapabilityResult,
     CapabilityType,
     PluginDefinition,
-    PluginDefinitionValidator,
-    PluginInfo,
-    PluginInfoValidator,
     PluginStatus,
     PluginValidationResult,
-    create_plugin_validator,
 )
 
 
@@ -39,9 +35,11 @@ class TestCapabilityType:
         assert CapabilityType.STATEFUL == "stateful"
 
 
-class TestPluginInfo:
+class TestPluginDefinition:
     def test_plugin_info_creation(self):
-        plugin = PluginInfo(name="test-plugin", version="1.0.0", author="Test Author", description="A test plugin")
+        plugin = PluginDefinition(
+            name="test-plugin", version="1.0.0", author="Test Author", description="A test plugin"
+        )
 
         assert plugin.name == "test-plugin"
         assert plugin.version == "1.0.0"
@@ -54,48 +52,50 @@ class TestPluginInfo:
         # Valid names
         valid_names = ["test-plugin", "my_plugin", "plugin123", "simple"]
         for name in valid_names:
-            plugin = PluginInfo(name=name, version="1.0.0")
+            plugin = PluginDefinition(name=name, version="1.0.0")
             assert plugin.name == name
 
         # Invalid names
         invalid_names = ["Test-Plugin", "PLUGIN", "123plugin", "-invalid", "plugin!"]
         for name in invalid_names:
             with pytest.raises(ValidationError):
-                PluginInfo(name=name, version="1.0.0")
+                PluginDefinition(name=name, version="1.0.0")
 
     def test_version_validation(self):
         # Valid versions
         valid_versions = ["1.0.0", "2.1.3", "1.0.0-alpha", "1.0.0-beta.1", "1.0.0+build.123"]
         for version in valid_versions:
-            plugin = PluginInfo(name="test-plugin", version=version)
+            plugin = PluginDefinition(name="test-plugin", version=version)
             assert plugin.version == version
 
         # Invalid versions
         invalid_versions = ["1.0", "v1.0.0", "1.0.0.0", "invalid"]
         for version in invalid_versions:
             with pytest.raises(ValidationError):
-                PluginInfo(name="test-plugin", version=version)
+                PluginDefinition(name="test-plugin", version=version)
 
     def test_plugin_status_consistency(self):
         # ERROR status without error message should fail
         with pytest.raises(ValidationError) as exc_info:
-            PluginInfo(name="test-plugin", version="1.0.0", status=PluginStatus.ERROR)
+            PluginDefinition(name="test-plugin", version="1.0.0", status=PluginStatus.ERROR)
         assert "ERROR status requires error message" in str(exc_info.value)
 
         # ERROR status with error message should succeed
-        plugin = PluginInfo(
+        plugin = PluginDefinition(
             name="test-plugin", version="1.0.0", status=PluginStatus.ERROR, error="Plugin failed to load"
         )
         assert plugin.error == "Plugin failed to load"
 
         # Non-error status with error message should clear error
-        plugin = PluginInfo(name="test-plugin", version="1.0.0", status=PluginStatus.LOADED, error="Previous error")
+        plugin = PluginDefinition(
+            name="test-plugin", version="1.0.0", status=PluginStatus.LOADED, error="Previous error"
+        )
         assert plugin.error is None
 
 
-class TestPluginDefinition:
+class TestCapabilityDefinition:
     def test_capability_info_creation(self):
-        capability = PluginDefinition(
+        capability = CapabilityDefinition(
             id="text_processor",
             name="Text Processor",
             version="1.0.0",
@@ -114,33 +114,33 @@ class TestPluginDefinition:
         # Valid IDs
         valid_ids = ["text_processor", "AI-Function", "simple123", "MyCapability"]
         for cap_id in valid_ids:
-            capability = PluginDefinition(id=cap_id, name="Test Capability", version="1.0.0")
+            capability = CapabilityDefinition(id=cap_id, name="Test Capability", version="1.0.0")
             assert capability.id == cap_id
 
         # Invalid IDs
         invalid_ids = ["123invalid", "-invalid", "cap id", "cap!"]
         for cap_id in invalid_ids:
             with pytest.raises(ValidationError):
-                PluginDefinition(id=cap_id, name="Test Capability", version="1.0.0")
+                CapabilityDefinition(id=cap_id, name="Test Capability", version="1.0.0")
 
     def test_version_validation(self):
         # Valid versions
         valid_versions = ["1.0.0", "2.1.3", "1.0.0-alpha"]
         for version in valid_versions:
-            capability = PluginDefinition(id="test_capability", name="Test Capability", version=version)
+            capability = CapabilityDefinition(id="test_capability", name="Test Capability", version=version)
             assert capability.version == version
 
         # Invalid versions
         invalid_versions = ["1.0", "invalid"]
         for version in invalid_versions:
             with pytest.raises(ValidationError):
-                PluginDefinition(id="test_capability", name="Test Capability", version=version)
+                CapabilityDefinition(id="test_capability", name="Test Capability", version=version)
 
     def test_mode_validation(self):
         # Valid modes
         valid_modes = ["text", "json", "binary", "stream", "multimodal"]
         for mode in valid_modes:
-            capability = PluginDefinition(
+            capability = CapabilityDefinition(
                 id="test_capability", name="Test Capability", version="1.0.0", input_mode=mode, output_mode=mode
             )
             assert capability.input_mode == mode
@@ -148,31 +148,35 @@ class TestPluginDefinition:
 
         # Invalid mode
         with pytest.raises(ValidationError):
-            PluginDefinition(id="test_capability", name="Test Capability", version="1.0.0", input_mode="invalid_mode")
+            CapabilityDefinition(
+                id="test_capability", name="Test Capability", version="1.0.0", input_mode="invalid_mode"
+            )
 
     def test_priority_validation(self):
         # Valid priority
-        capability = PluginDefinition(id="test_capability", name="Test Capability", version="1.0.0", priority=75)
+        capability = CapabilityDefinition(id="test_capability", name="Test Capability", version="1.0.0", priority=75)
         assert capability.priority == 75
 
         # Invalid priority (negative)
         with pytest.raises(ValidationError):
-            PluginDefinition(id="test_capability", name="Test Capability", version="1.0.0", priority=-1)
+            CapabilityDefinition(id="test_capability", name="Test Capability", version="1.0.0", priority=-1)
 
         # Invalid priority (too high)
         with pytest.raises(ValidationError):
-            PluginDefinition(id="test_capability", name="Test Capability", version="1.0.0", priority=150)
+            CapabilityDefinition(id="test_capability", name="Test Capability", version="1.0.0", priority=150)
 
     def test_tags_validation(self):
         # Valid tags
         valid_tags = ["nlp", "text-processing", "ai_function"]
-        capability = PluginDefinition(id="test_capability", name="Test Capability", version="1.0.0", tags=valid_tags)
+        capability = CapabilityDefinition(
+            id="test_capability", name="Test Capability", version="1.0.0", tags=valid_tags
+        )
         assert capability.tags == valid_tags
 
         # Invalid tags
         invalid_tags = ["tag!", "tag with spaces", ""]
         with pytest.raises(ValidationError):
-            PluginDefinition(id="test_capability", name="Test Capability", version="1.0.0", tags=invalid_tags)
+            CapabilityDefinition(id="test_capability", name="Test Capability", version="1.0.0", tags=invalid_tags)
 
 
 class TestAIFunction:
@@ -337,142 +341,11 @@ class TestPluginValidationResult:
         assert success_result.summary == "Validation passed"
 
 
-class TestValidators:
-    def test_plugin_info_validator(self):
-        validator = PluginInfoValidator(PluginInfo)
-
-        # Test suspicious name warning
-        suspicious_plugin = PluginInfo(name="malware-detector", version="1.0.0")
-        result = validator.validate(suspicious_plugin)
-        assert result.valid is True
-        assert len(result.warnings) > 0
-        assert "suspicious pattern" in result.warnings[0]
-
-        # Test missing author suggestion
-        enabled_plugin = PluginInfo(name="test-plugin", version="1.0.0", status=PluginStatus.ENABLED)
-        result = validator.validate(enabled_plugin)
-        assert result.valid is True
-        assert len(result.suggestions) > 0
-        assert "author information" in result.suggestions[0]
-
-        # Test long error message warning
-        error_plugin = PluginInfo(
-            name="test-plugin",
-            version="1.0.0",
-            status=PluginStatus.ERROR,
-            error="x" * 600,  # Very long error
-        )
-        result = validator.validate(error_plugin)
-        assert result.valid is True
-        assert len(result.warnings) > 0
-        assert "very long" in result.warnings[0]
-
-    def test_capability_info_validator(self):
-        validator = PluginDefinitionValidator(PluginDefinition)
-
-        # Test missing description suggestion for AI functions
-        ai_capability = PluginDefinition(
-            id="ai_function", name="AI Function", version="1.0.0", capabilities=[CapabilityType.AI_FUNCTION]
-        )
-        result = validator.validate(ai_capability)
-        assert result.valid is True
-        assert len(result.suggestions) > 0
-        assert "should have descriptions" in result.suggestions[0]
-
-        # Test low priority warning for AI functions
-        low_priority_ai = PluginDefinition(
-            id="ai_function",
-            name="AI Function",
-            version="1.0.0",
-            capabilities=[CapabilityType.AI_FUNCTION],
-            priority=10,
-        )
-        result = validator.validate(low_priority_ai)
-        assert result.valid is True
-        assert len(result.warnings) > 0
-        assert "higher priority" in result.warnings[0]
-
-        # Test excessive scopes warning
-        many_scopes_capability = PluginDefinition(
-            id="capability", name="Capability", version="1.0.0", required_scopes=[f"scope_{i}" for i in range(15)]
-        )
-        result = validator.validate(many_scopes_capability)
-        assert result.valid is True
-        assert len(result.warnings) > 0
-        assert "many scopes" in result.warnings[0]
-
-        # Test meaningless tags suggestion
-        meaningless_tags_capability = PluginDefinition(
-            id="capability", name="Capability", version="1.0.0", tags=["test", "debug", "useful-tag"]
-        )
-        result = validator.validate(meaningless_tags_capability)
-        assert result.valid is True
-        assert len(result.suggestions) > 0
-        assert "more descriptive tag" in result.suggestions[0]
-
-    def test_ai_function_validator(self):
-        validator = AIFunctionValidator(AIFunction)
-
-        def dummy_handler(task, context):
-            return {}
-
-        # Test dangerous function name warning
-        dangerous_function = AIFunction(
-            name="delete_files",
-            description="This function deletes files from the system",
-            parameters={"type": "object"},
-            handler=dummy_handler,
-        )
-        result = validator.validate(dangerous_function)
-        assert result.valid is True
-        assert len(result.warnings) > 0
-        assert "dangerous pattern" in result.warnings[0]
-
-        # Test complex parameters warning
-        complex_params = {"type": "object", "properties": {f"param_{i}": {"type": "string"} for i in range(100)}}
-        complex_function = AIFunction(
-            name="complex_function",
-            description="A function with very complex parameters",
-            parameters=complex_params,
-            handler=dummy_handler,
-        )
-        result = validator.validate(complex_function)
-        assert result.valid is True
-        assert len(result.warnings) > 0
-        assert "very complex" in result.warnings[0]
-
-        # Test missing examples suggestion
-        complex_no_examples = AIFunction(
-            name="complex_function",
-            description="A function with complex parameters but no examples",
-            parameters=complex_params,
-            handler=dummy_handler,
-            examples=[],
-        )
-        result = validator.validate(complex_no_examples)
-        assert result.valid is True
-        assert len(result.suggestions) > 0
-        assert "usage examples" in result.suggestions[0]
-
-    def test_composite_plugin_validator(self):
-        composite_validator = create_plugin_validator()
-
-        # Test with valid plugin
-        plugin = PluginInfo(name="test-plugin", version="1.0.0", author="Test Author")
-        result = composite_validator.validate(plugin)
-        assert result.valid is True
-
-        # Test with plugin that triggers warnings
-        suspicious_plugin = PluginInfo(name="virus-scanner", version="1.0.0", status=PluginStatus.ENABLED)
-        result = composite_validator.validate(suspicious_plugin)
-        assert result.valid is True
-        assert len(result.warnings) > 0  # Should have warnings about suspicious name
-        assert len(result.suggestions) > 0  # Should have suggestion about missing author
-
-
 class TestModelSerialization:
     def test_plugin_info_serialization(self):
-        plugin = PluginInfo(name="test-plugin", version="1.0.0", author="Test Author", status=PluginStatus.ENABLED)
+        plugin = PluginDefinition(
+            name="test-plugin", version="1.0.0", author="Test Author", status=PluginStatus.ENABLED
+        )
 
         # Test model_dump
         data = plugin.model_dump()
@@ -487,14 +360,14 @@ class TestModelSerialization:
         assert "enabled" in json_str
 
         # Test round trip
-        plugin2 = PluginInfo.model_validate(data)
+        plugin2 = PluginDefinition.model_validate(data)
         assert plugin == plugin2
 
-        plugin3 = PluginInfo.model_validate_json(json_str)
+        plugin3 = PluginDefinition.model_validate_json(json_str)
         assert plugin == plugin3
 
     def test_capability_info_serialization(self):
-        capability = PluginDefinition(
+        capability = CapabilityDefinition(
             id="text_processor",
             name="Text Processor",
             version="1.0.0",
@@ -510,7 +383,7 @@ class TestModelSerialization:
         assert "priority" in data
 
         # Test round trip
-        capability2 = PluginDefinition.model_validate(data)
+        capability2 = CapabilityDefinition.model_validate(data)
         assert capability.id == capability2.id
         assert capability.name == capability2.name
         assert capability.capabilities == capability2.capabilities

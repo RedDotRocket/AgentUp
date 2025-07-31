@@ -10,7 +10,7 @@ By default, AgentUp uses a global system prompt defined in `agentup.yml`. Howeve
 
 When a plugin capability is executed:
 
-1. **Plugin Registration**: Plugin defines a custom system prompt in its `PluginDefinition`
+1. **Plugin Registration**: Plugin defines a custom system prompt in its `CapabilityDefinition`
 2. **Capability Invocation**: AgentUp identifies which capability is being used
 3. **System Prompt Selection**: Framework uses the plugin's system prompt instead of the global one
 4. **Specialized Behavior**: The LLM receives domain-specific instructions
@@ -19,16 +19,16 @@ When a plugin capability is executed:
 
 ### In Plugin Code
 
-Add a `system_prompt` field to your `PluginDefinition` during registration:
+Add a `system_prompt` field to your `CapabilityDefinition` during registration:
 
 ```python
 from agent.plugins.hookspecs import hookimpl
-from agent.plugins.models import PluginDefinition, CapabilityType
+from agent.plugins.models import CapabilityDefinition, CapabilityType
 
 class MyPlugin:
     @hookimpl
-    def register_capability(self) -> PluginDefinition:
-        return PluginDefinition(
+    def register_capability(self) -> CapabilityDefinition:
+        return CapabilityDefinition(
             id="my_plugin.specialized_skill",
             name="Specialized Assistant",
             version="1.0.0",
@@ -71,7 +71,7 @@ import logging
 from typing import Any
 
 from agent.plugins.hookspecs import hookimpl
-from agent.plugins.models import CapabilityType, CapabilityContext, PluginDefinition, CapabilityResult
+from agent.plugins.models import CapabilityType, CapabilityContext, CapabilityDefinition, CapabilityResult
 
 logger = logging.getLogger(__name__)
 
@@ -80,9 +80,9 @@ class CodeAssistantPlugin:
     """A specialized coding assistant with custom system prompt."""
 
     @hookimpl
-    def register_capability(self) -> PluginDefinition:
+    def register_capability(self) -> CapabilityDefinition:
         """Register the code assistant skill with a custom system prompt."""
-        return PluginDefinition(
+        return CapabilityDefinition(
             id="code_assistant.python_helper",
             name="Python Code Assistant",
             version="1.0.0",

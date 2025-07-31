@@ -4,21 +4,20 @@ description: {{ description }}
 version: 0.4.0
 
 # Agent Plugin Configuration
-{# plugins:
-  # Hello plugin - basic example (can be removed)
-  - plugin_id: hello
-    name: Hello Plugin
-    description: Simple greeting plugin for testing and examples
-    tags: [hello, basic, example]
+plugins:
+  - plugin_id: Example_Plugin
+    name: Example Plugin
+    description: An example plugin for AgentUp
+    tags: [example, demo]
     input_mode: text
     output_mode: text
-    keywords: [hello, hi, greetings]
-    patterns: ['^hello', '^hi', 'greetings']
+    keywords: [example, plugin]
+    patterns: ['^example', '^demo']
     priority: 50
     capabilities:
-      - capability_id: hello
+      - capability_id: example_capability
         required_scopes: ["api:read"]
-        enabled: true #}
+        enabled: true
 
 # Security Configuration
 security:

@@ -1,18 +1,16 @@
 # AgentUp Plugin System
 
 The AgentUp plugin system is for extending AI agent capabilities and provides a clean,
-type-safe, and extensible way to create, distribute, and manage agent skills.
+type-safe, and extensible way to create, distribute, and manage agent functionality.
 
 ## What Are Plugins?
 
-Plugins are independent Python packages that extend your agent's capabilities. Unlike traditional handlers, plugins:
-
-- **Are fully independent** - can be developed, tested, and distributed separately
-- **Support hot-reloading** - develop and test without restarting your agent
-- **Are type-safe** - full type hints and validation throughout
-- **Follow standards** - use Python entry points and standard packaging
-- **Include testing** - comprehensive testing framework included
-- **Support AI functions** - seamless LLM function calling integration
+Plugins are independent Python packages that extend your agent's capabilities.
+They can be developed, tested, and distributed separately from the main agent codebase. This carries several benefits:
+- **Modular** - each plugin encapsulates specific functionality
+- **Reusable** - plugins can be shared across different agents
+- **Versioned** - plugins can be versioned independently
+- **Discoverable** - plugins are automatically discovered by the AgentUp framework
 
 ## Quick Start
 
@@ -36,8 +34,6 @@ cd weather-plugin/
 ```bash
 # Install your plugin in development mode
 pip install -e .
-
-# Your plugin is now available to any AgentUp agent on your system!
 ```
 
 ### 3. Use in Your Agent
@@ -51,27 +47,19 @@ cd /path/to/weather-plugin
 
 # Install in development mode
 pip install -e .
-
-# Now available to all agents - changes take effect immediately
-agentup agent serve
 ```
 
 **b) Production Mode** (For published packages)
 ```bash
 # Install from PyPI or other sources
 pip install agentup-weather-plugin
-
-# Plugin automatically available to all agents
-agentup agent serve
 ```
 
 ## Plugin Types
 
 ### Basic Plugins
-Perfect for simple text processing and straightforward tasks.
+Perfect for simple direct routed functions, where an LLM is not required.
 
-### Advanced Plugins  
-Include state management, external API integration, and middleware.
 
 ### AI Plugins
 Provide LLM-callable functions for agent interactions.
@@ -85,26 +73,6 @@ Provide LLM-callable functions for agent interactions.
 5. **[System Prompts](plugin-system-prompts.md)** - Customize AI behavior with capability-specific system prompts
 6. **[Testing Plugins](testing.md)** - Test your plugins thoroughly
 7. **[CLI Reference](cli-reference.md)** - Complete CLI command documentation
-
-## Why Use Plugins?
-
-**For Developers:**
-- Focus on your skill logic, not infrastructure
-- Rich development tools and templates
-- Comprehensive testing framework
-- Hot-reload during development
-
-**For Users:**
-- Easy installation: `agentup plugin install weather-plugin`
-- Automatic discovery and loading
-- Rich plugin ecosystem
-- Seamless integration with existing agents
-
-**For Teams:**
-- Independent development cycles
-- Clear interfaces and contracts
-- Version management and dependencies
-- Professional distribution workflow
 
 ## Architecture Overview
 

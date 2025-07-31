@@ -7,7 +7,7 @@ import structlog
 from fastapi import FastAPI
 
 from .base import Service
-from .capabilities import CapabilityRegistry
+from .builtin_capabilities import BuiltinCapabilityRegistry
 from .config import ConfigurationManager
 
 
@@ -122,10 +122,10 @@ class AgentBootstrapper:
                 self.logger.warning(f"State manager not available: {e}")
 
         # 4. Capability Registry (no dependencies)
-        capability_registry = CapabilityRegistry(self.config)
+        capability_registry = BuiltinCapabilityRegistry(self.config)
         services.append(capability_registry)
 
-        # 5. Plugin Service (depends on CapabilityRegistry)
+        # 5. Plugin Service (depends on BuiltinCapabilityRegistry)
         if self.config.is_feature_enabled("plugins"):
             try:
                 plugin_service = await self._create_plugin_service(capability_registry)
@@ -133,7 +133,7 @@ class AgentBootstrapper:
             except Exception as e:
                 self.logger.warning(f"Plugin service not available: {e}")
 
-        # 6. MCP Service (depends on CapabilityRegistry)
+        # 6. MCP Service (depends on BuiltinCapabilityRegistry)
         if self.config.is_feature_enabled("mcp"):
             try:
                 mcp_service = await self._create_mcp_service(capability_registry)
@@ -167,12 +167,12 @@ class AgentBootstrapper:
 
         return StateManager(self.config)
 
-    async def _create_plugin_service(self, capability_registry: CapabilityRegistry) -> Service:
+    async def _create_plugin_service(self, capability_registry: BuiltinCapabilityRegistry) -> Service:
         from .plugins import PluginService
 
         return PluginService(self.config, capability_registry)
 
-    async def _create_mcp_service(self, capability_registry: CapabilityRegistry) -> Service:
+    async def _create_mcp_service(self, capability_registry: BuiltinCapabilityRegistry) -> Service:
         from .mcp import MCPService
 
         return MCPService(self.config, capability_registry)
@@ -224,7 +224,7 @@ class AgentBootstrapper:
         if self.config.is_feature_enabled("mcp"):
             features.append("MCP Integration")
 
-        capability_registry = self._service_map.get("capabilityregistry")
+        capability_registry = self._service_map.get("BuiltinCapabilityRegistry")
         if capability_registry:
             cap_count = len(capability_registry.list_capabilities())
             features.append(f"Capabilities ({cap_count})")

@@ -29,8 +29,6 @@ The plugin development workflow is independent of any specific agent project, al
 - Share plugins across multiple agents
 - Publish plugins for community use
 
-You can of course also create plugins directly within an agent project, but this is not required.
-
 The benefits of this approach, mean plugins can be listed in existing Python tooling
 and managed with pip, uv, poetry, or any other Python package manager.
 
@@ -46,15 +44,18 @@ agentup plugin create time-plugin --template direct
 This creates a new directory with everything you need to get started:
 
 ```
-time-plugin/
-├── pyproject.toml          # Package configuration
-├── README.md               # Documentation
-├── src/
-│   └── time_plugin/
-│       ├── __init__.py
-│       └── plugin.py       # Your plugin code
-└── tests/
-    └── test_time_plugin.py # Tests
+time-plugin
+├── .gitignore
+├── pyproject.toml
+├── README.md
+├── src
+│   └── time_plugin
+│       ├── __init__.py
+│       └── plugin.py
+├── static
+│   └── logo.png
+└── tests
+    └── test_time_plugin.py
 ```
 
 ## Step 2: Examine the Generated Code
@@ -69,7 +70,7 @@ A plugin that provides Time Plugin functionality
 """
 
 import pluggy
-from agent.plugins import PluginDefinition, CapabilityContext, CapabilityResult, PluginValidationResult, CapabilityType
+from agent.plugins import CapabilityDefinition, CapabilityContext, CapabilityResult, PluginValidationResult, CapabilityType
 
 hookimpl = pluggy.HookimplMarker("agentup")
 
@@ -81,9 +82,9 @@ class Plugin:
         self.name = "time-plugin"
 
     @hookimpl
-    def register_capability(self) -> PluginDefinition:
+    def register_capability(self) -> CapabilityDefinition:
         """Register the capability with AgentUp."""
-        return PluginDefinition(
+        return CapabilityDefinition(
             id="time_plugin",
             name="Time Plugin",
             version="0.1.0",
@@ -91,6 +92,21 @@ class Plugin:
             capabilities=[CapabilityType.TEXT],
             tags=["time-plugin", "custom"],
         )
+
+    @hookimpl
+    def validate_config(self, config: dict) -> PluginValidationResult:
+        """Validate capability configuration."""
+    # Add your validation logic here
+        return PluginValidationResult(valid=True)
+
+
+    @hookimpl
+    def can_handle_task(self, context: CapabilityContext) -> bool:
+        """Check if this capability can handle the task."""
+    # Add your capability detection logic here
+        # For now, return True to handle all tasks
+        return True
+
 
     @hookimpl
     def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
@@ -114,9 +130,15 @@ class Plugin:
             if hasattr(last_msg, "parts") and last_msg.parts:
                 return last_msg.parts[0].text if hasattr(last_msg.parts[0], "text") else ""
         return ""
-
-    # ... more methods
 ```
+
+This code defines a basic plugin structure with:
+- **Plugin class**: Main entry point for your plugin
+- **register_capability**: Registers the plugin with AgentUp
+- **validate_config**: Validates plugin configuration
+- **can_handle_task**: Determines if the plugin can handle a given task
+- **execute_capability**: Contains the main logic for processing user requests
+- **_extract_user_input**: Helper method to extract user input from the task history
 
 ## Step 3: Implement Time Functionality
 
@@ -216,17 +238,11 @@ agentup plugin list
 You should see your plugin listed:
 
 ```
-┌─────────────────────────────── Loaded Plugins ───────────────────────────────┐
-│ Plugin      │ Version │ Status │ Skills │ Source    │ Author │
-├─────────────┼─────────┼────────┼────────┼───────────┼────────┤
-│ time_plugin │ 0.1.0   │ loaded │ 1      │ entry_point │ Your Name │
-└─────────────┴─────────┴────────┴────────┴───────────┴────────┘
-
-┌─────────────────────────────── Available Skills ─────────────────────────────┐
-│ Skill ID    │ Name        │ Plugin      │ Capabilities │
-├─────────────┼─────────────┼─────────────┼──────────────┤
-│ time_plugin │ Time Plugin │ time_plugin │ text         │
-└─────────────┴─────────────┴─────────────┴──────────────┘
+╭─────────────┬─────────────┬─────────┬────────╮
+│ Plugin      │ Name        │ Version │ Status │
+├─────────────┼─────────────┼─────────┼────────┤
+│ time_plugin │ Time Plugin │  0.4.0  │ loaded │
+╰─────────────┴─────────────┴─────────┴────────╯
 ```
 
 ## Step 6: Test in an Agent
@@ -235,30 +251,28 @@ Create a simple test agent or use an existing one:
 
 ```bash
 # Create a test agent
-agentup agent create test-agent --template minimal
+agentup agent create time-agent
 
-cd test-agent
+cd time-agent
 ```
 
-Now you need to register your plugin in the agent's configuration. Edit `agent_config.yaml` and add your plugin to the skills section:
+Now you need to register your plugin in the agent's configuration. Edit `agentup.yml` and add your plugin to the skills section:
 
 ```yaml
-# agent_config.yaml
-agent:
-  name: "Test Agent"
-  version: "0.1.0"
-  description: "A test agent for plugin development"
+# agentup.yml
+name: "Test Agent"
+version: "0.1.0"
+description: "A test agent for plugin development"
 
-skills:
-  - skill_id: time_plugin
-    name: Echo
-    description: Echo back the input text
-    tags: [time, basic, simple]
+plugins:
+  - plugin_id: time_plugin
+    name: Time Plugin
+    description: A plugin that provides time-related information
+    tags: [time, date, clock]
     input_mode: text
     output_mode: text
     keywords: [what, time, now]
-    patterns: ['.time']  # Catch-all for minimal template
-    routing_mode: direct  # Use direct routing for keyword-based matching
+    patterns: ['.time']
     priority: 50
 ```
 
@@ -468,7 +482,7 @@ async def _get_date_function(self, task, context: CapabilityContext) -> Capabili
 Don't forget to import `AIFunction`:
 
 ```python
-from agent.plugins import PluginDefinition, CapabilityContext, CapabilityResult, PluginValidationResult, CapabilityType, AIFunction
+from agent.plugins import CapabilityDefinition, CapabilityContext, CapabilityResult, PluginValidationResult, CapabilityType, AIFunction
 ```
 
 ## Step 8: Test AI Functions
@@ -533,7 +547,7 @@ Your plugin already has a test file. Let's add some real tests:
 
 import pytest
 import datetime
-from agent.plugins.models import CapabilityContext, PluginDefinition
+from agent.plugins.models import CapabilityContext, CapabilityDefinition
 from time_plugin.plugin import Plugin
 
 
@@ -542,7 +556,7 @@ def test_plugin_registration():
     plugin = Plugin()
     plugin_def = plugin.register_capability()
 
-    assert isinstance(plugin_def, PluginDefinition)
+    assert isinstance(plugin_def, CapabilityDefinition)
     assert plugin_def.id == "time_plugin"
     assert plugin_def.name == "Time Plugin"
 

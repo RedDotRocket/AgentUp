@@ -26,7 +26,7 @@ class CapabilityMetadata:
         self.auth_applied = False
 
 
-class CapabilityRegistry(Service):
+class BuiltinCapabilityRegistry(Service):
     """Unified registry for all agent capabilities.
 
     This service manages all capability executors, providing:
@@ -43,8 +43,6 @@ class CapabilityRegistry(Service):
         self._core_capabilities = ["status", "capabilities", "echo"]
 
     async def initialize(self) -> None:
-        self.logger.info("Initializing capability registry")
-
         # Register core capabilities
         await self._register_core_capabilities()
 
@@ -95,7 +93,7 @@ class CapabilityRegistry(Service):
         self._metadata[capability_id] = metadata
 
         self.logger.debug(
-            f"Registered capability: {capability_id} "
+            f"Registered BuiltIn Capability: {capability_id} "
             f"(auth={metadata.auth_applied}, "
             f"middleware={metadata.middleware_applied}, "
             f"state={metadata.state_applied})"
@@ -113,7 +111,7 @@ class CapabilityRegistry(Service):
         if capability_id in self._capabilities:
             del self._capabilities[capability_id]
             del self._metadata[capability_id]
-            self.logger.debug(f"Unregistered capability: {capability_id}")
+            self.logger.debug(f"Unregistered Builtin Capability: {capability_id}")
             return True
         return False
 
@@ -140,19 +138,8 @@ class CapabilityRegistry(Service):
         return self._metadata.get(capability_id)
 
     def list_capabilities(self) -> list[str]:
-        # Get capabilities from this registry
         local_capabilities = list(self._capabilities.keys())
-
-        # Also include capabilities from the executors registry
-        try:
-            from agent.capabilities.manager import _capabilities as executor_capabilities
-
-            all_capabilities = set(local_capabilities)
-            all_capabilities.update(executor_capabilities.keys())
-            return sorted(list(all_capabilities))
-        except ImportError:
-            # If executors module not available, just return local capabilities
-            return sorted(local_capabilities)
+        return sorted(local_capabilities)
 
     def list_capabilities_with_metadata(self) -> dict[str, dict[str, Any]]:
         """List all capabilities with their metadata.
@@ -171,22 +158,6 @@ class CapabilityRegistry(Service):
                 "tags": metadata.tags,
                 "is_core": cap_id in self._core_capabilities,
             }
-
-        # Add capabilities from executors registry (without detailed metadata)
-        try:
-            from agent.capabilities.manager import _capabilities as executor_capabilities
-
-            for cap_id in executor_capabilities:
-                if cap_id not in result:
-                    result[cap_id] = {
-                        "plugin_id": None,
-                        "required_scopes": [],
-                        "description": f"Plugin capability: {cap_id}",
-                        "tags": [],
-                        "is_core": False,
-                    }
-        except ImportError:
-            pass
 
         return result
 

@@ -259,7 +259,7 @@ We  Agent start up , load the configuration, and register the plugins and activi
     [INFO] Active Services (4):      [agent.services.bootstrap]
     [INFO]   ✓ SecurityService       [agent.services.bootstrap]
     [INFO]   ✓ MiddlewareManager     [agent.services.bootstrap]
-    [INFO]   ✓ CapabilityRegistry    [agent.services.bootstrap]
+    [INFO]   ✓ BuiltinCapabilityRegistry    [agent.services.bootstrap]
     [INFO]   ✓ PluginService         [agent.services.bootstrap]
     [INFO] Enabled Features:         [agent.services.bootstrap]
     [INFO]   ✓ Security (api_key)    [agent.services.bootstrap]
