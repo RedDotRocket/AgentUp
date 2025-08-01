@@ -301,7 +301,7 @@ class SecurePluginInstaller:
 
             # Try to import the package
             try:
-                module = importlib.import_module(package_name.replace("-", "_"))
+                importlib.import_module(package_name.replace("-", "_"))
                 result["messages"].append("✅ Package import successful")
             except ImportError as e:
                 result["warnings"].append(f"⚠️  Package import failed: {e}")

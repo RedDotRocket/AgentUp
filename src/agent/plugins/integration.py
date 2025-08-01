@@ -235,28 +235,31 @@ class PluginAdapter:
                     logger.info(f"Found capability '{capability_id}' in plugin '{plugin_id}'")
 
                     # Create executor that calls the plugin's capability method
-                    async def capability_executor(task, context=None):
-                        from agent.plugins.models import CapabilityContext
+                    def create_executor(captured_plugin_id: str):
+                        async def capability_executor(task, context=None):
+                            from agent.plugins.models import CapabilityContext
 
-                        # Create context if not provided
-                        if context is None:
-                            context = CapabilityContext(
-                                task=task,
-                                config={},
-                                services={},
-                                state={},
-                                metadata={}
-                            )
+                            # Create context if not provided
+                            if context is None:
+                                context = CapabilityContext(
+                                    task=task,
+                                    config={},
+                                    services={},
+                                    state={},
+                                    metadata={}
+                                )
 
-                        logger.debug(f"Executing capability '{capability_id}' on plugin '{plugin_id}'")
+                            logger.debug(f"Executing capability '{capability_id}' on plugin '{captured_plugin_id}'")
 
-                        # Execute the capability
-                        result = await plugin_registry.execute_capability(capability_id, context)
+                            # Execute the capability
+                            result = await plugin_registry.execute_capability(capability_id, context)
 
-                        logger.debug(f"Capability execution result: {result}")
-                        return result.content if hasattr(result, 'content') else str(result)
+                            logger.debug(f"Capability execution result: {result}")
+                            return result.content if hasattr(result, 'content') else str(result)
 
-                    return capability_executor
+                        return capability_executor
+
+                    return create_executor(plugin_id)
 
         logger.error(f"Capability '{capability_id}' not found in any plugin")
         return None

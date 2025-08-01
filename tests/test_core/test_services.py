@@ -8,8 +8,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 from agent.config import Config
-from agent.services import CacheService, ServiceError, ServiceRegistry, WebAPIService
-from agent.services import LegacyService as Service
+from agent.services import CacheService, Service, ServiceError, ServiceRegistry, WebAPIService
 
 
 class TestService:
