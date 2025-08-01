@@ -84,12 +84,9 @@ def add_plugin_context(_logger, _method_name, event_dict: EventDict) -> EventDic
     context_vars = structlog.contextvars.get_contextvars()
 
     # Add plugin identification fields if available
-    if "plugin_id" in context_vars:
-        event_dict["plugin_id"] = context_vars["plugin_id"]
-    if "plugin_name" in context_vars:
-        event_dict["plugin_name"] = context_vars["plugin_name"]
-    if "plugin_version" in context_vars:
-        event_dict["plugin_version"] = context_vars["plugin_version"]
+    for key in ("plugin_id", "plugin_name", "plugin_version"):
+        if key in context_vars:
+            event_dict[key] = context_vars[key]
 
     return event_dict
 
