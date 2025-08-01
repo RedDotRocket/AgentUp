@@ -45,8 +45,8 @@ class Plugin:
         # Create plugin-aware logger
         self.logger = get_plugin_logger(
             plugin_id=self.plugin_id,
-            plugin_name=getattr(self, 'name', None) or self.__class__.__name__,
-            plugin_version=getattr(self, 'version', None)
+            plugin_name=getattr(self, "name", None) or self.__class__.__name__,
+            plugin_version=getattr(self, "version", None),
         )
 
         # Auto-discover capabilities
@@ -86,7 +86,7 @@ class Plugin:
 
         capability = self._capabilities[capability_id]
         try:
-            self.logger.debug("Executing capability", capability_id=capability_id, method_name=capability.method_name)
+            self.logger.debug("Executing capability", capability_id=capability_id)
 
             # Call the decorated method
             result = await capability.handler(context)
