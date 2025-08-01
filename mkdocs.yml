@@ -135,6 +135,7 @@ nav:
     - Plugin System Prompts: plugin-development/plugin-system-prompts.md
     - Plugins as Tools: plugin-development/plugins-as-tools-explanation.md
     - Scopes and Security: plugin-development/scopes-and-security.md
+    - Logging: plugin-development/logging.md
     - Testing: plugin-development/testing.md
     - Development: plugin-development/development.md
   - AgentUp Development:

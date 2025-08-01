@@ -536,8 +536,9 @@ class TestPluginDiscoveryEdgeCases:
 
     def test_discovery_logs_validation_errors(self):
         """Test that validation errors are logged during discovery."""
-        # Mock the logger to capture calls
-        with patch("src.agent.plugins.base.logger.error") as mock_error:
+        # Mock the get_plugin_logger to return a mock logger
+        mock_logger = Mock()
+        with patch("src.agent.plugins.base.get_plugin_logger", return_value=mock_logger):
 
             class TestPlugin(Plugin):
                 @capability("", name="Invalid")  # Empty ID
@@ -546,10 +547,10 @@ class TestPluginDiscoveryEdgeCases:
 
             plugin = TestPlugin()
 
-        # Should have called logger.error
-        mock_error.assert_called()
-        # Check that the call contains the expected error information
-        call_args = mock_error.call_args[0][0]  # First positional argument
-        assert "Invalid capability" in call_args
-        assert "TestPlugin" in call_args
-        assert "" not in plugin._capabilities
+            # Should have called logger.error
+            mock_logger.error.assert_called_once()
+            args, kwargs = mock_logger.error.call_args
+            assert args[0] == "Invalid capability"
+            assert kwargs["capability_id"] == ""
+            assert "errors" in kwargs
+            assert "" not in plugin._capabilities
