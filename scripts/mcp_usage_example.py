@@ -23,7 +23,7 @@ except ImportError as e:
 
 
 class MCPFileManager:
-    
+
 
     def __init__(self, server_url: str = "http://localhost:8000/mcp"):
         self.server_url = server_url
@@ -31,7 +31,7 @@ class MCPFileManager:
         self.available_tools = []
 
     async def connect(self):
-        
+
         try:
             print(f"🔗 Connecting to MCP server at {self.server_url}")
 
@@ -54,7 +54,7 @@ class MCPFileManager:
             return False
 
     async def disconnect(self):
-        
+
         try:
             if self.session:
                 await self.session.close()
@@ -65,7 +65,7 @@ class MCPFileManager:
             print(f"  Disconnect warning: {e}")
 
     async def call_tool(self, tool_name: str, arguments: dict):
-        
+
         if tool_name not in self.available_tools:
             print(f"✗ Tool '{tool_name}' not available")
             return None
@@ -78,7 +78,7 @@ class MCPFileManager:
             return None
 
     async def create_test_environment(self):
-        
+
         print("\n🏗️  Creating test environment...")
 
         # Create a temporary directory
@@ -107,7 +107,7 @@ class MCPFileManager:
         return temp_dir
 
     async def explore_directory(self, directory_path: str):
-        
+
         print(f"\nExploring directory: {directory_path}")
 
         # List directory contents
@@ -123,7 +123,7 @@ class MCPFileManager:
             print(f"Directory info: {result}")
 
     async def read_and_analyze_files(self, directory_path: str):
-        
+
         print(f"\n📖 Reading files in: {directory_path}")
 
         # List files first
@@ -158,7 +158,7 @@ class MCPFileManager:
                 print(f"   SHA256: {hash_result}")
 
     async def cleanup_test_environment(self, directory_path: str):
-        
+
         print(f"\n🧹 Cleaning up: {directory_path}")
 
         # List files to delete
@@ -178,7 +178,7 @@ class MCPFileManager:
             print(f"  Could not remove directory: {e}")
 
     async def run_file_management_demo(self):
-        
+
         print(" Starting MCP File Management Demo")
         print("=" * 50)
 
@@ -222,7 +222,7 @@ class MCPFileManager:
 
 
 async def main():
-    
+
     if not MCP_AVAILABLE:
         return
 

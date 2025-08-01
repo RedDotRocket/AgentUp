@@ -7,6 +7,7 @@ version: 0.4.0
 plugins:
   - plugin_id: hello
     name: Hello Plugin
+    package: hello
     description: Simple greeting plugin for testing and examples
     capabilities:
       - capability_id: hello
@@ -16,6 +17,7 @@ plugins:
         enabled: true
   - plugin_id: sys_tools
     name: System Tools
+    package: sys_tools
     description: System tools for basic operations
     input_mode: text
     output_mode: text
@@ -56,6 +58,17 @@ plugins:
       - capability_id: file_hash
         enabled: true
         required_scopes: ["files:read"]
+  - plugin_id: testplugin
+    name: Test Plugin
+    package: testplugin
+    description: A test plugin using the new decorator system
+    package: testplugin
+    capabilities:
+      - capability_id: testplugin
+        name: Test Plugin Capability
+        description: A plugin that provides Testplugin functionality
+        required_scopes: ["testplugin:use"]
+        enabled: true
 
 # AI Provider configuration
 ai_provider:

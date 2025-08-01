@@ -1,17 +1,14 @@
 # Plugin Development Guide
 
-!!! warning
-    Development is moving fast, and this document may not reflect the latest changes. Once updated, we will remove this warning.
+This comprehensive guide covers everything you need to know about developing AgentUp plugins using the new decorator-based system, from basic concepts to advanced features like trusted publishing, state management, and AI function integration.
 
-This comprehensive guide covers everything you need to know about developing  AgentUp plugins,
-from basic concepts to advanced features like state management, external APIs, and custom middleware.
+## New Plugin Architecture Overview
 
-## Plugin Architecture Deep Dive
+### From Hooks to Decorators
 
-### Understanding the Hook System
+AgentUp 2.0 introduces a revolutionary decorator-based plugin system that replaces the complex hook-based approach:
 
-AgentUp plugins use the pluggy library's hook system. Each hook represents a specific point where your plugin can extend the agent's behavior:
-
+**Before (Hook-based):**
 ```python
 import pluggy
 from agent.plugins import CapabilityInfo, CapabilityContext, CapabilityResult
@@ -35,908 +32,1087 @@ class MyPlugin:
         pass
 ```
 
-The use of pluggy brings a lot of highly useful benefits. With pluggy's hook system,
-AgentUp plugins are effectivly Python packages that can be easily installed, and
-managed with tools such as `pip` and `uv` or `poetry`.
+**After (Decorator-based):**
+```python
+from agent.plugins.base import Plugin
+from agent.plugins.decorators import capability
 
-You can then do such things, as build your Agent with AgentUp and add your plugins
-to the `requirements.txt` or `pyproject.toml` file, and they will be automatically
-installed when you deploy your agent. 
+class MyPlugin(Plugin):
+    @capability(
+        id="my_capability",
+        name="My Capability",
+        description="Does something useful",
+        scopes=["my:read"],
+        ai_function=True
+    )
+    async def my_capability(self, param: str = "default", **kwargs):
+        """Execute capability logic directly."""
+        return {
+            "success": True,
+            "content": f"Processed: {param}",
+            "metadata": {"capability": "my_capability"}
+        }
+```
 
-This of course also makes it very easy for plugin developers to publish their plugins
-to PyPI or other package repositories, allowing users to easily install and keep
-them up to date using standard approaches such as dependabot etc.
+### Key Benefits of the New System
 
-### Core Hook Specifications
+- **Simplicity**: One decorator replaces 11 different hooks
+- **Type Safety**: Full typing support with IDE integration
+- **Direct Method Calls**: No more complex hook chains
+- **Automatic Discovery**: Capabilities auto-discovered from decorators
+- **Built-in Security**: Scope-based permissions and trusted publishing
+- **AI Integration**: Seamless LLM function calling support
 
-| Hook | Purpose | Return Type | Required |
-|------|---------|-------------|----------|
-| `register_skill` | Provide plugin metadata | `PluginDefinition` | ✓ Yes |
-| `can_handle_task` | Routing decision | `bool` or `float` | ✓ Yes |
-| `execute_skill` | Main skill logic | `SkillResult` | ✓ Yes |
-| `validate_config` | Config validation | `ValidationResult` | ✗ No |
-| `get_ai_functions` | AI function definitions | `list[AIFunction]` | ✗ No |
-| `configure_services` | Service injection | `None` | ✗ No |
-| `get_middleware_config` | Middleware requests | `list[dict]` | ✗ No |
-| `get_state_schema` | State schema definition | `dict` | ✗ No |
-
-## Building a Weather Plugin
+## Building a Weather Plugin with the New System
 
 Let's build a comprehensive weather plugin that demonstrates all major features:
 
 ### Step 1: Project Setup
 
 ```bash
-agentup plugin create weather-skill --template ai
-cd weather-skill
+agentup plugin create weather-plugin
+cd weather-plugin
 ```
 
-### Step 2: Configuration Schema
-
-First, define what configuration your plugin needs:
+### Step 2: Plugin Structure
 
 ```python
-@hookimpl
-def register_capability(self) -> CapabilityInfo:
-    """Register the weather capability."""
-    return CapabilityInfo(
-        id="weather",
-        name="Weather Information",
-        version="1.0.0",
-        description="Provides current weather and forecasts",
-        capabilities=[CapabilityType.TEXT, CapabilityType.AI_FUNCTION, CapabilityType.STATEFUL],
-        tags=["weather", "api", "forecast"],
-        system_prompt="""You are a weather information assistant with access to current weather data and forecasts.
+"""
+Weather Plugin for AgentUp.
 
-Your role:
-- Provide accurate, current weather information for any location
-- Explain weather patterns and conditions in clear, understandable terms
-- Offer helpful recommendations based on weather conditions
-- Use appropriate units (metric/imperial) based on user preference or location
+Provides comprehensive weather information using the modern decorator system.
+"""
 
-When providing weather information:
-1. Always include current temperature, conditions, and "feels like" temperature
-2. Mention any significant weather warnings or alerts
-3. Provide context about unusual weather patterns
-4. Suggest appropriate clothing or activities based on conditions
-5. Include humidity, wind speed, and visibility when relevant
+import asyncio
+import datetime
+import re
+from typing import Dict, Any, Optional
+import aiohttp
+import structlog
 
-Be helpful, accurate, and conversational in your responses.""",
-        config_schema={
+from agent.plugins.base import Plugin
+from agent.plugins.decorators import capability
+
+logger = structlog.get_logger(__name__)
+
+
+class WeatherPlugin(Plugin):
+    """Weather information plugin with advanced features."""
+    
+    def __init__(self):
+        """Initialize the weather plugin."""
+        super().__init__()
+        self.name = "weather-plugin"
+        self.version = "2.0.0"
+        self.api_key = None
+        self.http_client = None
+        self.cache = None
+    
+    async def initialize(self, config: Dict[str, Any], services: Dict[str, Any]):
+        """Initialize plugin with configuration and services."""
+        self.config = config
+        self.api_key = config.get("api_key")
+        
+        # Setup HTTP client
+        if "http_client" in services:
+            self.http_client = services["http_client"]
+        else:
+            self.http_client = aiohttp.ClientSession()
+        
+        # Setup cache if available
+        self.cache = services.get("cache")
+        
+        logger.info("Weather plugin initialized", api_configured=bool(self.api_key))
+```
+
+### Step 3: Core Weather Capabilities
+
+```python
+    @capability(
+        id="get_current_weather",
+        name="Get Current Weather",
+        description="Get current weather conditions for any location worldwide",
+        scopes=["weather:read", "api:external"],
+        ai_function=True,
+        ai_parameters={
+            "type": "object",
+            "properties": {
+                "location": {
+                    "type": "string",
+                    "description": "City name, state, country (e.g., 'New York, NY' or 'London, UK')"
+                },
+                "units": {
+                    "type": "string",
+                    "enum": ["metric", "imperial", "kelvin"],
+                    "description": "Temperature units",
+                    "default": "imperial"
+                },
+                "include_details": {
+                    "type": "boolean",
+                    "description": "Include detailed weather information",
+                    "default": True
+                }
+            },
+            "required": ["location"]
+        }
+    )
+    async def get_current_weather(
+        self, 
+        location: str, 
+        units: str = "imperial", 
+        include_details: bool = True,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """Get current weather for a location."""
+        try:
+            if not self.api_key:
+                return {
+                    "success": False,
+                    "error": "Weather API key not configured",
+                    "content": "Weather service requires API key configuration"
+                }
+            
+            # Check cache first
+            cache_key = f"weather:current:{location.lower()}:{units}"
+            if self.cache:
+                cached_data = await self.cache.get(cache_key)
+                if cached_data:
+                    return self._format_weather_response(cached_data, location, "current")
+            
+            # Make API call
+            weather_data = await self._fetch_current_weather(location, units)
+            
+            # Cache the result
+            if self.cache:
+                await self.cache.set(cache_key, weather_data, ttl=600)  # 10 minutes
+            
+            return self._format_weather_response(weather_data, location, "current", include_details)
+            
+        except Exception as e:
+            logger.error("Error fetching current weather", location=location, error=str(e))
+            return {
+                "success": False,
+                "error": str(e),
+                "content": f"Sorry, I couldn't get weather information for {location}: {str(e)}"
+            }
+    
+    @capability(
+        id="get_weather_forecast",
+        name="Get Weather Forecast",
+        description="Get multi-day weather forecast for any location",
+        scopes=["weather:read", "api:external"],
+        ai_function=True,
+        ai_parameters={
+            "type": "object",
+            "properties": {
+                "location": {
+                    "type": "string",
+                    "description": "City name, state, country"
+                },
+                "days": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 5,
+                    "description": "Number of forecast days (1-5)",
+                    "default": 3
+                },
+                "units": {
+                    "type": "string",
+                    "enum": ["metric", "imperial", "kelvin"],
+                    "default": "imperial"
+                }
+            },
+            "required": ["location"]
+        }
+    )
+    async def get_weather_forecast(
+        self, 
+        location: str, 
+        days: int = 3, 
+        units: str = "imperial",
+        **kwargs
+    ) -> Dict[str, Any]:
+        """Get weather forecast for a location."""
+        try:
+            if not self.api_key:
+                return {
+                    "success": False,
+                    "error": "Weather API key not configured",
+                    "content": "Weather service requires API key configuration"
+                }
+            
+            # Validate days parameter
+            days = max(1, min(5, days))
+            
+            # Check cache
+            cache_key = f"weather:forecast:{location.lower()}:{days}:{units}"
+            if self.cache:
+                cached_data = await self.cache.get(cache_key)
+                if cached_data:
+                    return self._format_forecast_response(cached_data, location, days)
+            
+            # Make API call
+            forecast_data = await self._fetch_weather_forecast(location, units, days)
+            
+            # Cache the result
+            if self.cache:
+                await self.cache.set(cache_key, forecast_data, ttl=1800)  # 30 minutes
+            
+            return self._format_forecast_response(forecast_data, location, days)
+            
+        except Exception as e:
+            logger.error("Error fetching weather forecast", location=location, error=str(e))
+            return {
+                "success": False,
+                "error": str(e),
+                "content": f"Sorry, I couldn't get forecast for {location}: {str(e)}"
+            }
+    
+    @capability(
+        id="get_weather_alerts",
+        name="Get Weather Alerts",
+        description="Get active weather alerts and warnings for a location",
+        scopes=["weather:read", "api:external", "alerts:read"],
+        ai_function=True,
+        ai_parameters={
+            "type": "object",
+            "properties": {
+                "location": {
+                    "type": "string",
+                    "description": "City name, state, country"
+                },
+                "severity": {
+                    "type": "string",
+                    "enum": ["all", "minor", "moderate", "severe", "extreme"],
+                    "description": "Minimum alert severity level",
+                    "default": "moderate"
+                }
+            },
+            "required": ["location"]
+        }
+    )
+    async def get_weather_alerts(
+        self, 
+        location: str, 
+        severity: str = "moderate",
+        **kwargs
+    ) -> Dict[str, Any]:
+        """Get weather alerts for a location."""
+        try:
+            if not self.api_key:
+                return {
+                    "success": False,
+                    "error": "Weather API key not configured",
+                    "content": "Weather service requires API key configuration"
+                }
+            
+            # Fetch alerts data
+            alerts_data = await self._fetch_weather_alerts(location, severity)
+            
+            if not alerts_data.get("alerts"):
+                return {
+                    "success": True,
+                    "content": f"No active weather alerts for {location}",
+                    "metadata": {
+                        "location": location,
+                        "alert_count": 0,
+                        "severity": severity
+                    }
+                }
+            
+            return self._format_alerts_response(alerts_data, location)
+            
+        except Exception as e:
+            logger.error("Error fetching weather alerts", location=location, error=str(e))
+            return {
+                "success": False,
+                "error": str(e),
+                "content": f"Sorry, I couldn't get alerts for {location}: {str(e)}"
+            }
+```
+
+### Step 4: API Integration Methods
+
+```python
+    async def _fetch_current_weather(self, location: str, units: str) -> dict:
+        """Fetch current weather from OpenWeatherMap API."""
+        url = "https://api.openweathermap.org/data/2.5/weather"
+        params = {
+            "q": location,
+            "appid": self.api_key,
+            "units": units
+        }
+        
+        async with self.http_client.get(url, params=params) as response:
+            if response.status == 404:
+                raise ValueError(f"Location '{location}' not found")
+            elif response.status == 401:
+                raise ValueError("Invalid API key")
+            elif response.status == 429:
+                raise ValueError("API rate limit exceeded")
+            
+            response.raise_for_status()
+            return await response.json()
+    
+    async def _fetch_weather_forecast(self, location: str, units: str, days: int) -> dict:
+        """Fetch weather forecast from API."""
+        url = "https://api.openweathermap.org/data/2.5/forecast"
+        params = {
+            "q": location,
+            "appid": self.api_key,
+            "units": units,
+            "cnt": days * 8  # 8 forecasts per day (3-hour intervals)
+        }
+        
+        async with self.http_client.get(url, params=params) as response:
+            response.raise_for_status()
+            return await response.json()
+    
+    async def _fetch_weather_alerts(self, location: str, severity: str) -> dict:
+        """Fetch weather alerts from API."""
+        # First get coordinates for the location
+        geocoding_url = "https://api.openweathermap.org/geo/1.0/direct"
+        params = {"q": location, "appid": self.api_key, "limit": 1}
+        
+        async with self.http_client.get(geocoding_url, params=params) as response:
+            response.raise_for_status()
+            geo_data = await response.json()
+            
+            if not geo_data:
+                raise ValueError(f"Location '{location}' not found")
+            
+            lat, lon = geo_data[0]["lat"], geo_data[0]["lon"]
+        
+        # Get alerts using coordinates
+        alerts_url = "https://api.openweathermap.org/data/3.0/onecall"
+        params = {
+            "lat": lat,
+            "lon": lon,
+            "appid": self.api_key,
+            "exclude": "current,minutely,hourly,daily"
+        }
+        
+        async with self.http_client.get(alerts_url, params=params) as response:
+            response.raise_for_status()
+            return await response.json()
+```
+
+### Step 5: Response Formatting
+
+```python
+    def _format_weather_response(
+        self, 
+        data: dict, 
+        location: str, 
+        response_type: str, 
+        include_details: bool = True
+    ) -> Dict[str, Any]:
+        """Format weather data into a readable response."""
+        try:
+            main = data["main"]
+            weather = data["weather"][0]
+            wind = data.get("wind", {})
+            
+            temp = main["temp"]
+            feels_like = main["feels_like"]
+            humidity = main["humidity"]
+            pressure = main.get("pressure")
+            description = weather["description"].title()
+            
+            # Determine units
+            unit_symbol = self._get_unit_symbol(data.get("units", "imperial"))
+            
+            # Basic response
+            response = f"**Current Weather in {location}**\n\n"
+            response += f"🌡️ **Temperature**: {temp:.1f}{unit_symbol}\n"
+            response += f"🤔 **Feels like**: {feels_like:.1f}{unit_symbol}\n"
+            response += f"☁️ **Conditions**: {description}\n"
+            response += f"💧 **Humidity**: {humidity}%\n"
+            
+            if include_details:
+                if pressure:
+                    response += f"📊 **Pressure**: {pressure} hPa\n"
+                
+                if wind.get("speed"):
+                    wind_speed = wind["speed"]
+                    wind_unit = "mph" if unit_symbol == "°F" else "m/s"
+                    response += f"💨 **Wind**: {wind_speed:.1f} {wind_unit}"
+                    
+                    if wind.get("deg"):
+                        direction = self._wind_direction(wind["deg"])
+                        response += f" {direction}"
+                    response += "\n"
+                
+                # Add sunrise/sunset if available
+                sys_data = data.get("sys", {})
+                if sys_data.get("sunrise") and sys_data.get("sunset"):
+                    sunrise = datetime.datetime.fromtimestamp(sys_data["sunrise"])
+                    sunset = datetime.datetime.fromtimestamp(sys_data["sunset"])
+                    response += f"🌅 **Sunrise**: {sunrise.strftime('%H:%M')}\n"
+                    response += f"🌇 **Sunset**: {sunset.strftime('%H:%M')}\n"
+            
+            return {
+                "success": True,
+                "content": response.strip(),
+                "metadata": {
+                    "location": location,
+                    "temperature": temp,
+                    "conditions": description,
+                    "units": unit_symbol,
+                    "response_type": response_type,
+                    "timestamp": datetime.datetime.now().isoformat()
+                }
+            }
+            
+        except KeyError as e:
+            logger.error("Error formatting weather response", missing_field=str(e))
+            return {
+                "success": False,
+                "error": f"Invalid weather data format: missing {e}",
+                "content": f"Sorry, received incomplete weather data for {location}"
+            }
+    
+    def _format_forecast_response(self, data: dict, location: str, days: int) -> Dict[str, Any]:
+        """Format forecast data into a readable response."""
+        try:
+            forecasts = data["list"]
+            response = f"**{days}-Day Weather Forecast for {location}**\n\n"
+            
+            # Group forecasts by day
+            daily_forecasts = {}
+            for forecast in forecasts:
+                date = datetime.datetime.fromtimestamp(forecast["dt"]).date()
+                if date not in daily_forecasts:
+                    daily_forecasts[date] = []
+                daily_forecasts[date].append(forecast)
+            
+            # Format each day
+            for i, (date, day_forecasts) in enumerate(daily_forecasts.items()):
+                if i >= days:
+                    break
+                
+                # Get representative forecast (midday if available)
+                midday_forecast = day_forecasts[len(day_forecasts)//2]
+                
+                temp = midday_forecast["main"]["temp"]
+                conditions = midday_forecast["weather"][0]["description"].title()
+                unit_symbol = self._get_unit_symbol("imperial")  # Default
+                
+                day_name = date.strftime("%A, %B %d")
+                response += f"📅 **{day_name}**\n"
+                response += f"   🌡️ {temp:.1f}{unit_symbol} - {conditions}\n\n"
+            
+            return {
+                "success": True,
+                "content": response.strip(),
+                "metadata": {
+                    "location": location,
+                    "forecast_days": days,
+                    "forecast_count": len(daily_forecasts),
+                    "timestamp": datetime.datetime.now().isoformat()
+                }
+            }
+            
+        except Exception as e:
+            logger.error("Error formatting forecast response", error=str(e))
+            return {
+                "success": False,
+                "error": str(e),
+                "content": f"Sorry, couldn't format forecast data for {location}"
+            }
+    
+    def _format_alerts_response(self, data: dict, location: str) -> Dict[str, Any]:
+        """Format weather alerts into a readable response."""
+        alerts = data.get("alerts", [])
+        
+        if not alerts:
+            return {
+                "success": True,
+                "content": f"No active weather alerts for {location}",
+                "metadata": {"location": location, "alert_count": 0}
+            }
+        
+        response = f"⚠️ **Weather Alerts for {location}**\n\n"
+        
+        for alert in alerts:
+            event = alert.get("event", "Weather Alert")
+            description = alert.get("description", "No details available")
+            start = datetime.datetime.fromtimestamp(alert.get("start", 0))
+            end = datetime.datetime.fromtimestamp(alert.get("end", 0))
+            
+            response += f"🚨 **{event}**\n"
+            response += f"   📅 {start.strftime('%m/%d %H:%M')} - {end.strftime('%m/%d %H:%M')}\n"
+            response += f"   📝 {description[:200]}{'...' if len(description) > 200 else ''}\n\n"
+        
+        return {
+            "success": True,
+            "content": response.strip(),
+            "metadata": {
+                "location": location,
+                "alert_count": len(alerts),
+                "alerts": [{"event": a.get("event"), "severity": a.get("severity")} for a in alerts]
+            }
+        }
+```
+
+### Step 6: Utility Methods
+
+```python
+    def _get_unit_symbol(self, units: str) -> str:
+        """Get temperature unit symbol."""
+        return {
+            "imperial": "°F",
+            "metric": "°C",
+            "kelvin": "K"
+        }.get(units, "°F")
+    
+    def _wind_direction(self, degrees: float) -> str:
+        """Convert wind degrees to compass direction."""
+        directions = [
+            "N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
+            "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"
+        ]
+        index = round(degrees / 22.5) % 16
+        return directions[index]
+    
+    async def cleanup(self):
+        """Cleanup resources when plugin is destroyed."""
+        if self.http_client and not self.http_client.closed:
+            await self.http_client.close()
+```
+
+### Step 7: Configuration and Validation
+
+Create a comprehensive configuration system:
+
+```python
+    def get_config_schema(self) -> Dict[str, Any]:
+        """Define configuration schema for the weather plugin."""
+        return {
             "type": "object",
             "properties": {
                 "api_key": {
                     "type": "string",
-                    "description": "OpenWeatherMap API key",
+                    "description": "OpenWeatherMap API key (required)",
+                    "minLength": 32,
+                    "maxLength": 32
                 },
                 "default_units": {
                     "type": "string",
                     "enum": ["metric", "imperial", "kelvin"],
                     "default": "imperial",
-                    "description": "Default temperature units",
+                    "description": "Default temperature units"
                 },
                 "cache_duration": {
                     "type": "integer",
+                    "minimum": 60,
+                    "maximum": 3600,
                     "default": 600,
-                    "description": "Cache weather data for this many seconds",
+                    "description": "Cache weather data for this many seconds"
                 },
-                "include_forecast": {
+                "max_forecast_days": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 5,
+                    "default": 5,
+                    "description": "Maximum number of forecast days"
+                },
+                "enable_alerts": {
                     "type": "boolean",
                     "default": True,
-                    "description": "Include 5-day forecast in responses",
+                    "description": "Enable weather alerts capability"
                 }
             },
             "required": ["api_key"],
+            "additionalProperties": False
         }
-    )
-```
-
-### Step 3: Configuration Validation
-
-Implement robust configuration validation:
-
-```python
-@hookimpl
-def validate_config(self, config: dict) -> ValidationResult:
-    """Validate weather plugin configuration."""
-    errors = []
-    warnings = []
-    suggestions = []
-
-    # Check required API key
-    api_key = config.get("api_key")
-    if not api_key:
-        errors.append("api_key is required")
-    elif len(api_key) != 32:
-        warnings.append("API key should be 32 characters long")
-
-    # Validate units
-    units = config.get("default_units", "imperial")
-    if units not in ["metric", "imperial", "kelvin"]:
-        errors.append(f"Invalid units: {units}")
-
-    # Check cache duration
-    cache_duration = config.get("cache_duration", 600)
-    if not isinstance(cache_duration, int) or cache_duration < 0:
-        errors.append("cache_duration must be a non-negative integer")
-    elif cache_duration < 60:
-        warnings.append("Very short cache duration may cause rate limiting")
-    elif cache_duration > 3600:
-        suggestions.append("Consider shorter cache duration for more current data")
-
-    return ValidationResult(
-        valid=len(errors) == 0,
-        errors=errors,
-        warnings=warnings,
-        suggestions=suggestions,
-    )
-```
-
-### Step 4: Service Injection
-
-Use AgentUp's service registry for HTTP clients, caches, etc:
-
-```python
-def __init__(self):
-    """Initialize the weather plugin."""
-    self.name = "weather-skill"
-    self.api_key = None
-    self.http_client = None
-    self.cache = None
-    self.config = {}
-
-@hookimpl
-def configure_services(self, services: dict) -> None:
-    """Configure services for the weather plugin."""
-    # Get HTTP client for API calls
-    self.http_client = services.get("http_client")
-    if not self.http_client:
-        import httpx
-        self.http_client = httpx.AsyncClient()
-
-    # Get cache service if available
-    self.cache = services.get("cache")
-
-    # Store other services
-    self.services = services
-```
-
-### Step 5: Smart Routing
-
-Implement  task routing:
-
-```python
-@hookimpl
-def can_handle_task(self, context: SkillContext) -> float:
-    """Determine if this is a weather-related request."""
-    user_input = self._extract_user_input(context).lower()
-
-    # High confidence keywords
-    weather_keywords = {
-        'weather': 1.0,
-        'temperature': 1.0,
-        'forecast': 1.0,
-        'rain': 0.9,
-        'snow': 0.9,
-        'sunny': 0.8,
-        'cloudy': 0.8,
-        'hot': 0.7,
-        'cold': 0.7,
-        'humid': 0.8,
-        'wind': 0.8,
-    }
-
-    # Location keywords (boost confidence)
-    location_keywords = ['in', 'at', 'for', 'near']
-
-    # Question patterns
-    weather_patterns = [
-        r"what'?s? (?:the )?weather",
-        r"how'?s? (?:the )?weather",
-        r"weather (?:in|at|for)",
-        r"(?:will it|is it going to) (?:rain|snow)",
-        r"temperature (?:in|at|for)",
-        r"(?:hot|cold|warm) (?:today|tomorrow)",
-    ]
-
-    confidence = 0.0
-
-    # Check keyword matches
-    for keyword, score in weather_keywords.items():
-        if keyword in user_input:
-            confidence = max(confidence, score)
-
-    # Boost for location context
-    if confidence > 0 and any(loc in user_input for loc in location_keywords):
-        confidence = min(confidence + 0.2, 1.0)
-
-    # Check patterns
-    import re
-    for pattern in weather_patterns:
-        if re.search(pattern, user_input):
-            confidence = 1.0
-            break
-
-    return confidence
-```
-
-### Step 6: Core Execution Logic
-
-Implement the main skill functionality:
-
-```python
-@hookimpl
-def execute_skill(self, context: SkillContext) -> SkillResult:
-    """Execute weather skill logic."""
-    try:
-        # Extract location and query details
-        user_input = self._extract_user_input(context)
-        location = self._extract_location(user_input)
-        query_type = self._determine_query_type(user_input)
-
-        # Get configuration
-        self.config = context.config
-        self.api_key = self.config.get("api_key")
-        units = self.config.get("default_units", "imperial")
-
-        if not self.api_key:
-            return SkillResult(
-                content="Weather service is not configured. Please set an API key.",
-                success=False,
-                error="Missing API key",
-            )
-
-        # Get weather data
-        if query_type == "current":
-            weather_data = await self._get_current_weather(location, units)
-            response = self._format_current_weather(weather_data, location)
-        elif query_type == "forecast":
-            forecast_data = await self._get_weather_forecast(location, units)
-            response = self._format_forecast(forecast_data, location)
-        else:
-            # Default to current + short forecast
-            weather_data = await self._get_current_weather(location, units)
-            forecast_data = await self._get_weather_forecast(location, units, days=2)
-            response = self._format_weather_summary(weather_data, forecast_data, location)
-
-        # Update state with recent query
-        state_updates = {
-            "last_location": location,
-            "last_query_time": datetime.datetime.now().isoformat(),
-            "query_count": context.state.get("query_count", 0) + 1,
+    
+    def validate_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate weather plugin configuration."""
+        errors = []
+        warnings = []
+        
+        # Check API key
+        api_key = config.get("api_key")
+        if not api_key:
+            errors.append("api_key is required for weather functionality")
+        elif len(api_key) != 32:
+            warnings.append("OpenWeatherMap API keys are typically 32 characters")
+        
+        # Validate cache duration
+        cache_duration = config.get("cache_duration", 600)
+        if cache_duration < 60:
+            warnings.append("Very short cache duration may cause API rate limiting")
+        elif cache_duration > 3600:
+            warnings.append("Long cache duration may provide stale weather data")
+        
+        return {
+            "valid": len(errors) == 0,
+            "errors": errors,
+            "warnings": warnings
         }
-
-        return SkillResult(
-            content=response,
-            success=True,
-            metadata={
-                "skill": "weather",
-                "location": location,
-                "query_type": query_type,
-                "units": units,
-            },
-            state_updates=state_updates,
-        )
-
-    except Exception as e:
-        logger.error(f"Weather skill error: {e}", exc_info=True)
-        return SkillResult(
-            content=f"Sorry, I couldn't get weather information: {str(e)}",
-            success=False,
-            error=str(e),
-        )
-
-async def _get_current_weather(self, location: str, units: str) -> dict:
-    """Get current weather data from API."""
-    # Check cache first
-    cache_key = f"weather:current:{location}:{units}"
-    if self.cache:
-        cached_data = await self.cache.get(cache_key)
-        if cached_data:
-            return cached_data
-
-    # API call
-    url = "https://api.openweathermap.org/data/2.5/weather"
-    params = {
-        "q": location,
-        "appid": self.api_key,
-        "units": units,
-    }
-
-    response = await self.http_client.get(url, params=params)
-    response.raise_for_status()
-
-    data = response.json()
-
-    # Cache the result
-    if self.cache:
-        cache_duration = self.config.get("cache_duration", 600)
-        await self.cache.set(cache_key, data, ttl=cache_duration)
-
-    return data
-
-def _format_current_weather(self, data: dict, location: str) -> str:
-    """Format current weather data into a readable response."""
-    try:
-        main = data["main"]
-        weather = data["weather"][0]
-        wind = data.get("wind", {})
-
-        temp = main["temp"]
-        feels_like = main["feels_like"]
-        humidity = main["humidity"]
-        description = weather["description"].title()
-
-        # Determine unit symbol
-        unit_symbol = "°F" if self.config.get("default_units") == "imperial" else "°C"
-
-        response = f"**Weather in {location}**\n\n"
-        response += f"**Current:** {temp:.1f}{unit_symbol} ({description})\n"
-        response += f"**Feels like:** {feels_like:.1f}{unit_symbol}\n"
-        response += f"**Humidity:** {humidity}%\n"
-
-        if wind.get("speed"):
-            wind_speed = wind["speed"]
-            wind_unit = "mph" if self.config.get("default_units") == "imperial" else "m/s"
-            response += f"**Wind:** {wind_speed:.1f} {wind_unit}"
-
-            if wind.get("deg"):
-                direction = self._wind_direction(wind["deg"])
-                response += f" {direction}"
-
-        return response
-
-    except KeyError as e:
-        return f"Error formatting weather data: missing field {e}"
-
-def _wind_direction(self, degrees: float) -> str:
-    """Convert wind degrees to compass direction."""
-    directions = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
-                  "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
-    index = round(degrees / 22.5) % 16
-    return directions[index]
 ```
 
-### Step 7: AI Function Integration
+### Step 8: Advanced Features
 
-Make your plugin available to LLMs:
+#### State Management
 
 ```python
-@hookimpl
-def get_ai_functions(self) -> list[AIFunction]:
-    """Provide AI functions for LLM function calling."""
-    return [
-        AIFunction(
-            name="get_weather",
-            description="Get current weather information for a location",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "location": {
-                        "type": "string",
-                        "description": "City name, state, or country (e.g., 'New York, NY')",
-                    },
-                    "units": {
-                        "type": "string",
-                        "enum": ["metric", "imperial", "kelvin"],
-                        "description": "Temperature units",
-                        "default": "imperial",
-                    },
+    def get_state_schema(self) -> Dict[str, Any]:
+        """Define state schema for weather plugin."""
+        return {
+            "type": "object",
+            "properties": {
+                "recent_locations": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "maxItems": 10,
+                    "description": "Recently queried locations"
                 },
-                "required": ["location"],
-            },
-            handler=self._get_weather_function,
-        ),
-
-        AIFunction(
-            name="get_weather_forecast",
-            description="Get weather forecast for a location",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "location": {
-                        "type": "string",
-                        "description": "City name, state, or country",
-                    },
-                    "days": {
-                        "type": "integer",
-                        "minimum": 1,
-                        "maximum": 5,
-                        "description": "Number of forecast days",
-                        "default": 3,
-                    },
-                    "units": {
-                        "type": "string",
-                        "enum": ["metric", "imperial", "kelvin"],
-                        "default": "imperial",
-                    },
+                "user_preferences": {
+                    "type": "object",
+                    "properties": {
+                        "preferred_units": {
+                            "type": "string",
+                            "enum": ["metric", "imperial", "kelvin"]
+                        },
+                        "default_location": {"type": "string"},
+                        "include_details": {"type": "boolean", "default": True}
+                    }
                 },
-                "required": ["location"],
-            },
-            handler=self._get_forecast_function,
-        ),
-    ]
-
-async def _get_weather_function(self, task, context: SkillContext) -> SkillResult:
-    """Handle the get_weather AI function."""
-    params = context.metadata.get("parameters", {})
-    location = params.get("location")
-    units = params.get("units", self.config.get("default_units", "imperial"))
-
-    if not location:
-        return SkillResult(
-            content="Please specify a location for weather information.",
-            success=False,
-            error="Missing location parameter",
-        )
-
-    try:
-        weather_data = await self._get_current_weather(location, units)
-        response = self._format_current_weather(weather_data, location)
-
-        return SkillResult(
-            content=response,
-            success=True,
-            metadata={"function": "get_weather", "location": location},
-        )
-
-    except Exception as e:
-        return SkillResult(
-            content=f"Error getting weather for {location}: {str(e)}",
-            success=False,
-            error=str(e),
-        )
+                "query_stats": {
+                    "type": "object",
+                    "properties": {
+                        "total_queries": {"type": "integer", "default": 0},
+                        "last_query_time": {"type": "string", "format": "date-time"},
+                        "favorite_location": {"type": "string"}
+                    }
+                }
+            }
+        }
+    
+    def update_state(self, current_state: Dict[str, Any], location: str) -> Dict[str, Any]:
+        """Update plugin state after a weather query."""
+        # Update recent locations
+        recent = current_state.get("recent_locations", [])
+        if location not in recent:
+            recent.insert(0, location)
+            recent = recent[:10]  # Keep only last 10
+        
+        # Update stats
+        stats = current_state.get("query_stats", {})
+        stats["total_queries"] = stats.get("total_queries", 0) + 1
+        stats["last_query_time"] = datetime.datetime.now().isoformat()
+        
+        return {
+            **current_state,
+            "recent_locations": recent,
+            "query_stats": stats
+        }
 ```
 
-### Step 8: State Management
-
-For stateful plugins, define your state schema:
+#### Health Monitoring
 
 ```python
-@hookimpl
-def get_state_schema(self) -> dict:
-    """Define state schema for weather plugin."""
-    return {
-        "type": "object",
-        "properties": {
-            "last_location": {
-                "type": "string",
-                "description": "Last queried location"
-            },
-            "last_query_time": {
-                "type": "string",
-                "format": "date-time",
-                "description": "Timestamp of last query"
-            },
-            "query_count": {
-                "type": "integer",
-                "description": "Total number of queries"
-            },
-            "favorite_locations": {
-                "type": "array",
-                "items": {"type": "string"},
-                "description": "User's favorite locations"
-            },
-            "preferred_units": {
-                "type": "string",
-                "enum": ["metric", "imperial", "kelvin"],
-                "description": "User's preferred units"
-            },
-        },
-    }
-```
-
-Use state in your skill logic:
-
-```python
-def execute_skill(self, context: SkillContext) -> SkillResult:
-    # Access previous state
-    state = context.state
-    last_location = state.get("last_location")
-    query_count = state.get("query_count", 0)
-
-    # If no location specified, use last location
-    location = self._extract_location(user_input) or last_location
-
-    # ... weather logic ...
-
-    # Update state
-    state_updates = {
-        "last_location": location,
-        "last_query_time": datetime.datetime.now().isoformat(),
-        "query_count": query_count + 1,
-    }
-
-    return SkillResult(
-        content=response,
-        success=True,
-        state_updates=state_updates,
-    )
-```
-
-### Step 9: Middleware Configuration
-
-Request middleware for your plugin:
-
-```python
-@hookimpl
-def get_middleware_config(self) -> list[dict]:
-    """Request middleware for weather plugin."""
-    return [
-        {
-            "type": "rate_limit",
-            "requests_per_minute": 30,  # API rate limits
-        },
-        {
-            "type": "cache",
-            "ttl": 600,  # Cache responses for 10 minutes
-        },
-        {
-            "type": "retry",
-            "max_retries": 3,
-            "backoff_factor": 2,
-        },
-        {
-            "type": "logging",
-            "level": "INFO",
-            "include_params": True,
-        },
-    ]
-```
-
-### Step 10: Health Monitoring
-
-Implement health status reporting:
-
-```python
-@hookimpl
-def get_health_status(self) -> dict:
-    """Report health status of weather plugin."""
-    status = {
-        "status": "healthy",
-        "version": "1.0.0",
-        "api_configured": bool(self.api_key),
-        "cache_available": self.cache is not None,
-        "http_client_available": self.http_client is not None,
-    }
-
-    # Test API connectivity
-    try:
-        # Quick API test (cached)
-        if self.api_key:
-            # This would be a lightweight API call
-            status["api_accessible"] = True
-    except Exception:
-        status["api_accessible"] = False
-        status["status"] = "degraded"
-
-    return status
-```
-
-## Advanced Features
-
-### Custom Error Handling
-
-```python
-class WeatherAPIError(Exception):
-    """Custom exception for weather API errors."""
-    pass
-
-class LocationNotFoundError(WeatherAPIError):
-    """Raised when location cannot be found."""
-    pass
-
-def _handle_api_error(self, response) -> None:
-    """Handle API error responses."""
-    if response.status_code == 404:
-        raise LocationNotFoundError("Location not found")
-    elif response.status_code == 401:
-        raise WeatherAPIError("Invalid API key")
-    elif response.status_code == 429:
-        raise WeatherAPIError("API rate limit exceeded")
-    else:
-        response.raise_for_status()
-```
-
-### Location Parsing
-
-```python
-import re
-
-def _extract_location(self, text: str) -> str:
-    """Extract location from user input."""
-    # Common location patterns
-    patterns = [
-        r"(?:in|at|for|near)\s+([A-Za-z\s,]+?)(?:\s|$|[.!?])",
-        r"weather\s+([A-Za-z\s,]+?)(?:\s|$|[.!?])",
-        r"^([A-Za-z\s,]+?)\s+weather",
-    ]
-
-    for pattern in patterns:
-        match = re.search(pattern, text, re.IGNORECASE)
-        if match:
-            location = match.group(1).strip()
-            # Clean up common words
-            location = re.sub(r'\b(the|weather|today|tomorrow)\b', '', location, flags=re.IGNORECASE)
-            return location.strip()
-
-    # Default fallback
-    return "Current Location"
-```
-
-### Caching Strategy
-
-```python
-def _get_cache_key(self, location: str, data_type: str, units: str) -> str:
-    """Generate consistent cache keys."""
-    location_key = location.lower().replace(" ", "_")
-    return f"weather:{data_type}:{location_key}:{units}"
-
-async def _cached_api_call(self, cache_key: str, api_call_func, *args, **kwargs):
-    """Generic cached API call wrapper."""
-    # Check cache
-    if self.cache:
-        cached_data = await self.cache.get(cache_key)
-        if cached_data:
-            return cached_data
-
-    # Make API call
-    data = await api_call_func(*args, **kwargs)
-
-    # Cache result
-    if self.cache:
-        cache_duration = self.config.get("cache_duration", 600)
-        await self.cache.set(cache_key, data, ttl=cache_duration)
-
-    return data
+    async def health_check(self) -> Dict[str, Any]:
+        """Perform health check of weather plugin."""
+        status = {
+            "plugin": "weather",
+            "version": self.version,
+            "status": "healthy",
+            "checks": {}
+        }
+        
+        # Check API key configuration
+        status["checks"]["api_configured"] = bool(self.api_key)
+        
+        # Check HTTP client
+        status["checks"]["http_client"] = self.http_client is not None
+        
+        # Check cache availability
+        status["checks"]["cache_available"] = self.cache is not None
+        
+        # Test API connectivity (lightweight)
+        try:
+            if self.api_key:
+                # Quick API test with minimal data
+                url = "https://api.openweathermap.org/data/2.5/weather"
+                params = {"q": "London", "appid": self.api_key}
+                
+                async with self.http_client.get(url, params=params, timeout=5) as response:
+                    status["checks"]["api_accessible"] = response.status == 200
+        except Exception as e:
+            status["checks"]["api_accessible"] = False
+            status["status"] = "degraded"
+            status["api_error"] = str(e)
+        
+        return status
 ```
 
 ## Testing Your Plugin
 
-### Unit Tests
+### Unit Tests with Pytest
 
 ```python
+"""Tests for Weather Plugin."""
+
 import pytest
-from unittest.mock import Mock, AsyncMock
-from weather_skill.plugin import Plugin
+from unittest.mock import AsyncMock, patch, Mock
+import datetime
+from weather_plugin.plugin import WeatherPlugin
+
 
 @pytest.fixture
-def plugin():
-    """Create a plugin instance for testing."""
-    plugin = Plugin()
-    plugin.api_key = "test_api_key"
-    plugin.http_client = AsyncMock()
-    plugin.config = {"default_units": "imperial", "cache_duration": 600}
+async def weather_plugin():
+    """Create a configured weather plugin for testing."""
+    plugin = WeatherPlugin()
+    await plugin.initialize(
+        config={
+            "api_key": "test_api_key_12345678901234567890",
+            "default_units": "imperial",
+            "cache_duration": 600
+        },
+        services={
+            "http_client": AsyncMock(),
+            "cache": AsyncMock()
+        }
+    )
     return plugin
 
+
 @pytest.mark.asyncio
-async def test_get_current_weather(plugin):
-    """Test current weather retrieval."""
+async def test_get_current_weather_success(weather_plugin):
+    """Test successful current weather retrieval."""
     # Mock API response
     mock_response = {
-        "main": {"temp": 72.5, "feels_like": 75.0, "humidity": 65},
+        "main": {
+            "temp": 72.5,
+            "feels_like": 75.0,
+            "humidity": 65,
+            "pressure": 1013
+        },
         "weather": [{"description": "partly cloudy"}],
-        "wind": {"speed": 5.2, "deg": 180}
+        "wind": {"speed": 5.2, "deg": 180},
+        "sys": {"sunrise": 1609459200, "sunset": 1609495200}
     }
+    
+    # Mock HTTP client
+    weather_plugin.http_client.get.return_value.__aenter__.return_value.json.return_value = mock_response
+    weather_plugin.http_client.get.return_value.__aenter__.return_value.status = 200
+    weather_plugin.http_client.get.return_value.__aenter__.return_value.raise_for_status = Mock()
+    
+    # Test the capability
+    result = await weather_plugin.get_current_weather("New York", "imperial", True)
+    
+    assert result["success"] is True
+    assert "New York" in result["content"]
+    assert "72.5°F" in result["content"]
+    assert "Partly Cloudy" in result["content"]
+    assert result["metadata"]["location"] == "New York"
+    assert result["metadata"]["temperature"] == 72.5
 
-    plugin.http_client.get.return_value.json.return_value = mock_response
-    plugin.http_client.get.return_value.raise_for_status = Mock()
 
-    result = await plugin._get_current_weather("New York", "imperial")
+@pytest.mark.asyncio
+async def test_get_current_weather_api_error(weather_plugin):
+    """Test handling of API errors."""
+    # Mock API error
+    weather_plugin.http_client.get.return_value.__aenter__.return_value.status = 404
+    
+    result = await weather_plugin.get_current_weather("NonexistentCity")
+    
+    assert result["success"] is False
+    assert "not found" in result["error"].lower()
 
-    assert result == mock_response
-    plugin.http_client.get.assert_called_once()
 
-def test_location_extraction(plugin):
-    """Test location parsing from user input."""
-    test_cases = [
-        ("What's the weather in New York?", "New York"),
-        ("Weather for San Francisco today", "San Francisco"),
-        ("How's the weather at Chicago", "Chicago"),
-        ("Tell me about London weather", "London"),
-    ]
+@pytest.mark.asyncio
+async def test_get_weather_forecast(weather_plugin):
+    """Test weather forecast capability."""
+    # Mock forecast API response
+    mock_response = {
+        "list": [
+            {
+                "dt": 1609459200,
+                "main": {"temp": 70.0},
+                "weather": [{"description": "sunny"}]
+            },
+            {
+                "dt": 1609545600,
+                "main": {"temp": 68.0},
+                "weather": [{"description": "cloudy"}]
+            }
+        ]
+    }
+    
+    weather_plugin.http_client.get.return_value.__aenter__.return_value.json.return_value = mock_response
+    weather_plugin.http_client.get.return_value.__aenter__.return_value.status = 200
+    weather_plugin.http_client.get.return_value.__aenter__.return_value.raise_for_status = Mock()
+    
+    result = await weather_plugin.get_weather_forecast("Boston", 2, "imperial")
+    
+    assert result["success"] is True
+    assert "Boston" in result["content"]
+    assert "Forecast" in result["content"]
+    assert result["metadata"]["forecast_days"] == 2
 
-    for input_text, expected_location in test_cases:
-        location = plugin._extract_location(input_text)
-        assert location == expected_location
+
+def test_config_validation(weather_plugin):
+    """Test configuration validation."""
+    # Valid config
+    valid_config = {
+        "api_key": "12345678901234567890123456789012",
+        "default_units": "metric",
+        "cache_duration": 300
+    }
+    
+    result = weather_plugin.validate_config(valid_config)
+    assert result["valid"] is True
+    assert len(result["errors"]) == 0
+    
+    # Invalid config - missing API key
+    invalid_config = {"default_units": "metric"}
+    
+    result = weather_plugin.validate_config(invalid_config)
+    assert result["valid"] is False
+    assert "api_key is required" in result["errors"][0]
+
+
+def test_wind_direction_conversion(weather_plugin):
+    """Test wind direction conversion."""
+    assert weather_plugin._wind_direction(0) == "N"
+    assert weather_plugin._wind_direction(90) == "E"
+    assert weather_plugin._wind_direction(180) == "S"
+    assert weather_plugin._wind_direction(270) == "W"
+    assert weather_plugin._wind_direction(45) == "NE"
+
+
+def test_unit_symbol_mapping(weather_plugin):
+    """Test temperature unit symbol mapping."""
+    assert weather_plugin._get_unit_symbol("imperial") == "°F"
+    assert weather_plugin._get_unit_symbol("metric") == "°C"
+    assert weather_plugin._get_unit_symbol("kelvin") == "K"
+    assert weather_plugin._get_unit_symbol("unknown") == "°F"  # default
+
+
+@pytest.mark.asyncio
+async def test_caching_behavior(weather_plugin):
+    """Test that caching works correctly."""
+    # Mock cache hit
+    cached_data = {
+        "main": {"temp": 75.0, "feels_like": 78.0, "humidity": 60},
+        "weather": [{"description": "sunny"}]
+    }
+    weather_plugin.cache.get.return_value = cached_data
+    
+    result = await weather_plugin.get_current_weather("Miami")
+    
+    # Should use cached data, not make HTTP request
+    weather_plugin.http_client.get.assert_not_called()
+    assert result["success"] is True
+    assert "75.0°F" in result["content"]
+
+
+@pytest.mark.asyncio
+async def test_plugin_cleanup(weather_plugin):
+    """Test plugin cleanup."""
+    weather_plugin.http_client.closed = False
+    
+    await weather_plugin.cleanup()
+    
+    weather_plugin.http_client.close.assert_called_once()
 ```
 
 ### Integration Tests
 
 ```python
+@pytest.mark.integration
 @pytest.mark.asyncio
-async def test_full_weather_flow(plugin):
-    """Test complete weather request flow."""
-    # Setup
-    task = Mock()
-    task.history = [Mock()]
-    task.history[0].parts = [Mock()]
-    task.history[0].parts[0].text = "What's the weather in Boston?"
-
-    context = SkillContext(
-        task=task,
-        config={"api_key": "test_key", "default_units": "imperial"},
-        state={}
+async def test_real_weather_api():
+    """Test against real weather API (requires valid API key)."""
+    import os
+    
+    api_key = os.getenv("OPENWEATHER_API_KEY")
+    if not api_key:
+        pytest.skip("No API key provided for integration test")
+    
+    plugin = WeatherPlugin()
+    await plugin.initialize(
+        config={"api_key": api_key, "default_units": "imperial"},
+        services={}
     )
+    
+    # Test real API call
+    result = await plugin.get_current_weather("London")
+    
+    assert result["success"] is True
+    assert "London" in result["content"]
+    assert "°F" in result["content"]
+    
+    await plugin.cleanup()
+```
 
-    # Mock API response
-    plugin.http_client.get.return_value.json.return_value = {
-        "main": {"temp": 68.0, "feels_like": 70.0, "humidity": 60},
-        "weather": [{"description": "clear sky"}],
-    }
-    plugin.http_client.get.return_value.raise_for_status = Mock()
+## Trusted Publishing and Security
 
-    # Execute
-    result = plugin.execute_skill(context)
+### Setting Up Trusted Publishing
 
-    # Verify
-    assert result.success
-    assert "Boston" in result.content
-    assert "68.0°F" in result.content
-    assert result.metadata["location"] == "Boston"
+Your plugin's `pyproject.toml` should include trusted publishing configuration:
+
+```toml
+[project.entry-points."agentup.plugins"]
+weather = "weather_plugin.plugin:WeatherPlugin"
+
+# Trusted publishing configuration
+[tool.agentup.trusted-publishing]
+publisher = "your-github-username"
+repository = "your-username/weather-plugin"
+workflow = "publish.yml"
+trust_level = "community"
+
+[tool.agentup.plugin]
+capabilities = [
+    "weather:current",
+    "weather:forecast", 
+    "weather:alerts"
+]
+scopes = [
+    "weather:read",
+    "api:external",
+    "alerts:read"
+]
+min_agentup_version = "2.0.0"
+plugin_api_version = "1.0"
+
+# Security hash for integrity verification
+security_hash = "sha256:abc123def456..."
+```
+
+### Security Best Practices
+
+1. **Scope Isolation**: Use specific scopes for each capability
+2. **Input Validation**: Validate all user inputs and API responses
+3. **Error Handling**: Never expose internal errors or API keys
+4. **Rate Limiting**: Respect API rate limits and implement backoff
+5. **Data Sanitization**: Clean user inputs before API calls
+
+```python
+def _sanitize_location(self, location: str) -> str:
+    """Sanitize location input to prevent injection attacks."""
+    # Remove potentially harmful characters
+    sanitized = re.sub(r'[<>"\'\(\)\[\]\{\}]', '', location)
+    # Limit length
+    sanitized = sanitized[:100]
+    # Remove extra whitespace
+    sanitized = ' '.join(sanitized.split())
+    return sanitized
 ```
 
 ## Best Practices
 
 ### 1. Error Handling
-
-Always provide graceful error handling:
+Always provide informative error messages:
 
 ```python
 try:
     result = await self._api_call()
-except LocationNotFoundError:
-    return SkillResult(
-        content="I couldn't find that location. Please check the spelling.",
-        success=False,
-        error="Location not found",
-    )
-except WeatherAPIError as e:
-    return SkillResult(
-        content=f"Weather service error: {str(e)}",
-        success=False,
-        error=str(e),
-    )
+except aiohttp.ClientError as e:
+    return {
+        "success": False,
+        "error": "Network error",
+        "content": "Weather service is temporarily unavailable. Please try again later."
+    }
+except ValueError as e:
+    return {
+        "success": False,
+        "error": str(e),
+        "content": f"Invalid request: {str(e)}"
+    }
 ```
 
 ### 2. Logging
-
-Use structured logging:
-
-```python
-import logging
-
-logger = logging.getLogger(__name__)
-
-def execute_skill(self, context: SkillContext) -> SkillResult:
-    logger.info("Processing weather request", extra={
-        "user_input": self._extract_user_input(context),
-        "skill": "weather",
-    })
-
-    try:
-        # ... skill logic ...
-        logger.info("Weather request completed successfully")
-    except Exception as e:
-        logger.error("Weather request failed", extra={
-            "error": str(e),
-            "skill": "weather",
-        }, exc_info=True)
-```
-
-### 3. Configuration Management
-
-Provide sensible defaults and validation:
+Use structured logging throughout:
 
 ```python
-def _get_config_value(self, key: str, default=None, required=False):
-    """Get configuration value with validation."""
-    value = self.config.get(key, default)
-
-    if required and value is None:
-        raise ValueError(f"Required configuration '{key}' is missing")
-
-    return value
+logger.info(
+    "Weather request processed",
+    location=location,
+    units=units,
+    success=result["success"],
+    duration=time.time() - start_time
+)
 ```
 
-### 4. Performance Optimization
+### 3. Performance
+- Use async/await for all I/O operations
+- Implement intelligent caching
+- Make concurrent API calls when possible
+- Set appropriate timeouts
 
-Use async/await properly:
-
-```python
-async def execute_skill(self, context: SkillContext) -> SkillResult:
-    """Execute with concurrent API calls where possible."""
-    # Start multiple API calls concurrently
-    current_task = asyncio.create_task(
-        self._get_current_weather(location, units)
-    )
-    forecast_task = asyncio.create_task(
-        self._get_weather_forecast(location, units)
-    )
-
-    # Wait for both to complete
-    current_weather, forecast = await asyncio.gather(
-        current_task, forecast_task
-    )
-
-    # Process results...
-```
+### 4. Configuration
+- Provide sensible defaults
+- Validate all configuration values
+- Support environment variable overrides
+- Document all configuration options
 
 ## Deployment and Distribution
 
 ### Package Structure
-
-Organize your plugin for distribution:
-
 ```
-weather-skill/
+weather-plugin/
 ├── pyproject.toml
 ├── README.md
 ├── LICENSE
 ├── CHANGELOG.md
 ├── src/
-│   └── weather_skill/
+│   └── weather_plugin/
 │       ├── __init__.py
 │       ├── plugin.py
-│       ├── api.py          # API client logic
-│       ├── formatters.py   # Response formatting
-│       └── utils.py        # Utility functions
+│       ├── api_client.py
+│       ├── formatters.py
+│       └── utils.py
 ├── tests/
 │   ├── __init__.py
 │   ├── test_plugin.py
-│   ├── test_api.py
+│   ├── test_integration.py
 │   └── conftest.py
-└── docs/
-    ├── README.md
-    ├── configuration.md
-    └── examples.md
+├── docs/
+│   ├── README.md
+│   ├── configuration.md
+│   └── examples.md
+└── .github/
+    └── workflows/
+        └── publish.yml
 ```
 
-### Entry Points
-
-Configure your entry point in `pyproject.toml`:
-
-```toml
-[project.entry-points."agentup.skills"]
-weather = "weather_skill.plugin:Plugin"
-```
-
-### Documentation
-
-Include comprehensive documentation:
-
-```markdown
-# Weather Skill Plugin
-
-Provides weather information and forecasts for AgentUp agents.
-
-## Installation
-
-```bash
-pip install weather-skill
-```
-
-## Configuration
-
-Add to your `agent_config.yaml`:
-
+### GitHub Actions Workflow
 ```yaml
-skills:
-  - skill_id: weather
-    config:
-      api_key: "your-openweathermap-api-key"
-      default_units: "imperial"  # or "metric"
-      cache_duration: 600
+name: Publish Weather Plugin
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+      
+      - name: Build package
+        run: python -m build
+      
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
 ```
 
-## Features
-
-- Current weather conditions
-- 5-day weather forecast
-- Multiple unit systems
-- Location-aware queries
-- Intelligent caching
-- AI function calling support
-```
-
-This comprehensive development guide covers all aspects of building  AgentUp plugins. The weather plugin example demonstrates real-world patterns you can apply to any domain!
+This comprehensive guide covers everything needed to build production-ready AgentUp plugins using the new decorator system. The weather plugin example demonstrates real-world patterns that can be applied to any domain!

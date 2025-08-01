@@ -5,7 +5,7 @@ from a2a.types import Task
 
 from agent.core.dispatcher import FunctionRegistry
 
-from .manager import PluginManager, get_plugin_manager
+from .manager import PluginRegistry, get_plugin_registry
 from .models import CapabilityContext, CapabilityResult
 
 if TYPE_CHECKING:
@@ -15,8 +15,8 @@ logger = structlog.get_logger(__name__)
 
 
 class PluginAdapter:
-    def __init__(self, config: "Settings", plugin_manager: PluginManager | None = None):
-        self.plugin_manager = plugin_manager or get_plugin_manager()
+    def __init__(self, config: "Settings", plugin_registry: PluginRegistry | None = None):
+        self.plugin_registry = plugin_registry or get_plugin_registry()
         self._function_registry: FunctionRegistry | None = None
         self._config = config
 
@@ -38,7 +38,7 @@ class PluginAdapter:
             enabled_capabilities = self._load_enabled_capabilities()
 
         # Register AI functions only for enabled capabilities
-        for capability_id, capability_info in self.plugin_manager.capabilities.items():
+        for capability_id, capability_info in self.plugin_registry.capabilities.items():
             # Skip if capability is not enabled in configuration
             if capability_id not in enabled_capabilities:
                 logger.debug(f"Skipping capability '{capability_id}' as it is not enabled in configuration")
@@ -49,10 +49,10 @@ class PluginAdapter:
                 continue
 
             # Get AI functions from the capability
-            ai_functions = self.plugin_manager.get_ai_functions(capability_id)
+            ai_functions = self.plugin_registry.get_ai_functions(capability_id)
 
             # Get plugin name for better logging
-            plugin_name = self.plugin_manager.capability_to_plugin.get(capability_id, "unknown")
+            plugin_name = self.plugin_registry.capability_to_plugin.get(capability_id, "unknown")
 
             for ai_func in ai_functions:
                 # Create OpenAI-compatible function schema
@@ -116,7 +116,7 @@ class PluginAdapter:
                     return f"Error: {str(e)}"
             else:
                 # Fallback to capability's main execute method
-                result = self.plugin_manager.execute_capability(capability_id, context)
+                result = await self.plugin_registry.execute_capability(capability_id, context)
                 return result.content
 
         return handler
@@ -179,11 +179,11 @@ class PluginAdapter:
         try:
             # Get all capabilities provided by this plugin
             function_names = []
-            for capability_id, _capability_info in self.plugin_manager.capabilities.items():
+            for capability_id, _capability_info in self.plugin_registry.capabilities.items():
                 # Check if this capability belongs to the plugin
-                if self.plugin_manager.capability_to_plugin.get(capability_id) == plugin_id:
+                if self.plugin_registry.capability_to_plugin.get(capability_id) == plugin_id:
                     # Get AI functions for this capability
-                    ai_functions = self.plugin_manager.get_ai_functions(capability_id)
+                    ai_functions = self.plugin_registry.get_ai_functions(capability_id)
                     function_names.extend([func.name for func in ai_functions])
             return function_names
         except Exception as e:
@@ -217,7 +217,7 @@ class PluginAdapter:
             configured_plugins = self._config.plugins
 
             # Find which plugin provides this capability
-            plugin_id = self.plugin_manager.capability_to_plugin.get(capability_id)
+            plugin_id = self.plugin_registry.capability_to_plugin.get(capability_id)
 
             if plugin_id:
                 # Find the plugin configuration
@@ -237,25 +237,25 @@ class PluginAdapter:
     def get_capability_executor_for_capability(self, capability_id: str):
         async def executor(task: Task) -> str:
             context = self._create_capability_context_for_capability(task, capability_id)
-            result = self.plugin_manager.execute_capability(capability_id, context)
+            result = await self.plugin_registry.execute_capability(capability_id, context)
             return result.content
 
         return executor
 
     def find_capabilities_for_task(self, task: Task) -> list[tuple[str, float]]:
         context = self._create_capability_context(task)
-        return self.plugin_manager.find_capabilities_for_task(context)
+        return self.plugin_registry.find_capabilities_for_task(context)
 
     def list_available_capabilities(self) -> list[str]:
-        return list(self.plugin_manager.capabilities.keys())
+        return list(self.plugin_registry.capabilities.keys())
 
     def get_capability_info(self, capability_id: str) -> dict[str, Any]:
-        capability = self.plugin_manager.get_capability(capability_id)
+        capability = self.plugin_registry.get_capability(capability_id)
         if not capability:
             raise ValueError(f"Capability '{capability_id}' not found")
 
         # Get the plugin name that provides this capability
-        plugin_name = self.plugin_manager.capability_to_plugin.get(capability_id, "unknown")
+        plugin_name = self.plugin_registry.capability_to_plugin.get(capability_id, "unknown")
 
         return {
             "capability_id": capability.id,
@@ -270,4 +270,4 @@ class PluginAdapter:
         }
 
     def get_ai_functions(self, capability_id: str):
-        return self.plugin_manager.get_ai_functions(capability_id)
+        return self.plugin_registry.get_ai_functions(capability_id)

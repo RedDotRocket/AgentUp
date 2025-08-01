@@ -1,0 +1,297 @@
+# Example GitHub Actions workflow for trusted publishing of AgentUp plugins
+# This workflow demonstrates secure plugin publishing without API tokens
+
+name: Publish AgentUp Plugin
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      
+      - name: Install security tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install bandit safety semgrep
+      
+      - name: Run Bandit (security linter)
+        run: bandit -r src/ -f json -o bandit-report.json || true
+      
+      - name: Run Safety (dependency check)
+        run: safety check --json --output safety-report.json || true
+      
+      - name: Run Semgrep (static analysis)
+        run: semgrep --config=auto src/ --json --output=semgrep-report.json || true
+      
+      - name: Upload security reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-reports
+          path: "*-report.json"
+
+  validate-plugin:
+    name: Validate Plugin
+    runs-on: ubuntu-latest
+    needs: security-scan
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      
+      - name: Install AgentUp
+        run: |
+          python -m pip install --upgrade pip
+          # Install from PyPI or development version
+          pip install agentup
+      
+      - name: Validate plugin structure
+        run: |
+          # Validate plugin follows AgentUp standards
+          agentup plugin validate .
+          
+          # Check for required files
+          test -f pyproject.toml || (echo "Missing pyproject.toml" && exit 1)
+          test -f README.md || (echo "Missing README.md" && exit 1)
+          
+          # Validate entry points
+          python -c "
+          import importlib.metadata
+          import sys
+          
+          # Check if plugin has proper entry points
+          try:
+              from pyproject_toml import load_toml
+              data = load_toml('pyproject.toml')
+              
+              entry_points = data.get('project', {}).get('entry-points', {}).get('agentup.plugins', {})
+              if not entry_points:
+                  print('ERROR: No agentup.plugins entry points found')
+                  sys.exit(1)
+              
+              print(f'Found {len(entry_points)} plugin entry points')
+              for name, module in entry_points.items():
+                  print(f'  {name}: {module}')
+                  
+          except Exception as e:
+              print(f'ERROR validating entry points: {e}')
+              sys.exit(1)
+          "
+      
+      - name: Test plugin import
+        run: |
+          # Build and install plugin locally to test
+          pip install -e .
+          
+          # Try to import the plugin
+          python -c "
+          import importlib.metadata
+          
+          # Find plugin entry points
+          entry_points = importlib.metadata.entry_points()
+          if hasattr(entry_points, 'select'):
+              plugin_entries = entry_points.select(group='agentup.plugins')
+          else:
+              plugin_entries = entry_points.get('agentup.plugins', [])
+          
+          for entry_point in plugin_entries:
+              try:
+                  plugin_class = entry_point.load()
+                  plugin_instance = plugin_class()
+                  print(f'✅ Successfully loaded plugin: {entry_point.name}')
+                  
+                  # Check if it's using new decorator system
+                  if hasattr(plugin_instance, '_capabilities'):
+                      caps = len(plugin_instance._capabilities)
+                      print(f'   Capabilities: {caps}')
+                  else:
+                      print('   Using legacy plugin system')
+                      
+              except Exception as e:
+                  print(f'❌ Failed to load plugin {entry_point.name}: {e}')
+                  exit(1)
+          "
+
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    needs: validate-plugin
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+      
+      - name: Build package
+        run: python -m build
+      
+      - name: Check package
+        run: twine check dist/*
+      
+      - name: Test installation
+        run: |
+          # Test install in fresh environment
+          pip install dist/*.whl
+          
+          # Verify plugin can be discovered
+          python -c "
+          import importlib.metadata
+          
+          # Check that plugin is installed
+          entry_points = importlib.metadata.entry_points()
+          if hasattr(entry_points, 'select'):
+              plugin_entries = list(entry_points.select(group='agentup.plugins'))
+          else:
+              plugin_entries = entry_points.get('agentup.plugins', [])
+          
+          if not plugin_entries:
+              print('ERROR: No plugin entry points found after installation')
+              exit(1)
+          
+          print(f'Package installed successfully with {len(plugin_entries)} plugins')
+          "
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    needs: [security-scan, validate-plugin, build-and-test]
+    environment:
+      name: pypi
+      url: https://pypi.org/p/${{ github.event.repository.name }}
+    
+    permissions:
+      id-token: write  # Required for trusted publishing
+      contents: read
+    
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: dist
+          path: dist/
+      
+      - name: Publish to PyPI via Trusted Publishing
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # No password or API token needed - uses OIDC trust!
+          repository-url: https://upload.pypi.org/legacy/
+          packages-dir: dist/
+          skip-existing: true
+      
+      - name: Create GitHub Release Assets
+        uses: softprops/action-gh-release@v1
+        if: github.event_name == 'release'
+        with:
+          files: dist/*
+          generate_release_notes: true
+
+  post-publish:
+    name: Post-Publish Verification
+    runs-on: ubuntu-latest
+    needs: publish
+    if: always()
+    steps:
+      - name: Wait for PyPI propagation
+        run: sleep 60  # Wait for PyPI to propagate
+      
+      - name: Verify published package
+        run: |
+          # Try to install from PyPI
+          pip install ${{ github.event.repository.name }} --no-cache-dir
+          
+          # Verify plugin works
+          python -c "
+          import importlib.metadata
+          
+          # Find our plugin
+          entry_points = importlib.metadata.entry_points()
+          if hasattr(entry_points, 'select'):
+              plugin_entries = list(entry_points.select(group='agentup.plugins'))
+          else:
+              plugin_entries = entry_points.get('agentup.plugins', [])
+          
+          if plugin_entries:
+              for entry_point in plugin_entries:
+                  plugin_class = entry_point.load()
+                  plugin_instance = plugin_class()
+                  print(f'✅ Verified published plugin: {entry_point.name}')
+          else:
+              print('❌ No plugins found in published package')
+              exit(1)
+          "
+      
+      - name: Test AgentUp installation with new plugin
+        run: |
+          # Install AgentUp and verify plugin integration
+          pip install agentup
+          
+          # Test plugin discovery
+          python -c "
+          from agent.plugins.trusted_registry import get_trusted_plugin_registry
+          import asyncio
+          
+          async def test_plugin():
+              registry = get_trusted_plugin_registry()
+              await registry.discover_plugins()
+              
+              plugins = registry.list_plugins()
+              print(f'AgentUp discovered {len(plugins)} total plugins')
+              
+              # Look for our plugin
+              plugin_name = '${{ github.event.repository.name }}'.replace('-', '_')
+              found = False
+              
+              for plugin in plugins:
+                  if plugin_name in plugin.name.lower():
+                      print(f'✅ Found our plugin: {plugin.name}')
+                      found = True
+                      break
+              
+              if not found:
+                  print(f'⚠️  Plugin {plugin_name} not automatically discovered')
+          
+          asyncio.run(test_plugin())
+          "
+      
+      - name: Notify on success
+        if: success()
+        run: |
+          echo "🎉 Plugin published successfully!"
+          echo "Package: ${{ github.event.repository.name }}"
+          echo "Version: ${{ github.event.release.tag_name }}"
+          echo "PyPI: https://pypi.org/project/${{ github.event.repository.name }}/"
+      
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "❌ Plugin publishing failed!"
+          echo "Check the logs above for details."

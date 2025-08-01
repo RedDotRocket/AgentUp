@@ -1,5 +1,7 @@
-from .hookspecs import CapabilitySpec, hookspec
-from .manager import PluginManager, get_plugin_manager
+from .base import AIFunctionPlugin, Plugin, SimplePlugin
+from .decorators import CapabilityMetadata, ai_function, capability
+from .integration import enable_plugin_system
+from .manager import PluginRegistry, get_plugin_registry
 from .models import (
     AIFunction,
     CapabilityContext,
@@ -9,15 +11,19 @@ from .models import (
     PluginDefinition,
     PluginValidationResult,
 )
+from .security import PluginSecurityManager
 
 __all__ = [
-    # Hook specifications
-    "CapabilitySpec",
-    "hookspec",
-    # Plugin management
-    "PluginManager",
-    "get_plugin_manager",
-    # Data models
+    "Plugin",
+    "SimplePlugin",
+    "AIFunctionPlugin",
+    "capability",
+    "ai_function",
+    "CapabilityMetadata",
+    "PluginRegistry",
+    "get_plugin_registry",
+    "enable_plugin_system",
+    "PluginSecurityManager",
     "CapabilityContext",
     "CapabilityDefinition",
     "CapabilityResult",

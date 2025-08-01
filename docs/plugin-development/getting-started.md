@@ -1,15 +1,13 @@
 # Getting Started with AgentUp Plugins
 
-This guide will walk you through creating your first AgentUp plugin from scratch.
+This guide will walk you through creating your first AgentUp plugin.
 
-In just 5 minutes, you'll have a working plugin that can handle user requests
-and integrate with AI function calling.
+In just 5 minutes, you'll have a working plugin with secure capabilities that integrate seamlessly with AI function calling.
 
 ## Prerequisites
 
-- AgentUp installed: `pip install agentup`
-- Python 3.10 or higher
-- Basic familiarity with Python
+- AgentUp 2.0+ installed: `uv add agentup` or `pip install agentup`
+- Python 3.11 or higher
 
 ## Important: Plugin Development Workflow
 
@@ -18,19 +16,25 @@ AgentUp plugins are **standalone Python packages** that can be created anywhere 
 ```bash
 # You can create plugins in any directory
 cd ~/my-projects/          # Or any directory you prefer
-agentup plugin create time-plugin --template direct
+agentup plugin create time-plugin
 
-# This creates a new plugin directory
+# This creates a new plugin directory with the modern decorator system
 cd time-plugin/
 ```
 
 The plugin development workflow is independent of any specific agent project, allowing you to:
 - Develop plugins separately from specific agents
 - Share plugins across multiple agents
-- Publish plugins for community use
+- Publish plugins securely via trusted publishing
+- Manage with standard Python tools (uv, pip, poetry)
 
-The benefits of this approach, mean plugins can be listed in existing Python tooling
-and managed with pip, uv, poetry, or any other Python package manager.
+## New Decorator-Based System
+
+AgentUp introduces a simple, intuitive decorator system
+
+- **@capability decorator**: Define plugin capabilities with a single decorator
+- **Type safety**: Full typing support and IDE integration
+- **Trusted publishing**: Built-in security with cryptographic verification
 
 ## Step 1: Create Your Plugin
 
@@ -38,211 +42,247 @@ Let's create a plugin that provides time and date information:
 
 ```bash
 # Run this from any directory where you want to create the plugin
-agentup plugin create time-plugin --template direct
+agentup plugin create time-plugin
 ```
 
 This creates a new directory with everything you need to get started:
 
 ```
-time-plugin
+time-plugin/
 ├── .gitignore
 ├── pyproject.toml
 ├── README.md
-├── src
-│   └── time_plugin
-│       ├── __init__.py
-│       └── plugin.py
-├── static
-│   └── logo.png
-└── tests
+├── src/
+│   └── time_plugin/
+│       ├── __init__.py
+│       └── plugin.py
+├── static/
+│   └── logo.png
+└── tests/
     └── test_time_plugin.py
 ```
 
+The `pyproject.toml` now includes trusted publishing configuration for secure distribution.
+
 ## Step 2: Examine the Generated Code
 
-Open `src/time_plugin/plugin.py` to see the basic plugin structure:
+Open `src/time_plugin/plugin.py` to see the new decorator-based plugin structure:
 
 ```python
 """
-Time Plugin plugin for AgentUp.
+Time Plugin for AgentUp.
 
-A plugin that provides Time Plugin functionality
+A plugin that provides time and date information using the modern decorator system.
 """
 
-import pluggy
-from agent.plugins import CapabilityDefinition, CapabilityContext, CapabilityResult, PluginValidationResult, CapabilityType
+import datetime
+from typing import Dict, Any
 
-hookimpl = pluggy.HookimplMarker("agentup")
+from agent.plugins.base import Plugin
+from agent.plugins.decorators import capability
 
-class Plugin:
-    """Main plugin class for Time Plugin."""
+
+class TimePlugin(Plugin):
+    """Time and date information plugin."""
 
     def __init__(self):
-        """Initialize the plugin."""
+        """Initialize the time plugin."""
+        super().__init__()
         self.name = "time-plugin"
+        self.version = "1.0.0"
 
-    @hookimpl
-    def register_capability(self) -> CapabilityDefinition:
-        """Register the capability with AgentUp."""
-        return CapabilityDefinition(
-            id="time_plugin",
-            name="Time Plugin",
-            version="0.1.0",
-            description="A plugin that provides Time Plugin functionality",
-            capabilities=[CapabilityType.TEXT],
-            tags=["time-plugin", "custom"],
-        )
+    @capability(
+        id="get_time",
+        name="Get Current Time",
+        description="Get the current time in various formats",
+        scopes=["time:read"],
+        ai_function=True,
+        ai_parameters={
+            "type": "object",
+            "properties": {
+                "format": {
+                    "type": "string",
+                    "enum": ["12hour", "24hour"],
+                    "description": "Time format preference",
+                    "default": "12hour"
+                }
+            }
+        }
+    )
+    async def get_current_time(self, format: str = "12hour", **kwargs) -> Dict[str, Any]:
+        """Get the current time."""
+        try:
+            now = datetime.datetime.now()
 
-    @hookimpl
-    def validate_config(self, config: dict) -> PluginValidationResult:
-        """Validate capability configuration."""
-    # Add your validation logic here
-        return PluginValidationResult(valid=True)
+            if format == "24hour":
+                time_str = now.strftime("%H:%M")
+            else:
+                time_str = now.strftime("%I:%M %p")
 
+            return {
+                "success": True,
+                "content": f"Current time: {time_str}",
+                "metadata": {
+                    "timestamp": now.isoformat(),
+                    "format": format
+                }
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "content": f"Error getting time: {e}"
+            }
 
-    @hookimpl
-    def can_handle_task(self, context: CapabilityContext) -> bool:
-        """Check if this capability can handle the task."""
-    # Add your capability detection logic here
-        # For now, return True to handle all tasks
-        return True
+    @capability(
+        id="get_date",
+        name="Get Current Date",
+        description="Get the current date in various formats",
+        scopes=["time:read"],
+        ai_function=True,
+        ai_parameters={
+            "type": "object",
+            "properties": {
+                "format": {
+                    "type": "string",
+                    "enum": ["short", "long", "iso"],
+                    "description": "Date format preference",
+                    "default": "long"
+                }
+            }
+        }
+    )
+    async def get_current_date(self, format: str = "long", **kwargs) -> Dict[str, Any]:
+        """Get the current date."""
+        try:
+            now = datetime.datetime.now()
 
+            if format == "short":
+                date_str = now.strftime("%m/%d/%Y")
+            elif format == "iso":
+                date_str = now.strftime("%Y-%m-%d")
+            else:  # long
+                date_str = now.strftime("%A, %B %d, %Y")
 
-    @hookimpl
-    def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
-        """Execute the capability logic."""
-        # Extract user input from the task
-        user_input = self._extract_user_input(context)
-
-        # Your skill logic here
-        response = f"Processed by Time Plugin: {user_input}"
-
-        return CapabilityResult(
-            content=response,
-            success=True,
-            metadata={"skill": "time_plugin"},
-        )
-
-    def _extract_user_input(self, context: CapabilityContext) -> str:
-        """Extract user input from the task."""
-        if hasattr(context.task, "history") and context.task.history:
-            last_msg = context.task.history[-1]
-            if hasattr(last_msg, "parts") and last_msg.parts:
-                return last_msg.parts[0].text if hasattr(last_msg.parts[0], "text") else ""
-        return ""
+            return {
+                "success": True,
+                "content": f"Current date: {date_str}",
+                "metadata": {
+                    "timestamp": now.isoformat(),
+                    "format": format
+                }
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "content": f"Error getting date: {e}"
+            }
 ```
 
-This code defines a basic plugin structure with:
-- **Plugin class**: Main entry point for your plugin
-- **register_capability**: Registers the plugin with AgentUp
-- **validate_config**: Validates plugin configuration
-- **can_handle_task**: Determines if the plugin can handle a given task
-- **execute_capability**: Contains the main logic for processing user requests
-- **_extract_user_input**: Helper method to extract user input from the task history
+Let's break down the key aspects:
 
-## Step 3: Implement Time Functionality
+- **@capability decorator**: Defines capabilities with metadata, scopes, and AI function parameters
+- **Direct method calls**: Each capability is a simple async method
+- **Automatic discovery**: The plugin automatically discovers decorated methods
+- **Type safety**: Full typing support with proper return types
+- **AI integration**: Built-in support for LLM function calling
+- **Security scopes**: Fine-grained permission control per capability
 
-Let's replace the basic logic with actual time functionality. Update the `execute_capability` method:
+## Step 3: Add More Capabilities
+
+Let's add a combined datetime capability to demonstrate multiple capabilities in one plugin:
 
 ```python
-import datetime
-import re
-
-@hookimpl
-def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
-    """Execute the time skill logic."""
-    # Extract user input from the task
-    user_input = self._extract_user_input(context).lower()
-
+@capability(
+    id="get_datetime",
+    name="Get Date and Time",
+    description="Get both current date and time together",
+    scopes=["time:read"],
+    ai_function=True,
+    ai_parameters={
+        "type": "object",
+        "properties": {
+            "timezone": {
+                "type": "string",
+                "description": "Timezone name (optional)",
+                "default": "local"
+            },
+            "include_weekday": {
+                "type": "boolean",
+                "description": "Include day of the week",
+                "default": True
+            }
+        }
+    }
+)
+async def get_datetime(self, timezone: str = "local", include_weekday: bool = True, **kwargs) -> Dict[str, Any]:
+    """Get current date and time together."""
     try:
-        # Get current time once for consistency
         now = datetime.datetime.now()
 
-        if any(word in user_input for word in ['time', 'clock', 'hour']):
-            response = f"The current time is {now.strftime('%I:%M %p')}"
-
-        elif any(word in user_input for word in ['date', 'today', 'day']):
-            response = f"Today is {now.strftime('%A, %B %d, %Y')}"
-
-        elif any(word in user_input for word in ['datetime', 'both']):
-            response = f"Current date and time: {now.strftime('%A, %B %d, %Y at %I:%M %p')}"
-
+        if include_weekday:
+            datetime_str = now.strftime("%A, %B %d, %Y at %I:%M %p")
         else:
-            # Default response
-            response = f"Current time: {now.strftime('%I:%M %p on %A, %B %d, %Y')}"
+            datetime_str = now.strftime("%B %d, %Y at %I:%M %p")
 
-        return CapabilityResult(
-            content=response,
-            success=True,
-            metadata={"capability": "time_plugin", "timestamp": now.isoformat()},
-        )
+        if timezone != "local":
+            datetime_str += f" ({timezone})"
 
+        return {
+            "success": True,
+            "content": f"Current date and time: {datetime_str}",
+            "metadata": {
+                "timestamp": now.isoformat(),
+                "timezone": timezone,
+                "include_weekday": include_weekday
+            }
+        }
     except Exception as e:
-        return CapabilityResult(
-            content=f"Sorry, I couldn't get the time information: {str(e)}",
-            success=False,
-            error=str(e),
-        )
+        return {
+            "success": False,
+            "error": str(e),
+            "content": f"Error getting datetime: {e}"
+        }
 ```
 
-## Step 4: Improve the Routing Logic
+## Step 4: Understanding Automatic Routing
 
-Update the `can_handle_task` method to better detect time-related requests:
+With the new decorator system, routing is handled automatically:
 
-```python
-@hookimpl
-def can_handle_task(self, context: CapabilityContext) -> float:
-    """Check if this capability can handle the task."""
-    user_input = self._extract_user_input(context).lower()
+- **AI Function Calling**: When `ai_function=True`, the LLM can directly call your capabilities
+- **Scope-Based Security**: Each capability declares required permissions via `scopes`
+- **Automatic Discovery**: The plugin registry discovers all @capability decorated methods
+- **Parameter Validation**: AI function parameters are automatically validated
 
-    # Define time-related keywords with their confidence scores
-    time_keywords = {
-        'time': 1.0,
-        'clock': 0.9,
-        'hour': 0.8,
-        'minute': 0.8,
-        'date': 1.0,
-        'today': 0.9,
-        'day': 0.7,
-        'datetime': 1.0,
-        'when': 0.6,
-        'now': 0.8,
-    }
+No manual routing logic needed! The system intelligently matches user requests to appropriate capabilities based on:
 
-    # Calculate confidence based on keyword matches
-    confidence = 0.0
-    for keyword, score in time_keywords.items():
-        if keyword in user_input:
-            confidence = max(confidence, score)
-
-    # Boost confidence for specific phrases
-    if any(phrase in user_input for phrase in [
-        'what time', 'current time', 'what date', 'what day'
-    ]):
-        confidence = 1.0
-
-    return confidence
-```
+- Function descriptions and parameters
+- LLM semantic understanding
+- Permission scopes
+- Plugin trust levels
 
 ## Step 5: Install and Test Your Plugin
 
 ```bash
 # Install your plugin in development mode
 cd time-plugin
-pip install -e .
+uv add -e .     # or pip install -e .
 
-# Verify it's installed
+# Verify it's installed and trusted
 agentup plugin list
 ```
 
-You should see your plugin listed:
+You should see your plugin listed with trust information:
 
 ```
-╭─────────────┬─────────────┬─────────┬────────╮
-│ Plugin      │ Name        │ Version │ Status │
-├─────────────┼─────────────┼─────────┼────────┤
-│ time_plugin │ Time Plugin │  0.4.0  │ loaded │
-╰─────────────┴─────────────┴─────────┴────────╯
+📦 Installed AgentUp Plugins (1)
+================================================================================
+Name                           Version    Trust        Publisher
+--------------------------------------------------------------------------------
+time-plugin                    1.0.0      🟡 community agentup-community
+--------------------------------------------------------------------------------
+Summary: 🟡 1 community
 ```
 
 ## Step 6: Test in an Agent
@@ -256,7 +296,7 @@ agentup agent create time-agent
 cd time-agent
 ```
 
-Now you need to register your plugin in the agent's configuration. Edit `agentup.yml` and add your plugin to the skills section:
+Your plugin is automatically discovered! Just enable it in `agentup.yml`:
 
 ```yaml
 # agentup.yml
@@ -267,13 +307,18 @@ description: "A test agent for plugin development"
 plugins:
   - plugin_id: time_plugin
     name: Time Plugin
-    description: A plugin that provides time-related information
-    tags: [time, date, clock]
-    input_mode: text
-    output_mode: text
-    keywords: [what, time, now]
-    patterns: ['.time']
-    priority: 50
+    description: Provides time and date information
+    enabled: true
+    capabilities:
+      - capability_id: get_time
+        enabled: true
+        required_scopes: ["time:read"]
+      - capability_id: get_date
+        enabled: true
+        required_scopes: ["time:read"]
+      - capability_id: get_datetime
+        enabled: true
+        required_scopes: ["time:read"]
 ```
 
 Start the agent:
@@ -285,226 +330,112 @@ agentup agent serve
 Now test your plugin by sending requests:
 
 ```bash
-# In another terminal
-curl -s -X POST http://localhost:8000/ \
+# In another terminal - test AI function calling
+curl -s -X POST http://localhost:8000/api/chat \
       -H "Content-Type: application/json" \
-      -H "X-API-Key: YOUR_KEY" \ # change to your agent's API key
+      -H "X-API-Key: YOUR_KEY" \
       -d '{
-        "jsonrpc": "2.0",
-        "method": "message/send",
-        "params": {
-          "message": {
-            "role": "user",
-            "parts": [{"kind": "text", "text": "What time is it?"}],
-            "messageId": "msg-001",
-            "contextId": "context-001",
-            "kind": "message"
-          }
-        },
-        "id": "req-001"
+        "message": "What time is it in 24-hour format?",
+        "conversation_id": "test-001"
       }'
 ```
 
 Response:
 ```json
 {
-  "id": "req-001",
-  "jsonrpc": "2.0",
-  "result": {
-    "artifacts": [
-      {
-        "artifactId": "7d3efd3a-a00c-4967-86ac-6d2059a304f6",
-        "description": null,
-        "extensions": null,
-        "metadata": null,
-        "name": "test-agent-result",
-        "parts": [
-          {
-            "kind": "text",
-            "metadata": null,
-            "text": "Current time: 06:44 AM on Thursday, July 03, 2025"
-          }
-        ]
+  "conversation_id": "test-001",
+  "message_id": "msg-789",
+  "response": "Current time: 14:25",
+  "function_calls": [
+    {
+      "function": "get_current_time",
+      "parameters": {"format": "24hour"},
+      "result": {
+        "success": true,
+        "content": "Current time: 14:25",
+        "metadata": {
+          "timestamp": "2025-07-31T14:25:33.123456",
+          "format": "24hour"
+        }
       }
-    ],
-    "contextId": "context-001",
-    "history": [
-      {
-        "contextId": "context-001",
-        "extensions": null,
-        "kind": "message",
-        "messageId": "msg-005",
-        "metadata": null,
-        "parts": [
-          {
-            "kind": "text",
-            "metadata": null,
-            "text": "What time is it?"
-          }
-        ],
-        "referenceTaskIds": null,
-        "role": "user",
-        "taskId": "ddbc8dfb-b56e-4fa2-9285-45778756ed3c"
-      },
-      {
-        "contextId": "context-001",
-        "extensions": null,
-        "kind": "message",
-        "messageId": "006a1538-6e9a-4080-b6ec-470207e2557d",
-        "metadata": null,
-        "parts": [
-          {
-            "kind": "text",
-            "metadata": null,
-            "text": "Processing request with for task ddbc8dfb-b56e-4fa2-9285-45778756ed3c using test-agent."
-          }
-        ],
-        "referenceTaskIds": null,
-        "role": "agent",
-        "taskId": "ddbc8dfb-b56e-4fa2-9285-45778756ed3c"
-      }
-    ],
-    "id": "ddbc8dfb-b56e-4fa2-9285-45778756ed3c",
-    "kind": "task",
-    "metadata": null,
-    "status": {
-      "message": null,
-      "state": "completed",
-      "timestamp": "2025-07-03T05:44:18.406491+00:00"
     }
+  ],
+  "plugin_trust": {
+    "plugin_id": "time_plugin",
+    "trust_level": "community",
+    "publisher": "agentup-community",
+    "trusted_publishing": false
   }
 }
 ```
 
-## Step 7: Add AI Function Support
+## Step 7: Understanding AI Function Integration
 
-Let's make your plugin AI-enabled by adding LLM-callable functions. Add this method to your plugin:
+With the new decorator system, AI functions are automatically generated from your @capability decorated methods when `ai_function=True`:
 
+**Automatic AI Function Generation:**
+- Method signature becomes function parameters
+- `ai_parameters` provides OpenAI function schema
+- Return values are automatically formatted
+- Type hints provide additional validation
+
+**Example AI function call:**
 ```python
-@hookimpl
-def get_ai_functions(self) -> list[AIFunction]:
-    """Provide AI functions for LLM function calling."""
-    return [
-        AIFunction(
-            name="get_current_time",
-            description="Get the current time in a specified timezone",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "timezone": {
-                        "type": "string",
-                        "description": "Timezone name (e.g., 'US/Eastern', 'UTC')",
-                        "default": "local"
-                    },
-                    "format": {
-                        "type": "string",
-                        "enum": ["12hour", "24hour"],
-                        "description": "Time format preference",
-                        "default": "12hour"
-                    }
-                }
-            },
-            handler=self._get_time_function,
-        ),
-        AIFunction(
-            name="get_current_date",
-            description="Get the current date in various formats",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "format": {
-                        "type": "string",
-                        "enum": ["short", "long", "iso"],
-                        "description": "Date format preference",
-                        "default": "long"
-                    }
-                }
-            },
-            handler=self._get_date_function,
-        )
-    ]
+# This capability:
+@capability(
+    id="get_time",
+    ai_function=True,
+    ai_parameters={...}
+)
+async def get_current_time(self, format: str = "12hour", **kwargs):
+    # Your implementation
 
-async def _get_time_function(self, task, context: CapabilityContext) -> CapabilityResult:
-    """Handle the get_current_time AI function."""
-    params = context.metadata.get("parameters", {})
-    timezone = params.get("timezone", "local")
-    format_type = params.get("format", "12hour")
-
-    try:
-        now = datetime.datetime.now()
-
-        if format_type == "24hour":
-            time_str = now.strftime("%H:%M")
-        else:
-            time_str = now.strftime("%I:%M %p")
-
-        if timezone != "local":
-            time_str += f" ({timezone})"
-
-        return CapabilityResult(
-            content=f"Current time: {time_str}",
-            success=True,
-        )
-    except Exception as e:
-        return CapabilityResult(
-            content=f"Error getting time: {str(e)}",
-            success=False,
-            error=str(e),
-        )
-
-async def _get_date_function(self, task, context: CapabilityContext) -> CapabilityResult:
-    """Handle the get_current_date AI function."""
-    params = context.metadata.get("parameters", {})
-    format_type = params.get("format", "long")
-
-    try:
-        now = datetime.datetime.now()
-
-        if format_type == "short":
-            date_str = now.strftime("%m/%d/%Y")
-        elif format_type == "iso":
-            date_str = now.strftime("%Y-%m-%d")
-        else:  # long
-            date_str = now.strftime("%A, %B %d, %Y")
-
-        return CapabilityResult(
-            content=f"Current date: {date_str}",
-            success=True,
-        )
-    except Exception as e:
-        return CapabilityResult(
-            content=f"Error getting date: {str(e)}",
-            success=False,
-            error=str(e),
-        )
+# Becomes this AI function:
+{
+    "name": "get_current_time",
+    "description": "Get the current time in various formats",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "format": {
+                "type": "string",
+                "enum": ["12hour", "24hour"],
+                "default": "12hour"
+            }
+        }
+    }
+}
 ```
 
-Don't forget to import `AIFunction`:
-
-```python
-from agent.plugins import CapabilityDefinition, CapabilityContext, CapabilityResult, PluginValidationResult, CapabilityType, AIFunction
-```
+The LLM can directly call your method with proper parameters and receive structured responses.
 
 ## Step 8: Test AI Functions
 
-With an AI-enabled agent, your functions will now be available to the LLM:
+With an AI-enabled agent, your functions are automatically available:
 
 ```bash
 # Create an AI-enabled agent
-agentup agent create ai-test-agent --template standard
+agentup agent create ai-test-agent
 
 cd ai-test-agent
 
-# Configure your OpenAI API key
+# Configure your AI provider
 export OPENAI_API_KEY="your-key-here"
+# or export ANTHROPIC_API_KEY="your-key-here"
 ```
 
-Update the `agent_config.yaml` to register your plugin with AI routing:
+Update `agentup.yml` to configure AI and plugin settings:
 
 ```yaml
-skills:
-  - skill_id: time_plugin
-    routing_mode: ai  # Let AI decide when to use this skill
+ai_provider:
+  provider: openai  # or anthropic
+  model: gpt-4o-mini
+  api_key: ${OPENAI_API_KEY}
+
+plugins:
+  - plugin_id: time_plugin
+    enabled: true
+    default_scopes: ["time:read"]
 ```
 
 Start the agent:
@@ -513,191 +444,236 @@ Start the agent:
 agentup agent serve
 ```
 
-Now when users ask time-related questions without specifying a skill_id, the LLM can ly route to your plugin and call your functions:
+Test AI function calling:
 
 ```bash
-curl -X POST http://localhost:8000/message/send \
+curl -X POST http://localhost:8000/api/chat \
   -H "Content-Type: application/json" \
+  -H "X-API-Key: dev-key-123" \
   -d '{
-    "jsonrpc": "2.0",
-    "method": "message/send",
-    "params": {
-      "history": [{
-        "role": "user",
-        "parts": [{
-          "text": "What time is it in 24-hour format?"
-        }]
-      }]
-    },
-    "id": 1
+    "message": "What time is it in 24-hour format?"
   }'
 ```
 
 The LLM will:
-1. Recognize this is a time-related request
-2. Route to your `time_plugin` skill
-3. Call your `get_current_time` function with `format: "24hour"`
+1. Understand the request semantically
+2. Call your `get_current_time` function with `format: "24hour"`
+3. Return the formatted response to the user
 
 ## Step 9: Add Tests
 
-Your plugin already has a test file. Let's add some real tests:
+Your plugin already has a test file. Let's add tests for the decorator system:
 
 ```python
-"""Tests for Time Plugin plugin."""
+"""Tests for Time Plugin."""
 
 import pytest
 import datetime
-from agent.plugins.models import CapabilityContext, CapabilityDefinition
-from time_plugin.plugin import Plugin
-
-
-def test_plugin_registration():
-    """Test that the plugin registers correctly."""
-    plugin = Plugin()
-    plugin_def = plugin.register_capability()
-
-    assert isinstance(plugin_def, CapabilityDefinition)
-    assert plugin_def.id == "time_plugin"
-    assert plugin_def.name == "Time Plugin"
-
-
-def test_time_request():
-    """Test time request handling."""
-    plugin = Plugin()
-
-    # Create a mock context
-    from unittest.mock import Mock
-    task = Mock()
-    task.history = [Mock()]
-    task.history[0].parts = [Mock()]
-    task.history[0].parts[0].text = "What time is it?"
-
-    context = CapabilityContext(task=task)
-
-    result = plugin.execute_capability(context)
-
-    assert result.success
-    assert "time" in result.content.lower()
-
-
-def test_date_request():
-    """Test date request handling."""
-    plugin = Plugin()
-
-    from unittest.mock import Mock
-    task = Mock()
-    task.history = [Mock()]
-    task.history[0].parts = [Mock()]
-    task.history[0].parts[0].text = "What's today's date?"
-
-    context = CapabilityContext(task=task)
-
-    result = plugin.execute_capability(context)
-
-    assert result.success
-    assert "today" in result.content.lower() or "date" in result.content.lower()
-
-
-def test_routing_confidence():
-    """Test routing confidence scoring."""
-    plugin = Plugin()
-
-    # High confidence cases
-    from unittest.mock import Mock
-
-    # Test "what time" - should be high confidence
-    task = Mock()
-    task.history = [Mock()]
-    task.history[0].parts = [Mock()]
-    task.history[0].parts[0].text = "what time is it?"
-
-    context = CapabilityContext(task=task)
-    confidence = plugin.can_handle_task(context)
-
-    assert confidence == 1.0  # Should be maximum confidence
-
-    # Test unrelated query - should be low confidence
-    task.history[0].parts[0].text = "what's the weather like?"
-    context = CapabilityContext(task=task)
-    confidence = plugin.can_handle_task(context)
-
-    assert confidence == 0.0  # Should be no confidence
+from time_plugin.plugin import TimePlugin
 
 
 @pytest.mark.asyncio
-async def test_ai_functions():
-    """Test AI function calls."""
-    plugin = Plugin()
-    ai_functions = plugin.get_ai_functions()
+async def test_plugin_capabilities_discovery():
+    """Test that capabilities are automatically discovered."""
+    plugin = TimePlugin()
 
-    assert len(ai_functions) == 2
-    assert any(f.name == "get_current_time" for f in ai_functions)
-    assert any(f.name == "get_current_date" for f in ai_functions)
+    # Capabilities should be auto-discovered from @capability decorators
+    assert len(plugin._capabilities) == 3
 
-    # Test time function
-    from unittest.mock import Mock
-    task = Mock()
-    context = CapabilityContext(
-        task=task,
-        metadata={"parameters": {"format": "24hour"}}
-    )
+    capability_ids = [cap.id for cap in plugin._capabilities.values()]
+    assert "get_time" in capability_ids
+    assert "get_date" in capability_ids
+    assert "get_datetime" in capability_ids
 
-    time_func = next(f for f in ai_functions if f.name == "get_current_time")
-    result = await time_func.handler(task, context)
 
-    assert result.success
-    assert ":" in result.content  # Should contain time separator
+@pytest.mark.asyncio
+async def test_get_time_capability():
+    """Test the get_time capability."""
+    plugin = TimePlugin()
+
+    # Test 12-hour format
+    result = await plugin.get_current_time(format="12hour")
+
+    assert result["success"] is True
+    assert "Current time:" in result["content"]
+    assert "AM" in result["content"] or "PM" in result["content"]
+    assert result["metadata"]["format"] == "12hour"
+
+    # Test 24-hour format
+    result = await plugin.get_current_time(format="24hour")
+
+    assert result["success"] is True
+    assert "Current time:" in result["content"]
+    assert ":" in result["content"]
+    assert result["metadata"]["format"] == "24hour"
+
+
+@pytest.mark.asyncio
+async def test_get_date_capability():
+    """Test the get_date capability."""
+    plugin = TimePlugin()
+
+    # Test long format
+    result = await plugin.get_current_date(format="long")
+
+    assert result["success"] is True
+    assert "Current date:" in result["content"]
+    assert result["metadata"]["format"] == "long"
+
+    # Test ISO format
+    result = await plugin.get_current_date(format="iso")
+
+    assert result["success"] is True
+    assert "-" in result["content"]  # ISO format has dashes
+    assert result["metadata"]["format"] == "iso"
+
+
+@pytest.mark.asyncio
+async def test_get_datetime_capability():
+    """Test the get_datetime capability."""
+    plugin = TimePlugin()
+
+    result = await plugin.get_datetime(timezone="local", include_weekday=True)
+
+    assert result["success"] is True
+    assert "Current date and time:" in result["content"]
+    assert "at" in result["content"]  # Should contain "at" separator
+    assert result["metadata"]["timezone"] == "local"
+    assert result["metadata"]["include_weekday"] is True
+
+
+def test_ai_function_schemas():
+    """Test that AI function schemas are properly generated."""
+    plugin = TimePlugin()
+
+    # Get capability with AI function enabled
+    time_capability = None
+    for cap in plugin._capabilities.values():
+        if cap.id == "get_time":
+            time_capability = cap
+            break
+
+    assert time_capability is not None
+    assert time_capability.ai_function is True
+    assert "properties" in time_capability.ai_parameters
+    assert "format" in time_capability.ai_parameters["properties"]
+
+
+def test_scopes_configuration():
+    """Test that scopes are properly configured."""
+    plugin = TimePlugin()
+
+    for capability in plugin._capabilities.values():
+        assert "time:read" in capability.scopes
+
+        # Verify security isolation
+        assert "admin" not in capability.scopes
+        assert "write" not in capability.scopes[0]  # No write permissions
 ```
 
 Run your tests:
 
 ```bash
+# Using uv (recommended)
+uv run pytest tests/ -v
+
+# Or using pytest directly
 pytest tests/ -v
 ```
 
-## Step 10: Package and Share
+## Step 10: Secure Publishing with Trusted Publishing
 
-Your plugin is now ready to share! The generated `pyproject.toml` includes everything needed:
+Your plugin is ready for secure distribution! The generated `pyproject.toml` includes trusted publishing configuration:
 
 ```toml
-[project.entry-points."agentup.skills"]
-time_plugin = "time_plugin.plugin:Plugin"
+[project.entry-points."agentup.plugins"]
+time_plugin = "time_plugin.plugin:TimePlugin"
+
+# Trusted publishing configuration
+[tool.agentup.trusted-publishing]
+publisher = "your-github-username"
+repository = "your-username/time-plugin"
+workflow = "publish.yml"
+trust_level = "community"
+
+[tool.agentup.plugin]
+capabilities = ["time:current", "date:current"]
+scopes = ["time:read"]
+min_agentup_version = "2.0.0"
 ```
 
-To publish to PyPI:
+**Secure Publishing with GitHub Actions:**
 
 ```bash
-# Build the package
-python -m build
+# Set up trusted publishing (one-time setup)
+# 1. Configure PyPI trusted publisher at https://pypi.org/manage/account/publishing/
+# 2. Add your GitHub repo: your-username/time-plugin
+# 3. Set workflow: publish.yml
 
-# Upload to PyPI (requires account and twine)
-python -m twine upload dist/*
+# Build and publish via GitHub Actions
+git add .
+git commit -m "Release v1.0.0"
+git tag v1.0.0
+git push origin main --tags
+
+# GitHub Actions will automatically:
+# - Run security scans
+# - Validate plugin structure
+# - Build and publish to PyPI
+# - Create cryptographic attestations
 ```
 
-Others can now install your plugin:
+**Installation with Trust Verification:**
 
 ```bash
-pip install time-plugin
+# Users can install with trust verification
+agentup plugin install time-plugin --require-trusted
+
+# Or verify after installation
+agentup plugin verify time-plugin
 ```
 
-And it will automatically work with any AgentUp agent!
-
+The trusted publishing system provides:
+- ✅ Cryptographic verification
+- ✅ Publisher identity validation
+- ✅ Automatic security scanning
+- ✅ Tamper-proof distribution
 
 ## Troubleshooting
 
 **Plugin not loading?**
 - Check `agentup plugin list` to see if it's discovered
-- Verify your entry point in `pyproject.toml`
-- Make sure you installed with `pip install -e .`
+- Verify your entry point in `pyproject.toml` points to the correct class
+- Make sure you installed with `uv add -e .` or `pip install -e .`
+- Check that your plugin class inherits from `Plugin`
 
-**Functions not available to AI?**
-- Ensure your agent has AI capabilities enabled
-- Check that your plugin returns AI functions from `get_ai_functions()`
-- Verify the function schemas are valid OpenAI format
+**Capabilities not discovered?**
+- Ensure methods are decorated with `@capability`
+- Verify the plugin class calls `super().__init__()`
+- Check that capability IDs are unique
+- Import the decorators: `from agent.plugins.decorators import capability`
 
-**Routing not working?**
-- Check your `can_handle_task` logic
-- Use `agentup plugin info time_plugin` to see plugin details
-- Test with simple keywords first
+**AI functions not working?**
+- Set `ai_function=True` in the @capability decorator
+- Verify `ai_parameters` follows OpenAI function schema format
+- Ensure method signatures match the parameters schema
+- Check agent has AI provider configured
 
-Congratulations! You've built your first AgentUp plugin and learned the fundamentals of the plugin system. The possibilities are endless - from simple utilities to complex AI-powered workflows.
+**Security/scope errors?**
+- Verify required scopes match capability declarations
+- Check agent configuration grants necessary permissions
+- Use `agentup plugin status` to see trust information
+- Ensure plugin is from trusted publisher if required
+
+**Trust verification failing?**
+- Check publisher configuration in `pyproject.toml`
+- Verify GitHub repository settings for trusted publishing
+- Use `agentup plugin verify <plugin-name>` for detailed info
+- Ensure PyPI trusted publisher is properly configured
+
+Congratulations! You've built your first AgentUp plugin using the modern decorator system. The new architecture provides:
+- ✅ Simple, intuitive development
+- ✅ Automatic capability discovery
+- ✅ Built-in security and trust verification
+- ✅ Seamless AI function integration
+- ✅ Production-ready packaging and distribution

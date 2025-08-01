@@ -125,13 +125,7 @@ class AgentBootstrapper:
         capability_registry = BuiltinCapabilityRegistry(self.config)
         services.append(capability_registry)
 
-        # 5. Plugin Service (depends on BuiltinCapabilityRegistry)
-        if self.config.is_feature_enabled("plugins"):
-            try:
-                plugin_service = await self._create_plugin_service(capability_registry)
-                services.append(plugin_service)
-            except Exception as e:
-                self.logger.warning(f"Plugin service not available: {e}")
+        await self._integrate_plugins()
 
         # 6. MCP Service (depends on BuiltinCapabilityRegistry)
         if self.config.is_feature_enabled("mcp"):
@@ -168,9 +162,8 @@ class AgentBootstrapper:
         return StateManager(self.config)
 
     async def _create_plugin_service(self, capability_registry: BuiltinCapabilityRegistry) -> Service:
-        from .plugins import PluginService
-
-        return PluginService(self.config, capability_registry)
+        """DEPRECATED: Legacy plugin service - now using direct integration."""
+        raise NotImplementedError("PluginService is deprecated - using direct plugin integration")
 
     async def _create_mcp_service(self, capability_registry: BuiltinCapabilityRegistry) -> Service:
         from .mcp import MCPService
@@ -181,6 +174,32 @@ class AgentBootstrapper:
         from .push import PushNotificationService
 
         return PushNotificationService(self.config)
+
+    async def _integrate_plugins(self) -> None:
+        """Integrate plugins using the new PluginRegistry system."""
+        # Check if plugins are configured
+        from agent.config import Config
+
+        if not Config.plugins:
+            self.logger.info("No plugins configured, skipping plugin integration")
+            return
+
+        try:
+            self.logger.info("Integrating plugins with capabilities system")
+
+            # Use the new integration function instead of legacy PluginService
+            from agent.plugins.integration import integrate_plugins_with_capabilities
+
+            # Pass the Pydantic config directly
+            capabilities_registered = integrate_plugins_with_capabilities(Config)
+
+            self.logger.info(f"Plugin integration complete: {len(capabilities_registered)} capabilities registered")
+
+        except Exception as e:
+            self.logger.error(f"Plugin integration failed: {e}")
+            # Don't raise - continue with other services
+            import traceback
+            self.logger.error(f"Plugin integration error traceback: {traceback.format_exc()}")
 
     async def _cleanup_services(self) -> None:
         for service in reversed(self.services):

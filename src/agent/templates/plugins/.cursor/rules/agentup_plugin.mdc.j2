@@ -56,7 +56,7 @@ The plugin uses pluggy hooks to integrate with AgentUp:
 ### Entry Point
 The plugin is registered via entry point in `pyproject.toml`:
 ```toml
-[project.entry-points."agentup.capabilities"]
+[project.entry-points."agentup.plugins"]
 {{ plugin_name_snake }} = "{{ plugin_name_snake }}.plugin:Plugin"
 ```
 

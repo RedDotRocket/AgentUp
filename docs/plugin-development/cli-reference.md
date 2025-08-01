@@ -1,6 +1,6 @@
 # Plugin CLI Reference
 
-This reference covers all AgentUp plugin CLI commands with complete usage examples and options.
+This reference covers all AgentUp plugin CLI commands with complete usage examples and options for the new decorator-based plugin system with trusted publishing support.
 
 ## Overview
 
@@ -10,6 +10,12 @@ The AgentUp CLI provides comprehensive plugin management through the `agentup pl
 agentup plugin --help
 ```
 
+The new CLI includes advanced security features:
+- **Trusted Publishing Verification**: Cryptographic verification of plugin authenticity
+- **Publisher Trust Management**: Manage trusted plugin publishers
+- **Security Installation Prompts**: Interactive safety checks for plugin installation
+- **Plugin Discovery**: Automatic detection of decorator-based plugins
+
 ## Important: Working Directory Context
 
 **Plugin Creation Commands** (`agentup plugin create`):
@@ -17,27 +23,127 @@ agentup plugin --help
 - Creates a new plugin project directory
 - Does **NOT** require an existing agent project
 
-**Plugin Management Commands** (list, reload, info, etc.):
-- Should be run from within an **agent project directory**
-- Operate on plugins available to that specific agent
-- Require an `agent_config.yaml` file to exist
+**Plugin Management Commands** (install, list, verify, etc.):
+- Can be run from **any directory**
+- Operate on system-wide plugin installations
+- Use PyPI and trusted publishing for distribution
 
 ```bash
 # Plugin creation - run from anywhere
 cd ~/my-projects/
 agentup plugin create weather-plugin
 
-# Plugin management - run from agent project
-cd ~/my-agent-project/
-agentup plugin list
-agentup plugin reload weather
+# Plugin management - run from anywhere  
+agentup plugin install weather-plugin --require-trusted
+agentup plugin list --trust-level community
 ```
 
 ## Commands
 
+### `agentup plugin install`
+
+Install an AgentUp plugin with security verification and trusted publishing support.
+
+#### Usage
+
+```bash
+agentup plugin install PACKAGE_NAME [OPTIONS]
+```
+
+#### Arguments
+
+| Argument | Description | Required |
+|----------|-------------|----------|
+| `PACKAGE_NAME` | PyPI package name to install | Yes |
+
+#### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--version, -v` | Specific version to install | Latest |
+| `--force, -f` | Skip safety prompts | `false` |
+| `--dry-run, -n` | Verify only, don't install | `false` |
+| `--trust-level` | Minimum required trust level: `unknown`, `community`, `official` | `community` |
+| `--require-trusted` | Require trusted publishing | `false` |
+
+#### Examples
+
+**Install latest version:**
+```bash
+agentup plugin install weather-plugin
+```
+
+**Install specific version:**
+```bash
+agentup plugin install weather-plugin --version 2.1.0
+```
+
+**Require trusted publishing:**
+```bash
+agentup plugin install weather-plugin --require-trusted
+```
+
+**Set minimum trust level:**
+```bash
+agentup plugin install weather-plugin --trust-level official
+```
+
+**Dry run (verification only):**
+```bash
+agentup plugin install weather-plugin --dry-run
+```
+
+#### Installation Process
+
+The install command performs these security checks:
+
+1. **Publisher Verification**: Validates plugin publisher identity
+2. **Trust Level Assessment**: Evaluates plugin trust level  
+3. **Security Scanning**: Checks for known vulnerabilities
+4. **Interactive Approval**: Prompts user for confirmation (unless `--force`)
+5. **Post-Installation Verification**: Confirms successful installation
+
+---
+
+### `agentup plugin uninstall`
+
+Uninstall an AgentUp plugin.
+
+#### Usage
+
+```bash
+agentup plugin uninstall PACKAGE_NAME [OPTIONS]
+```
+
+#### Arguments
+
+| Argument | Description | Required |
+|----------|-------------|----------|
+| `PACKAGE_NAME` | Package name to uninstall | Yes |
+
+#### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--force, -f` | Skip confirmation prompt | `false` |
+
+#### Examples
+
+**Uninstall with confirmation:**
+```bash
+agentup plugin uninstall weather-plugin
+```
+
+**Force uninstall:**
+```bash
+agentup plugin uninstall weather-plugin --force
+```
+
+---
+
 ### `agentup plugin list`
 
-List all loaded plugins and their skills.
+List installed AgentUp plugins with trust information.
 
 #### Usage
 
@@ -49,36 +155,32 @@ agentup plugin list [OPTIONS]
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--verbose, -v` | Show detailed plugin information | `false` |
-| `--format, -f` | Output format: `table`, `json`, `yaml` | `table` |
+| `--trust-level` | Filter by trust level: `all`, `unknown`, `community`, `official` | `all` |
+| `--format` | Output format: `table`, `json`, `yaml` | `table` |
 
 #### Examples
 
-**Basic listing:**
+**List all plugins:**
 ```bash
 agentup plugin list
 ```
 
 Output:
 ```
-┌─────────────────────────────── Loaded Plugins ───────────────────────────────┐
-│ Plugin      │ Version │ Status │ Skills │
-├─────────────┼─────────┼────────┼────────┤
-│ weather     │ 1.0.0   │ loaded │ 1      │
-│ calculator  │ 1.2.1   │ loaded │ 1      │
-└─────────────┴─────────┴────────┴────────┘
-
-┌─────────────────────────────── Available Skills ─────────────────────────────┐
-│ Skill ID    │ Name        │ Plugin      │ Capabilities     │
-├─────────────┼─────────────┼─────────────┼──────────────────┤
-│ weather     │ Weather     │ weather     │ text, ai_function│
-│ calculator  │ Calculator  │ calculator  │ text, ai_function│
-└─────────────┴─────────────┴─────────────┴──────────────────┘
+📦 Installed AgentUp Plugins (3)
+================================================================================
+Name                           Version    Trust        Publisher           
+--------------------------------------------------------------------------------
+weather-plugin                 2.1.0      ✅ official    agentup-official    
+time-plugin                    1.0.0      🟡 community  john-developer      
+legacy-plugin                  0.9.0      ⚪ unknown    unknown             
+--------------------------------------------------------------------------------
+Summary: ✅ 1 official, 🟡 1 community, ⚪ 1 unknown
 ```
 
-**Verbose output:**
+**Filter by trust level:**
 ```bash
-agentup plugin list --verbose
+agentup plugin list --trust-level official
 ```
 
 **JSON output:**
@@ -88,33 +190,194 @@ agentup plugin list --format json
 
 Output:
 ```json
-{
-  "plugins": [
-    {
-      "name": "weather",
-      "version": "1.0.0",
-      "status": "loaded",
-      "author": "Your Name",
-      "description": "Weather information plugin"
-    }
-  ],
-  "skills": [
-    {
-      "id": "weather",
-      "name": "Weather",
-      "version": "1.0.0",
-      "plugin": "weather",
-      "capabilities": ["text", "ai_function"]
-    }
-  ]
-}
+[
+  {
+    "package_name": "weather-plugin",
+    "version": "2.1.0",
+    "trust_level": "official", 
+    "trusted_publishing": true,
+    "publisher": "agentup-official",
+    "summary": "Comprehensive weather information plugin"
+  }
+]
+```
+
+---
+
+### `agentup plugin search`
+
+Search for AgentUp plugins on PyPI.
+
+#### Usage
+
+```bash
+agentup plugin search QUERY [OPTIONS]
+```
+
+#### Arguments
+
+| Argument | Description | Required |
+|----------|-------------|----------|
+| `QUERY` | Search query | Yes |
+
+#### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--max-results, -n` | Maximum number of results | `10` |
+
+#### Examples
+
+**Search for weather plugins:**
+```bash
+agentup plugin search weather
+```
+
+Output:
+```
+🔍 Found 5 plugins:
+  • weather-plugin v2.1.0
+    Comprehensive weather information and forecasts
+    Author: AgentUp Official
+
+  • simple-weather v1.0.0
+    Basic weather information plugin
+    Author: Community Developer
+```
+
+---
+
+### `agentup plugin verify`
+
+Verify plugin authenticity via trusted publishing.
+
+#### Usage
+
+```bash
+agentup plugin verify PACKAGE_NAME [OPTIONS]
+```
+
+#### Arguments
+
+| Argument | Description | Required |
+|----------|-------------|----------|
+| `PACKAGE_NAME` | Package name to verify | Yes |
+
+#### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--version, -v` | Specific version to verify | Latest |
+| `--verbose` | Show detailed verification info | `false` |
+
+#### Examples
+
+**Verify plugin:**
+```bash
+agentup plugin verify weather-plugin
+```
+
+Output:
+```
+==================================================
+📋 Verification Report: weather-plugin
+==================================================
+✅ Trusted Publishing: Yes
+   Publisher: agentup-official
+   Repository: github.com/agentup/weather-plugin
+   Trust Level: official
+   Workflow: publish.yml
+```
+
+**Verbose verification:**
+```bash
+agentup plugin verify weather-plugin --verbose
+```
+
+---
+
+### `agentup plugin upgrade`
+
+Upgrade an AgentUp plugin to the latest version.
+
+#### Usage
+
+```bash
+agentup plugin upgrade PACKAGE_NAME [OPTIONS]
+```
+
+#### Arguments
+
+| Argument | Description | Required |
+|----------|-------------|----------|
+| `PACKAGE_NAME` | Package name to upgrade | Yes |
+
+#### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--force, -f` | Skip safety prompts | `false` |
+
+#### Examples
+
+**Upgrade plugin:**
+```bash
+agentup plugin upgrade weather-plugin
+```
+
+---
+
+### `agentup plugin status`
+
+Show plugin system status and trust summary.
+
+#### Usage
+
+```bash
+agentup plugin status [OPTIONS]
+```
+
+#### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--format` | Output format: `table`, `json` | `table` |
+
+#### Examples
+
+**Show status:**
+```bash
+agentup plugin status
+```
+
+Output:
+```
+🔒 AgentUp Plugin System Status
+========================================
+Total Plugins: 5
+Total Capabilities: 12
+
+🛡️  Trusted Publishing:
+   Enabled: true
+   Required: false
+   Min Trust Level: community
+
+📊 Trust Summary:
+   Trusted Published: 3
+   Official: 1
+   Community: 2
+   Unknown: 2
+
+👥 Publishers:
+   agentup-official: 1 plugins
+   john-developer: 2 plugins
 ```
 
 ---
 
 ### `agentup plugin create`
 
-Create a new plugin for development.
+Create a new plugin for development using the modern decorator system.
 
 #### Usage
 
@@ -132,7 +395,7 @@ agentup plugin create [NAME] [OPTIONS]
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--template, -t` | Plugin template: `direct`, `ai` | `direct` |
+| `--template, -t` | Plugin template: `basic`, `advanced`, `ai` | `basic` |
 | `--output-dir, -o` | Output directory for plugin | `./[plugin-name]` |
 | `--no-git` | Skip git initialization | `false` |
 
@@ -145,10 +408,10 @@ agentup plugin create
 
 The CLI will prompt for:
 - Plugin name
-- Display name
+- Display name  
 - Description
 - Author name
-- Primary skill ID
+- Capabilities to include
 
 **Quick creation with template:**
 ```bash
@@ -160,240 +423,171 @@ agentup plugin create weather-plugin --template ai
 agentup plugin create my-plugin --output-dir ./plugins/my-plugin
 ```
 
-**Skip git initialization:**
-```bash
-agentup plugin create simple-plugin --no-git
-```
-
 #### Generated Structure
 
 ```
 plugin-name/
-├── pyproject.toml          # Package configuration
+├── .gitignore
+├── pyproject.toml          # Package configuration with trusted publishing
 ├── README.md               # Documentation
-├── .gitignore              # Git ignore patterns
 ├── src/
 │   └── plugin_name/
 │       ├── __init__.py
-│       └── plugin.py       # Main plugin code
-└── tests/
-    └── test_plugin_name.py # Test suite
+│       └── plugin.py       # Main plugin with @capability decorators
+├── static/
+│   └── logo.png           # Plugin logo
+├── tests/
+│   └── test_plugin_name.py # Test suite
+└── .github/
+    └── workflows/
+        └── publish.yml     # Trusted publishing workflow
 ```
 
 ---
 
-### `agentup plugin install`
+## Trust Management Commands
 
-Install a plugin from PyPI, Git, or local directory.
+### `agentup plugin trust list`
+
+List trusted publishers.
 
 #### Usage
 
 ```bash
-agentup plugin install PLUGIN_NAME [OPTIONS]
+agentup plugin trust list [OPTIONS]
 ```
-
-#### Arguments
-
-| Argument | Description | Required |
-|----------|-------------|----------|
-| `PLUGIN_NAME` | Plugin name or path | Yes |
 
 #### Options
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--source, -s` | Installation source: `pypi`, `git`, `local` | `pypi` |
-| `--url, -u` | Git URL or local path (for git/local sources) | None |
-| `--force, -f` | Force reinstall if already installed | `false` |
+| `--format` | Output format: `table`, `json` | `table` |
 
 #### Examples
 
-**Install from PyPI:**
+**List publishers:**
 ```bash
-agentup plugin install weather-plugin
-```
-
-**Install from Git repository:**
-```bash
-agentup plugin install my-plugin --source git --url https://github.com/user/my-plugin.git
-```
-
-**Install from local directory:**
-```bash
-agentup plugin install my-plugin --source local --url ./path/to/plugin
-```
-
-**Force reinstall:**
-```bash
-agentup plugin install weather-plugin --force
-```
-
-**Install specific version:**
-```bash
-agentup plugin install weather-plugin==1.2.0
-```
-
----
-
-### `agentup plugin uninstall`
-
-Uninstall a plugin.
-
-#### Usage
-
-```bash
-agentup plugin uninstall PLUGIN_NAME
-```
-
-#### Arguments
-
-| Argument | Description | Required |
-|----------|-------------|----------|
-| `PLUGIN_NAME` | Plugin name to uninstall | Yes |
-
-#### Examples
-
-**Uninstall plugin:**
-```bash
-agentup plugin uninstall weather-plugin
-```
-
-The CLI will prompt for confirmation unless you use a package manager directly.
-
----
-
-### `agentup plugin reload`
-
-Reload a plugin during development.
-
-#### Usage
-
-```bash
-agentup plugin reload PLUGIN_NAME
-```
-
-#### Arguments
-
-| Argument | Description | Required |
-|----------|-------------|----------|
-| `PLUGIN_NAME` | Plugin name to reload | Yes |
-
-#### Examples
-
-**Reload plugin:**
-```bash
-agentup plugin reload weather-plugin
-```
-
-**Note:** Only works for local development plugins. Entry point plugins cannot be reloaded and require agent restart.
-
----
-
-### `agentup plugin info`
-
-Show detailed information about a plugin skill.
-
-#### Usage
-
-```bash
-agentup plugin info SKILL_ID
-```
-
-#### Arguments
-
-| Argument | Description | Required |
-|----------|-------------|----------|
-| `SKILL_ID` | Skill ID to show information for | Yes |
-
-#### Examples
-
-**Show skill information:**
-```bash
-agentup plugin info weather
+agentup plugin trust list
 ```
 
 Output:
 ```
-┌─────────────────────────────── Weather ───────────────────────────────────┐
-│                                                                            │
-│  Skill ID: weather                                                         │
-│  Name: Weather Information                                                 │
-│  Version: 1.0.0                                                           │
-│  Description: Provides weather information and forecasts                  │
-│  Plugin: weather_plugin                                                   │
-│  Capabilities: text, ai_function                                          │
-│  Tags: weather, api, forecast                                             │
-│  Priority: 50                                                             │
-│  Input Mode: text                                                         │
-│  Output Mode: text                                                        │
-│                                                                            │
-│  Plugin Information:                                                       │
-│  Status: loaded                                                           │
-│  Author: Your Name                                                        │
-│  Source: entry_point                                                      │
-│                                                                            │
-│  Configuration Schema:                                                     │
-│  {                                                                         │
-│    "type": "object",                                                       │
-│    "properties": {                                                         │
-│      "api_key": {                                                          │
-│        "type": "string",                                                   │
-│        "description": "OpenWeatherMap API key"                            │
-│      }                                                                     │
-│    },                                                                      │
-│    "required": ["api_key"]                                                │
-│  }                                                                         │
-│                                                                            │
-│  AI Functions:                                                             │
-│    • get_weather: Get current weather for a location                      │
-│    • get_forecast: Get weather forecast for a location                    │
-│                                                                            │
-│  Health Status:                                                            │
-│    • status: healthy                                                       │
-│    • api_configured: true                                                  │
-│    • version: 1.0.0                                                       │
-│                                                                            │
-└────────────────────────────────────────────────────────────────────────────┘
+👥 Trusted Publishers
+==================================================
+
+📋 agentup-official
+   Trust Level: official
+   Description: Official AgentUp plugins
+   Repositories:
+     • github.com/agentup/*
+
+📋 awesome-contributor  
+   Trust Level: community
+   Description: Weather plugin specialist
+   Repositories:
+     • github.com/awesome-contributor/weather-plugin
 ```
 
 ---
 
-### `agentup plugin validate`
+### `agentup plugin trust add`
 
-Validate all loaded plugins and their configurations.
+Add a trusted publisher.
 
 #### Usage
 
 ```bash
-agentup plugin validate
+agentup plugin trust add PUBLISHER_ID REPOSITORIES... [OPTIONS]
 ```
+
+#### Arguments
+
+| Argument | Description | Required |
+|----------|-------------|----------|
+| `PUBLISHER_ID` | Unique publisher identifier | Yes |
+| `REPOSITORIES` | Repository patterns (space-separated) | Yes |
+
+#### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--trust-level` | Trust level: `community`, `official` | `community` |
+| `--description, -d` | Publisher description | Auto-generated |
 
 #### Examples
 
-**Validate all plugins:**
+**Add community publisher:**
 ```bash
-agentup plugin validate
-```
-
-Output:
-```
-Validating plugins...
-
-┌─────────────────────────── Plugin Validation Results ────────────────────────────┐
-│ Skill       │ Plugin      │ Status      │ Issues                                   │
-├─────────────┼─────────────┼─────────────┼──────────────────────────────────────────┤
-│ weather     │ weather     │ ✓ Valid     │                                          │
-│ calculator  │ calculator  │ ✓ Valid     │                                          │
-│ broken_skill│ broken      │ ✗ Invalid   │ Missing required config: api_key        │
-└─────────────┴─────────────┴─────────────┴──────────────────────────────────────────┘
-
-✗ Some plugins have validation errors.
-Please check your agent_config.yaml and fix the issues.
+agentup plugin trust add awesome-contributor \
+  github.com/awesome-contributor/weather-plugin \
+  --trust-level community \
+  --description "Weather plugin specialist"
 ```
 
 ---
 
-## Development Workflow Commands
+### `agentup plugin trust remove`
+
+Remove a trusted publisher.
+
+#### Usage
+
+```bash
+agentup plugin trust remove PUBLISHER_ID [OPTIONS]
+```
+
+#### Arguments
+
+| Argument | Description | Required |
+|----------|-------------|----------|
+| `PUBLISHER_ID` | Publisher ID to remove | Yes |
+
+#### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--force, -f` | Skip confirmation prompt | `false` |
+
+#### Examples
+
+**Remove publisher:**
+```bash
+agentup plugin trust remove awesome-contributor
+```
+
+---
+
+### `agentup plugin refresh`
+
+Refresh plugin trust verification.
+
+#### Usage
+
+```bash
+agentup plugin refresh [OPTIONS]
+```
+
+#### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--plugin-id` | Refresh specific plugin (all if not specified) | All |
+
+#### Examples
+
+**Refresh all plugins:**
+```bash
+agentup plugin refresh
+```
+
+**Refresh specific plugin:**
+```bash
+agentup plugin refresh --plugin-id weather-plugin
+```
+
+---
+
+## Development Workflow
 
 ### Creating and Testing Plugins
 
@@ -405,7 +599,7 @@ cd my-awesome-plugin
 
 **2. Install in development mode:**
 ```bash
-pip install -e .
+uv add -e .     # or pip install -e .
 ```
 
 **3. Verify installation:**
@@ -415,77 +609,92 @@ agentup plugin list
 
 **4. Test the plugin:**
 ```bash
-pytest tests/ -v
+uv run pytest tests/ -v
 ```
 
-**5. Reload during development:**
+**5. Create capabilities using decorators:**
+```python
+@capability(
+    id="my_capability",
+    name="My Capability", 
+    description="Does something useful",
+    scopes=["my:read"],
+    ai_function=True
+)
+async def my_capability(self, param: str = "default", **kwargs):
+    return {"success": True, "content": f"Processed: {param}"}
+```
+
+### Publishing Workflow with Trusted Publishing
+
+**1. Set up trusted publishing on PyPI:**
+- Visit https://pypi.org/manage/account/publishing/
+- Add your GitHub repository as a trusted publisher
+
+**2. Configure your plugin:**
+```toml
+# pyproject.toml
+[tool.agentup.trusted-publishing]
+publisher = "your-github-username"
+repository = "your-username/plugin-repo"
+workflow = "publish.yml"
+trust_level = "community"
+```
+
+**3. Build and publish:**
 ```bash
-agentup plugin reload my_awesome_plugin
+git add .
+git commit -m "Release v1.0.0"
+git tag v1.0.0
+git push origin main --tags
+# GitHub Actions automatically publishes with trusted publishing
 ```
 
-### Publishing Workflow
-
-**1. Validate plugin:**
+**4. Verify published plugin:**
 ```bash
-agentup plugin validate
+agentup plugin verify your-plugin-name
 ```
-
-**2. Run tests:**
-```bash
-pytest tests/ -v
-```
-
-**3. Build package:**
-```bash
-python -m build
-```
-
-**4. Publish to PyPI:**
-```bash
-python -m twine upload dist/*
-```
-
-## Global Options
-
-All plugin commands support these global options:
-
-| Option | Description |
-|--------|-------------|
-| `--help` | Show command help |
-| `--verbose` | Enable verbose output |
-| `--quiet` | Suppress non-error output |
 
 ## Configuration Files
 
-### Plugin Configuration in `agent_config.yaml`
+### Agent Configuration
 
 ```yaml
-# Global plugin settings
+# agentup.yml
 plugins:
-  enabled: true
-  
-# Individual skill configurations
-skills:
-  - skill_id: weather
-    config:
-      api_key: "your-api-key"
-      default_units: "imperial"
-  
-  - skill_id: calculator
-    config:
-      precision: 4
+  - plugin_id: weather_plugin
+    name: Weather Plugin
+    description: Provides weather information
+    enabled: true
+    capabilities:
+      - capability_id: get_weather
+        enabled: true
+        required_scopes: ["weather:read", "api:external"]
+
+# Trust settings
+plugin_installation:
+  require_trusted_publishing: true
+  minimum_trust_level: "community"
+  interactive_prompts: true
 ```
 
-### Plugin Metadata in `pyproject.toml`
+### Plugin Metadata
 
 ```toml
-[project]
-name = "my-plugin"
-version = "1.0.0"
-description = "My awesome AgentUp plugin"
+# pyproject.toml
+[project.entry-points."agentup.plugins"]
+weather_plugin = "weather_plugin.plugin:WeatherPlugin"
 
-[project.entry-points."agentup.skills"]
-my_skill = "my_plugin.plugin:Plugin"
+[tool.agentup.trusted-publishing]
+publisher = "your-github-username"
+repository = "your-username/weather-plugin"
+workflow = "publish.yml"
+trust_level = "community"
+
+[tool.agentup.plugin]
+capabilities = ["weather:current", "weather:forecast"]
+scopes = ["weather:read", "api:external"]
+min_agentup_version = "2.0.0"
 ```
 
 ## Environment Variables
@@ -495,6 +704,8 @@ my_skill = "my_plugin.plugin:Plugin"
 | `AGENTUP_PLUGIN_DEBUG` | Enable plugin debug logging | `false` |
 | `AGENTUP_PLUGIN_CACHE_DIR` | Plugin cache directory | `~/.agentup/cache` |
 | `AGENTUP_PLUGIN_TIMEOUT` | Plugin operation timeout (seconds) | `30` |
+| `AGENTUP_REQUIRE_TRUSTED` | Require trusted publishing globally | `false` |
+| `AGENTUP_MIN_TRUST_LEVEL` | Minimum trust level globally | `community` |
 
 ## Exit Codes
 
@@ -505,7 +716,8 @@ my_skill = "my_plugin.plugin:Plugin"
 | `2` | Plugin not found |
 | `3` | Validation failed |
 | `4` | Installation failed |
-| `5` | Configuration error |
+| `5` | Trust verification failed |
+| `6` | Publisher not found |
 
 ## Common Issues and Solutions
 
@@ -515,37 +727,48 @@ my_skill = "my_plugin.plugin:Plugin"
 
 **Solutions:**
 1. Check entry point configuration in `pyproject.toml`
-2. Verify plugin is installed: `pip list | grep plugin-name`
-3. Restart agent if using entry points
-4. Check for import errors: `python -c "import your_plugin"`
+2. Verify plugin is installed: `uv pip list | grep plugin-name`
+3. Check that plugin class inherits from `Plugin`
+4. Verify `@capability` decorators are properly imported
 
-### Validation Errors
+### Trust Verification Failing
 
-**Issue:** Plugin fails validation
+**Issue:** Plugin fails trust verification
 
 **Solutions:**
-1. Check `agent_config.yaml` for required configuration
-2. Verify configuration schema in plugin code
-3. Review plugin logs for detailed error messages
+1. Check publisher configuration in `pyproject.toml`
+2. Verify GitHub repository settings for trusted publishing
+3. Use `agentup plugin verify plugin-name --verbose` for details
+4. Ensure PyPI trusted publisher is properly configured
+
+### Capabilities Not Discovered
+
+**Issue:** Plugin capabilities don't appear in agent
+
+**Solutions:**
+1. Ensure methods are decorated with `@capability`
+2. Verify the plugin class calls `super().__init__()`
+3. Check that capability IDs are unique
+4. Import decorators: `from agent.plugins.decorators import capability`
 
 ### AI Functions Not Available
 
 **Issue:** AI functions don't appear in LLM function calling
 
 **Solutions:**
-1. Ensure plugin implements `get_ai_functions()` hook
-2. Verify function schemas are valid OpenAI format
-3. Check that agent has AI capabilities enabled
-4. Confirm plugin capabilities include `ai_function`
+1. Set `ai_function=True` in the `@capability` decorator
+2. Verify `ai_parameters` follows OpenAI function schema format
+3. Ensure method signatures match the parameters schema
+4. Check agent has AI provider configured
 
-### Performance Issues
+### Security/Scope Errors
 
-**Issue:** Plugin operations are slow
+**Issue:** Plugin fails with permission errors
 
 **Solutions:**
-1. Enable caching in plugin configuration
-2. Use async/await properly in plugin code
-3. Implement request batching for external APIs
-4. Profile plugin execution with debug logging
+1. Verify required scopes match capability declarations
+2. Check agent configuration grants necessary permissions
+3. Use `agentup plugin status` to see trust information
+4. Ensure plugin is from trusted publisher if required
 
-This CLI reference provides everything you need to effectively manage AgentUp plugins from the command line.
+This comprehensive CLI reference covers all aspects of managing AgentUp plugins with the new decorator-based system and trusted publishing features.

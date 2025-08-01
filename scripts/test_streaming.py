@@ -18,7 +18,7 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 class StreamingTestClient:
-    
+
 
     def __init__(self, base_url: str, auth_token: str | None = None):
         self.base_url = base_url.rstrip('/')
@@ -26,7 +26,7 @@ class StreamingTestClient:
         self.session_timeout = 30.0
 
     def _get_headers(self) -> dict[str, str]:
-        
+
         headers = {
             "Content-Type": "application/json",
             "Accept": "text/event-stream",
@@ -39,7 +39,7 @@ class StreamingTestClient:
         return headers
 
     def _create_stream_request(self, message_text: str, message_id: str | None = None) -> dict:
-        
+
         if not message_id:
             message_id = f"msg-{int(time.time()*1000)}"
 
@@ -58,7 +58,7 @@ class StreamingTestClient:
         }
 
     async def test_stream_endpoint(self, message: str, show_raw: bool = False) -> bool:
-        
+
         print(f"Testing streaming endpoint: {self.base_url}/")
         print(f"Message: {message}")
         print("Starting stream...\n")
@@ -126,7 +126,7 @@ class StreamingTestClient:
             return False
 
     async def _process_stream_event(self, event_data: dict, event_num: int, show_raw: bool = False) -> None:
-        
+
         print(f"Event {event_num}:")
 
         if show_raw:
@@ -189,7 +189,7 @@ class StreamingTestClient:
         print()
 
     async def test_authentication(self) -> bool:
-        
+
         print("🔐 Testing authentication...")
 
         try:
@@ -234,7 +234,7 @@ class StreamingTestClient:
             return False
 
     async def run_comprehensive_test(self, messages: list[str], show_raw: bool = False) -> None:
-        
+
         print("🧪 Starting Comprehensive A2A Streaming Tests")
         print("=" * 50)
         print()
@@ -276,7 +276,7 @@ class StreamingTestClient:
 
 
 async def main():
-    
+
     parser = argparse.ArgumentParser(
         description="Test A2A streaming endpoints",
         formatter_class=argparse.RawDescriptionHelpFormatter,

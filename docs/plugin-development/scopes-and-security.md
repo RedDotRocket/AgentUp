@@ -62,6 +62,53 @@ follow a hierarchical structure and support inheritance.
 
 ---
 
+## Plugin Identity and Security
+
+### Plugin ID vs Package Name Security Model
+
+AgentUp requires both `plugin_id` and `package` fields in plugin configuration for critical security reasons:
+
+**Security Threat: Namespace Hijacking**
+Without package name verification, malicious actors could:
+1. Create a PyPI package with a similar name to a legitimate plugin
+2. Register entry points that match expected plugin IDs
+3. Trick users into installing malicious code instead of legitimate plugins
+
+**Example Attack Scenario:**
+```yaml
+# Legitimate plugin configuration
+plugins:
+  - plugin_id: file_manager
+    # Without package field, system accepts any package claiming this ID
+
+# Attacker creates PyPI package "file-managr" (typo) with:
+# Entry point: file_manager = "malicious.plugin:MaliciousPlugin"
+```
+
+**AgentUp's Protection:**
+```yaml
+# Secure configuration requires explicit package verification
+plugins:
+  - plugin_id: file_manager
+    package: legitimate-file-manager  # Exact PyPI package name required
+    # System rejects packages that don't match this exact name
+```
+
+**Why Both Fields Are Necessary:**
+
+1. **plugin_id**: Internal identifier for capability routing and function calls
+2. **package**: Cryptographic verification against PyPI package name
+3. **Security Enforcement**: Plugin registry validates `entry_point.dist.name == expected_package`
+4. **Namespace Protection**: Prevents malicious packages from impersonating legitimate plugins
+
+**Implementation Details:**
+- The plugin allowlist matches `plugin_id` to expected `package` name
+- Entry point discovery validates actual package name against expected name
+- Mismatches are rejected with security warnings logged
+- This creates a secure binding between logical plugin identity and distribution package
+
+This dual-field requirement is essential for preventing supply chain attacks and ensuring plugin authenticity in production environments.
+
 ## Plugin Classification
 
 ### Plugin Characteristics
@@ -815,6 +862,150 @@ def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
 #### Step 4: Test and Refine
 
 Test your plugin with different users and scope combinations to ensure proper security enforcement.
+
+## Trusted Publishing System
+
+### Overview
+
+AgentUp's trusted publishing system provides cryptographic verification of plugin authenticity through PyPI's trusted publishing feature. This system ensures that plugins come from verified sources and haven't been tampered with during distribution.
+
+### How Trusted Publishing Works
+
+**Traditional PyPI Upload:**
+```bash
+# Old way - requires manual API key management
+python -m build
+twine upload dist/* --username __token__ --password pypi-xxx
+```
+
+**Trusted Publishing (New Way):**
+```bash
+# Secure way - no API keys needed
+git push origin main --tags
+# GitHub Actions automatically publishes with OIDC tokens
+```
+
+### Key Benefits
+
+1. **No API Key Management**: Eliminates the need to store PyPI API keys
+2. **Cryptographic Verification**: Uses OIDC tokens for identity verification
+3. **Tamper-Proof Distribution**: Cryptographic attestations verify package integrity
+4. **Publisher Identity**: Verifies who published each plugin version
+5. **Automatic Security Scanning**: Integrated security checks during publishing
+
+### Plugin Trust Levels
+
+| Trust Level | Description | Requirements |
+|-------------|-------------|--------------|
+| `official` | Official AgentUp plugins | Published by `agentup-official` with strict verification |
+| `community` | Community-verified plugins | Published via trusted publishing by known contributors |
+| `unknown` | Standard PyPI uploads | Traditional upload method without trusted publishing |
+
+### Setting Up Trusted Publishing
+
+**1. Configure PyPI Trusted Publisher**
+
+Visit https://pypi.org/manage/account/publishing/ and add:
+- **Publisher**: GitHub
+- **Owner**: your-username  
+- **Repository**: your-repo-name
+- **Workflow**: publish.yml
+
+**2. Configure Your Plugin**
+
+Update `pyproject.toml`:
+```toml
+[tool.agentup.trusted-publishing]
+publisher = "your-github-username"
+repository = "your-username/plugin-repo"
+workflow = "publish.yml"
+trust_level = "community"
+
+[tool.agentup.plugin]
+min_agentup_version = "2.0.0"
+plugin_api_version = "1.0"
+security_hash = "sha256:abc123..."
+```
+
+**3. GitHub Actions Workflow**
+
+Create `.github/workflows/publish.yml`:
+```yaml
+name: Publish Plugin
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      
+      - name: Build package
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+      
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+```
+
+### Plugin Installation Security
+
+**Secure Installation Commands:**
+
+```bash
+# Require trusted publishing
+agentup plugin install weather-plugin --require-trusted
+
+# Set minimum trust level
+agentup plugin install weather-plugin --trust-level community
+
+# Verify after installation
+agentup plugin verify weather-plugin
+```
+
+**Installation Safety Checks:**
+- ✅ Publisher identity verification
+- ✅ Cryptographic attestation validation
+- ✅ Trust level compliance
+- ✅ Security scanning results
+- ✅ Interactive approval prompts
+
+### Publisher Trust Management
+
+**Add Trusted Publishers:**
+```bash
+# Add a community publisher
+agentup plugin trust add awesome-contributor \
+  github.com/awesome-contributor/weather-plugin \
+  --trust-level community \
+  --description "Weather plugin specialist"
+
+# List trusted publishers
+agentup plugin trust list
+```
+
+**Publisher Configuration:**
+```yaml
+# In agent configuration
+plugins:
+  trust_settings:
+    require_trusted_publishing: true
+    minimum_trust_level: "community"
+    trusted_publishers:
+      - publisher_id: "awesome-contributor"
+        repositories: ["github.com/awesome-contributor/*"]
+        trust_level: "community"
+```
 
 ---
 

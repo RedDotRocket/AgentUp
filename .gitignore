@@ -73,6 +73,7 @@ test-agents/
 test-render/
 example-agent/
 examples/chatbot/
+memory/
 
 # Temporary files
 *.tmp

@@ -105,24 +105,61 @@ def create_agent_card(extended: bool = False) -> AgentCard:
     agent_skills = []
     has_extended_plugins = False
 
-    for plugin in plugins:
-        plugin_visibility = plugin.get("visibility", "public")
+    # Try to get plugin information from the new system
+    try:
+        from agent.plugins.manager import get_plugin_registry
+        registry = get_plugin_registry()
+        if registry:
+            # Get loaded plugins from the registry
+            loaded_plugins = registry.get_loaded_plugins()
+            for plugin_id, _plugin_info in loaded_plugins.items():
+                # Find corresponding config
+                plugin_config = None
+                for p in plugins:
+                    if p.get("plugin_id") == plugin_id:
+                        plugin_config = p
+                        break
 
-        # Track if any extended plugins exist
-        if plugin_visibility == "extended":
-            has_extended_plugins = True
+                if plugin_config:
+                    plugin_visibility = plugin_config.get("visibility", "public")
 
-        # Include plugin in card based on visibility and card type
-        if plugin_visibility == "public" or (extended and plugin_visibility == "extended"):
-            agent_skill = AgentSkill(
-                id=plugin.get("plugin_id"),
-                name=plugin.get("name"),
-                description=plugin.get("description"),
-                inputModes=[plugin.get("input_mode", "text")],
-                outputModes=[plugin.get("output_mode", "text")],
-                tags=plugin.get("tags", ["general"]),
-            )
-            agent_skills.append(agent_skill)
+                    # Track if any extended plugins exist
+                    if plugin_visibility == "extended":
+                        has_extended_plugins = True
+
+                    # Include plugin in card based on visibility and card type
+                    if plugin_visibility == "public" or (extended and plugin_visibility == "extended"):
+                        agent_skill = AgentSkill(
+                            id=plugin_id,
+                            name=plugin_config.get("name") or plugin_id,
+                            description=plugin_config.get("description") or f"Plugin {plugin_id}",
+                            inputModes=[plugin_config.get("input_mode", "text")],
+                            outputModes=[plugin_config.get("output_mode", "text")],
+                            tags=plugin_config.get("tags", ["general"]),
+                        )
+                        agent_skills.append(agent_skill)
+    except (ImportError, Exception) as e:
+        logger.debug(f"Could not get plugins from new registry: {e}")
+
+        # Fallback to old config-based approach
+        for plugin in plugins:
+            plugin_visibility = plugin.get("visibility", "public")
+
+            # Track if any extended plugins exist
+            if plugin_visibility == "extended":
+                has_extended_plugins = True
+
+            # Include plugin in card based on visibility and card type
+            if plugin_visibility == "public" or (extended and plugin_visibility == "extended"):
+                agent_skill = AgentSkill(
+                    id=plugin.get("plugin_id"),
+                    name=plugin.get("name") or plugin.get("plugin_id", "Unknown Plugin"),
+                    description=plugin.get("description") or f"Plugin {plugin.get('plugin_id', 'unknown')}",
+                    inputModes=[plugin.get("input_mode", "text")],
+                    outputModes=[plugin.get("output_mode", "text")],
+                    tags=plugin.get("tags", ["general"]),
+                )
+                agent_skills.append(agent_skill)
 
     # Create capabilities object with extensions
     extensions = []

@@ -5,8 +5,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 ## Plugin Overview
 
 This is an AgentUp plugin that provides {{ display_name }} functionality. It
-uses the AgentUp plugin architecture via the pluggy hook system for entry points
-to the AgentUp runtime.
+uses the AgentUp decorator-based plugin architecture for integration with
+the AgentUp runtime.
 
 ## Plugin Structure
 
@@ -25,27 +25,31 @@ to the AgentUp runtime.
 
 ## Core Plugin Architecture
 
-### Hook System
-The plugin uses pluggy hooks to integrate with AgentUp:
+### Decorator System
+The plugin uses the `@capability` decorator to define functionality:
 
-- `@hookimpl def register_capability()` - **Required** - Registers the plugin's capability(s)
-- `@hookimpl def can_handle_task()` - **Required** - Determines if plugin can handle a task
-- `@hookimpl def execute_capability()` - **Required** - Main capability execution logic
-- `@hookimpl def validate_config()` - Optional - Validates plugin configuration
-- `@hookimpl def get_ai_functions()` - Optional - Provides AI-callable functions
-- `@hookimpl def configure_services()` - Optional - Configures external services
-- `@hookimpl def get_middleware_config()` - Optional - Requests middleware
-- `@hookimpl def get_state_schema()` - Optional - Defines state schema for stateful capabilities
-- `@hookimpl def wrap_execution()` - Optional - Wraps capability execution with custom logic
-- `@hookimpl def on_install()` - Optional - Called when plugin is installed
-- `@hookimpl def on_uninstall()` - Optional - Called when plugin is being uninstalled
-- `@hookimpl def get_health_status()` - Optional - Reports health status for monitoring
+```python
+from agent.plugins.base import Plugin
+from agent.plugins.decorators import capability
+
+class {{ class_name }}(Plugin):
+    @capability(
+        id="{{ capability_id }}",
+        name="{{ display_name }}",
+        description="{{ description }}",
+        scopes=["api:read"],
+        ai_function=True
+    )
+    async def handle_request(self, context: CapabilityContext) -> str:
+        # Your capability logic here
+        return "Response"
+```
 
 ### Entry Point
 The plugin is registered via entry point in `pyproject.toml`:
 ```toml
-[project.entry-points."agentup.capabilities"]
-{{ plugin_name_snake }} = "{{ plugin_name_snake }}.plugin:Plugin"
+[project.entry-points."agentup.plugins"]
+{{ plugin_name_snake }} = "{{ plugin_name_snake }}.plugin:{{ class_name }}"
 ```
 
 ## Development Guidelines
@@ -85,124 +89,91 @@ The plugin is registered via entry point in `pyproject.toml`:
 
 ### Plugin Implementation Patterns
 
-#### 1. Capability Registration
+#### 1. Basic Capability
 ```python
-@hookimpl
-def register_capability(self) -> CapabilityDefinition:
-    return CapabilityDefinition(
-        id="{{ capability_id }}",
-        name="{{ display_name }}",
-        version="0.4.0",
-        description="{{ description }}",
-        capabilities=[CapabilityType.TEXT],  # Add capabilities as needed
-        tags=["{{ plugin_name }}", "custom"],
-        config_schema={
-            # JSON schema for configuration validation using modern typing
-            "type": "object",
-            "properties": {
-                "api_key": {
-                    "type": "string",
-                    "description": "API key for external service"
-                },
-                "timeout": {
-                    "type": "integer",
-                    "default": 30,
-                    "minimum": 1,
-                    "maximum": 300
-                },
-                "enabled": {
-                    "type": "boolean",
-                    "default": True
-                }
-            },
-            "required": ["api_key"]
-        }
-    )
-```
-
-#### 2. Task Routing
-```python
-@hookimpl
-def can_handle_task(self, context: CapabilityContext) -> float:
-    user_input = self._extract_user_input(context).lower()
-
-    # Return confidence score (0.0 to 1.0)
-    # Higher scores = more likely to handle the task
-    keywords = {'keyword1': 1.0, 'keyword2': 0.8}
-
-    confidence = 0.0
-    for keyword, score in keywords.items():
-        if keyword in user_input:
-            confidence = max(confidence, score)
-
-    return confidence
-```
-
-#### 3. Capability Execution
-```python
-@hookimpl
-def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
+@capability(
+    id="{{ capability_id }}",
+    name="{{ display_name }}",
+    description="{{ description }}",
+    scopes=["api:read"],
+    tags=["{{ plugin_name }}", "custom"]
+)
+async def handle_request(self, context: CapabilityContext) -> str:
     try:
-        user_input = self._extract_user_input(context)
-
+        # Extract input from context
+        user_input = self._extract_task_content(context)
+        
         # Your capability logic here
         response = self._process_request(user_input)
-
-        return CapabilityResult(
-            content=response,
-            success=True,
-            metadata={"capability": "{{ capability_id }}"}
-        )
+        
+        return response
     except Exception as e:
-        return CapabilityResult(
-            content=f"Error: {str(e)}",
-            success=False,
-            error=str(e)
-        )
+        return f"Error: {str(e)}"
 ```
 
-#### 4. AI Function Support (Modern Typing)
+#### 2. AI Function Support
 ```python
-@hookimpl
-def get_ai_functions(self) -> list[AIFunction]:  # Note: list not List
-    return [
-        AIFunction(
-            name="function_name",
-            description="Function description for LLM",
-            parameters={
+@capability(
+    id="{{ capability_id }}_ai",
+    name="{{ display_name }} AI Function",
+    description="AI-callable function for {{ description }}",
+    scopes=["api:read"],
+    ai_function=True,
+    ai_parameters={
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "Query to process"
+            },
+            "options": {
                 "type": "object",
                 "properties": {
-                    "param1": {
-                        "type": "string",
-                        "description": "Parameter description"
-                    },
-                    "config": {
-                        "type": "object",
-                        "description": "Optional configuration",
-                        "properties": {
-                            "timeout": {"type": "integer", "default": 30}
-                        }
-                    }
-                },
-                "required": ["param1"]
-            },
-            handler=self._handle_function
-        )
-    ]
-
-async def _handle_function(self, param1: str, config: dict[str, Any] | None = None) -> str:
-    """Handle function call with modern typing annotations."""
-    # Use dict[str, Any] instead of Dict[str, Any]
-    settings: dict[str, Any] = config or {}
-    timeout: int = settings.get("timeout", 30)
+                    "timeout": {"type": "integer", "default": 30}
+                }
+            }
+        },
+        "required": ["query"]
+    }
+)
+async def ai_function(self, context: CapabilityContext) -> str:
+    # Extract parameters from context
+    params = context.metadata.get("parameters", {})
+    query = params.get("query", "")
+    options = params.get("options", {})
     
-    # Your function logic here
-    return f"Processed {param1} with timeout {timeout}"
+    # Process the AI function call
+    result = await self._process_ai_request(query, options)
+    return result
+```
+
+#### 3. Multiple Capabilities
+```python
+class {{ class_name }}(Plugin):
+    @capability(
+        id="{{ capability_id }}_text",
+        name="Text Processing",
+        description="Process text input",
+        scopes=["api:read"]
+    )
+    async def process_text(self, context: CapabilityContext) -> str:
+        # Text processing logic
+        return "Processed text"
+    
+    @capability(
+        id="{{ capability_id }}_analyze",
+        name="Data Analysis",
+        description="Analyze data",
+        scopes=["api:read", "data:read"]
+    )
+    async def analyze_data(self, context: CapabilityContext) -> str:
+        # Analysis logic
+        return "Analysis complete"
 ```
 
 ### Error Handling
-- Always return CapabilityResult objects from execute_capability
-- Use success=False for errors
+- Return strings for simple responses or CapabilityResult objects for complex responses
+- Handle exceptions gracefully within capability methods
 - Include descriptive error messages
 - Log errors appropriately for debugging
 
@@ -213,8 +184,8 @@ async def _handle_function(self, param1: str, config: dict[str, Any] | None = No
 - Use pytest and async test patterns
 
 ### Configuration
-- Define configuration schema in register_capability()
-- Validate configuration in validate_config() hook
+- Define configuration schema in the @capability decorator
+- Override lifecycle methods for custom validation
 - Use environment variables for sensitive data
 - Provide sensible defaults
 
@@ -266,376 +237,6 @@ Access external services via AgentUp's service registry:
 - Database connections
 - Cache backends
 - Message queues
-
-### Advanced Plugin Hooks
-
-#### Execution Wrapping
-```python
-@hookimpl
-def wrap_execution(self, context: CapabilityContext, next_handler) -> CapabilityResult:
-    """Wrap capability execution with custom pre/post processing."""
-    # Pre-processing
-    start_time = time.time()
-    logger.info(f"Starting execution for {context.capability_id}")
-    
-    try:
-        # Call the next handler in the chain
-        result = next_handler(context)
-        
-        # Post-processing
-        execution_time = time.time() - start_time
-        result.metadata["execution_time"] = execution_time
-        
-        return result
-    except Exception as e:
-        logger.error(f"Execution failed after {time.time() - start_time}s: {e}")
-        raise
-```
-
-#### Lifecycle Management
-```python
-@hookimpl
-def on_install(self, install_path: str) -> None:
-    """Called when plugin is installed - perform one-time setup."""
-    # Create necessary directories
-    (Path(install_path) / "data").mkdir(exist_ok=True)
-    
-    # Download models or resources
-    self._download_required_resources(install_path)
-    
-    # Initialize configuration
-    self._setup_default_config(install_path)
-
-@hookimpl
-def on_uninstall(self) -> None:
-    """Called when plugin is uninstalled - cleanup resources."""
-    # Clean up temporary files
-    self._cleanup_temp_files()
-    
-    # Close connections
-    if hasattr(self, '_client'):
-        self._client.close()
-```
-
-#### Health Monitoring
-```python
-@hookimpl
-def get_health_status(self) -> dict[str, Any]:
-    """Report plugin health for monitoring and debugging."""
-    return {
-        "status": "healthy" if self._is_operational() else "unhealthy",
-        "version": "{{ version }}",
-        "uptime": time.time() - self._start_time,
-        "requests_processed": self._request_count,
-        "last_error": self._last_error,
-        "dependencies": {
-            "api_accessible": self._check_api_health(),
-            "database_connected": self._check_db_health(),
-        },
-        "resources": {
-            "memory_usage": self._get_memory_usage(),
-            "active_connections": len(self._connections),
-        }
-    }
-```
-
-## Best Practices
-
-### Performance
-- Use async/await for I/O operations
-- Implement caching for expensive operations
-- Use connection pooling for external APIs
-- Minimize blocking operations
-
-### Security
-- Validate all inputs
-- Sanitize outputs
-- Use secure authentication methods
-- Never log sensitive data
-
-### Maintainability
-- Follow single responsibility principle
-- Keep functions small and focused
-- Use descriptive variable names
-- Add docstrings to all public methods
-
-## Common Patterns
-
-### External API Integration (Modern Typing)
-```python
-async def _call_external_api(self, data: dict[str, Any]) -> dict[str, Any]:
-    """Call external API with proper typing annotations."""
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            "https://api.example.com/endpoint",
-            json=data,
-            headers={"Authorization": f"Bearer {self.api_key}"}
-        )
-        response.raise_for_status()
-        return response.json()
-
-async def _batch_process(self, items: list[str]) -> list[dict[str, Any]]:
-    """Process multiple items with modern typing."""
-    results: list[dict[str, Any]] = []
-    
-    for item in items:
-        result = await self._call_external_api({"item": item})
-        results.append(result)
-    
-    return results
-```
-
-### State Management (Modern Typing & Pydantic)
-```python
-from pydantic import BaseModel
-from typing import Any
-
-class PluginState(BaseModel):
-    """Typed state model for plugin data."""
-    user_preferences: dict[str, Any] = Field(default_factory=dict)
-    session_data: dict[str, Any] = Field(default_factory=dict)
-    counters: dict[str, int] = Field(default_factory=dict)
-    last_updated: datetime = Field(default_factory=datetime.utcnow)
-
-@hookimpl
-def get_state_schema(self) -> dict[str, Any]:
-    """Return JSON schema derived from Pydantic model."""
-    return PluginState.model_json_schema()  # Pydantic v2 method
-
-async def _update_state(self, context: CapabilityContext, updates: dict[str, Any]) -> None:
-    """Update plugin state with validation."""
-    current_state = context.state.get("plugin_state", {})
-    
-    # Validate state updates using Pydantic
-    state = PluginState(**current_state)
-    
-    # Apply updates
-    for key, value in updates.items():
-        if hasattr(state, key):
-            setattr(state, key, value)
-    
-    # Save back to context
-    context.state["plugin_state"] = state.model_dump()  # Pydantic v2 method
-```
-
-### Configuration Validation (Pydantic v2 Style)
-```python
-from pydantic import BaseModel, Field, field_validator
-from typing import Any
-
-class PluginConfig(BaseModel):
-    """Typed configuration model with validation."""
-    api_key: str = Field(..., description="API key for external service")
-    timeout: int = Field(30, ge=1, le=300, description="Request timeout in seconds")
-    enabled: bool = Field(True, description="Whether plugin is enabled")
-    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
-    
-    @field_validator("api_key")
-    @classmethod
-    def validate_api_key(cls, v: str) -> str:
-        """Validate API key format."""
-        if not v or len(v) < 10:
-            raise ValueError("API key must be at least 10 characters")
-        return v
-
-@hookimpl
-def validate_config(self, config: dict[str, Any]) -> ValidationResult:
-    """Validate configuration using Pydantic models."""
-    try:
-        # Use Pydantic model for validation
-        validated_config = PluginConfig(**config)
-        return ValidationResult(
-            valid=True,
-            errors=[],
-            warnings=[]
-        )
-    except Exception as e:
-        return ValidationResult(
-            valid=False,
-            errors=[str(e)],
-            warnings=[]
-        )
-```
-
-## Modern Implementation Guidelines
-
-### Data Model Best Practices
-1. **Create Plugin-Specific Models**: Define Pydantic models for all plugin data structures
-   ```python
-   # models.py - Separate file for data models
-   from pydantic import BaseModel, Field
-   from typing import Any, Literal
-   
-   class PluginRequest(BaseModel):
-       action: Literal["process", "analyze", "generate"]
-       data: dict[str, Any] = Field(default_factory=dict)
-       options: dict[str, Any] = Field(default_factory=dict)
-   
-   class PluginResponse(BaseModel):
-       success: bool
-       result: str | dict[str, Any] | None = None
-       metadata: dict[str, str] = Field(default_factory=dict)
-   ```
-
-2. **Use Type Guards**: Implement runtime type checking for external data
-   ```python
-   def is_valid_request(data: Any) -> bool:
-       """Type guard for plugin requests."""
-       try:
-           PluginRequest.model_validate(data)
-           return True
-       except Exception:
-           return False
-   ```
-
-3. **Environment Configuration**: Support environment variable overrides
-   ```python
-   class PluginConfig(BaseModel):
-       api_key: str = Field(..., description="API key")
-       base_url: str = Field("https://api.example.com", description="Base API URL")
-       
-       @classmethod
-       def from_env(cls) -> "PluginConfig":
-           """Load configuration from environment variables."""
-           import os
-           return cls(
-               api_key=os.getenv("{{ plugin_name_upper }}_API_KEY", ""),
-               base_url=os.getenv("{{ plugin_name_upper }}_BASE_URL", "https://api.example.com")
-           )
-   ```
-
-### Error Handling Patterns
-1. **Structured Error Types**: Define specific error types for different failure modes
-   ```python
-   class PluginError(Exception):
-       """Base plugin error."""
-       pass
-   
-   class ConfigurationError(PluginError):
-       """Configuration validation error."""
-       pass
-   
-   class APIError(PluginError):
-       """External API error."""
-       def __init__(self, status_code: int, message: str):
-           self.status_code = status_code
-           super().__init__(f"API Error {status_code}: {message}")
-   ```
-
-2. **Graceful Degradation**: Handle partial failures gracefully
-   ```python
-   async def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
-       try:
-           result = await self._process_request(context)
-           return CapabilityResult(content=result, success=True)
-       except APIError as e:
-           # Log error but return partial result
-           logger.warning(f"API error: {e}")
-           return CapabilityResult(
-               content="Service temporarily unavailable",
-               success=False,
-               error=str(e),
-               metadata={"error_type": "api_error", "recoverable": True}
-           )
-       except Exception as e:
-           # Unexpected error
-           logger.error(f"Unexpected error: {e}")
-           return CapabilityResult(
-               content="An unexpected error occurred",
-               success=False,
-               error=str(e),
-               metadata={"error_type": "unexpected", "recoverable": False}
-           )
-   ```
-
-### Performance Optimization
-1. **Connection Pooling**: Reuse HTTP connections
-   ```python
-   import httpx
-   
-   class {{ plugin_name_class }}:
-       def __init__(self):
-           self._client: httpx.AsyncClient | None = None
-       
-       async def _get_client(self) -> httpx.AsyncClient:
-           """Get or create HTTP client with connection pooling."""
-           if self._client is None:
-               self._client = httpx.AsyncClient(
-                   timeout=30.0,
-                   limits=httpx.Limits(max_keepalive_connections=10)
-               )
-           return self._client
-       
-       async def cleanup(self):
-           """Cleanup resources."""
-           if self._client:
-               await self._client.aclose()
-   ```
-
-2. **Caching**: Implement intelligent caching
-   ```python
-   from functools import lru_cache
-   from datetime import datetime, timedelta
-   
-   class CachedResult(BaseModel):
-       data: Any
-       expires_at: datetime
-       
-       @property
-       def is_expired(self) -> bool:
-           return datetime.utcnow() > self.expires_at
-   
-   class {{ plugin_name_class }}:
-       def __init__(self):
-           self._cache: dict[str, CachedResult] = {}
-       
-       async def _get_cached_or_fetch(self, key: str, fetch_func) -> Any:
-           """Get from cache or fetch fresh data."""
-           if key in self._cache and not self._cache[key].is_expired:
-               return self._cache[key].data
-           
-           data = await fetch_func()
-           self._cache[key] = CachedResult(
-               data=data,
-               expires_at=datetime.utcnow() + timedelta(minutes=5)
-           )
-           return data
-   ```
-
-## Debugging Tips
-
-### Common Issues
-- Plugin not loading: Check entry point in pyproject.toml
-- Functions not available: Verify get_ai_functions() returns valid schemas
-- Routing not working: Debug can_handle_task() logic
-- Configuration errors: Implement validate_config() hook
-
-### Logging
-```python
-import logging
-logger = logging.getLogger(__name__)
-
-def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
-    logger.info("Processing request", extra={"capability": "{{ capability_id }}"})
-    # ... implementation
-```
-
-## Distribution
-
-### Package Structure
-- Follow Python package conventions
-- Include comprehensive README.md
-- Add LICENSE file
-- Include CHANGELOG.md for version history
-
-### Publishing
-1. Test thoroughly with various agents
-2. Update version in pyproject.toml
-3. Build package: `python -m build`
-4. Upload to PyPI: `python -m twine upload dist/*`
-
-## Important Notes
-
 
 ### Framework Integration
 - Leverage AgentUp's built-in features

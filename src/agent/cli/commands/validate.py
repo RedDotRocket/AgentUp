@@ -194,11 +194,14 @@ def validate_plugins_section(plugins: list[dict[str, Any]], errors: list[str], w
             continue
 
         # Required plugin fields
-        required_plugin_fields = ["plugin_id", "name", "description"]
+        required_plugin_fields = ["plugin_id", "name", "description", "package"]
 
         for field in required_plugin_fields:
             if field not in plugin:
-                errors.append(f"Plugin {i} missing required field: '{field}'")
+                if field == "package":
+                    errors.append(f"Plugin {i} missing required field: '{field}' (needed for plugin system security)")
+                else:
+                    errors.append(f"Plugin {i} missing required field: '{field}'")
             elif not plugin[field]:
                 errors.append(f"Plugin {i} field '{field}' is empty")
 
@@ -215,6 +218,21 @@ def validate_plugins_section(plugins: list[dict[str, Any]], errors: list[str], w
                 errors.append(
                     f"Invalid plugin ID '{plugin_id}'. Must start with letter and contain only letters, numbers, and underscores."
                 )
+
+        # Validate package name format (PyPI naming conventions)
+        package_name = plugin.get("package")
+        if package_name:
+            if not re.match(r"^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?$", package_name):
+                errors.append(
+                    f"Invalid package name '{package_name}' for plugin {i}. Must follow PyPI naming conventions (letters, numbers, dots, hyphens, underscores)."
+                )
+            # Warn about common naming issues
+            if package_name.startswith("-") or package_name.endswith("-"):
+                errors.append(f"Package name '{package_name}' cannot start or end with hyphen")
+            if package_name.startswith(".") or package_name.endswith("."):
+                errors.append(f"Package name '{package_name}' cannot start or end with dot")
+            if "__" in package_name:
+                warnings.append(f"Package name '{package_name}' contains double underscores, which may cause issues")
 
         # Validate regex patterns (if provided for capability detection)
         patterns = plugin.get("patterns", [])

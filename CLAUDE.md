@@ -127,6 +127,7 @@ src/agent/
 
 - **Pydantic Handling**:
   - ALWAYS USE PYDANTIC NATIVE METHODS, NEVER USE .get dict[x,x]
+  - USE PYDANTIC!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! STOP USING .get when we have MODELS!
 
 ## Task Completion Workflow
 

@@ -257,6 +257,14 @@ def _validate_plugin_name(name: str) -> tuple[bool, str]:
     if not name or not name.replace("-", "").replace("_", "").isalnum():
         return False, "Plugin name must contain only letters, numbers, hyphens, and underscores"
 
+    # Check for invalid start/end characters
+    if name.startswith(("-", "_")) or name.endswith(("-", "_")):
+        return False, "Plugin name cannot start or end with hyphens or underscores"
+
+    # Check if starts with a number
+    if name[0].isdigit():
+        return False, "Plugin name cannot start with a number"
+
     # Normalize to check against Python modules
     normalized_name = name.lower().replace("-", "_")
 
@@ -303,38 +311,71 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
             logging.getLogger("agent.plugins").setLevel(logging.WARNING)
             logging.getLogger("agent.plugins.manager").setLevel(logging.WARNING)
 
-        from agent.plugins.manager import get_plugin_manager
+        from agent.plugins.manager import PluginRegistry
 
-        manager = get_plugin_manager()
-        plugins = manager.list_plugins()
-        available_capabilities = manager.list_capabilities()
+        # Create a registry without auto-discovery to avoid allowlist warnings during listing
+        try:
+            from agent.config import Config
+            config = Config.model_dump()
+        except ImportError:
+            config = None
+
+        manager = PluginRegistry(config)
+
+        # Use the discovery method that bypasses allowlist for listing purposes
+        all_available_plugins = manager.discover_all_available_plugins()
 
         if format == "json":
             output = {
                 "plugins": [
                     {
-                        "name": p.name,
-                        "version": p.version,
-                        "status": p.status,
-                        "author": p.author,
-                        "description": p.description,
+                        "name": plugin_info["name"],
+                        "version": plugin_info["version"],
+                        "package": plugin_info["package"],
+                        "status": plugin_info["status"],
+                        "loaded": plugin_info["loaded"],
+                        "configured": plugin_info["configured"],
                     }
-                    for p in plugins
+                    for plugin_info in all_available_plugins
                 ]
             }
 
             # Only include capabilities if -c flag is used
             if capabilities:
-                output["capabilities"] = [
-                    {
-                        "id": c.id,
-                        "name": c.name,
-                        "version": c.version,
-                        "plugin": manager.capability_to_plugin.get(c.id),
-                        "features": c.capabilities,
-                    }
-                    for c in available_capabilities
-                ]
+                # Discover capabilities for JSON output (same as table output)
+                capabilities_for_json = []
+                for plugin_info in all_available_plugins:
+                    plugin_name = plugin_info["name"]
+                    try:
+                        import importlib.metadata
+                        entry_points = importlib.metadata.entry_points()
+
+                        if hasattr(entry_points, "select"):
+                            plugin_entries = entry_points.select(group="agentup.plugins", name=plugin_name)
+                        else:
+                            plugin_entries = [ep for ep in entry_points.get("agentup.plugins", []) if ep.name == plugin_name]
+
+                        for entry_point in plugin_entries:
+                            try:
+                                plugin_class = entry_point.load()
+                                plugin_instance = plugin_class()
+                                cap_definitions = plugin_instance.get_capability_definitions()
+
+                                for cap_def in cap_definitions:
+                                    capabilities_for_json.append({
+                                        "id": cap_def.id,
+                                        "name": cap_def.name,
+                                        "description": cap_def.description,
+                                        "plugin": plugin_name,
+                                        "required_scopes": cap_def.required_scopes,
+                                        "ai_function": hasattr(cap_def, 'ai_function') and cap_def.ai_function
+                                    })
+                            except Exception:
+                                continue
+                    except Exception:
+                        continue
+
+                output["capabilities"] = capabilities_for_json
 
             console.print_json(json.dumps(output, indent=2))
             return
@@ -345,71 +386,94 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
             output = {
                 "plugins": [
                     {
-                        "name": p.name,
-                        "version": p.version,
-                        "status": p.status,
-                        "author": p.author,
-                        "description": p.description,
+                        "name": plugin_info["name"],
+                        "version": plugin_info["version"],
+                        "package": plugin_info["package"],
+                        "status": plugin_info["status"],
+                        "loaded": plugin_info["loaded"],
+                        "configured": plugin_info["configured"],
                     }
-                    for p in plugins
+                    for plugin_info in all_available_plugins
                 ]
             }
 
-            # Only include capabilities if -c flag is used
+            # Only include capabilities if -c flag is used (same logic as JSON)
             if capabilities:
-                output["capabilities"] = [
-                    {
-                        "id": c.id,
-                        "name": c.name,
-                        "version": c.version,
-                        "plugin": manager.capability_to_plugin.get(c.id),
-                        "features": c.capabilities,
-                    }
-                    for c in available_capabilities
-                ]
+                capabilities_for_yaml = []
+                for plugin_info in all_available_plugins:
+                    plugin_name = plugin_info["name"]
+                    try:
+                        import importlib.metadata
+                        entry_points = importlib.metadata.entry_points()
+
+                        if hasattr(entry_points, "select"):
+                            plugin_entries = entry_points.select(group="agentup.plugins", name=plugin_name)
+                        else:
+                            plugin_entries = [ep for ep in entry_points.get("agentup.plugins", []) if ep.name == plugin_name]
+
+                        for entry_point in plugin_entries:
+                            try:
+                                plugin_class = entry_point.load()
+                                plugin_instance = plugin_class()
+                                cap_definitions = plugin_instance.get_capability_definitions()
+
+                                for cap_def in cap_definitions:
+                                    capabilities_for_yaml.append({
+                                        "id": cap_def.id,
+                                        "name": cap_def.name,
+                                        "description": cap_def.description,
+                                        "plugin": plugin_name,
+                                        "required_scopes": cap_def.required_scopes,
+                                        "ai_function": hasattr(cap_def, 'ai_function') and cap_def.ai_function
+                                    })
+                            except Exception:
+                                continue
+                    except Exception:
+                        continue
+
+                output["capabilities"] = capabilities_for_yaml
 
             console.print(yaml.dump(output, default_flow_style=False))
             return
 
         # Table format (default)
-        if not plugins:
-            console.print("[yellow]No plugins loaded.[/yellow]")
+        if not all_available_plugins:
+            console.print("[yellow]No plugins found.[/yellow]")
             console.print("\nTo create a plugin: [cyan]agentup plugin create[/cyan]")
             console.print("To install from registry: [cyan]agentup plugin install <name>[/cyan]")
             return
 
-        # Plugins table - simplified
-        plugin_table = Table(title="Loaded Plugins", box=box.ROUNDED, title_style="bold cyan")
+        # Plugins table - show all available plugins
+        plugin_table = Table(title="Available Plugins", box=box.ROUNDED, title_style="bold cyan")
         plugin_table.add_column("Plugin", style="cyan")
-        plugin_table.add_column("Name", style="white")
+        plugin_table.add_column("Package", style="white")
         plugin_table.add_column("Version", style="green", justify="center")
         plugin_table.add_column("Status", style="blue", justify="center")
 
         if verbose:
-            plugin_table.add_column("Source", style="dim")
-            plugin_table.add_column("Author", style="white")
+            plugin_table.add_column("Configured", style="dim", justify="center")
+            plugin_table.add_column("Module", style="dim")
 
-        for plugin in plugins:
-            # Get the friendly name from available_capabilities or use plugin name
-            plugin_display_name = plugin.name
-            # Find the first capability for this plugin to get its name
-            for cap_id, plugin_name in manager.capability_to_plugin.items():
-                if plugin_name == plugin.name:
-                    capability_info = manager.capabilities.get(cap_id)
-                    if capability_info and capability_info.name:
-                        plugin_display_name = capability_info.name
-                        break
+        for plugin_info in all_available_plugins:
+            # Determine status display
+            status = plugin_info["status"]
+            if plugin_info["loaded"]:
+                status = "loaded"
+            elif plugin_info["configured"]:
+                status = "configured"
+            else:
+                status = "available"
 
             row = [
-                plugin.name,
-                plugin_display_name,
-                plugin.version,
-                plugin.status.value,
+                plugin_info["name"],
+                plugin_info["package"],
+                plugin_info["version"],
+                status,
             ]
 
             if verbose:
-                source = plugin.metadata.get("source", "entry_point")
-                row.extend([source, plugin.author or "—"])
+                configured = "✓" if plugin_info["configured"] else "✗"
+                row.extend([configured, plugin_info.get("module", "unknown")])
 
             plugin_table.add_row(*row)
 
@@ -417,89 +481,91 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
 
         # Only show capabilities table if --capabilities flag is used
         if capabilities:
-            # AI Functions table - show individual functions instead of capabilities
             console.print()  # Blank line
 
-            # Collect all AI functions from all capabilities
-            all_ai_functions = []
-            for capability in available_capabilities:
-                plugin_name = manager.capability_to_plugin.get(capability.id, "unknown")
-                ai_functions = manager.get_ai_functions(capability.id)
+            # For capabilities display, we need to temporarily load plugins to get their capabilities
+            # This is only done when explicitly requested with -c flag
+            all_capabilities_info = []
 
-                if ai_functions:
-                    for func in ai_functions:
-                        # Extract parameter names from the function schema
-                        param_names = []
-                        if "properties" in func.parameters:
-                            param_names = list(func.parameters["properties"].keys())
+            for plugin_info in all_available_plugins:
+                plugin_name = plugin_info["name"]
 
-                        all_ai_functions.append(
-                            {
-                                "name": func.name,
-                                "description": func.description,
-                                "parameters": param_names,
-                                "plugin": plugin_name,
-                                "capability_id": capability.id,
-                            }
-                        )
+                try:
+                    # Try to load the plugin class to get its capabilities
+                    import importlib.metadata
+                    entry_points = importlib.metadata.entry_points()
 
-            if all_ai_functions:
-                ai_table = Table(title="Available Capabilities", box=box.ROUNDED, title_style="bold cyan")
-                ai_table.add_column("Capability ID", style="cyan")
-                ai_table.add_column("Plugin", style="dim")
-                ai_table.add_column("Parameters", style="green")
+                    # Handle different Python versions
+                    if hasattr(entry_points, "select"):
+                        plugin_entries = entry_points.select(group="agentup.plugins", name=plugin_name)
+                    else:
+                        plugin_entries = [ep for ep in entry_points.get("agentup.plugins", []) if ep.name == plugin_name]
+
+                    for entry_point in plugin_entries:
+                        try:
+                            plugin_class = entry_point.load()
+                            plugin_instance = plugin_class()
+
+                            # Get capability definitions
+                            cap_definitions = plugin_instance.get_capability_definitions()
+
+                            for cap_def in cap_definitions:
+                                all_capabilities_info.append({
+                                    "id": cap_def.id,
+                                    "name": cap_def.name,
+                                    "description": cap_def.description,
+                                    "plugin": plugin_name,
+                                    "scopes": cap_def.required_scopes,
+                                    "ai_function": hasattr(cap_def, 'ai_function') and cap_def.ai_function,
+                                    "tags": getattr(cap_def, 'tags', [])
+                                })
+
+                        except Exception as e:
+                            # Skip failed plugin loads but don't show errors in list command
+                            if debug or verbose:
+                                console.print(f"[dim red]Warning: Could not load plugin {plugin_name}: {e}[/dim red]")
+                            continue
+
+                except Exception as e:
+                    if debug or verbose:
+                        console.print(f"[dim red]Warning: Could not find entry point for {plugin_name}: {e}[/dim red]")
+                    continue
+
+            if all_capabilities_info:
+                capabilities_table = Table(title="Available Capabilities", box=box.ROUNDED, title_style="bold cyan")
+                capabilities_table.add_column("Capability", style="cyan")
+                capabilities_table.add_column("Plugin", style="dim")
+                capabilities_table.add_column("AI Function", style="green", justify="center")
+                capabilities_table.add_column("Required Scopes", style="yellow")
 
                 if verbose:
-                    ai_table.add_column("Description", style="white")
+                    capabilities_table.add_column("Description", style="white")
 
-                for func in all_ai_functions:
-                    parameters_str = ", ".join(func["parameters"]) if func["parameters"] else "none"
+                for cap_info in all_capabilities_info:
+                    ai_indicator = "✓" if cap_info["ai_function"] else "✗"
+                    scopes_str = ", ".join(cap_info["scopes"]) if cap_info["scopes"] else "none"
 
                     row = [
-                        func["name"],
-                        func["plugin"],
-                        parameters_str,
+                        cap_info["id"],  # Show ID instead of name - this is what goes in config
+                        cap_info["plugin"],
+                        ai_indicator,
+                        scopes_str,
                     ]
 
                     if verbose:
+                        description = cap_info["description"] or "No description"
                         row.append(
-                            func["description"][:80] + "..." if len(func["description"]) > 80 else func["description"]
+                            description[:80] + "..." if len(description) > 80 else description
                         )
 
-                    ai_table.add_row(*row)
+                    capabilities_table.add_row(*row)
 
-                console.print(ai_table)
-            elif manager.list_capabilities():
-                # Fallback to showing basic capabilities if no AI functions
-                capability_table = Table(title="Available Capabilities", box=box.ROUNDED, title_style="bold cyan")
-                capability_table.add_column("Capability ID", style="cyan")
-                capability_table.add_column("Name", style="white")
-                capability_table.add_column("Plugin", style="dim")
-                capability_table.add_column("Features", style="green")
-
-                if verbose:
-                    capability_table.add_column("Version", style="yellow", justify="center")
-                    capability_table.add_column("Priority", style="blue", justify="center")
-
-                for capability in manager.list_capabilities():
-                    plugin_name = manager.capability_to_plugin.get(capability.id, "unknown")
-                    # Handle both string and enum capability features
-                    caps = []
-                    for cap in capability.capabilities:
-                        if hasattr(cap, "value"):
-                            caps.append(cap.value)
-                        else:
-                            caps.append(str(cap))
-                    features = ", ".join(caps)
-
-                    row = [capability.id, capability.name, plugin_name, features]
-
-                    if verbose:
-                        row.extend([capability.version, str(capability.priority)])
-
-                    capability_table.add_row(*row)
-
-                console.print(capability_table)
+                console.print(capabilities_table)
+            else:
+                console.print("[yellow]No capabilities found. This may indicate:")
+                console.print("  • No plugins are installed")
+                console.print("  • Plugins have issues loading")
+                console.print("  • Use --verbose to see loading details[/yellow]")
 
     except ImportError:
         console.print("[red]Plugin system not available. Please check your installation.[/red]")
@@ -549,6 +615,32 @@ def create(plugin_name: str | None, template: str, output_dir: str | None, no_gi
 
     author = questionary.text("Author name:").ask()
 
+    def validate_email(email: str) -> bool | str:
+        """Validator for questionary that returns True or error message."""
+        if not email.strip():
+            return True  # Allow empty email
+
+        # Basic email validation
+        if " " in email:
+            return "Email cannot contain spaces"
+        if "@" not in email:
+            return "Email must contain @"
+        if email.count("@") != 1:
+            return "Email must contain exactly one @"
+
+        parts = email.split("@")
+        if not parts[0] or not parts[1]:
+            return "Email must have text before and after @"
+        if "." not in parts[1]:
+            return "Email domain must contain a dot"
+
+        return True
+
+    email = questionary.text(
+        "Author email (optional - press enter to skip):",
+        validate=validate_email,
+    ).ask()
+
     capability_id = questionary.text(
         "Primary capability ID:", default=plugin_name.replace("-", "_"), validate=lambda x: x.replace("_", "").isalnum()
     ).ask()
@@ -584,13 +676,23 @@ def create(plugin_name: str | None, template: str, output_dir: str | None, no_gi
 
         # Prepare template context
         plugin_name_snake = _to_snake_case(plugin_name)
+        # Generate class name, avoiding double "Plugin" suffix
+        base_class_name = "".join(word.capitalize() for word in plugin_name.replace("-", "_").split("_"))
+        if base_class_name.endswith("Plugin"):
+            class_name = base_class_name
+        else:
+            class_name = base_class_name + "Plugin"
+        capability_method_name = _to_snake_case(capability_id)
         context = {
             "plugin_name": plugin_name,
             "plugin_name_snake": plugin_name_snake,
+            "class_name": class_name,
             "display_name": display_name,
             "description": description,
             "author": author,
+            "email": email.strip() if email and email.strip() else None,
             "capability_id": capability_id,
+            "capability_method_name": capability_method_name,
             "template": template,
             "coding_agent": coding_agent,
             "include_github_actions": include_github_actions,
@@ -612,12 +714,115 @@ def create(plugin_name: str | None, template: str, output_dir: str | None, no_gi
         readme_content = _render_plugin_template("README.md.j2", context)
         (output_dir / "README.md").write_text(readme_content)
 
-        # Create test file
-        test_content = _render_plugin_template("test_plugin.py.j2", context)
+        # Create basic test file
+        test_content = f'''"""Tests for {display_name} plugin."""
+
+import pytest
+from agent.plugins.models import CapabilityContext
+from {plugin_name_snake}.plugin import {class_name}
+
+
+@pytest.fixture
+def plugin():
+    """Create plugin instance for testing."""
+    return {class_name}()
+
+
+@pytest.mark.asyncio
+async def test_{capability_method_name}(plugin):
+    """Test the {capability_id} capability."""
+    # Create mock context
+    context = CapabilityContext(
+        request_id="test-123",
+        user_id="test-user",
+        agent_id="test-agent",
+        conversation_id="test-conv",
+        message="Test message",
+        metadata={{"parameters": {{"input": "test input"}}}}
+    )
+
+    # Execute capability
+    result = await plugin.{capability_method_name}(context)
+
+    # Verify result
+    assert result is not None
+    if isinstance(result, dict):
+        assert "success" in result
+        assert "content" in result
+    else:
+        assert isinstance(result, str)
+'''
         (tests_dir / f"test_{plugin_name_snake}.py").write_text(test_content)
 
         # Create .gitignore
-        gitignore_content = _render_plugin_template(".gitignore.j2", context)
+        gitignore_content = '''# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+'''
         (output_dir / ".gitignore").write_text(gitignore_content)
 
         # Copy static folder to plugin root
@@ -635,7 +840,43 @@ def create(plugin_name: str | None, template: str, output_dir: str | None, no_gi
         elif coding_agent == "Cursor":
             cursor_rules_dir = output_dir / ".cursor" / "rules"
             cursor_rules_dir.mkdir(parents=True, exist_ok=True)
-            cursor_content = _render_plugin_template(".cursor/rules/agentup_plugin.mdc.j2", context)
+            cursor_content = f'''# AgentUp Plugin Development Rules
+
+This is an AgentUp plugin for {display_name}.
+
+## Plugin Architecture
+
+- Uses decorator-based architecture with `@capability` decorator
+- Entry point: `{plugin_name_snake}.plugin:{class_name}`
+- Capability ID: `{capability_id}`
+
+## Key Development Guidelines
+
+- Always use async/await for capability methods
+- Extract input using `self._extract_task_content(context)`
+- Return dict with success/error status and content
+- Follow modern Python typing conventions
+- Use Pydantic v2 patterns
+
+## Available Context
+
+```python
+from agent.plugins.models import CapabilityContext
+
+context.request_id: str
+context.user_id: str
+context.agent_id: str
+context.conversation_id: str
+context.message: str
+context.metadata: dict[str, Any]
+```
+
+## Testing
+
+- Use pytest with async support
+- Mock CapabilityContext for tests
+- Test both success and error cases
+'''
             (cursor_rules_dir / "agentup_plugin.mdc").write_text(cursor_content)
 
         # Create GitHub Actions files if requested
@@ -644,17 +885,151 @@ def create(plugin_name: str | None, template: str, output_dir: str | None, no_gi
             github_workflows_dir.mkdir(parents=True, exist_ok=True)
 
             # Create CI workflow
-            ci_content = _render_plugin_template(".github/workflows/ci.yml.j2", context)
+            ci_content = f'''name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{{{ matrix.python-version }}}}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{{{ matrix.python-version }}}}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+        pip install pytest pytest-asyncio pytest-cov
+
+    - name: Run tests
+      run: |
+        pytest tests/ --cov={plugin_name_snake} --cov-report=xml --cov-report=term-missing
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      if: matrix.python-version == '3.11'
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install ruff mypy bandit
+        pip install -e .
+
+    - name: Lint with ruff
+      run: |
+        ruff check src/ tests/
+        ruff format --check src/ tests/
+
+    - name: Type check with mypy
+      run: |
+        mypy src/{plugin_name_snake}/
+
+    - name: Security check with bandit
+      run: |
+        bandit -r src/{plugin_name_snake}/ -ll
+'''
             (github_workflows_dir / "ci.yml").write_text(ci_content)
 
             # Create security workflow
-            security_content = _render_plugin_template(".github/workflows/security.yml.j2", context)
+            security_content = f'''name: Security
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install bandit safety semgrep
+        pip install -e .
+
+    - name: Run bandit security linter
+      run: |
+        bandit -r src/{plugin_name_snake}/ -f json -o bandit-report.json
+        bandit -r src/{plugin_name_snake}/ -ll
+
+    - name: Run safety check
+      run: |
+        safety check
+
+    - name: Run semgrep
+      run: |
+        semgrep --config=auto src/{plugin_name_snake}/
+
+    - name: Upload security results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-reports
+        path: |
+          bandit-report.json
+'''
             (github_workflows_dir / "security.yml").write_text(security_content)
 
             # Create dependabot.yml
             github_dir = output_dir / ".github"
             github_dir.mkdir(parents=True, exist_ok=True)
-            dependabot_content = _render_plugin_template(".github/dependabot.yml.j2", context)
+            dependabot_content = '''version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    reviewers:
+      - "{author}"
+    assignees:
+      - "{author}"
+    open-pull-requests-limit: 10
+    allow:
+      - dependency-type: "direct"
+      - dependency-type: "indirect"
+'''.format(author=author.lower().replace(" ", "-") if author else "author")
             (github_dir / "dependabot.yml").write_text(dependabot_content)
 
         # Initialize git repo
@@ -760,9 +1135,9 @@ def uninstall(plugin_name: str):
 @click.argument("plugin_name")
 def reload(plugin_name: str):
     try:
-        from agent.plugins.manager import get_plugin_manager
+        from agent.plugins.manager import get_plugin_registry
 
-        manager = get_plugin_manager()
+        manager = get_plugin_registry()
 
         if plugin_name not in manager.plugins:
             console.print(f"[yellow]Plugin '{plugin_name}' not found[/yellow]")
@@ -786,9 +1161,9 @@ def reload(plugin_name: str):
 @click.argument("capability_id")
 def info(capability_id: str):
     try:
-        from agent.plugins.manager import get_plugin_manager
+        from agent.plugins.manager import get_plugin_registry
 
-        manager = get_plugin_manager()
+        manager = get_plugin_registry()
         capability = manager.get_capability(capability_id)
 
         if not capability:
@@ -873,9 +1248,9 @@ def info(capability_id: str):
 def validate():
     try:
         from agent.config import Config
-        from agent.plugins.manager import get_plugin_manager
+        from agent.plugins.manager import get_plugin_registry
 
-        manager = get_plugin_manager()
+        manager = get_plugin_registry()
 
         console.print("[cyan]Validating plugins...[/cyan]\n")
 

@@ -3,24 +3,24 @@ name = "{{ plugin_name }}"
 version = "0.4.0"
 description = "{{ description }}"
 authors = [
-    { name = "{{ author or 'Your Name' }}", email = "your.email@example.com" }
+    { name = "{{ author or 'Your Name' }}"{% if email %}, email = "{{ email }}"{% endif %} }
 ]
 dependencies = [
     "agentup>=0.4.0",
-    "pluggy>=1.5.0",
 ]
 
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 
-[project.entry-points."agentup.capabilities"]
-{{ plugin_name_snake }} = "{{ plugin_name_snake }}.plugin:Plugin"
+[project.entry-points."agentup.plugins"]
+{{ plugin_name_snake }} = "{{ plugin_name_snake }}.plugin:{{ class_name }}"
 
 [build-system]
 requires = ["hatchling"]

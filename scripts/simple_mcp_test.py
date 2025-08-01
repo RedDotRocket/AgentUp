@@ -21,7 +21,7 @@ except ImportError as e:
 
 
 async def check_server_health(base_url: str) -> bool:
-    
+
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             # Test basic server connectivity
@@ -50,7 +50,7 @@ async def check_server_health(base_url: str) -> bool:
 
 
 async def check_mcp_endpoint(server_url: str) -> bool:
-    
+
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             # Try a basic POST to the MCP endpoint to see if it exists
@@ -98,7 +98,7 @@ async def check_mcp_endpoint(server_url: str) -> bool:
 
 
 async def test_mcp_streamable_http():
-    
+
 
     base_url = "http://localhost:8001"
     server_url = f"{base_url}/mcp"

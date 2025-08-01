@@ -281,6 +281,7 @@ class PluginConfig(BaseModel):
     description: str | None = Field(None, description="Plugin description")
     enabled: bool = Field(True, description="Whether plugin is enabled")
     version: Version | None = Field(None, description="Plugin version constraint")
+    package: str | None = Field(None, description="Package name for plugin discovery")
     keywords: list[str] = Field(default_factory=list, description="Keywords for plugin search")
     patterns: list[str] = Field(default_factory=list, description="File patterns to match for plugin files")
     # Capability configuration

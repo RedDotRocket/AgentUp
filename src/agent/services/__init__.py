@@ -6,11 +6,10 @@ encapsulating core functionality into cohesive, testable services.
 New Services:
 - ConfigurationManager: Singleton configuration management with caching
 - BuiltinCapabilityRegistry: Unified capability registration and execution
-- AgentBootstrapper: Orchestrates service initialization
+- AgentBootstrapper: Orchestrates service initialization and plugin integration
 - SecurityService: Authentication and authorization
 - MiddlewareManager: Middleware configuration and application
 - StateManager: Conversation and application state management
-- PluginService: Plugin loading and capability registration
 - MCPService: Model Context Protocol integration
 - PushNotificationService: Push notification handling
 
@@ -31,7 +30,6 @@ from .config import ConfigurationManager
 from .mcp import MCPService
 from .middleware import MiddlewareManager
 from .multimodal import MultiModalProcessor
-from .plugins import PluginService
 from .push import PushNotificationService
 from .registry import (
     CacheService,
@@ -39,10 +37,6 @@ from .registry import (
     ServiceRegistry,
     WebAPIService,
     get_services,
-)
-from .registry import (
-    # DatabaseService,
-    Service as LegacyService,
 )
 from .security import SecurityService
 from .state import StateManager
@@ -57,14 +51,12 @@ __all__ = [
     "SecurityService",
     "MiddlewareManager",
     "StateManager",
-    "PluginService",
     "MCPService",
     "PushNotificationService",
     # Legacy services
     "get_services",
     "initialize_services",
     "initialize_services_from_config",
-    "LegacyService",
     "ServiceError",
     "ServiceRegistry",
     "CacheService",

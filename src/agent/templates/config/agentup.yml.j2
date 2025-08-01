@@ -5,17 +5,18 @@ version: 0.4.0
 
 # Agent Plugin Configuration
 plugins:
-  - plugin_id: Example_Plugin
-    name: Example Plugin
-    description: An example plugin for AgentUp
-    tags: [example, demo]
+  - plugin_id: {{ project_name_snake }}_plugin
+    package: {{ project_name | lower | replace(' ', '-') | replace('_', '-') }}-plugin  # PyPI package name (required for plugin system)
+    name: {{ project_name }} Plugin
+    description: A plugin for {{ project_name }}
+    tags: [{{ project_name | lower }}, plugin]
     input_mode: text
     output_mode: text
-    keywords: [example, plugin]
-    patterns: ['^example', '^demo']
+    keywords: [{{ project_name | lower }}, plugin]
+    patterns: ['^{{ project_name | lower }}', '^help']
     priority: 50
     capabilities:
-      - capability_id: example_capability
+      - capability_id: {{ project_name_snake }}_capability
         required_scopes: ["api:read"]
         enabled: true
 

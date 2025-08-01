@@ -545,12 +545,13 @@ def register_capability_function(capability_id: str, executor: Callable[[Task], 
 
 def get_capability_executor(capability_id: str) -> Callable[[Task], str] | None:
     # Check unified capabilities registry
+    logger.debug(f"Available capabilities: {list(_capabilities.keys())}")
     executor = _capabilities.get(capability_id)
-    if executor:
-        return executor
-
-    # No executor found
-    return None
+    if executor is None:
+        logger.warning(f"Capability '{capability_id}' not found in unified capabilities registry")
+        return None
+    logger.debug(f"Retrieved capability executor for '{capability_id}': {executor}")
+    return executor
 
 
 async def execute_status(task: Task) -> str:

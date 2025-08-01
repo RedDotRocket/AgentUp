@@ -34,6 +34,16 @@ class ConfigurationManager:
             self.logger.info("Configuration loaded successfully")
         return self._config
 
+    @property
+    def pydantic_config(self):
+        """Get the underlying Pydantic Settings model.
+        
+        Returns:
+            Settings instance with full Pydantic validation and typed access
+        """
+        from agent.config import Config
+        return Config
+
     def get(self, key: str, default: Any = None) -> Any:
         """Get a configuration value by key.
 
@@ -110,20 +120,19 @@ class ConfigurationManager:
         Returns:
             True if feature is enabled, False otherwise
         """
+        # Use Pydantic models for proper validation
+        from agent.config import Config
+        
         # Check common feature patterns
         if feature == "security":
-            return self.get("security.enabled", False)
+            return Config.security.enabled
         elif feature == "mcp":
-            return self.get("mcp.enabled", False)
+            return Config.mcp.enabled
         elif feature == "state_management":
-            return self.get("state_management.enabled", False)
+            return Config.state_management.get("enabled", False)
         elif feature == "plugins":
-            plugins_config = self.get("plugins", {})
-            if isinstance(plugins_config, dict):
-                return plugins_config.get("enabled", True)
-            elif isinstance(plugins_config, list):
-                return bool(plugins_config)
-            return False
+            # Plugins are enabled if any are configured
+            return bool(Config.plugins)
 
-        # Generic feature check
+        # Generic feature check - fallback to dict access
         return self.get(f"{feature}.enabled", False)

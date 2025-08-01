@@ -1,3 +1,10 @@
+"""
+Integration layer for the new decorator-based plugin system.
+
+This module replaces the old Pluggy-based integration with direct
+plugin management using the new PluginRegistry.
+"""
+
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, Union
 
@@ -8,19 +15,21 @@ import structlog
 from a2a.types import Task
 
 from agent.capabilities.manager import _capabilities
+from agent.core.dispatcher import FunctionRegistry
 
-from .adapter import PluginAdapter, get_plugin_manager
+from .manager import PluginRegistry, get_plugin_registry
+from .models import CapabilityContext
 
 logger = structlog.get_logger(__name__)
 
 
 def integrate_plugins_with_capabilities(config: Union["Settings", None] = None) -> dict[str, list[str]]:
     """
-    Integrate the plugin system with the existing capability registry.
+    Integrate the new plugin system with the existing capability registry.
 
     This function:
-    1. Discovers and loads all plugins
-    2. Registers only configured plugin capabilities as capability executors
+    1. Discovers and loads all plugins using the new PluginRegistry
+    2. Registers configured plugin capabilities as capability executors
     3. Makes them available through the existing get_capability_executor() mechanism
 
     Args:
@@ -30,168 +39,370 @@ def integrate_plugins_with_capabilities(config: Union["Settings", None] = None) 
     Returns:
         Dict mapping capability_id to required_scopes for enabled capabilities.
     """
+    logger.info("Starting plugin integration with capabilities system")
 
-    # Get the plugin manager and adapter
-    plugin_manager = get_plugin_manager()
+    # Get the plugin registry (replaces old plugin manager)
+    plugin_registry = get_plugin_registry()
+    logger.debug(f"Plugin registry obtained: {plugin_registry}")
 
-    # If config is not provided, we need to load it
+    # If config is not provided, load it
     if config is None:
         from agent.config import Config
-
         config = Config
-
-    adapter = PluginAdapter(config, plugin_manager)
 
     # Get configured plugins from the agent config
     try:
         configured_plugins = config.plugins
+        logger.debug(f"Found {len(configured_plugins)} configured plugins")
     except Exception as e:
         logger.warning(f"Could not load agent config, no plugins will be registered: {e}")
         configured_plugins = []
 
     registered_count = 0
-
-    # Build a mapping of plugin names to their capabilities
-    plugin_to_capabilities = {}
-    for capability_id in adapter.list_available_capabilities():
-        capability_info = adapter.get_capability_info(capability_id)
-        if capability_info and "plugin_name" in capability_info:
-            plugin_name = capability_info["plugin_name"]
-            if plugin_name not in plugin_to_capabilities:
-                plugin_to_capabilities[plugin_name] = []
-            plugin_to_capabilities[plugin_name].append(capability_id)
-
-    # Determine which capabilities to register based on new capability-based config
     capabilities_to_register = {}  # capability_id -> scope_requirements
 
     if not configured_plugins:
         logger.error("No plugin configuration found in agentup.yml - explicit configuration required")
         raise ValueError("Plugin configuration is required in agentup.yml.")
-    else:
-        for plugin_config in configured_plugins:
-            plugin_id = plugin_config.plugin_id
 
-            # Check if this uses the new capability-based structure
-            if plugin_config.capabilities:
-                if not plugin_config.capabilities:
-                    logger.error(f"Plugin '{plugin_id}' has no capabilities defined in configuration")
-                    logger.warning(
-                        f"Plugin '{plugin_id}' must define capabilities in the configuration. "
-                        f"Add 'capabilities' section with explicit scope requirements."
-                    )
-                    continue  # Skip this plugin and continue with the next one
-                for capability_config in plugin_config.capabilities:
-                    capability_id = capability_config.capability_id
-                    required_scopes = capability_config.required_scopes or []
-                    enabled = capability_config.enabled
+    # First, discover plugins
+    logger.debug("Discovering plugins via entry points")
+    plugin_registry.discover_plugins()
+    logger.debug(f"Plugin registry now has {len(plugin_registry.plugins)} loaded plugins: {list(plugin_registry.plugins.keys())}")
 
-                    if enabled:
-                        # Store for registration but don't log until we verify plugin exists
-                        capabilities_to_register[capability_id] = required_scopes
-            else:
-                logger.error(f"Plugin '{plugin_id}' uses legacy format - explicit capability configuration required")
-                raise ValueError(
-                    f"Plugin '{plugin_id}' must use explicit capability configuration format. "
-                    f"Legacy format has been removed for security. "
-                    f"Add 'capabilities' section with explicit scope requirements."
-                )
-
-    # Store the adapter globally so other components can access it
-    _plugin_adapter[0] = adapter
-
-    # Check for configured plugins/capabilities that weren't discovered
-    discovered_capabilities = set(adapter.list_available_capabilities())
+    # Process configured plugins and determine which capabilities to register
     for plugin_config in configured_plugins:
         plugin_id = plugin_config.plugin_id
-        plugin_found = False
+        logger.debug(f"Processing plugin config for: {plugin_id}")
 
-        # Check if any discovered capability belongs to this plugin
-        for capability_id in discovered_capabilities:
-            capability_info = adapter.get_capability_info(capability_id)
-            if capability_info and capability_info.get("plugin_name") == plugin_id:
-                plugin_found = True
-                break
+        # Check if plugin was actually loaded
+        if plugin_id not in plugin_registry.plugins:
+            logger.warning(f"Plugin '{plugin_id}' configured but not loaded. Check installation and entry points.")
+            logger.debug(f"Available plugins: {list(plugin_registry.plugins.keys())}")
+            continue
 
-        if not plugin_found:
+        # Check if this plugin uses the new capability-based structure
+        if not plugin_config.capabilities:
+            logger.error(f"Plugin '{plugin_id}' has no capabilities defined in configuration")
             logger.warning(
-                f"Plugin '{plugin_id}' is configured in agentup.yml but was not discovered. "
-                f"Check that the plugin is installed and properly registered."
+                f"Plugin '{plugin_id}' must define capabilities in the configuration. "
+                f"Add 'capabilities' section with explicit scope requirements."
             )
+            continue
 
-        # Also check individual capabilities
-        if plugin_config.capabilities:
-            for capability_config in plugin_config.capabilities:
-                capability_id = capability_config.capability_id
-                if capability_config.enabled and capability_id not in discovered_capabilities:
+        # Configure the plugin
+        plugin_instance = plugin_registry.get_plugin(plugin_id)
+        if plugin_instance:
+            # Configure plugin with global config
+            plugin_instance.configure(plugin_config.config)
+            logger.debug(f"Configured plugin '{plugin_id}' with settings")
+
+            # Get the plugin's actual capabilities
+            plugin_capabilities = plugin_instance.get_capability_definitions()
+            logger.debug(f"Plugin '{plugin_id}' provides {len(plugin_capabilities)} capabilities: {[cap.id for cap in plugin_capabilities]}")
+        else:
+            logger.error(f"Could not get plugin instance for '{plugin_id}'")
+            continue
+
+        # Process each capability configuration
+        for capability_config in plugin_config.capabilities:
+            capability_id = capability_config.capability_id
+            required_scopes = capability_config.required_scopes or []
+            enabled = capability_config.enabled
+
+            logger.debug(f"Processing capability config: {capability_id}, enabled={enabled}, scopes={required_scopes}")
+
+            if enabled:
+                # Check if capability actually exists in the plugin
+                plugin_capability_ids = [cap.id for cap in plugin_capabilities]
+                if capability_id not in plugin_capability_ids:
                     logger.warning(
                         f"Capability '{capability_id}' from plugin '{plugin_id}' is configured "
-                        f"but not available. The plugin may not be installed or the capability "
-                        f"may not exist."
+                        f"but not provided by the plugin. Available capabilities: {plugin_capability_ids}"
                     )
+                    continue
 
+                # Store for registration
+                capabilities_to_register[capability_id] = required_scopes
+                logger.debug(f"Will register capability '{capability_id}' with scopes: {required_scopes}")
+
+    logger.debug(f"Total capabilities to register: {len(capabilities_to_register)}")
+
+    # Configure services for all loaded plugins
+    try:
+        # Get available services (you may need to adjust this based on your service setup)
+        services = _get_available_services()
+        plugin_registry.configure_services(services)
+        logger.debug(f"Configured services for {len(plugin_registry.plugins)} plugins")
+    except Exception as e:
+        logger.warning(f"Could not configure services for plugins: {e}")
+
+    # Register capabilities with the existing capability system
     for capability_id, required_scopes in capabilities_to_register.items():
         # Skip if capability executor already exists (don't override existing executors)
         if capability_id in _capabilities:
             logger.debug(f"Capability '{capability_id}' already registered as executor, skipping plugin")
             continue
 
-        if capability_id in discovered_capabilities:
-            logger.debug(f"Registering capability '{capability_id}' with scopes: {required_scopes}")
-        else:
-            logger.debug(
-                f"Skipping registration of missing capability '{capability_id}' with scopes: {required_scopes}"
-            )
-            continue
-
         try:
+            logger.info(f"Registering plugin capability '{capability_id}' with scopes: {required_scopes}")
+
             from agent.capabilities.manager import register_plugin_capability
 
-            plugin_config = {"capability_id": capability_id, "required_scopes": required_scopes}
+            plugin_config = {
+                "capability_id": capability_id,
+                "required_scopes": required_scopes
+            }
 
             # Register using the framework's scope enforcement pattern
             register_plugin_capability(plugin_config)
-            logger.debug(
-                f"Registered plugin capability '{capability_id}' with framework scope enforcement: {required_scopes}"
-            )
+            logger.info(f"Successfully registered plugin capability '{capability_id}' with scopes: {required_scopes}")
             registered_count += 1
 
         except Exception as e:
-            logger.error(f"Failed to register plugin capability '{capability_id}' with scope enforcement: {e}")
+            logger.error(f"Failed to register plugin capability '{capability_id}': {e}")
+            import traceback
+            logger.error(f"Registration error traceback: {traceback.format_exc()}")
             raise ValueError(
-                f"Plugin capability '{capability_id}' requires proper scope enforcement configuration. "
-                f"Legacy registration without scope enforcement has been removed for security."
+                f"Plugin capability '{capability_id}' requires proper scope enforcement configuration."
             ) from e
 
     if registered_count == 0:
-        logger.debug("No plugin capabilities registered in Agents config, integration complete")
-    logger.info(
-        f"Configuration loaded {registered_count} plugin capabilities (out of {len(adapter.list_available_capabilities())} discovered)"
-    )
+        logger.warning("No plugin capabilities registered, integration complete")
+    else:
+        logger.info(f"Plugin integration complete: registered {registered_count} plugin capabilities")
 
-    # Return the enabled capabilities for use in AI function registration
+    # Store the registry globally for other components to access
+    _plugin_registry_instance[0] = plugin_registry
+
     return capabilities_to_register
 
 
-# Store the adapter instance
-_plugin_adapter: list[PluginAdapter | None] = [None]
+def _get_available_services() -> dict[str, Any]:
+    """Get available services to configure for plugins"""
+    services = {}
+
+    try:
+        # Add LLM service if available
+        from agent.llm_providers import create_llm_provider
+        services["llm_factory"] = create_llm_provider
+    except ImportError:
+        pass
+
+    try:
+        # Add multimodal helper if available
+        from agent.utils.multimodal import MultiModalHelper
+        services["multimodal"] = MultiModalHelper()
+    except ImportError:
+        pass
+
+    # Add more services as needed
+    return services
 
 
-def get_plugin_adapter() -> PluginAdapter | None:
-    return _plugin_adapter[0]
+# Store the registry instance globally
+_plugin_registry_instance: list[PluginRegistry | None] = [None]
 
 
-def create_plugin_capability_wrapper(plugin_executor: Callable) -> Callable[[Task], str]:
+def get_plugin_registry_instance() -> PluginRegistry | None:
+    """Get the plugin registry instance"""
+    return _plugin_registry_instance[0]
+
+class PluginAdapter:
+    """Adapter to bridge the new plugin system with the capability registration system."""
+
+    def __init__(self):
+        # Don't store the registry - get it dynamically to avoid timing issues
+        pass
+
+    def get_capability_executor_for_capability(self, capability_id: str):
+        """Get capability executor for a given capability ID."""
+        # Get registry dynamically to ensure it's populated
+        plugin_registry = get_plugin_registry()
+        if not plugin_registry:
+            logger.error(f"Plugin registry not available when getting executor for {capability_id}")
+            return None
+
+        logger.debug(f"Looking for capability '{capability_id}' in {len(plugin_registry.plugins)} plugins")
+
+        # Find which plugin provides this capability
+        for plugin_id, plugin_instance in plugin_registry.plugins.items():
+            capability_definitions = plugin_instance.get_capability_definitions()
+            logger.debug(f"Plugin '{plugin_id}' has capabilities: {[cap.id for cap in capability_definitions]}")
+
+            for cap_def in capability_definitions:
+                if cap_def.id == capability_id:
+                    logger.info(f"Found capability '{capability_id}' in plugin '{plugin_id}'")
+
+                    # Create executor that calls the plugin's capability method
+                    async def capability_executor(task, context=None):
+                        from agent.plugins.models import CapabilityContext
+
+                        # Create context if not provided
+                        if context is None:
+                            context = CapabilityContext(
+                                task=task,
+                                config={},
+                                services={},
+                                state={},
+                                metadata={}
+                            )
+
+                        logger.debug(f"Executing capability '{capability_id}' on plugin '{plugin_id}'")
+
+                        # Execute the capability
+                        result = await plugin_registry.execute_capability(capability_id, context)
+
+                        logger.debug(f"Capability execution result: {result}")
+                        return result.content if hasattr(result, 'content') else str(result)
+
+                    return capability_executor
+
+        logger.error(f"Capability '{capability_id}' not found in any plugin")
+        return None
+
+
+_plugin_adapter_instance = None
+
+def get_plugin_adapter():
+    """Get the plugin adapter instance."""
+    global _plugin_adapter_instance
+    if _plugin_adapter_instance is None:
+        _plugin_adapter_instance = PluginAdapter()
+    return _plugin_adapter_instance
+
+
+def create_plugin_capability_wrapper(capability_id: str) -> Callable[[Task], str]:
     """
-    Wrap a plugin capability executor to be compatible with the existing executor signature.
+    Create a wrapper function that executes a plugin capability.
 
-    This converts between the plugin's CapabilityContext and the simple Task parameter.
+    This converts between the plugin's CapabilityContext and the simple Task parameter
+    used by the existing capability system.
+
+    Args:
+        capability_id: ID of the capability to wrap
+
+    Returns:
+        Async function that can be called with a Task
     """
 
     async def wrapped_executor(task: Task) -> str:
-        # The adapter already handles this conversion
-        return await plugin_executor(task)
+        """Execute plugin capability with Task converted to CapabilityContext"""
+        registry = get_plugin_registry_instance()
+
+        if not registry:
+            return "Plugin system not initialized"
+
+        # Convert Task to CapabilityContext
+        context = CapabilityContext(
+            task=task,
+            config={},  # Will be populated by plugin configuration
+            services=registry.plugins[registry.capability_to_plugin[capability_id]]._services,
+            state={},   # Will be managed by the plugin
+            metadata={"executor_type": "capability_wrapper"}
+        )
+
+        # Execute the capability
+        result = await registry.execute_capability(capability_id, context)
+
+        # Return content as string (expected by existing system)
+        return result.content
 
     return wrapped_executor
+
+
+def integrate_with_function_registry(
+    registry: FunctionRegistry,
+    enabled_capabilities: dict[str, list[str]] | None = None
+) -> None:
+    """
+    Integrate plugins with the function registry for AI function calling.
+
+    Args:
+        registry: The function registry to integrate with
+        enabled_capabilities: Dict mapping capability_id to required_scopes.
+                            If None, will use all available AI functions.
+    """
+    plugin_registry = get_plugin_registry_instance()
+
+    if not plugin_registry:
+        logger.warning("Plugin registry not available for function integration")
+        return
+
+    # Determine which capabilities are enabled
+    if enabled_capabilities is None:
+        # Use all available capabilities that support AI functions
+        enabled_capabilities = {}
+        for capability_id, capability_meta in plugin_registry.capabilities.items():
+            if capability_meta.ai_function:
+                enabled_capabilities[capability_id] = capability_meta.scopes
+
+    # Register AI functions for enabled capabilities
+    ai_function_count = 0
+
+    for capability_id in enabled_capabilities.keys():
+        if capability_id not in plugin_registry.capabilities:
+            continue
+
+        capability_meta = plugin_registry.capabilities[capability_id]
+
+        # Skip if capability doesn't support AI functions
+        if not capability_meta.ai_function:
+            continue
+
+        # Get AI functions from the capability
+        plugin_id = plugin_registry.capability_to_plugin[capability_id]
+        plugin = plugin_registry.plugins[plugin_id]
+        ai_functions = plugin.get_ai_functions(capability_id)
+
+        for ai_func in ai_functions:
+            # Create OpenAI-compatible function schema
+            schema = {
+                "name": ai_func.name,
+                "description": ai_func.description,
+                "parameters": ai_func.parameters,
+            }
+
+            # Create a wrapper that works with the function registry
+            handler = _create_ai_function_handler(capability_id, ai_func, plugin_registry)
+
+            # Register with the function registry
+            registry.register_function(ai_func.name, handler, schema)
+            ai_function_count += 1
+
+            logger.debug(f"Registered AI function '{ai_func.name}' from plugin '{plugin_id}'")
+
+    logger.info(f"Registered {ai_function_count} AI functions from plugins")
+
+
+def _create_ai_function_handler(capability_id: str, ai_func, plugin_registry: PluginRegistry):
+    """Create handler for AI function calls"""
+
+    async def handler(task, context):
+        """Handle AI function call"""
+        # Extract parameters from the function call
+        parameters = context.get("parameters", {}) if isinstance(context, dict) else {}
+
+        # Create CapabilityContext for the plugin
+        plugin_context = CapabilityContext(
+            task=task,
+            config={},
+            services={},
+            state={},
+            metadata={
+                "parameters": parameters,
+                "capability_id": capability_id,
+                "ai_function_call": True,
+                "function_name": ai_func.name
+            }
+        )
+
+        # Execute the capability
+        result = await plugin_registry.execute_capability(capability_id, plugin_context)
+
+        return result
+
+    return handler
 
 
 def list_all_capabilities() -> list[str]:
@@ -201,11 +412,11 @@ def list_all_capabilities() -> list[str]:
     # Get capabilities from existing executors
     executor_capabilities = list(_capabilities.keys())
 
-    # Get capabilities from plugins if integrated
+    # Get capabilities from plugins
     plugin_capabilities = []
-    adapter = get_plugin_adapter()
-    if adapter:
-        plugin_capabilities = adapter.list_available_capabilities()
+    registry = get_plugin_registry_instance()
+    if registry:
+        plugin_capabilities = list(registry.capabilities.keys())
 
     # Combine and deduplicate
     all_capabilities = list(set(executor_capabilities + plugin_capabilities))
@@ -216,12 +427,21 @@ def get_capability_info(capability_id: str) -> dict[str, Any]:
     """
     Get information about a capability from either executors or plugins.
     """
-    # Check if it's a plugin capability
-    adapter = get_plugin_adapter()
-    if adapter:
-        info = adapter.get_capability_info(capability_id)
-        if info:
-            return info
+    # Check plugin capabilities first
+    registry = get_plugin_registry_instance()
+    if registry:
+        capability_def = registry.get_capability(capability_id)
+        if capability_def:
+            return {
+                "capability_id": capability_def.id,
+                "name": capability_def.name,
+                "description": capability_def.description,
+                "plugin_name": capability_def.plugin_name,
+                "source": "plugin",
+                "scopes": capability_def.required_scopes,
+                "ai_function": CapabilityType.AI_FUNCTION in capability_def.capabilities,
+                "tags": capability_def.tags
+            }
 
     # Fallback to basic executor info
     if capability_id in _capabilities:
@@ -240,9 +460,10 @@ def enable_plugin_system() -> None:
     """
     Enable the plugin system and integrate it with existing capability executors.
 
-    This should be called during agent startup.
+    This should be called during agent startup to replace the old Pluggy-based system.
     """
     try:
+        # Integrate plugins with capabilities
         enabled_capabilities = integrate_plugins_with_capabilities()
 
         # Integrate plugins with the function registry for AI function calling
@@ -252,24 +473,16 @@ def enable_plugin_system() -> None:
             # Get the global function registry
             function_registry = get_function_registry()
 
-            # Get the plugin adapter that was created during capability integration
-            adapter = get_plugin_adapter()
-
-            if adapter:
-                # Integrate the plugin adapter with the function registry
-                # Pass the enabled capabilities to ensure only enabled AI functions are registered
-                adapter.integrate_with_function_registry(function_registry, enabled_capabilities)
-                logger.info("Plugin adapter integrated with function registry for AI function calling")
-            else:
-                logger.warning("No plugin adapter available for function registry integration")
+            # Integrate plugins with function registry
+            integrate_with_function_registry(function_registry, enabled_capabilities)
+            logger.info("Plugin system integrated with function registry for AI function calling")
 
         except Exception as e:
             logger.error(f"Failed to integrate plugins with function registry: {e}")
             # Continue without AI function integration
 
-        # Make multi-modal helper available to plugins
+        # Make multimodal helper available to plugins (if needed)
         try:
-            # Store in global space for plugins to access
             import sys
 
             from agent.utils.multimodal import MultiModalHelper
@@ -284,8 +497,13 @@ def enable_plugin_system() -> None:
         except Exception as e:
             logger.warning(f"Could not make multi-modal helper available to plugins: {e}")
 
-        logger.debug("Plugin system initialized successfully")
+        logger.info("New plugin system initialized successfully")
+
     except Exception as e:
-        logger.error(f"Failed to enable plugin system: {e}", exc_info=True)
+        logger.error(f"Failed to enable new plugin system: {e}", exc_info=True)
         # Don't crash the agent if plugins fail to load
         pass
+
+
+# Re-export important classes for backward compatibility
+from .models import CapabilityType  # noqa: E402
