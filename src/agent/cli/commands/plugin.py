@@ -376,9 +376,15 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
                                             "ai_function": hasattr(cap_def, "ai_function") and cap_def.ai_function,
                                         }
                                     )
-                            except Exception:
+                            except Exception as e:
+                                if debug or verbose:
+                                    console.print(
+                                        f"[dim red]Warning: Could not load plugin {plugin_name}: {e}[/dim red]"
+                                    )
                                 continue
-                    except Exception:
+                    except Exception as e:
+                        if debug or verbose:
+                            console.print(f"[dim red]Warning: Could not load plugin {plugin_name}: {e}[/dim red]")
                         continue
 
                 output["capabilities"] = capabilities_for_json
@@ -437,9 +443,15 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
                                             "ai_function": hasattr(cap_def, "ai_function") and cap_def.ai_function,
                                         }
                                     )
-                            except Exception:
+                            except Exception as e:
+                                if debug or verbose:
+                                    console.print(
+                                        f"[dim red]Warning: Could not load plugin {plugin_name}: {e}[/dim red]"
+                                    )
                                 continue
-                    except Exception:
+                    except Exception as e:
+                        if debug or verbose:
+                            console.print(f"[dim red]Warning: Could not load plugin {plugin_name}: {e}[/dim red]")
                         continue
 
                 output["capabilities"] = capabilities_for_yaml
