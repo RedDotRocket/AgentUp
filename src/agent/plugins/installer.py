@@ -42,11 +42,7 @@ class SecurePluginInstaller:
         logger.info(f"Plugin installer initialized (package_manager: {self.package_manager})")
 
     async def install_plugin(
-        self,
-        package_name: str,
-        version: str | None = None,
-        force: bool = False,
-        dry_run: bool = False
+        self, package_name: str, version: str | None = None, force: bool = False, dry_run: bool = False
     ) -> dict[str, Any]:
         """
         Install a plugin with security verification.
@@ -68,7 +64,7 @@ class SecurePluginInstaller:
             "verification": {},
             "messages": [],
             "warnings": [],
-            "errors": []
+            "errors": [],
         }
 
         try:
@@ -124,12 +120,7 @@ class SecurePluginInstaller:
 
     def _evaluate_installation_safety(self, verification: dict[str, Any]) -> dict[str, Any]:
         """Evaluate whether it's safe to install a plugin"""
-        safety = {
-            "safe_to_install": False,
-            "trust_score": 0.0,
-            "safety_messages": [],
-            "risk_factors": []
-        }
+        safety = {"safe_to_install": False, "trust_score": 0.0, "safety_messages": [], "risk_factors": []}
 
         # Check trusted publishing
         if verification["trusted_publishing"]:
@@ -172,11 +163,7 @@ class SecurePluginInstaller:
 
     def _meets_minimum_trust_level(self, trust_level: str) -> bool:
         """Check if trust level meets minimum requirement"""
-        trust_levels = {
-            "unknown": 0,
-            "community": 1,
-            "official": 2
-        }
+        trust_levels = {"unknown": 0, "community": 1, "official": 2}
 
         current_level = trust_levels.get(trust_level, 0)
         minimum_level = trust_levels.get(self.minimum_trust_level, 0)
@@ -184,15 +171,12 @@ class SecurePluginInstaller:
         return current_level >= minimum_level
 
     async def _prompt_user_approval(
-        self,
-        package_name: str,
-        verification: dict[str, Any],
-        safety_result: dict[str, Any]
+        self, package_name: str, verification: dict[str, Any], safety_result: dict[str, Any]
     ) -> bool:
         """Prompt user for installation approval"""
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print(f"🔒 Security Review: {package_name}")
-        print("="*60)
+        print("=" * 60)
 
         # Display trust information
         if verification["trusted_publishing"]:
@@ -218,9 +202,11 @@ class SecurePluginInstaller:
                 print(f"   • {risk}")
 
         # Auto-approve official plugins if configured
-        if (self.auto_approve_official and
-            verification.get("trust_level") == "official" and
-            verification.get("publisher") == "agentup-official"):
+        if (
+            self.auto_approve_official
+            and verification.get("trust_level") == "official"
+            and verification.get("publisher") == "agentup-official"
+        ):
             print("\n✅ Auto-approved (official plugin)")
             return True
 
@@ -232,7 +218,7 @@ class SecurePluginInstaller:
             loop = asyncio.get_event_loop()
             response = await loop.run_in_executor(None, input)
 
-            return response.lower().strip() in ['y', 'yes']
+            return response.lower().strip() in ["y", "yes"]
 
         except Exception as e:
             logger.warning(f"Error reading user input: {e}")
@@ -240,12 +226,7 @@ class SecurePluginInstaller:
 
     async def _install_package(self, package_name: str, version: str | None = None) -> dict[str, Any]:
         """Install package using configured package manager"""
-        result = {
-            "success": False,
-            "errors": [],
-            "stdout": "",
-            "stderr": ""
-        }
+        result = {"success": False, "errors": [], "stdout": "", "stderr": ""}
 
         try:
             # Build install command
@@ -266,15 +247,10 @@ class SecurePluginInstaller:
 
             # Run installation with timeout
             process = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+                *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
             )
 
-            stdout, stderr = await asyncio.wait_for(
-                process.communicate(),
-                timeout=self.install_timeout
-            )
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=self.install_timeout)
 
             result["stdout"] = stdout.decode()
             result["stderr"] = stderr.decode()
@@ -330,12 +306,7 @@ class SecurePluginInstaller:
 
     async def uninstall_plugin(self, package_name: str, force: bool = False) -> dict[str, Any]:
         """Uninstall a plugin package"""
-        result = {
-            "package_name": package_name,
-            "success": False,
-            "messages": [],
-            "errors": []
-        }
+        result = {"package_name": package_name, "success": False, "messages": [], "errors": []}
 
         try:
             logger.info(f"Uninstalling plugin: {package_name}")
@@ -346,7 +317,7 @@ class SecurePluginInstaller:
                 loop = asyncio.get_event_loop()
                 response = await loop.run_in_executor(None, input)
 
-                if response.lower().strip() not in ['y', 'yes']:
+                if response.lower().strip() not in ["y", "yes"]:
                     result["messages"].append("❌ Uninstallation cancelled by user")
                     return result
 
@@ -360,9 +331,7 @@ class SecurePluginInstaller:
 
             # Run uninstallation
             process = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+                *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
             )
 
             stdout, stderr = await process.communicate()
@@ -400,7 +369,7 @@ class SecurePluginInstaller:
                         "summary": dist.metadata.get("Summary", ""),
                         "author": dist.metadata.get("Author", ""),
                         "has_entry_points": False,
-                        "entry_points": []
+                        "entry_points": [],
                     }
 
                     # Check for AgentUp entry points
@@ -447,12 +416,7 @@ class SecurePluginInstaller:
 
     async def upgrade_plugin(self, package_name: str, force: bool = False) -> dict[str, Any]:
         """Upgrade a plugin to the latest version"""
-        result = {
-            "package_name": package_name,
-            "success": False,
-            "messages": [],
-            "errors": []
-        }
+        result = {"package_name": package_name, "success": False, "messages": [], "errors": []}
 
         try:
             logger.info(f"Upgrading plugin: {package_name}")
@@ -465,9 +429,7 @@ class SecurePluginInstaller:
 
             # Run upgrade
             process = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+                *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
             )
 
             stdout, stderr = await process.communicate()
@@ -495,10 +457,7 @@ class SecurePluginInstaller:
             import aiohttp
 
             search_url = "https://pypi.org/search/"
-            params = {
-                "q": f"agentup {query}",
-                "o": "relevance"
-            }
+            params = {"q": f"agentup {query}", "o": "relevance"}
 
             async with aiohttp.ClientSession() as session:
                 async with session.get(search_url, params=params) as response:
@@ -512,7 +471,7 @@ class SecurePluginInstaller:
                                 "name": f"agentup-{query}-plugin",
                                 "version": "1.0.0",
                                 "summary": f"AgentUp plugin for {query}",
-                                "author": "AgentUp Community"
+                                "author": "AgentUp Community",
                             }
                         ]
 

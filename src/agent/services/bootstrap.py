@@ -199,6 +199,7 @@ class AgentBootstrapper:
             self.logger.error(f"Plugin integration failed: {e}")
             # Don't raise - continue with other services
             import traceback
+
             self.logger.error(f"Plugin integration error traceback: {traceback.format_exc()}")
 
     async def _cleanup_services(self) -> None:

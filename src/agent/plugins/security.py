@@ -49,7 +49,7 @@ class PluginSecurityManager:
                         "package": plugin_config.get("package"),
                         "verified": plugin_config.get("verified", False),
                         "min_version": plugin_config.get("min_version"),
-                        "max_version": plugin_config.get("max_version")
+                        "max_version": plugin_config.get("max_version"),
                     }
 
         # Always allow built-in/example plugins
@@ -209,13 +209,13 @@ class PluginSecurityManager:
         try:
             if plugin_path.is_file():
                 # Single file
-                with open(plugin_path, 'rb') as f:
+                with open(plugin_path, "rb") as f:
                     hasher.update(f.read())
             else:
                 # Directory - hash all Python files
                 python_files = sorted(plugin_path.glob("**/*.py"))
                 for py_file in python_files:
-                    with open(py_file, 'rb') as f:
+                    with open(py_file, "rb") as f:
                         hasher.update(py_file.name.encode())  # Include filename
                         hasher.update(f.read())
 
@@ -236,13 +236,7 @@ class PluginSecurityManager:
         Returns:
             Security report dictionary
         """
-        report = {
-            "plugin_id": plugin_id,
-            "security_level": "unknown",
-            "allowed": False,
-            "reason": "",
-            "checks": {}
-        }
+        report = {"plugin_id": plugin_id, "security_level": "unknown", "allowed": False, "reason": "", "checks": {}}
 
         # Check if plugin is allowed
         allowed, reason = self.is_plugin_allowed(plugin_id, plugin_info.get("package_info"))
@@ -266,10 +260,7 @@ class PluginSecurityManager:
         if plugin_path:
             path_obj = Path(plugin_path)
             is_valid, issues = self.validate_plugin_package(plugin_id, path_obj)
-            report["checks"]["validation"] = {
-                "passed": is_valid,
-                "issues": issues
-            }
+            report["checks"]["validation"] = {"passed": is_valid, "issues": issues}
 
             # Add file hash
             report["checks"]["file_hash"] = self.compute_plugin_hash(path_obj)
@@ -285,12 +276,7 @@ class PluginSecurityManager:
             plugin_id: Plugin identifier
             details: Additional event details
         """
-        log_entry = {
-            "event": event_type,
-            "plugin_id": plugin_id,
-            "timestamp": time.time(),
-            **details
-        }
+        log_entry = {"event": event_type, "plugin_id": plugin_id, "timestamp": time.time(), **details}
 
         if event_type in ["plugin_blocked", "validation_failed", "suspicious_activity"]:
             logger.warning(f"Security event: {event_type} for plugin {plugin_id}", extra=log_entry)
@@ -314,14 +300,14 @@ def create_default_security_config() -> dict[str, Any]:
                 "greeting": {"builtin": True, "verified": True},
                 "weather": {"builtin": True, "verified": True},
                 "text_analysis": {"builtin": True, "verified": True},
-                "calculator": {"builtin": True, "verified": True}
+                "calculator": {"builtin": True, "verified": True},
             },
             "blocked_plugins": [
                 # Examples of potentially dangerous plugin names
                 "system_admin",
                 "file_delete",
-                "network_scanner"
-            ]
+                "network_scanner",
+            ],
         }
     }
 
@@ -360,6 +346,3 @@ def validate_plugin_configuration(plugin_config: dict[str, Any]) -> tuple[bool, 
             issues.append(f"Configuration contains suspicious pattern: {pattern}")
 
     return len(issues) == 0, issues
-
-
-

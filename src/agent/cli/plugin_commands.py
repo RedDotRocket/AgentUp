@@ -29,11 +29,18 @@ def create_plugin_commands():
     @click.option("--version", "-v", help="Specific version to install")
     @click.option("--force", "-f", is_flag=True, help="Skip safety prompts")
     @click.option("--dry-run", "-n", is_flag=True, help="Verify only, don't install")
-    @click.option("--trust-level", type=click.Choice(["unknown", "community", "official"]),
-                  help="Minimum required trust level")
+    @click.option(
+        "--trust-level", type=click.Choice(["unknown", "community", "official"]), help="Minimum required trust level"
+    )
     @click.option("--require-trusted", is_flag=True, help="Require trusted publishing")
-    def install(package_name: str, version: str | None, force: bool, dry_run: bool,
-                trust_level: str | None, require_trusted: bool):
+    def install(
+        package_name: str,
+        version: str | None,
+        force: bool,
+        dry_run: bool,
+        trust_level: str | None,
+        require_trusted: bool,
+    ):
         """Install an AgentUp plugin with security verification"""
         asyncio.run(_install_plugin(package_name, version, force, dry_run, trust_level, require_trusted))
 
@@ -52,10 +59,15 @@ def create_plugin_commands():
         asyncio.run(_upgrade_plugin(package_name, force))
 
     @plugin_group.command()
-    @click.option("--trust-level", type=click.Choice(["all", "unknown", "community", "official"]),
-                  default="all", help="Filter by trust level")
-    @click.option("--format", "output_format", type=click.Choice(["table", "json", "yaml"]),
-                  default="table", help="Output format")
+    @click.option(
+        "--trust-level",
+        type=click.Choice(["all", "unknown", "community", "official"]),
+        default="all",
+        help="Filter by trust level",
+    )
+    @click.option(
+        "--format", "output_format", type=click.Choice(["table", "json", "yaml"]), default="table", help="Output format"
+    )
     def list(trust_level: str, output_format: str):
         """List installed AgentUp plugins"""
         asyncio.run(_list_plugins(trust_level, output_format))
@@ -76,8 +88,9 @@ def create_plugin_commands():
         asyncio.run(_verify_plugin(package_name, version, verbose))
 
     @plugin_group.command()
-    @click.option("--format", "output_format", type=click.Choice(["table", "json"]),
-                  default="table", help="Output format")
+    @click.option(
+        "--format", "output_format", type=click.Choice(["table", "json"]), default="table", help="Output format"
+    )
     def status(output_format: str):
         """Show plugin system status and trust summary"""
         asyncio.run(_show_status(output_format))
@@ -88,8 +101,9 @@ def create_plugin_commands():
         pass
 
     @trust_group.command(name="list")
-    @click.option("--format", "output_format", type=click.Choice(["table", "json"]),
-                  default="table", help="Output format")
+    @click.option(
+        "--format", "output_format", type=click.Choice(["table", "json"]), default="table", help="Output format"
+    )
     def list_publishers(output_format: str):
         """List trusted publishers"""
         asyncio.run(_list_trusted_publishers(output_format))
@@ -97,8 +111,9 @@ def create_plugin_commands():
     @trust_group.command(name="add")
     @click.argument("publisher_id")
     @click.argument("repositories", nargs=-1, required=True)
-    @click.option("--trust-level", type=click.Choice(["community", "official"]),
-                  default="community", help="Trust level")
+    @click.option(
+        "--trust-level", type=click.Choice(["community", "official"]), default="community", help="Trust level"
+    )
     @click.option("--description", "-d", help="Publisher description")
     def add_publisher(publisher_id: str, repositories: tuple, trust_level: str, description: str | None):
         """Add a trusted publisher"""
@@ -122,13 +137,9 @@ def create_plugin_commands():
 
 # === Command Implementation Functions ===
 
+
 async def _install_plugin(
-    package_name: str,
-    version: str | None,
-    force: bool,
-    dry_run: bool,
-    trust_level: str | None,
-    require_trusted: bool
+    package_name: str, version: str | None, force: bool, dry_run: bool, trust_level: str | None, require_trusted: bool
 ):
     """Install plugin implementation"""
     try:
@@ -148,10 +159,7 @@ async def _install_plugin(
         click.echo(f"🔍 Installing {package_name}" + (f" v{version}" if version else ""))
 
         result = await installer.install_plugin(
-            package_name=package_name,
-            version=version,
-            force=force,
-            dry_run=dry_run
+            package_name=package_name, version=version, force=force, dry_run=dry_run
         )
 
         # Display results
@@ -239,11 +247,13 @@ async def _list_plugins(trust_level: str, output_format: str):
             for plugin in plugins:
                 plugin_id = plugin["package_name"].replace("-", "_").replace("agentup_", "")
                 trust_info = registry.get_plugin_trust_info(plugin_id)
-                plugin.update({
-                    "trust_level": trust_info.get("trust_level", "unknown"),
-                    "trusted_publishing": trust_info.get("trusted_publishing", False),
-                    "publisher": trust_info.get("publisher")
-                })
+                plugin.update(
+                    {
+                        "trust_level": trust_info.get("trust_level", "unknown"),
+                        "trusted_publishing": trust_info.get("trusted_publishing", False),
+                        "publisher": trust_info.get("publisher"),
+                    }
+                )
         except Exception as e:
             logger.debug(f"Could not get trust information: {e}")
 
@@ -256,9 +266,11 @@ async def _list_plugins(trust_level: str, output_format: str):
             _display_plugins_table(plugins)
         elif output_format == "json":
             import json
+
             click.echo(json.dumps(plugins, indent=2))
         elif output_format == "yaml":
             import yaml
+
             click.echo(yaml.dump(plugins, default_flow_style=False))
 
     except Exception as e:
@@ -308,9 +320,9 @@ async def _verify_plugin(package_name: str, version: str | None, verbose: bool):
         verification = await verifier.verify_plugin_authenticity(package_name, version)
 
         # Display verification results
-        click.echo("\n" + "="*50)
+        click.echo("\n" + "=" * 50)
         click.echo(f"📋 Verification Report: {package_name}")
-        click.echo("="*50)
+        click.echo("=" * 50)
 
         if verification["trusted_publishing"]:
             click.echo("✅ Trusted Publishing: Yes")
@@ -329,6 +341,7 @@ async def _verify_plugin(package_name: str, version: str | None, verbose: bool):
         if verbose:
             click.echo("\n📊 Full Verification Data:")
             import json
+
             click.echo(json.dumps(verification, indent=2))
 
     except Exception as e:
@@ -348,7 +361,7 @@ async def _show_status(output_format: str):
 
         if output_format == "table":
             click.echo("🔒 AgentUp Plugin System Status")
-            click.echo("="*40)
+            click.echo("=" * 40)
 
             click.echo(f"Total Plugins: {status['total_plugins']}")
             click.echo(f"Total Capabilities: {status['total_capabilities']}")
@@ -374,6 +387,7 @@ async def _show_status(output_format: str):
 
         elif output_format == "json":
             import json
+
             click.echo(json.dumps(status, indent=2))
 
     except Exception as e:
@@ -394,18 +408,19 @@ async def _list_trusted_publishers(output_format: str):
 
         if output_format == "table":
             click.echo("👥 Trusted Publishers")
-            click.echo("="*50)
+            click.echo("=" * 50)
 
             for publisher_id, config in publishers.items():
                 click.echo(f"\n📋 {publisher_id}")
                 click.echo(f"   Trust Level: {config['trust_level']}")
                 click.echo(f"   Description: {config.get('description', 'No description')}")
                 click.echo("   Repositories:")
-                for repo in config['repositories']:
+                for repo in config["repositories"]:
                     click.echo(f"     • {repo}")
 
         elif output_format == "json":
             import json
+
             click.echo(json.dumps(publishers, indent=2))
 
     except Exception as e:
@@ -413,12 +428,7 @@ async def _list_trusted_publishers(output_format: str):
         sys.exit(1)
 
 
-async def _add_trusted_publisher(
-    publisher_id: str,
-    repositories: list[str],
-    trust_level: str,
-    description: str | None
-):
+async def _add_trusted_publisher(publisher_id: str, repositories: list[str], trust_level: str, description: str | None):
     """Add trusted publisher implementation"""
     try:
         from agent.plugins.trusted_registry import get_trusted_plugin_registry
@@ -429,7 +439,7 @@ async def _add_trusted_publisher(
             publisher_id=publisher_id,
             repositories=repositories,
             trust_level=trust_level,
-            description=description or f"Publisher {publisher_id}"
+            description=description or f"Publisher {publisher_id}",
         )
 
         if success:
@@ -504,6 +514,7 @@ async def _refresh_verification(plugin_id: str | None):
 
 # === Display Helper Functions ===
 
+
 def _display_operation_result(result: dict[str, Any]):
     """Display operation result in a formatted way"""
 
@@ -522,8 +533,10 @@ def _display_operation_result(result: dict[str, Any]):
     # Display verification info if available
     verification = result.get("verification", {})
     if verification and verification.get("trusted_publishing"):
-        click.echo(f"🔒 Trust: {verification.get('trust_level', 'unknown')} "
-                  f"(Publisher: {verification.get('publisher', 'unknown')})")
+        click.echo(
+            f"🔒 Trust: {verification.get('trust_level', 'unknown')} "
+            f"(Publisher: {verification.get('publisher', 'unknown')})"
+        )
 
 
 def _display_plugins_table(plugins: list[dict[str, Any]]):

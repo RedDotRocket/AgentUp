@@ -29,10 +29,10 @@ class {{ class_name }}(Plugin):
     async def initialize(self, config: Dict[str, Any], services: Dict[str, Any]):
         """Initialize plugin with configuration and services."""
         self.config = config
-        
+
         # Store LLM service for AI operations
         self.llm_service = services.get("llm")
-        
+
         # Setup other services
         if "http_client" in services:
             self.http_client = services["http_client"]
@@ -72,14 +72,14 @@ class {{ class_name }}(Plugin):
         try:
             # Extract input from context using base class method
             input_text = self._extract_task_content(context)
-            
+
             {% if template == "ai" %}
             # Extract parameters for AI functions
             params = context.metadata.get("parameters", {})
             mode = params.get("mode", "balanced")
             format = params.get("format", "text")
             input_text = params.get("input", input_text)
-            
+
             # AI-powered processing
             if not self.llm_service:
                 return {
@@ -87,7 +87,7 @@ class {{ class_name }}(Plugin):
                     "error": "LLM service not available",
                     "content": "AI functionality requires LLM service configuration"
                 }
-            
+
             # Process based on mode
             if mode == "fast":
                 result = await self._fast_processing(input_text)
@@ -95,10 +95,10 @@ class {{ class_name }}(Plugin):
                 result = await self._accurate_processing(input_text)
             else:  # balanced
                 result = await self._balanced_processing(input_text)
-            
+
             # Format output
             formatted_result = self._format_output(result, format)
-            
+
             return {
                 "success": True,
                 "content": formatted_result,
@@ -112,7 +112,7 @@ class {{ class_name }}(Plugin):
             {% else %}
             # Basic processing
             processed_result = f"{{ display_name }} processed: {input_text}"
-            
+
             return {
                 "success": True,
                 "content": processed_result,
@@ -136,7 +136,7 @@ class {{ class_name }}(Plugin):
         """Fast processing mode using LLM."""
         # Quick processing with minimal LLM interaction
         prompt = f"Quickly process this input: {input[:100]}..."
-        
+
         try:
             # Adapt to different LLM service interfaces
             if hasattr(self.llm_service, 'generate'):
@@ -146,7 +146,7 @@ class {{ class_name }}(Plugin):
             else:
                 # Fallback for basic processing
                 return f"Fast processing of: {input[:50]}..."
-            
+
             return response.strip() if hasattr(response, 'strip') else str(response)
         except Exception as e:
             return f"Fast processing completed (LLM unavailable): {input[:50]}..."
@@ -155,15 +155,15 @@ class {{ class_name }}(Plugin):
         """Accurate processing mode with detailed LLM analysis."""
         prompt = f"""
         Perform a detailed analysis of the following input:
-        
+
         Input: {input}
-        
+
         Please provide a comprehensive response with:
         1. Analysis of the content
         2. Key insights
         3. Recommendations
         """
-        
+
         try:
             if hasattr(self.llm_service, 'generate'):
                 response = await self.llm_service.generate(prompt, max_tokens=500)
@@ -171,7 +171,7 @@ class {{ class_name }}(Plugin):
                 response = await self.llm_service.chat([{"role": "user", "content": prompt}], max_tokens=500)
             else:
                 return f"Detailed analysis of: {input}"
-            
+
             return response.strip() if hasattr(response, 'strip') else str(response)
         except Exception as e:
             return f"Accurate processing completed (LLM unavailable): Analysis of {len(input)} characters"
@@ -180,12 +180,12 @@ class {{ class_name }}(Plugin):
         """Balanced processing mode."""
         prompt = f"""
         Process this input with balanced detail and efficiency:
-        
+
         {input}
-        
+
         Provide a helpful response that balances thoroughness with conciseness.
         """
-        
+
         try:
             if hasattr(self.llm_service, 'generate'):
                 response = await self.llm_service.generate(prompt, max_tokens=200)
@@ -193,7 +193,7 @@ class {{ class_name }}(Plugin):
                 response = await self.llm_service.chat([{"role": "user", "content": prompt}], max_tokens=200)
             else:
                 return f"Balanced processing of: {input}"
-            
+
             return response.strip() if hasattr(response, 'strip') else str(response)
         except Exception as e:
             return f"Balanced processing completed (LLM unavailable): {input[:100]}..."
@@ -284,7 +284,7 @@ class {{ class_name }}(Plugin):
         {% if template == "ai" %}
         # Clear LLM service reference
         self.llm_service = None
-        
+
         # Close HTTP client if available
         if hasattr(self, 'http_client') and hasattr(self.http_client, 'close'):
             await self.http_client.close()

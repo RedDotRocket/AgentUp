@@ -108,6 +108,7 @@ def create_agent_card(extended: bool = False) -> AgentCard:
     # Try to get plugin information from the new system
     try:
         from agent.plugins.manager import get_plugin_registry
+
         registry = get_plugin_registry()
         if registry:
             # Get loaded plugins from the registry

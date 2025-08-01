@@ -50,11 +50,11 @@ class TrustedPublishingVerifier:
                     "agentup-org/weather-plugin",
                     "agentup-org/file-tools-plugin",
                     "agentup-org/ai-analysis-plugin",
-                    "agentup-org/system-tools-plugin"
+                    "agentup-org/system-tools-plugin",
                 ],
                 "trust_level": "official",
                 "verification_required": True,
-                "description": "Official AgentUp plugins"
+                "description": "Official AgentUp plugins",
             },
             "agentup-community": {
                 "repositories": [
@@ -62,8 +62,8 @@ class TrustedPublishingVerifier:
                 ],
                 "trust_level": "community",
                 "verification_required": True,
-                "description": "Community-verified AgentUp plugins"
-            }
+                "description": "Community-verified AgentUp plugins",
+            },
         }
 
         # Merge with config
@@ -72,11 +72,7 @@ class TrustedPublishingVerifier:
 
         return default_publishers
 
-    async def verify_plugin_authenticity(
-        self,
-        package_name: str,
-        version: str | None = None
-    ) -> dict[str, Any]:
+    async def verify_plugin_authenticity(self, package_name: str, version: str | None = None) -> dict[str, Any]:
         """
         Verify that a plugin was published via trusted publishing.
 
@@ -110,7 +106,7 @@ class TrustedPublishingVerifier:
             "verified": False,
             "verification_timestamp": time.time(),
             "attestations": [],
-            "errors": []
+            "errors": [],
         }
 
         try:
@@ -137,22 +133,21 @@ class TrustedPublishingVerifier:
                     trusted_publisher = self._find_trusted_publisher(repo)
 
                     if trusted_publisher:
-                        verification.update({
-                            "trusted_publishing": True,
-                            "publisher": trusted_publisher["id"],
-                            "repository": repo,
-                            "workflow": workflow,
-                            "workflow_run_id": attestation_result.get("workflow_run_id"),
-                            "trust_level": trusted_publisher["config"]["trust_level"],
-                            "verified": True
-                        })
+                        verification.update(
+                            {
+                                "trusted_publishing": True,
+                                "publisher": trusted_publisher["id"],
+                                "repository": repo,
+                                "workflow": workflow,
+                                "workflow_run_id": attestation_result.get("workflow_run_id"),
+                                "trust_level": trusted_publisher["config"]["trust_level"],
+                                "verified": True,
+                            }
+                        )
                         break
 
             # Cache the result
-            self.verification_cache[cache_key] = {
-                "result": verification,
-                "timestamp": time.time()
-            }
+            self.verification_cache[cache_key] = {"result": verification, "timestamp": time.time()}
 
         except Exception as e:
             logger.error(f"Error verifying trusted publishing for {package_name}: {e}")
@@ -214,7 +209,7 @@ class TrustedPublishingVerifier:
             "workflow": None,
             "workflow_run_id": None,
             "actor": None,
-            "errors": []
+            "errors": [],
         }
 
         try:
@@ -243,15 +238,17 @@ class TrustedPublishingVerifier:
             # Extract GitHub workflow information
             claims = token_data.get("payload", {})
 
-            result.update({
-                "valid": True,
-                "repository": claims.get("repository"),
-                "workflow": claims.get("workflow"),
-                "workflow_run_id": claims.get("run_id"),
-                "actor": claims.get("actor"),
-                "ref": claims.get("ref"),
-                "sha": claims.get("sha")
-            })
+            result.update(
+                {
+                    "valid": True,
+                    "repository": claims.get("repository"),
+                    "workflow": claims.get("workflow"),
+                    "workflow_run_id": claims.get("run_id"),
+                    "actor": claims.get("actor"),
+                    "ref": claims.get("ref"),
+                    "sha": claims.get("sha"),
+                }
+            )
 
         except Exception as e:
             logger.error(f"Error verifying attestation: {e}")
@@ -270,10 +267,7 @@ class TrustedPublishingVerifier:
 
             # Mock token data that would be extracted from a real certificate
             mock_token_data = {
-                "header": {
-                    "alg": "RS256",
-                    "typ": "JWT"
-                },
+                "header": {"alg": "RS256", "typ": "JWT"},
                 "payload": {
                     "iss": self.github_oidc_issuer,
                     "aud": self.github_oidc_audience,
@@ -282,8 +276,8 @@ class TrustedPublishingVerifier:
                     "run_id": "12345",
                     "actor": "agentup-bot",
                     "ref": "refs/tags/v1.0.0",
-                    "sha": "abc123def456"
-                }
+                    "sha": "abc123def456",
+                },
             }
 
             return mock_token_data
@@ -318,16 +312,14 @@ class TrustedPublishingVerifier:
         for publisher_id, config in self.trusted_publishers.items():
             for repo_pattern in config["repositories"]:
                 if self._matches_repository_pattern(repository, repo_pattern):
-                    return {
-                        "id": publisher_id,
-                        "config": config
-                    }
+                    return {"id": publisher_id, "config": config}
 
         return None
 
     def _matches_repository_pattern(self, repository: str, pattern: str) -> bool:
         """Check if repository matches a pattern (supports wildcards)"""
         import fnmatch
+
         return fnmatch.fnmatch(repository, pattern)
 
     def get_trust_level(self, package_name: str) -> str:
@@ -341,11 +333,7 @@ class TrustedPublishingVerifier:
 
     def is_trusted_package(self, package_name: str, min_trust_level: str = "community") -> bool:
         """Check if package meets minimum trust level"""
-        trust_levels = {
-            "unknown": 0,
-            "community": 1,
-            "official": 2
-        }
+        trust_levels = {"unknown": 0, "community": 1, "official": 2}
 
         package_trust = self.get_trust_level(package_name)
 
@@ -369,7 +357,7 @@ class TrustedPublishingVerifier:
                 verification_results[package_name] = {
                     "package_name": package_name,
                     "verified": False,
-                    "error": str(result)
+                    "error": str(result),
                 }
             else:
                 verification_results[package_name] = result
@@ -385,11 +373,7 @@ class TrustedPublishingVerifier:
         return self.trusted_publishers.copy()
 
     def add_trusted_publisher(
-        self,
-        publisher_id: str,
-        repositories: list[str],
-        trust_level: str = "community",
-        description: str = ""
+        self, publisher_id: str, repositories: list[str], trust_level: str = "community", description: str = ""
     ) -> bool:
         """Add a new trusted publisher (runtime only - not persisted)"""
         try:
@@ -398,7 +382,7 @@ class TrustedPublishingVerifier:
                 "trust_level": trust_level,
                 "verification_required": True,
                 "description": description,
-                "added_at": time.time()
+                "added_at": time.time(),
             }
 
             logger.info(f"Added trusted publisher: {publisher_id}")
@@ -458,5 +442,5 @@ class TrustedPublishingVerifier:
             "total_entries": len(self.verification_cache),
             "expired_entries": expired_count,
             "cache_ttl": self.cache_ttl,
-            "cache_hit_rate": getattr(self, "_cache_hits", 0) / max(getattr(self, "_cache_requests", 1), 1)
+            "cache_hit_rate": getattr(self, "_cache_hits", 0) / max(getattr(self, "_cache_requests", 1), 1),
         }

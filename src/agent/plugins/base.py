@@ -44,6 +44,11 @@ class Plugin:
         # Auto-discover capabilities
         self._discover_capabilities()
 
+    @property
+    def plugin_id(self) -> str:
+        """Get plugin ID from class name"""
+        return self.__class__.__name__.lower().replace("plugin", "")
+
     def _discover_capabilities(self):
         """Automatically discover all @capability decorated methods"""
         for _name, method in inspect.getmembers(self, predicate=inspect.ismethod):
@@ -68,9 +73,7 @@ class Plugin:
         """Execute a specific capability by ID"""
         if capability_id not in self._capabilities:
             return CapabilityResult(
-                content=f"Capability '{capability_id}' not found",
-                success=False,
-                error="Capability not found"
+                content=f"Capability '{capability_id}' not found", success=False, error="Capability not found"
             )
 
         capability = self._capabilities[capability_id]
@@ -87,336 +90,136 @@ class Plugin:
                 return CapabilityResult(content=result, success=True)
             elif isinstance(result, dict):
                 return CapabilityResult(
-                    content=str(result),
-                    success=True,
-                    metadata=result if isinstance(result, dict) else {}
+                    content=str(result), success=True, metadata=result if isinstance(result, dict) else {}
                 )
             else:
                 return CapabilityResult(content=str(result), success=True)
 
         except Exception as e:
             logger.error(f"Error executing capability {capability_id}: {e}", exc_info=True)
-            return CapabilityResult(
-                content=f"Error executing capability: {str(e)}",
-                success=False,
-                error=str(e)
-            )
+            return CapabilityResult(content=f"Error executing capability: {str(e)}", success=False, error=str(e))
+
+    def can_handle_task(self, capability_id: str, context: CapabilityContext) -> bool | float:
+        """Check if this plugin can handle a task"""
+        # Base implementation - subclasses should override
+        return capability_id in self._capabilities
 
     def get_capability_definitions(self) -> list[CapabilityDefinition]:
         """Get all capability definitions for this plugin"""
         definitions = []
 
-        for capability_meta in self._capabilities.values():
-            # Convert metadata to CapabilityDefinition
+        for cap_meta in self._capabilities.values():
             definition = CapabilityDefinition(
-                id=capability_meta.id,
-                name=capability_meta.name,
-                version="1.0.0",  # TODO: Get from plugin metadata
-                description=capability_meta.description,
-                plugin_name=self.__class__.__name__.lower().replace("plugin", ""),
-                capabilities=capability_meta.to_capability_types(),
-                input_mode=capability_meta.input_mode,
-                output_mode=capability_meta.output_mode,
-                tags=capability_meta.tags,
-                priority=capability_meta.priority,
-                config_schema=capability_meta.config_schema,
-                required_scopes=capability_meta.scopes,
-                system_prompt=None,  # TODO: Add system_prompt to decorator
-                metadata={"method_name": capability_meta.method_name}
+                id=cap_meta.id,
+                name=cap_meta.name,
+                version="1.0.0",  # Default version
+                description=cap_meta.description,
+                capabilities=cap_meta.to_capability_types(),
+                required_scopes=cap_meta.scopes,
+                tags=cap_meta.tags,
+                config_schema=cap_meta.config_schema,
+                plugin_name=self.plugin_id,
             )
             definitions.append(definition)
 
         return definitions
 
     def get_ai_functions(self, capability_id: str | None = None) -> list[AIFunction]:
-        """Get AI functions for capabilities"""
-        functions = []
+        """Get AI functions from this plugin"""
+        ai_functions = []
 
-        # Filter capabilities
+        capabilities_to_check = []
         if capability_id:
-            if capability_id not in self._capabilities:
-                return []
-            capabilities = [self._capabilities[capability_id]]
+            if capability_id in self._capabilities:
+                capabilities_to_check = [self._capabilities[capability_id]]
         else:
-            capabilities = self._capabilities.values()
+            capabilities_to_check = list(self._capabilities.values())
 
-        # Generate AI functions for capabilities that support it
-        for capability_meta in capabilities:
-            if capability_meta.ai_function:
+        for cap_meta in capabilities_to_check:
+            if cap_meta.ai_function and cap_meta.ai_parameters:
                 ai_func = AIFunction(
-                    name=capability_meta.id,
-                    description=capability_meta.description,
-                    parameters=capability_meta.ai_parameters,
-                    handler=self._create_ai_function_wrapper(capability_meta)
+                    name=cap_meta.id,
+                    description=cap_meta.description,
+                    parameters=cap_meta.ai_parameters,
+                    handler=cap_meta.handler,
                 )
-                functions.append(ai_func)
+                ai_functions.append(ai_func)
 
-        return functions
+        return ai_functions
 
-    def _create_ai_function_wrapper(self, capability_meta: CapabilityMetadata):
-        """Create wrapper for AI function calls"""
-        async def wrapper(task, context: CapabilityContext):
-            # Extract AI function parameters from context
-            params = context.metadata.get("parameters", {})
-
-            # Create new context with parameters for the capability
-            ai_context = CapabilityContext(
-                task=task,
-                config=context.config,
-                services=context.services,
-                state=context.state,
-                metadata={
-                    "parameters": params,
-                    "capability_id": capability_meta.id,
-                    "ai_function_call": True
-                }
-            )
-
-            # Execute the capability
-            result = await capability_meta.handler(ai_context)
-
-            # Convert result to expected format for AI functions
-            if isinstance(result, CapabilityResult):
-                return result
-            else:
-                return CapabilityResult(content=str(result), success=True)
-
-        return wrapper
-
-    def can_handle_task(self, capability_id: str, context: CapabilityContext) -> bool | float:
-        """Check if this plugin can handle a task for a specific capability"""
-        if capability_id not in self._capabilities:
-            return False
-
-        capability_meta = self._capabilities[capability_id]
-
-        # Default routing based on tags and priority
-        if capability_meta.tags:
-            # Simple keyword matching against task content
-            task_content = self._extract_task_content(context)
-
-            # Check if any tags match the task content
-            matches = sum(1 for tag in capability_meta.tags if tag.lower() in task_content.lower())
-
-            if matches > 0:
-                # Calculate confidence based on matches and priority
-                base_confidence = min(matches * 0.3, 0.9)  # Max 0.9 from tag matches
-                priority_bonus = capability_meta.priority / 1000  # Small priority bonus
-                return min(base_confidence + priority_bonus, 1.0)
-
-        # Default confidence for capabilities without tags
-        return 0.1 if capability_meta.priority >= 50 else 0.05
-
-    # === Service and Configuration Management ===
-
-    def configure_services(self, services: dict[str, Any]):
-        """Store services for use by capabilities"""
-        self._services.update(services)
-        logger.debug(f"Configured {len(services)} services for {self.__class__.__name__}")
-
-    def configure(self, config: dict[str, Any]):
-        """Configure the plugin"""
+    def configure(self, config: dict[str, Any]) -> None:
+        """Configure the plugin with settings"""
         self._config.update(config)
-        logger.debug(f"Configured plugin {self.__class__.__name__} with {len(config)} settings")
 
-    def get_service(self, name: str) -> Any:
-        """Get a service by name"""
-        return self._services.get(name)
+    def configure_services(self, services: dict[str, Any]) -> None:
+        """Configure services available to the plugin"""
+        self._services.update(services)
 
-    def get_config(self, key: str, default: Any = None) -> Any:
-        """Get configuration value"""
-        return self._config.get(key, default)
-
-    def update_state(self, updates: dict[str, Any]):
-        """Update plugin state"""
-        self._state.update(updates)
-
-    def get_state(self, key: str, default: Any = None) -> Any:
-        """Get state value"""
-        return self._state.get(key, default)
-
-    """
-    Luke: Plugin Lifecycle Hooks (Optional Override)
-    The following lifecycle methods are as marked as abstract since so they can be optionally
-    overridden by subclasses. However, since they are lifecycle hooks that not all plugins need to implement,
-    we should use @abstractmethod only if we want to force implementation, or provide default implementations
-    as they currently do.
-    """
-
-    async def on_install(self, install_path: str):  # noqa: B027
-        """Called when plugin is installed (override in subclass if needed)"""
-        pass
-
-    async def on_uninstall(self):  # noqa: B027
-        """Called when plugin is uninstalled (override in subclass if needed)"""
-        pass
-
-    async def on_enable(self):  # noqa: B027
-        """Called when plugin is enabled (override in subclass if needed)"""
-        pass
-
-    async def on_disable(self):  # noqa: B027
-        """Called when plugin is disabled (override in subclass if needed)"""
-        pass
-
-    async def get_health_status(self) -> dict:
-        """Return plugin health information (override in subclass if needed)"""
+    async def get_health_status(self) -> dict[str, Any]:
+        """Get plugin health status"""
         return {
             "status": "healthy",
-            "capabilities": len(self._capabilities),
-            "services_configured": len(self._services),
-            "config_items": len(self._config)
+            "version": "1.0.0",
+            "capabilities": list(self._capabilities.keys()),
+            "has_llm": "llm" in self._services or "llm_factory" in self._services,
+            "configured": bool(self._config),
         }
 
-    # === Helper Methods ===
+    # === Optional Lifecycle Hooks ===
+    # These methods can be overridden by plugins for custom behavior
 
-    def _extract_task_content(self, context: CapabilityContext) -> str:
-        """Extract text content from task for routing analysis"""
-        try:
-            if hasattr(context.task, "history") and context.task.history:
-                last_msg = context.task.history[-1]
-                if hasattr(last_msg, "parts") and last_msg.parts:
-                    return last_msg.parts[0].text if hasattr(last_msg.parts[0], "text") else ""
-            return ""
-        except Exception:
-            return ""
+    def on_install(self) -> None:
+        """Called when plugin is installed (optional override)"""
+        pass
 
-    # === Plugin Information ===
+    def on_uninstall(self) -> None:
+        """Called when plugin is uninstalled (optional override)"""
+        pass
 
-    @property
-    def plugin_id(self) -> str:
-        """Get plugin ID (derived from class name)"""
-        return self.__class__.__name__.lower().replace("plugin", "")
+    def on_enable(self) -> None:
+        """Called when plugin is enabled (optional override)"""
+        pass
 
-    @property
-    def plugin_name(self) -> str:
-        """Get plugin display name"""
-        return self.__class__.__name__
-
-    @property
-    def capability_count(self) -> int:
-        """Get number of capabilities provided by this plugin"""
-        return len(self._capabilities)
-
-    @property
-    def capability_ids(self) -> list[str]:
-        """Get list of capability IDs provided by this plugin"""
-        return list(self._capabilities.keys())
-
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(capabilities={self.capability_count})"
+    def on_disable(self) -> None:
+        """Called when plugin is disabled (optional override)"""
+        pass
 
 
 class SimplePlugin(Plugin):
     """
-    Simplified base class for plugins with a single capability.
+    Convenience base class for simple text-based plugins.
 
-    This class is for plugins that only provide one capability and want
-    a simpler interface.
-
-    Example:
-        class GreetingPlugin(SimplePlugin):
-            capability_id = "greet"
-            capability_name = "Greeting"
-            scopes = ["api:read"]
-
-            async def execute(self, context: CapabilityContext) -> str:
-                return "Hello!"
+    Provides helper methods for common plugin patterns.
     """
 
-    # Override these in subclasses
-    capability_id: str = "simple"
-    capability_name: str = "Simple Capability"
-    capability_description: str = "A simple capability"
-    scopes: list[str] = []
-    ai_function: bool = False
-    ai_parameters: dict = {}
-
-    def __init__(self):
-        # Auto-register the single capability using decorator
-        if hasattr(self, 'execute'):
-            from .decorators import capability
-
-            # Apply the capability decorator to the execute method
-            decorated_execute = capability(
-                id=self.capability_id,
-                name=self.capability_name,
-                description=self.capability_description,
-                scopes=self.scopes,
-                ai_function=self.ai_function,
-                ai_parameters=self.ai_parameters
-            )(self.execute)
-
-            # Replace the execute method with the decorated version
-            self.execute = decorated_execute.__get__(self, self.__class__)
-
-        super().__init__()
-
-    async def execute(self, context: CapabilityContext) -> str:
-        """Override this method in subclasses"""
-        raise NotImplementedError("SimplePlugin subclasses must implement execute()")
+    def _extract_task_content(self, context: CapabilityContext) -> str:
+        """Extract text content from task context"""
+        task = context.task
+        if hasattr(task, "content"):
+            return task.content
+        elif hasattr(task, "messages") and task.messages:
+            return task.messages[0].content
+        elif hasattr(task, "message"):
+            return task.message
+        else:
+            return str(task)
 
 
 class AIFunctionPlugin(Plugin):
     """
-    Base class for plugins that primarily provide AI-callable functions.
+    Convenience base class for AI function plugins.
 
-    This class provides helpers for plugins that focus on AI function calling.
-
-    Example:
-        class CalculatorPlugin(AIFunctionPlugin):
-            @ai_function(
-                parameters={
-                    "type": "object",
-                    "properties": {
-                        "expression": {"type": "string", "description": "Math expression"}
-                    }
-                }
-            )
-            async def calculate(self, context: CapabilityContext) -> str:
-                expr = context.metadata.get("parameters", {}).get("expression")
-                return str(eval(expr))  # Don't do this in real code!
+    Provides helper methods for AI function calling patterns.
     """
 
-    def __init__(self):
-        super().__init__()
+    def _extract_ai_parameters(self, context: CapabilityContext) -> dict:
+        """Extract AI function parameters from context"""
+        return context.metadata.get("parameters", {})
 
-    def get_ai_function_schemas(self) -> list[dict]:
-        """Get OpenAI-compatible function schemas for all AI functions"""
-        schemas = []
-
-        for ai_func in self.get_ai_functions():
-            schema = {
-                "name": ai_func.name,
-                "description": ai_func.description,
-                "parameters": ai_func.parameters
-            }
-            schemas.append(schema)
-
-        return schemas
-
-    async def call_ai_function(self, function_name: str, parameters: dict, task, context: CapabilityContext) -> CapabilityResult:
-        """Call an AI function by name with parameters"""
-        # Find the capability that provides this AI function
-        for capability_id, capability_meta in self._capabilities.items():
-            if capability_meta.ai_function and capability_meta.id == function_name:
-                # Create context with AI function parameters
-                ai_context = CapabilityContext(
-                    task=task,
-                    config=context.config,
-                    services=context.services,
-                    state=context.state,
-                    metadata={
-                        "parameters": parameters,
-                        "capability_id": capability_id,
-                        "ai_function_call": True
-                    }
-                )
-
-                return await self.execute_capability(capability_id, ai_context)
-
-        return CapabilityResult(
-            content=f"AI function '{function_name}' not found",
-            success=False,
-            error="Function not found"
-        )
+    def _validate_required_params(self, params: dict, required: list[str]) -> list[str]:
+        """Validate that required parameters are present"""
+        missing = []
+        for param in required:
+            if param not in params or params[param] is None:
+                missing.append(param)
+        return missing

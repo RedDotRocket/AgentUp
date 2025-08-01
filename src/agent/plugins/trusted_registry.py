@@ -50,7 +50,9 @@ class TrustedPluginRegistry(PluginRegistry):
         # Apply trust-based filtering
         await self._apply_trust_filters()
 
-        logger.info(f"Trusted plugin discovery completed. {len(self.plugins)} plugins loaded, {len(self.trust_results)} verified")
+        logger.info(
+            f"Trusted plugin discovery completed. {len(self.plugins)} plugins loaded, {len(self.trust_results)} verified"
+        )
 
     async def _verify_all_plugins(self):
         """Verify trust for all discovered plugins"""
@@ -85,15 +87,19 @@ class TrustedPluginRegistry(PluginRegistry):
             # Update plugin definition with trust information
             if plugin_id in self.plugin_definitions:
                 plugin_def = self.plugin_definitions[plugin_id]
-                plugin_def.metadata.update({
-                    "trusted_publishing": verification_result["trusted_publishing"],
-                    "trust_level": verification_result["trust_level"],
-                    "publisher": verification_result.get("publisher"),
-                    "repository": verification_result.get("repository")
-                })
+                plugin_def.metadata.update(
+                    {
+                        "trusted_publishing": verification_result["trusted_publishing"],
+                        "trust_level": verification_result["trust_level"],
+                        "publisher": verification_result.get("publisher"),
+                        "repository": verification_result.get("repository"),
+                    }
+                )
 
             if verification_result["trusted_publishing"]:
-                logger.info(f"✅ Plugin {plugin_id} verified via trusted publishing (level: {verification_result['trust_level']})")
+                logger.info(
+                    f"✅ Plugin {plugin_id} verified via trusted publishing (level: {verification_result['trust_level']})"
+                )
             else:
                 logger.warning(f"⚠️  Plugin {plugin_id} not published via trusted publishing")
 
@@ -103,7 +109,7 @@ class TrustedPluginRegistry(PluginRegistry):
                 "package_name": package_name,
                 "verified": False,
                 "error": str(e),
-                "trust_level": "unknown"
+                "trust_level": "unknown",
             }
 
     async def _apply_trust_filters(self):
@@ -122,7 +128,9 @@ class TrustedPluginRegistry(PluginRegistry):
 
             # Check minimum trust level
             if not self._meets_minimum_trust_level(trust_level):
-                logger.warning(f"Removing plugin {plugin_id} - trust level '{trust_level}' below minimum '{self.minimum_trust_level}'")
+                logger.warning(
+                    f"Removing plugin {plugin_id} - trust level '{trust_level}' below minimum '{self.minimum_trust_level}'"
+                )
                 plugins_to_remove.append(plugin_id)
                 continue
 
@@ -135,11 +143,7 @@ class TrustedPluginRegistry(PluginRegistry):
 
     def _meets_minimum_trust_level(self, trust_level: str) -> bool:
         """Check if trust level meets minimum requirement"""
-        trust_levels = {
-            "unknown": 0,
-            "community": 1,
-            "official": 2
-        }
+        trust_levels = {"unknown": 0, "community": 1, "official": 2}
 
         current_level = trust_levels.get(trust_level, 0)
         minimum_level = trust_levels.get(self.minimum_trust_level, 0)
@@ -155,8 +159,7 @@ class TrustedPluginRegistry(PluginRegistry):
 
             # Remove capabilities
             capabilities_to_remove = [
-                cap_id for cap_id, plugin in self.capability_to_plugin.items()
-                if plugin == plugin_id
+                cap_id for cap_id, plugin in self.capability_to_plugin.items() if plugin == plugin_id
             ]
 
             for cap_id in capabilities_to_remove:
@@ -182,10 +185,10 @@ class TrustedPluginRegistry(PluginRegistry):
             if plugin_def.module_name:
                 # Common patterns for package names
                 possible_names = [
-                    plugin_def.module_name.split('.')[0],  # First part of module
-                    f"agentup-{plugin_def.name}-plugin",   # Standard naming
-                    f"agentup-{plugin_def.name}",          # Alternative naming
-                    plugin_def.name                        # Direct name
+                    plugin_def.module_name.split(".")[0],  # First part of module
+                    f"agentup-{plugin_def.name}-plugin",  # Standard naming
+                    f"agentup-{plugin_def.name}",  # Alternative naming
+                    plugin_def.name,  # Direct name
                 ]
 
                 # Try to verify which package name exists
@@ -219,15 +222,13 @@ class TrustedPluginRegistry(PluginRegistry):
             "repository": trust_result.get("repository"),
             "verification_errors": trust_result.get("errors", []),
             "package_name": trust_result.get("package_name"),
-            "verified_at": trust_result.get("verification_timestamp")
+            "verified_at": trust_result.get("verification_timestamp"),
         }
 
         if plugin_def:
-            info.update({
-                "plugin_name": plugin_def.name,
-                "version": plugin_def.version,
-                "status": plugin_def.status.value
-            })
+            info.update(
+                {"plugin_name": plugin_def.name, "version": plugin_def.version, "status": plugin_def.status.value}
+            )
 
         return info
 
@@ -247,13 +248,9 @@ class TrustedPluginRegistry(PluginRegistry):
             "total_plugins": len(self.plugin_definitions),
             "verified_plugins": len(self.trust_results),
             "trusted_published": 0,
-            "trust_levels": {
-                "official": 0,
-                "community": 0,
-                "unknown": 0
-            },
+            "trust_levels": {"official": 0, "community": 0, "unknown": 0},
             "publishers": {},
-            "verification_errors": 0
+            "verification_errors": 0,
         }
 
         for trust_result in self.trust_results.values():
@@ -280,16 +277,10 @@ class TrustedPluginRegistry(PluginRegistry):
         return self.trust_verifier.list_trusted_publishers()
 
     def add_trusted_publisher(
-        self,
-        publisher_id: str,
-        repositories: list[str],
-        trust_level: str = "community",
-        description: str = ""
+        self, publisher_id: str, repositories: list[str], trust_level: str = "community", description: str = ""
     ) -> bool:
         """Add a new trusted publisher"""
-        success = self.trust_verifier.add_trusted_publisher(
-            publisher_id, repositories, trust_level, description
-        )
+        success = self.trust_verifier.add_trusted_publisher(publisher_id, repositories, trust_level, description)
 
         if success:
             logger.info(f"Added trusted publisher {publisher_id} with {len(repositories)} repositories")
@@ -303,7 +294,8 @@ class TrustedPluginRegistry(PluginRegistry):
         if success:
             # Re-verify plugins that were published by this publisher
             affected_plugins = [
-                plugin_id for plugin_id, trust_result in self.trust_results.items()
+                plugin_id
+                for plugin_id, trust_result in self.trust_results.items()
                 if trust_result.get("publisher") == publisher_id
             ]
 
@@ -330,7 +322,7 @@ class TrustedPluginRegistry(PluginRegistry):
             "package_name": package_name,
             "safe_to_install": False,
             "verification": verification,
-            "recommendations": []
+            "recommendations": [],
         }
 
         # Determine if it's safe to install
@@ -341,7 +333,9 @@ class TrustedPluginRegistry(PluginRegistry):
                 result["safe_to_install"] = True
                 result["recommendations"].append(f"✅ Verified via trusted publishing (level: {trust_level})")
             else:
-                result["recommendations"].append(f"⚠️  Trust level '{trust_level}' below minimum '{self.minimum_trust_level}'")
+                result["recommendations"].append(
+                    f"⚠️  Trust level '{trust_level}' below minimum '{self.minimum_trust_level}'"
+                )
         else:
             if self.require_trusted_publishing:
                 result["recommendations"].append("❌ Trusted publishing required but not verified")
@@ -383,15 +377,17 @@ class TrustedPluginRegistry(PluginRegistry):
         trust_summary = self.get_trust_summary()
         cache_stats = self.trust_verifier.get_cache_stats()
 
-        base_health.update({
-            "trusted_publishing": {
-                "enabled": True,
-                "require_trusted_publishing": self.require_trusted_publishing,
-                "minimum_trust_level": self.minimum_trust_level,
-                "trust_summary": trust_summary,
-                "cache_stats": cache_stats
+        base_health.update(
+            {
+                "trusted_publishing": {
+                    "enabled": True,
+                    "require_trusted_publishing": self.require_trusted_publishing,
+                    "minimum_trust_level": self.minimum_trust_level,
+                    "trust_summary": trust_summary,
+                    "cache_stats": cache_stats,
+                }
             }
-        })
+        )
 
         return base_health
 
@@ -408,6 +404,7 @@ def get_trusted_plugin_registry() -> TrustedPluginRegistry:
         config = None
         try:
             from agent.config import Config
+
             config = Config.model_dump()
         except ImportError:
             logger.debug("Could not load configuration for trusted plugin registry")

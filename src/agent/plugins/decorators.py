@@ -65,7 +65,7 @@ def capability(
     config_schema: dict | None = None,
     state_schema: dict | None = None,
     streaming: bool = False,
-    multimodal: bool = False
+    multimodal: bool = False,
 ) -> Callable:
     """
     Decorator that marks a method as a plugin capability.
@@ -110,6 +110,7 @@ def capability(
         async def get_weather(self, context: CapabilityContext) -> str:
             return "Weather data"
     """
+
     def decorator(func: Callable) -> Callable:
         # Create metadata object
         metadata = CapabilityMetadata(
@@ -129,11 +130,11 @@ def capability(
             state_schema=state_schema or {},
             streaming=streaming,
             multimodal=multimodal,
-            handler=func
+            handler=func,
         )
 
         # Store metadata on the function
-        if not hasattr(func, '_agentup_capabilities'):
+        if not hasattr(func, "_agentup_capabilities"):
             func._agentup_capabilities = []
         func._agentup_capabilities.append(metadata)
 
@@ -148,11 +149,7 @@ def capability(
     return decorator
 
 
-def ai_function(
-    parameters: dict,
-    name: str | None = None,
-    description: str | None = None
-) -> Callable:
+def ai_function(parameters: dict, name: str | None = None, description: str | None = None) -> Callable:
     """
     Decorator that marks a capability method as an AI function.
 
@@ -175,6 +172,7 @@ def ai_function(
         async def analyze_text(self, context: CapabilityContext) -> str:
             return "Analysis result"
     """
+
     def decorator(func: Callable) -> Callable:
         # Extract capability ID from method name
         capability_id = func.__name__
@@ -185,7 +183,7 @@ def ai_function(
             name=name or capability_id.replace("_", " ").title(),
             description=description or func.__doc__,
             ai_function=True,
-            ai_parameters=parameters
+            ai_parameters=parameters,
         )(func)
 
     return decorator
@@ -235,8 +233,23 @@ def validate_capability_metadata(metadata: CapabilityMetadata) -> list[str]:
 
     # Validate scopes format
     for scope in metadata.scopes:
-        if not scope or ":" not in scope:
-            errors.append(f"Invalid scope format: '{scope}'. Must be in format 'resource:action'")
+        if not scope:
+            errors.append(f"Invalid scope format: '{scope}'. Scope cannot be empty")
+        elif scope == "*":
+            # Universal admin scope is valid
+            continue
+        elif scope == "admin":
+            # System admin scope is valid
+            continue
+        elif ":" not in scope:
+            errors.append(f"Invalid scope format: '{scope}'. Must be in format 'resource:action', 'admin', or '*'")
+        else:
+            # Validate resource:action format
+            parts = scope.split(":")
+            if len(parts) != 2:
+                errors.append(f"Invalid scope format: '{scope}'. Must have exactly one ':'")
+            elif not parts[0] or not parts[1]:
+                errors.append(f"Invalid scope format: '{scope}'. Resource and action cannot be empty")
 
     return errors
 
@@ -251,7 +264,7 @@ def get_capability_metadata(func: Callable) -> list[CapabilityMetadata]:
     Returns:
         List of capability metadata objects
     """
-    if hasattr(func, '_agentup_capabilities'):
+    if hasattr(func, "_agentup_capabilities"):
         return func._agentup_capabilities
     return []
 
@@ -266,4 +279,4 @@ def is_capability_handler(func: Callable) -> bool:
     Returns:
         True if function is a capability handler
     """
-    return hasattr(func, '_is_agentup_capability') and func._is_agentup_capability
+    return hasattr(func, "_is_agentup_capability") and func._is_agentup_capability

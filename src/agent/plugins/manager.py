@@ -32,9 +32,6 @@ logger = structlog.get_logger(__name__)
 class PluginRegistry:
     """
     Registry for managing decorator-based plugins without Pluggy.
-
-    This class replaces the old Pluggy-based PluginManager with a simpler
-    approach that directly manages Plugin instances.
     """
 
     def __init__(self, config: dict[str, Any] | None = None):
@@ -62,6 +59,7 @@ class PluginRegistry:
         if self._config is None:
             try:
                 from agent.config import Config
+
                 self._config = Config.model_dump()
             except ImportError as e:
                 logger.error("Failed to load configuration module")
@@ -91,7 +89,7 @@ class PluginRegistry:
 
                         self.allowed_plugins[plugin_id] = {
                             "package": package,
-                            "verified": plugin_config.get("verified", False)
+                            "verified": plugin_config.get("verified", False),
                         }
 
                 logger.info(f"Loaded {len(self.allowed_plugins)} configured plugins as allowlist")
@@ -110,7 +108,9 @@ class PluginRegistry:
         # Load from filesystem (if enabled in dev mode)
         self._load_filesystem_plugins()
 
-        logger.info(f"Plugin discovery completed. Loaded {len(self.plugins)} plugins with {len(self.capabilities)} capabilities")
+        logger.info(
+            f"Plugin discovery completed. Loaded {len(self.plugins)} plugins with {len(self.capabilities)} capabilities"
+        )
 
     def _load_entry_point_plugins(self) -> None:
         """Load plugins from Python entry points"""
@@ -159,10 +159,10 @@ class PluginRegistry:
                     # Track failed plugin
                     self.plugin_definitions[entry_point.name] = PluginDefinition(
                         name=entry_point.name,
-                        version="unknown",
+                        version="0.0.0",
                         status=PluginStatus.ERROR,
                         error=str(e),
-                        entry_point=str(entry_point)
+                        entry_point=str(entry_point),
                     )
 
         except Exception as e:
@@ -260,7 +260,9 @@ class PluginRegistry:
         if expected_package and dist:
             actual_package = dist.name
             if actual_package != expected_package:
-                logger.warning(f"Plugin {plugin_name} package mismatch: expected {expected_package}, got {actual_package}")
+                logger.warning(
+                    f"Plugin {plugin_name} package mismatch: expected {expected_package}, got {actual_package}"
+                )
                 return False
 
         return True
@@ -271,7 +273,7 @@ class PluginRegistry:
         plugin_instance: Plugin,
         entry_point=None,
         source: str = "entry_point",
-        path: str | None = None
+        path: str | None = None,
     ) -> None:
         """Register a plugin instance"""
         try:
@@ -304,8 +306,8 @@ class PluginRegistry:
                     "source": source,
                     "path": path,
                     "class_name": plugin_instance.__class__.__name__,
-                    "capability_count": len(capability_definitions)
-                }
+                    "capability_count": len(capability_definitions),
+                },
             )
 
             self.plugin_definitions[plugin_id] = plugin_def
@@ -315,12 +317,13 @@ class PluginRegistry:
         except Exception as e:
             logger.error(f"Failed to register plugin {plugin_id}: {e}")
 
+            # Remove plugin from plugins dict since registration failed
+            if plugin_id in self.plugins:
+                del self.plugins[plugin_id]
+
             # Track failed registration
             self.plugin_definitions[plugin_id] = PluginDefinition(
-                name=plugin_id,
-                version="unknown",
-                status=PluginStatus.ERROR,
-                error=str(e)
+                name=plugin_id, version="0.0.0", status=PluginStatus.ERROR, error=str(e)
             )
 
     # === Plugin Execution Interface ===
@@ -329,9 +332,7 @@ class PluginRegistry:
         """Execute a capability by ID"""
         if capability_id not in self.capabilities:
             return CapabilityResult(
-                content=f"Capability '{capability_id}' not found",
-                success=False,
-                error="Capability not found"
+                content=f"Capability '{capability_id}' not found", success=False, error="Capability not found"
             )
 
         plugin_id = self.capability_to_plugin[capability_id]
@@ -341,11 +342,7 @@ class PluginRegistry:
             return await plugin.execute_capability(capability_id, context)
         except Exception as e:
             logger.error(f"Failed to execute capability {capability_id}: {e}", exc_info=True)
-            return CapabilityResult(
-                content=f"Capability execution failed: {str(e)}",
-                success=False,
-                error=str(e)
-            )
+            return CapabilityResult(content=f"Capability execution failed: {str(e)}", success=False, error=str(e))
 
     def can_handle_task(self, capability_id: str, context: CapabilityContext) -> bool | float:
         """Check if a capability can handle a task"""
@@ -383,10 +380,7 @@ class PluginRegistry:
     def validate_config(self, capability_id: str, config: dict) -> PluginValidationResult:
         """Validate configuration for a capability"""
         if capability_id not in self.capabilities:
-            return PluginValidationResult(
-                valid=False,
-                errors=[f"Capability '{capability_id}' not found"]
-            )
+            return PluginValidationResult(valid=False, errors=[f"Capability '{capability_id}' not found"])
 
         capability_meta = self.capabilities[capability_id]
 
@@ -394,6 +388,7 @@ class PluginRegistry:
         if capability_meta.config_schema:
             try:
                 import jsonschema
+
                 jsonschema.validate(config, capability_meta.config_schema)
                 return PluginValidationResult(valid=True)
             except ImportError:
@@ -500,7 +495,7 @@ class PluginRegistry:
                         "entry_point": str(entry_point),
                         "status": "available",
                         "loaded": entry_point.name in self.plugins,
-                        "configured": entry_point.name in self.allowed_plugins
+                        "configured": entry_point.name in self.allowed_plugins,
                     }
 
                     # If already loaded, get additional info
@@ -515,16 +510,18 @@ class PluginRegistry:
 
                 except Exception as e:
                     # Still include failed plugins in the list
-                    available_plugins.append({
-                        "name": entry_point.name,
-                        "version": "unknown",
-                        "package": entry_point.dist.name if entry_point.dist else "unknown",
-                        "entry_point": str(entry_point),
-                        "status": "error",
-                        "error": str(e),
-                        "loaded": False,
-                        "configured": False
-                    })
+                    available_plugins.append(
+                        {
+                            "name": entry_point.name,
+                            "version": "unknown",
+                            "package": entry_point.dist.name if entry_point.dist else "unknown",
+                            "entry_point": str(entry_point),
+                            "status": "error",
+                            "error": str(e),
+                            "loaded": False,
+                            "configured": False,
+                        }
+                    )
 
         except Exception as e:
             logger.error(f"Error discovering available plugins: {e}")
@@ -533,21 +530,14 @@ class PluginRegistry:
 
     async def get_health_status(self) -> dict:
         """Get health status of all plugins"""
-        health = {
-            "total_plugins": len(self.plugins),
-            "total_capabilities": len(self.capabilities),
-            "plugin_status": {}
-        }
+        health = {"total_plugins": len(self.plugins), "total_capabilities": len(self.capabilities), "plugin_status": {}}
 
         for plugin_id, plugin in self.plugins.items():
             try:
                 plugin_health = await plugin.get_health_status()
                 health["plugin_status"][plugin_id] = plugin_health
             except Exception as e:
-                health["plugin_status"][plugin_id] = {
-                    "status": "error",
-                    "error": str(e)
-                }
+                health["plugin_status"][plugin_id] = {"status": "error", "error": str(e)}
 
         return health
 
@@ -564,6 +554,7 @@ def get_plugin_registry() -> PluginRegistry:
         config = None
         try:
             from agent.config import Config
+
             config = Config.model_dump()
         except ImportError:
             logger.debug("Could not load configuration for plugin registry")
@@ -572,5 +563,3 @@ def get_plugin_registry() -> PluginRegistry:
         _plugin_registry.discover_plugins()
 
     return _plugin_registry
-
-

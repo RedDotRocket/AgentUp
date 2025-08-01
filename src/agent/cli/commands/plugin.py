@@ -316,6 +316,7 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
         # Create a registry without auto-discovery to avoid allowlist warnings during listing
         try:
             from agent.config import Config
+
             config = Config.model_dump()
         except ImportError:
             config = None
@@ -348,12 +349,15 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
                     plugin_name = plugin_info["name"]
                     try:
                         import importlib.metadata
+
                         entry_points = importlib.metadata.entry_points()
 
                         if hasattr(entry_points, "select"):
                             plugin_entries = entry_points.select(group="agentup.plugins", name=plugin_name)
                         else:
-                            plugin_entries = [ep for ep in entry_points.get("agentup.plugins", []) if ep.name == plugin_name]
+                            plugin_entries = [
+                                ep for ep in entry_points.get("agentup.plugins", []) if ep.name == plugin_name
+                            ]
 
                         for entry_point in plugin_entries:
                             try:
@@ -362,14 +366,16 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
                                 cap_definitions = plugin_instance.get_capability_definitions()
 
                                 for cap_def in cap_definitions:
-                                    capabilities_for_json.append({
-                                        "id": cap_def.id,
-                                        "name": cap_def.name,
-                                        "description": cap_def.description,
-                                        "plugin": plugin_name,
-                                        "required_scopes": cap_def.required_scopes,
-                                        "ai_function": hasattr(cap_def, 'ai_function') and cap_def.ai_function
-                                    })
+                                    capabilities_for_json.append(
+                                        {
+                                            "id": cap_def.id,
+                                            "name": cap_def.name,
+                                            "description": cap_def.description,
+                                            "plugin": plugin_name,
+                                            "required_scopes": cap_def.required_scopes,
+                                            "ai_function": hasattr(cap_def, "ai_function") and cap_def.ai_function,
+                                        }
+                                    )
                             except Exception:
                                 continue
                     except Exception:
@@ -404,12 +410,15 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
                     plugin_name = plugin_info["name"]
                     try:
                         import importlib.metadata
+
                         entry_points = importlib.metadata.entry_points()
 
                         if hasattr(entry_points, "select"):
                             plugin_entries = entry_points.select(group="agentup.plugins", name=plugin_name)
                         else:
-                            plugin_entries = [ep for ep in entry_points.get("agentup.plugins", []) if ep.name == plugin_name]
+                            plugin_entries = [
+                                ep for ep in entry_points.get("agentup.plugins", []) if ep.name == plugin_name
+                            ]
 
                         for entry_point in plugin_entries:
                             try:
@@ -418,14 +427,16 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
                                 cap_definitions = plugin_instance.get_capability_definitions()
 
                                 for cap_def in cap_definitions:
-                                    capabilities_for_yaml.append({
-                                        "id": cap_def.id,
-                                        "name": cap_def.name,
-                                        "description": cap_def.description,
-                                        "plugin": plugin_name,
-                                        "required_scopes": cap_def.required_scopes,
-                                        "ai_function": hasattr(cap_def, 'ai_function') and cap_def.ai_function
-                                    })
+                                    capabilities_for_yaml.append(
+                                        {
+                                            "id": cap_def.id,
+                                            "name": cap_def.name,
+                                            "description": cap_def.description,
+                                            "plugin": plugin_name,
+                                            "required_scopes": cap_def.required_scopes,
+                                            "ai_function": hasattr(cap_def, "ai_function") and cap_def.ai_function,
+                                        }
+                                    )
                             except Exception:
                                 continue
                     except Exception:
@@ -493,13 +504,16 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
                 try:
                     # Try to load the plugin class to get its capabilities
                     import importlib.metadata
+
                     entry_points = importlib.metadata.entry_points()
 
                     # Handle different Python versions
                     if hasattr(entry_points, "select"):
                         plugin_entries = entry_points.select(group="agentup.plugins", name=plugin_name)
                     else:
-                        plugin_entries = [ep for ep in entry_points.get("agentup.plugins", []) if ep.name == plugin_name]
+                        plugin_entries = [
+                            ep for ep in entry_points.get("agentup.plugins", []) if ep.name == plugin_name
+                        ]
 
                     for entry_point in plugin_entries:
                         try:
@@ -510,15 +524,17 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
                             cap_definitions = plugin_instance.get_capability_definitions()
 
                             for cap_def in cap_definitions:
-                                all_capabilities_info.append({
-                                    "id": cap_def.id,
-                                    "name": cap_def.name,
-                                    "description": cap_def.description,
-                                    "plugin": plugin_name,
-                                    "scopes": cap_def.required_scopes,
-                                    "ai_function": hasattr(cap_def, 'ai_function') and cap_def.ai_function,
-                                    "tags": getattr(cap_def, 'tags', [])
-                                })
+                                all_capabilities_info.append(
+                                    {
+                                        "id": cap_def.id,
+                                        "name": cap_def.name,
+                                        "description": cap_def.description,
+                                        "plugin": plugin_name,
+                                        "scopes": cap_def.required_scopes,
+                                        "ai_function": hasattr(cap_def, "ai_function") and cap_def.ai_function,
+                                        "tags": getattr(cap_def, "tags", []),
+                                    }
+                                )
 
                         except Exception as e:
                             # Skip failed plugin loads but don't show errors in list command
@@ -554,9 +570,7 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
 
                     if verbose:
                         description = cap_info["description"] or "No description"
-                        row.append(
-                            description[:80] + "..." if len(description) > 80 else description
-                        )
+                        row.append(description[:80] + "..." if len(description) > 80 else description)
 
                     capabilities_table.add_row(*row)
 
@@ -755,7 +769,7 @@ async def test_{capability_method_name}(plugin):
         (tests_dir / f"test_{plugin_name_snake}.py").write_text(test_content)
 
         # Create .gitignore
-        gitignore_content = '''# Python
+        gitignore_content = """# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -822,7 +836,7 @@ venv.bak/
 .Trashes
 ehthumbs.db
 Thumbs.db
-'''
+"""
         (output_dir / ".gitignore").write_text(gitignore_content)
 
         # Copy static folder to plugin root
@@ -840,7 +854,7 @@ Thumbs.db
         elif coding_agent == "Cursor":
             cursor_rules_dir = output_dir / ".cursor" / "rules"
             cursor_rules_dir.mkdir(parents=True, exist_ok=True)
-            cursor_content = f'''# AgentUp Plugin Development Rules
+            cursor_content = f"""# AgentUp Plugin Development Rules
 
 This is an AgentUp plugin for {display_name}.
 
@@ -876,7 +890,7 @@ context.metadata: dict[str, Any]
 - Use pytest with async support
 - Mock CapabilityContext for tests
 - Test both success and error cases
-'''
+"""
             (cursor_rules_dir / "agentup_plugin.mdc").write_text(cursor_content)
 
         # Create GitHub Actions files if requested
@@ -885,7 +899,7 @@ context.metadata: dict[str, Any]
             github_workflows_dir.mkdir(parents=True, exist_ok=True)
 
             # Create CI workflow
-            ci_content = f'''name: CI
+            ci_content = f"""name: CI
 
 on:
   push:
@@ -954,11 +968,11 @@ jobs:
     - name: Security check with bandit
       run: |
         bandit -r src/{plugin_name_snake}/ -ll
-'''
+"""
             (github_workflows_dir / "ci.yml").write_text(ci_content)
 
             # Create security workflow
-            security_content = f'''name: Security
+            security_content = f"""name: Security
 
 on:
   push:
@@ -1006,13 +1020,13 @@ jobs:
         name: security-reports
         path: |
           bandit-report.json
-'''
+"""
             (github_workflows_dir / "security.yml").write_text(security_content)
 
             # Create dependabot.yml
             github_dir = output_dir / ".github"
             github_dir.mkdir(parents=True, exist_ok=True)
-            dependabot_content = '''version: 2
+            dependabot_content = """version: 2
 updates:
   - package-ecosystem: "pip"
     directory: "/"
@@ -1029,7 +1043,7 @@ updates:
     allow:
       - dependency-type: "direct"
       - dependency-type: "indirect"
-'''.format(author=author.lower().replace(" ", "-") if author else "author")
+""".format(author=author.lower().replace(" ", "-") if author else "author")
             (github_dir / "dependabot.yml").write_text(dependabot_content)
 
         # Initialize git repo

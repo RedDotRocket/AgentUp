@@ -219,6 +219,7 @@ class GenericAgentExecutor(AgentExecutor):
         try:
             # Get capability executor for the plugin
             from agent.capabilities import get_capability_executor
+
             logger.debug(f"Getting capability executor for plugin '{plugin_id}'")
             executor = get_capability_executor(plugin_id)
             if not executor:

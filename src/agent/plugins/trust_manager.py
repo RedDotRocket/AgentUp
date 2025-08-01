@@ -52,7 +52,7 @@ class PublisherTrustManager:
             "auto_revoke_threshold": 0.2,
             "quarantine_new_publishers": True,
             "require_multiple_repositories": False,
-            "max_trust_level_without_verification": "community"
+            "max_trust_level_without_verification": "community",
         }
 
         configured_policies = self.trust_config.get("policies", {})
@@ -75,7 +75,9 @@ class PublisherTrustManager:
                 self.reputation_scores = data.get("reputation_scores", {})
                 self.reputation_events = data.get("reputation_events", {})
 
-                logger.info(f"Loaded trust data: {len(self.publishers)} publishers, {len(self.revoked_publishers)} revoked")
+                logger.info(
+                    f"Loaded trust data: {len(self.publishers)} publishers, {len(self.revoked_publishers)} revoked"
+                )
 
         except Exception as e:
             logger.warning(f"Could not load trust data: {e}")
@@ -92,10 +94,10 @@ class PublisherTrustManager:
                 "publisher_history": self.publisher_history,
                 "reputation_scores": self.reputation_scores,
                 "reputation_events": self.reputation_events,
-                "last_updated": time.time()
+                "last_updated": time.time(),
             }
 
-            with open(trust_data_path, 'w') as f:
+            with open(trust_data_path, "w") as f:
                 json.dump(data, f, indent=2)
 
             logger.debug("Saved trust data to persistent storage")
@@ -111,7 +113,7 @@ class PublisherTrustManager:
         repositories: list[str],
         trust_level: str = "community",
         description: str = "",
-        metadata: dict[str, Any] | None = None
+        metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Register a new trusted publisher"""
 
@@ -120,16 +122,13 @@ class PublisherTrustManager:
             return {
                 "success": False,
                 "error": f"Publisher '{publisher_id}' is revoked",
-                "revocation_reason": self.revoked_publishers[publisher_id].get("reason")
+                "revocation_reason": self.revoked_publishers[publisher_id].get("reason"),
             }
 
         # Validate trust level
         valid_trust_levels = {"community", "official"}
         if trust_level not in valid_trust_levels:
-            return {
-                "success": False,
-                "error": f"Invalid trust level. Must be one of: {valid_trust_levels}"
-            }
+            return {"success": False, "error": f"Invalid trust level. Must be one of: {valid_trust_levels}"}
 
         # Create publisher record
         publisher_record = {
@@ -142,7 +141,7 @@ class PublisherTrustManager:
             "last_updated": time.time(),
             "status": "active",
             "verification_count": 0,
-            "last_verification": None
+            "last_verification": None,
         }
 
         # Apply quarantine policy for new publishers
@@ -159,10 +158,9 @@ class PublisherTrustManager:
         self.reputation_events[publisher_id] = []
 
         # Record history
-        self._record_publisher_event(publisher_id, "registered", {
-            "trust_level": trust_level,
-            "repositories": len(repositories)
-        })
+        self._record_publisher_event(
+            publisher_id, "registered", {"trust_level": trust_level, "repositories": len(repositories)}
+        )
 
         # Save to persistent storage
         self._save_trust_data()
@@ -174,7 +172,7 @@ class PublisherTrustManager:
             "publisher_id": publisher_id,
             "trust_level": trust_level,
             "status": publisher_record["status"],
-            "reputation_score": initial_reputation
+            "reputation_score": initial_reputation,
         }
 
     def update_publisher(
@@ -183,15 +181,12 @@ class PublisherTrustManager:
         repositories: list[str] | None = None,
         trust_level: str | None = None,
         description: str | None = None,
-        metadata: dict[str, Any] | None = None
+        metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Update publisher information"""
 
         if publisher_id not in self.publishers:
-            return {
-                "success": False,
-                "error": f"Publisher '{publisher_id}' not found"
-            }
+            return {"success": False, "error": f"Publisher '{publisher_id}' not found"}
 
         publisher = self.publishers[publisher_id]
         changes = {}
@@ -201,17 +196,11 @@ class PublisherTrustManager:
             new_repos = set(repositories)
 
             if old_repos != new_repos:
-                changes["repositories"] = {
-                    "added": list(new_repos - old_repos),
-                    "removed": list(old_repos - new_repos)
-                }
+                changes["repositories"] = {"added": list(new_repos - old_repos), "removed": list(old_repos - new_repos)}
                 publisher["repositories"] = repositories
 
         if trust_level is not None and trust_level != publisher["trust_level"]:
-            changes["trust_level"] = {
-                "from": publisher["trust_level"],
-                "to": trust_level
-            }
+            changes["trust_level"] = {"from": publisher["trust_level"], "to": trust_level}
             publisher["trust_level"] = trust_level
 
         if description is not None:
@@ -233,26 +222,15 @@ class PublisherTrustManager:
 
             logger.info(f"Updated publisher '{publisher_id}': {list(changes.keys())}")
 
-        return {
-            "success": True,
-            "publisher_id": publisher_id,
-            "changes": changes
-        }
+        return {"success": True, "publisher_id": publisher_id, "changes": changes}
 
     def revoke_publisher(
-        self,
-        publisher_id: str,
-        reason: str,
-        revoked_by: str | None = None,
-        effective_immediately: bool = True
+        self, publisher_id: str, reason: str, revoked_by: str | None = None, effective_immediately: bool = True
     ) -> dict[str, Any]:
         """Revoke trust for a publisher"""
 
         if publisher_id not in self.publishers:
-            return {
-                "success": False,
-                "error": f"Publisher '{publisher_id}' not found"
-            }
+            return {"success": False, "error": f"Publisher '{publisher_id}' not found"}
 
         publisher = self.publishers[publisher_id]
 
@@ -263,7 +241,7 @@ class PublisherTrustManager:
             "revoked_by": revoked_by,
             "revoked_at": time.time(),
             "effective_immediately": effective_immediately,
-            "original_record": publisher.copy()
+            "original_record": publisher.copy(),
         }
 
         # Move to revoked publishers
@@ -274,10 +252,7 @@ class PublisherTrustManager:
         self.reputation_scores[publisher_id] = 0.0
 
         # Record event
-        self._record_publisher_event(publisher_id, "revoked", {
-            "reason": reason,
-            "revoked_by": revoked_by
-        })
+        self._record_publisher_event(publisher_id, "revoked", {"reason": reason, "revoked_by": revoked_by})
 
         # Save changes
         self._save_trust_data()
@@ -288,35 +263,31 @@ class PublisherTrustManager:
             "success": True,
             "publisher_id": publisher_id,
             "revocation_reason": reason,
-            "effective_immediately": effective_immediately
+            "effective_immediately": effective_immediately,
         }
 
     def restore_publisher(
-        self,
-        publisher_id: str,
-        restored_by: str | None = None,
-        new_trust_level: str = "community"
+        self, publisher_id: str, restored_by: str | None = None, new_trust_level: str = "community"
     ) -> dict[str, Any]:
         """Restore a revoked publisher"""
 
         if publisher_id not in self.revoked_publishers:
-            return {
-                "success": False,
-                "error": f"Publisher '{publisher_id}' is not revoked"
-            }
+            return {"success": False, "error": f"Publisher '{publisher_id}' is not revoked"}
 
         revocation = self.revoked_publishers[publisher_id]
         original_record = revocation["original_record"]
 
         # Restore publisher with potentially downgraded trust level
         restored_record = original_record.copy()
-        restored_record.update({
-            "trust_level": new_trust_level,
-            "status": "active",
-            "last_updated": time.time(),
-            "restored_at": time.time(),
-            "restored_by": restored_by
-        })
+        restored_record.update(
+            {
+                "trust_level": new_trust_level,
+                "status": "active",
+                "last_updated": time.time(),
+                "restored_at": time.time(),
+                "restored_by": restored_by,
+            }
+        )
 
         # Move back to active publishers
         self.publishers[publisher_id] = restored_record
@@ -328,11 +299,15 @@ class PublisherTrustManager:
         self.reputation_scores[publisher_id] = restored_reputation
 
         # Record event
-        self._record_publisher_event(publisher_id, "restored", {
-            "restored_by": restored_by,
-            "new_trust_level": new_trust_level,
-            "reputation_penalty": original_reputation - restored_reputation
-        })
+        self._record_publisher_event(
+            publisher_id,
+            "restored",
+            {
+                "restored_by": restored_by,
+                "new_trust_level": new_trust_level,
+                "reputation_penalty": original_reputation - restored_reputation,
+            },
+        )
 
         # Save changes
         self._save_trust_data()
@@ -343,17 +318,13 @@ class PublisherTrustManager:
             "success": True,
             "publisher_id": publisher_id,
             "new_trust_level": new_trust_level,
-            "reputation_score": restored_reputation
+            "reputation_score": restored_reputation,
         }
 
     # === Reputation Management ===
 
     def update_reputation(
-        self,
-        publisher_id: str,
-        event_type: str,
-        impact: float,
-        details: dict[str, Any] | None = None
+        self, publisher_id: str, event_type: str, impact: float, details: dict[str, Any] | None = None
     ):
         """Update publisher reputation based on events"""
 
@@ -374,7 +345,7 @@ class PublisherTrustManager:
             "old_score": current_score,
             "new_score": new_score,
             "details": details or {},
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
 
         if publisher_id not in self.reputation_events:
@@ -383,16 +354,12 @@ class PublisherTrustManager:
         self.reputation_events[publisher_id].append(event)
 
         # Check for auto-revocation
-        if (new_score < self.trust_policies["auto_revoke_threshold"] and
-            publisher_id in self.publishers):
-
+        if new_score < self.trust_policies["auto_revoke_threshold"] and publisher_id in self.publishers:
             logger.warning(f"Publisher '{publisher_id}' reputation below threshold: {new_score}")
 
             # Auto-revoke if policy allows
             self.revoke_publisher(
-                publisher_id,
-                f"Automatic revocation due to low reputation score: {new_score}",
-                revoked_by="system"
+                publisher_id, f"Automatic revocation due to low reputation score: {new_score}", revoked_by="system"
             )
 
         # Save changes
@@ -444,17 +411,14 @@ class PublisherTrustManager:
                 "publisher_id": publisher_id,
                 "current_score": self.reputation_scores.get(publisher_id, 0.5),
                 "event_count": 0,
-                "recent_events": []
+                "recent_events": [],
             }
 
         events = self.reputation_events[publisher_id]
         current_time = time.time()
 
         # Get recent events (last 30 days)
-        recent_events = [
-            event for event in events
-            if current_time - event["timestamp"] < (30 * 24 * 3600)
-        ]
+        recent_events = [event for event in events if current_time - event["timestamp"] < (30 * 24 * 3600)]
 
         # Calculate trend
         if len(events) >= 2:
@@ -471,7 +435,7 @@ class PublisherTrustManager:
             "event_count": len(events),
             "recent_events": len(recent_events),
             "last_updated": events[-1]["timestamp"] if events else None,
-            "events": recent_events[-5:]  # Last 5 events
+            "events": recent_events[-5:],  # Last 5 events
         }
 
     # === Trust Policy Enforcement ===
@@ -486,16 +450,18 @@ class PublisherTrustManager:
             "reputation_score": 0.0,
             "status": "unknown",
             "issues": [],
-            "recommendations": []
+            "recommendations": [],
         }
 
         # Check if publisher exists
         if publisher_id in self.revoked_publishers:
-            evaluation.update({
-                "trusted": False,
-                "status": "revoked",
-                "issues": [f"Publisher is revoked: {self.revoked_publishers[publisher_id]['reason']}"]
-            })
+            evaluation.update(
+                {
+                    "trusted": False,
+                    "status": "revoked",
+                    "issues": [f"Publisher is revoked: {self.revoked_publishers[publisher_id]['reason']}"],
+                }
+            )
             return evaluation
 
         if publisher_id not in self.publishers:
@@ -505,11 +471,9 @@ class PublisherTrustManager:
         publisher = self.publishers[publisher_id]
         reputation = self.calculate_reputation_score(publisher_id)
 
-        evaluation.update({
-            "trust_level": publisher["trust_level"],
-            "reputation_score": reputation,
-            "status": publisher["status"]
-        })
+        evaluation.update(
+            {"trust_level": publisher["trust_level"], "reputation_score": reputation, "status": publisher["status"]}
+        )
 
         # Check reputation threshold
         min_reputation = self.trust_policies["min_reputation_score"]
@@ -525,15 +489,12 @@ class PublisherTrustManager:
                 evaluation["recommendations"].append(f"Quarantine ends in {remaining_days:.1f} days")
 
         # Check repository requirements
-        if (self.trust_policies["require_multiple_repositories"] and
-            len(publisher["repositories"]) < 2):
+        if self.trust_policies["require_multiple_repositories"] and len(publisher["repositories"]) < 2:
             evaluation["issues"].append("Policy requires multiple repositories")
 
         # Overall trust determination
         evaluation["trusted"] = (
-            len(evaluation["issues"]) == 0 and
-            reputation >= min_reputation and
-            publisher["status"] == "active"
+            len(evaluation["issues"]) == 0 and reputation >= min_reputation and publisher["status"] == "active"
         )
 
         return evaluation
@@ -570,7 +531,7 @@ class PublisherTrustManager:
                     publisher_id,
                     "policy_reevaluation",
                     -0.1,  # Small penalty for not meeting updated policies
-                    {"policy_issues": evaluation["issues"]}
+                    {"policy_issues": evaluation["issues"]},
                 )
 
     # === History and Events ===
@@ -580,11 +541,7 @@ class PublisherTrustManager:
         if publisher_id not in self.publisher_history:
             self.publisher_history[publisher_id] = []
 
-        event = {
-            "event_type": event_type,
-            "timestamp": time.time(),
-            "details": details
-        }
+        event = {"event_type": event_type, "timestamp": time.time(), "details": details}
 
         self.publisher_history[publisher_id].append(event)
 
@@ -600,10 +557,7 @@ class PublisherTrustManager:
     # === Querying and Statistics ===
 
     def list_publishers(
-        self,
-        trust_level: str | None = None,
-        status: str | None = None,
-        min_reputation: float | None = None
+        self, trust_level: str | None = None, status: str | None = None, min_reputation: float | None = None
     ) -> list[dict[str, Any]]:
         """List publishers with optional filtering"""
 
@@ -639,21 +593,15 @@ class PublisherTrustManager:
         stats = {
             "total_publishers": len(self.publishers),
             "revoked_publishers": len(self.revoked_publishers),
-            "trust_levels": {
-                "official": 0,
-                "community": 0
-            },
-            "status_counts": {
-                "active": 0,
-                "quarantine": 0
-            },
+            "trust_levels": {"official": 0, "community": 0},
+            "status_counts": {"active": 0, "quarantine": 0},
             "reputation_distribution": {
-                "high": 0,     # >= 0.8
-                "medium": 0,   # 0.5 - 0.8
-                "low": 0       # < 0.5
+                "high": 0,  # >= 0.8
+                "medium": 0,  # 0.5 - 0.8
+                "low": 0,  # < 0.5
             },
             "avg_reputation": 0.0,
-            "trusted_publishers": 0
+            "trusted_publishers": 0,
         }
 
         total_reputation = 0.0

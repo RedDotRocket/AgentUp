@@ -37,11 +37,12 @@ class ConfigurationManager:
     @property
     def pydantic_config(self):
         """Get the underlying Pydantic Settings model.
-        
+
         Returns:
             Settings instance with full Pydantic validation and typed access
         """
         from agent.config import Config
+
         return Config
 
     def get(self, key: str, default: Any = None) -> Any:
@@ -122,7 +123,7 @@ class ConfigurationManager:
         """
         # Use Pydantic models for proper validation
         from agent.config import Config
-        
+
         # Check common feature patterns
         if feature == "security":
             return Config.security.enabled

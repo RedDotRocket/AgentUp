@@ -48,6 +48,7 @@ def integrate_plugins_with_capabilities(config: Union["Settings", None] = None) 
     # If config is not provided, load it
     if config is None:
         from agent.config import Config
+
         config = Config
 
     # Get configured plugins from the agent config
@@ -68,7 +69,9 @@ def integrate_plugins_with_capabilities(config: Union["Settings", None] = None) 
     # First, discover plugins
     logger.debug("Discovering plugins via entry points")
     plugin_registry.discover_plugins()
-    logger.debug(f"Plugin registry now has {len(plugin_registry.plugins)} loaded plugins: {list(plugin_registry.plugins.keys())}")
+    logger.debug(
+        f"Plugin registry now has {len(plugin_registry.plugins)} loaded plugins: {list(plugin_registry.plugins.keys())}"
+    )
 
     # Process configured plugins and determine which capabilities to register
     for plugin_config in configured_plugins:
@@ -99,7 +102,9 @@ def integrate_plugins_with_capabilities(config: Union["Settings", None] = None) 
 
             # Get the plugin's actual capabilities
             plugin_capabilities = plugin_instance.get_capability_definitions()
-            logger.debug(f"Plugin '{plugin_id}' provides {len(plugin_capabilities)} capabilities: {[cap.id for cap in plugin_capabilities]}")
+            logger.debug(
+                f"Plugin '{plugin_id}' provides {len(plugin_capabilities)} capabilities: {[cap.id for cap in plugin_capabilities]}"
+            )
         else:
             logger.error(f"Could not get plugin instance for '{plugin_id}'")
             continue
@@ -149,10 +154,7 @@ def integrate_plugins_with_capabilities(config: Union["Settings", None] = None) 
 
             from agent.capabilities.manager import register_plugin_capability
 
-            plugin_config = {
-                "capability_id": capability_id,
-                "required_scopes": required_scopes
-            }
+            plugin_config = {"capability_id": capability_id, "required_scopes": required_scopes}
 
             # Register using the framework's scope enforcement pattern
             register_plugin_capability(plugin_config)
@@ -162,6 +164,7 @@ def integrate_plugins_with_capabilities(config: Union["Settings", None] = None) 
         except Exception as e:
             logger.error(f"Failed to register plugin capability '{capability_id}': {e}")
             import traceback
+
             logger.error(f"Registration error traceback: {traceback.format_exc()}")
             raise ValueError(
                 f"Plugin capability '{capability_id}' requires proper scope enforcement configuration."
@@ -185,6 +188,7 @@ def _get_available_services() -> dict[str, Any]:
     try:
         # Add LLM service if available
         from agent.llm_providers import create_llm_provider
+
         services["llm_factory"] = create_llm_provider
     except ImportError:
         pass
@@ -192,6 +196,7 @@ def _get_available_services() -> dict[str, Any]:
     try:
         # Add multimodal helper if available
         from agent.utils.multimodal import MultiModalHelper
+
         services["multimodal"] = MultiModalHelper()
     except ImportError:
         pass
@@ -207,6 +212,7 @@ _plugin_registry_instance: list[PluginRegistry | None] = [None]
 def get_plugin_registry_instance() -> PluginRegistry | None:
     """Get the plugin registry instance"""
     return _plugin_registry_instance[0]
+
 
 class PluginAdapter:
     """Adapter to bridge the new plugin system with the capability registration system."""
@@ -241,13 +247,7 @@ class PluginAdapter:
 
                             # Create context if not provided
                             if context is None:
-                                context = CapabilityContext(
-                                    task=task,
-                                    config={},
-                                    services={},
-                                    state={},
-                                    metadata={}
-                                )
+                                context = CapabilityContext(task=task, config={}, services={}, state={}, metadata={})
 
                             logger.debug(f"Executing capability '{capability_id}' on plugin '{captured_plugin_id}'")
 
@@ -255,7 +255,7 @@ class PluginAdapter:
                             result = await plugin_registry.execute_capability(capability_id, context)
 
                             logger.debug(f"Capability execution result: {result}")
-                            return result.content if hasattr(result, 'content') else str(result)
+                            return result.content if hasattr(result, "content") else str(result)
 
                         return capability_executor
 
@@ -266,6 +266,7 @@ class PluginAdapter:
 
 
 _plugin_adapter_instance = None
+
 
 def get_plugin_adapter():
     """Get the plugin adapter instance."""
@@ -301,8 +302,8 @@ def create_plugin_capability_wrapper(capability_id: str) -> Callable[[Task], str
             task=task,
             config={},  # Will be populated by plugin configuration
             services=registry.plugins[registry.capability_to_plugin[capability_id]]._services,
-            state={},   # Will be managed by the plugin
-            metadata={"executor_type": "capability_wrapper"}
+            state={},  # Will be managed by the plugin
+            metadata={"executor_type": "capability_wrapper"},
         )
 
         # Execute the capability
@@ -315,8 +316,7 @@ def create_plugin_capability_wrapper(capability_id: str) -> Callable[[Task], str
 
 
 def integrate_with_function_registry(
-    registry: FunctionRegistry,
-    enabled_capabilities: dict[str, list[str]] | None = None
+    registry: FunctionRegistry, enabled_capabilities: dict[str, list[str]] | None = None
 ) -> None:
     """
     Integrate plugins with the function registry for AI function calling.
@@ -396,8 +396,8 @@ def _create_ai_function_handler(capability_id: str, ai_func, plugin_registry: Pl
                 "parameters": parameters,
                 "capability_id": capability_id,
                 "ai_function_call": True,
-                "function_name": ai_func.name
-            }
+                "function_name": ai_func.name,
+            },
         )
 
         # Execute the capability
@@ -443,7 +443,7 @@ def get_capability_info(capability_id: str) -> dict[str, Any]:
                 "source": "plugin",
                 "scopes": capability_def.required_scopes,
                 "ai_function": CapabilityType.AI_FUNCTION in capability_def.capabilities,
-                "tags": capability_def.tags
+                "tags": capability_def.tags,
             }
 
     # Fallback to basic executor info
