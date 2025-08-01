@@ -1,7 +1,12 @@
-# AgentUp
-
 <p align="center">
   <img src="https://raw.githubusercontent.com/RedDotRocket/AgentUp/main/assets/compie.png" alt="Compie Logo" width="200"/>
+</p>
+
+<p align="center"><strong>
+  Designed with security, scalability, and extensibility at its foundation, AgentUp streamlines development through a configuration-driven architecture. It removes boilerplate and offers a growing ecosystem of community plugins to expand functionality as needed. Move fast, extend when needed.</strong>
+</p>
+<p align="center">
+  Built by the creator of <a href="https://sigstore.dev">Sigstore</a>.
 </p>
 
 <p align="center">
@@ -16,18 +21,23 @@
   <a href="https://pepy.tech/project/agentup"><img src="https://static.pepy.tech/badge/agentup" alt="Downloads"/></a>
 </p>
 
-<p align="center">
-  Designed with security, scalability, and extensibility at its foundation, AgentUp streamlines development through a configuration-driven architecture. It removes boilerplate and offers a growing ecosystem of community plugins to expand functionality as needed. Move fast, extend when needed.
-</p>
-<p align="center">
-  Built by the creator of <a href="https://sigstore.dev">Sigstore</a>.
-</p>
 
-> ⚠️ **Warning: This Project Is Under Active Development**
->
-> This project is currently **unstable** and subject to frequent changes. Features may be added, removed, or modified without notice.
-> Contributions are welcome, but please be aware that the codebase may change rapidly, although we will minimise breaking changes when we can.
 
+<div align="center">
+  <h2>🚧 Project Status: In Active Development 🚧</h2>
+  <p>
+    Join the future of AI Agent Engineering! We're actively building AgentUp and looking for contributors.
+    Want to get involved?
+    <br />
+    <a href="https://github.com/RedDotRocket/AgentUp/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22">
+      <img src="https://img.shields.io/github/issues/RedDotRocket/AgentUp/good%20first%20issue?style=for-the-badge" alt="Good First Issues" />
+    </a>
+    <br />
+    Connect with our growing community on
+    <a href="https://discord.gg/pPcjYzGvbS" aria-label="Join AgentUp Discord Community">Discord</a>
+    to discuss ideas, get help, and find a mentor to help you contribute to the project.
+  </p>
+</div>
 
 ## Why AgentUp?
 
