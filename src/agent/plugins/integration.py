@@ -17,6 +17,7 @@ from a2a.types import Task
 from agent.capabilities.manager import _capabilities
 from agent.core.dispatcher import FunctionRegistry
 
+from .adapter import PluginAdapter
 from .manager import PluginRegistry, get_plugin_registry
 from .models import CapabilityContext
 
@@ -214,57 +215,6 @@ def get_plugin_registry_instance() -> PluginRegistry | None:
     return _plugin_registry_instance[0]
 
 
-class PluginAdapter:
-    """Adapter to bridge the new plugin system with the capability registration system."""
-
-    def __init__(self):
-        # Don't store the registry - get it dynamically to avoid timing issues
-        pass
-
-    def get_capability_executor_for_capability(self, capability_id: str):
-        """Get capability executor for a given capability ID."""
-        # Get registry dynamically to ensure it's populated
-        plugin_registry = get_plugin_registry()
-        if not plugin_registry:
-            logger.error(f"Plugin registry not available when getting executor for {capability_id}")
-            return None
-
-        logger.debug(f"Looking for capability '{capability_id}' in {len(plugin_registry.plugins)} plugins")
-
-        # Find which plugin provides this capability
-        for plugin_id, plugin_instance in plugin_registry.plugins.items():
-            capability_definitions = plugin_instance.get_capability_definitions()
-            logger.debug(f"Plugin '{plugin_id}' has capabilities: {[cap.id for cap in capability_definitions]}")
-
-            for cap_def in capability_definitions:
-                if cap_def.id == capability_id:
-                    logger.info(f"Found capability '{capability_id}' in plugin '{plugin_id}'")
-
-                    # Create executor that calls the plugin's capability method
-                    def create_executor(captured_plugin_id: str):
-                        async def capability_executor(task, context=None):
-                            from agent.plugins.models import CapabilityContext
-
-                            # Create context if not provided
-                            if context is None:
-                                context = CapabilityContext(task=task, config={}, services={}, state={}, metadata={})
-
-                            logger.debug(f"Executing capability '{capability_id}' on plugin '{captured_plugin_id}'")
-
-                            # Execute the capability
-                            result = await plugin_registry.execute_capability(capability_id, context)
-
-                            logger.debug(f"Capability execution result: {result}")
-                            return result.content if hasattr(result, "content") else str(result)
-
-                        return capability_executor
-
-                    return create_executor(plugin_id)
-
-        logger.error(f"Capability '{capability_id}' not found in any plugin")
-        return None
-
-
 _plugin_adapter_instance = None
 
 
@@ -272,7 +222,9 @@ def get_plugin_adapter():
     """Get the plugin adapter instance."""
     global _plugin_adapter_instance
     if _plugin_adapter_instance is None:
-        _plugin_adapter_instance = PluginAdapter()
+        from agent.config import Config
+
+        _plugin_adapter_instance = PluginAdapter(Config)
     return _plugin_adapter_instance
 
 

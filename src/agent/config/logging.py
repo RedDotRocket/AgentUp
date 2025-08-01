@@ -73,6 +73,27 @@ def uppercase_log_level(_logger, _method_name, event_dict: EventDict) -> EventDi
     return event_dict
 
 
+def add_plugin_context(_logger, _method_name, event_dict: EventDict) -> EventDict:
+    """
+    Add plugin context to log entries if available in context variables.
+
+    This processor looks for plugin-related context variables and adds them
+    to the log event for better identification of plugin-generated logs.
+    """
+    # Check if we have plugin context in the context variables
+    context_vars = structlog.contextvars.get_contextvars()
+
+    # Add plugin identification fields if available
+    if "plugin_id" in context_vars:
+        event_dict["plugin_id"] = context_vars["plugin_id"]
+    if "plugin_name" in context_vars:
+        event_dict["plugin_name"] = context_vars["plugin_name"]
+    if "plugin_version" in context_vars:
+        event_dict["plugin_version"] = context_vars["plugin_version"]
+
+    return event_dict
+
+
 def setup_logging(config: LoggingConfig | None = None, json_logs: bool | None = None, log_level: str | None = None):
     """Setup structured logging with optional configuration.
 
@@ -102,6 +123,7 @@ def setup_logging(config: LoggingConfig | None = None, json_logs: bool | None = 
         structlog.stdlib.add_logger_name,
         structlog.stdlib.add_log_level,
         uppercase_log_level,  # Convert log level to uppercase
+        add_plugin_context,  # Add plugin context to log entries
         structlog.stdlib.PositionalArgumentsFormatter(),
         structlog.stdlib.ExtraAdder(),
         drop_color_message_key,
@@ -179,6 +201,35 @@ def _get_module_logger():
 
             logger = logging.getLogger(__name__)
     return logger
+
+
+def get_plugin_logger(plugin_id: str, plugin_name: str | None = None, plugin_version: str | None = None):
+    """
+    Create a logger with plugin context bound automatically.
+
+    This function creates a structlog logger that automatically includes
+    plugin identification in all log entries.
+
+    Args:
+        plugin_id: Unique identifier for the plugin
+        plugin_name: Human-readable name of the plugin (optional)
+        plugin_version: Version of the plugin (optional)
+
+    Returns:
+        A structlog logger with plugin context bound
+    """
+    # Create base logger for the plugin
+    base_logger = structlog.get_logger(f"agent.plugins.{plugin_id}")
+
+    # Prepare context to bind
+    plugin_context = {"plugin_id": plugin_id}
+    if plugin_name:
+        plugin_context["plugin_name"] = plugin_name
+    if plugin_version:
+        plugin_context["plugin_version"] = plugin_version
+
+    # Return logger with plugin context bound
+    return base_logger.bind(**plugin_context)
 
 
 def create_structlog_middleware_with_config(config: LoggingConfig | None = None):

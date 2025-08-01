@@ -72,6 +72,9 @@ class {{ class_name }}(Plugin):
         try:
             # Extract input from context using base class method
             input_text = self._extract_task_content(context)
+            
+            # Log the start of processing (demonstrates structured logging)
+            self.logger.info("Starting capability execution", capability_id="{{ capability_id }}", input_length=len(input_text))
 
             {% if template == "ai" %}
             # Extract parameters for AI functions
@@ -82,6 +85,7 @@ class {{ class_name }}(Plugin):
 
             # AI-powered processing
             if not self.llm_service:
+                self.logger.error("LLM service not available for AI processing")
                 return {
                     "success": False,
                     "error": "LLM service not available",
@@ -98,6 +102,13 @@ class {{ class_name }}(Plugin):
 
             # Format output
             formatted_result = self._format_output(result, format)
+            
+            # Log successful completion
+            self.logger.info("Capability execution completed", 
+                           capability_id="{{ capability_id }}", 
+                           mode=mode, 
+                           format=format, 
+                           result_length=len(formatted_result))
 
             return {
                 "success": True,
@@ -112,6 +123,12 @@ class {{ class_name }}(Plugin):
             {% else %}
             # Basic processing
             processed_result = f"{{ display_name }} processed: {input_text}"
+            
+            # Log successful completion
+            self.logger.info("Capability execution completed", 
+                           capability_id="{{ capability_id }}", 
+                           input_length=len(input_text),
+                           result_length=len(processed_result))
 
             return {
                 "success": True,
@@ -125,6 +142,11 @@ class {{ class_name }}(Plugin):
             {% endif %}
 
         except Exception as e:
+            # Log the error with structured data
+            self.logger.error("Error in capability execution", 
+                            capability_id="{{ capability_id }}", 
+                            error=str(e), 
+                            exc_info=True)
             return {
                 "success": False,
                 "error": str(e),
@@ -136,6 +158,8 @@ class {{ class_name }}(Plugin):
         """Fast processing mode using LLM."""
         # Quick processing with minimal LLM interaction
         prompt = f"Quickly process this input: {input[:100]}..."
+        
+        self.logger.debug("Starting fast processing", input_length=len(input), prompt_length=len(prompt))
 
         try:
             # Adapt to different LLM service interfaces
@@ -147,8 +171,11 @@ class {{ class_name }}(Plugin):
                 # Fallback for basic processing
                 return f"Fast processing of: {input[:50]}..."
 
-            return response.strip() if hasattr(response, 'strip') else str(response)
+            result = response.strip() if hasattr(response, 'strip') else str(response)
+            self.logger.debug("Fast processing completed successfully", result_length=len(result))
+            return result
         except Exception as e:
+            self.logger.warning("Fast processing fallback due to LLM error", error=str(e))
             return f"Fast processing completed (LLM unavailable): {input[:50]}..."
 
     async def _accurate_processing(self, input: str) -> str:

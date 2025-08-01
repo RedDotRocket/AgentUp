@@ -10,6 +10,7 @@ from typing import Any
 
 import structlog
 
+from ..config.logging import get_plugin_logger
 from .decorators import CapabilityMetadata, get_capability_metadata, validate_capability_metadata
 from .models import (
     AIFunction,
@@ -41,6 +42,13 @@ class Plugin:
         self._config: dict[str, Any] = {}
         self._state: dict[str, Any] = {}
 
+        # Create plugin-aware logger
+        self.logger = get_plugin_logger(
+            plugin_id=self.plugin_id,
+            plugin_name=getattr(self, 'name', None) or self.__class__.__name__,
+            plugin_version=getattr(self, 'version', None)
+        )
+
         # Auto-discover capabilities
         self._discover_capabilities()
 
@@ -58,14 +66,14 @@ class Plugin:
                 # Validate capability metadata
                 errors = validate_capability_metadata(capability_meta)
                 if errors:
-                    logger.error(f"Invalid capability {capability_meta.id} in {self.__class__.__name__}: {errors}")
+                    self.logger.error("Invalid capability", capability_id=capability_meta.id, errors=errors)
                     continue
 
                 # Bind the handler to this instance
                 capability_meta.handler = method
                 self._capabilities[capability_meta.id] = capability_meta
 
-                logger.debug(f"Discovered capability '{capability_meta.id}' in {self.__class__.__name__}")
+                self.logger.debug("Discovered capability", capability_id=capability_meta.id)
 
     # === Core Plugin Interface ===
 
@@ -78,7 +86,7 @@ class Plugin:
 
         capability = self._capabilities[capability_id]
         try:
-            logger.debug(f"Executing capability '{capability_id}' via method '{capability.method_name}'")
+            self.logger.debug("Executing capability", capability_id=capability_id, method_name=capability.method_name)
 
             # Call the decorated method
             result = await capability.handler(context)
@@ -96,7 +104,7 @@ class Plugin:
                 return CapabilityResult(content=str(result), success=True)
 
         except Exception as e:
-            logger.error(f"Error executing capability {capability_id}: {e}", exc_info=True)
+            self.logger.error("Error executing capability", capability_id=capability_id, error=str(e), exc_info=True)
             return CapabilityResult(content=f"Error executing capability: {str(e)}", success=False, error=str(e))
 
     def can_handle_task(self, capability_id: str, context: CapabilityContext) -> bool | float:

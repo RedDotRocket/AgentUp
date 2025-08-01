@@ -11,8 +11,8 @@ from unittest.mock import Mock, call, patch
 import pytest
 from a2a.types import Task
 
+from src.agent.plugins.adapter import PluginAdapter
 from src.agent.plugins.integration import (
-    PluginAdapter,
     create_plugin_capability_wrapper,
     enable_plugin_system,
     get_capability_info,
@@ -354,7 +354,8 @@ class TestPluginAdapter:
 
     def test_plugin_adapter_initialization(self):
         """Test PluginAdapter initialization."""
-        adapter = PluginAdapter()
+        mock_config = Mock()
+        adapter = PluginAdapter(mock_config)
         assert adapter is not None
 
     @patch("src.agent.plugins.integration.get_plugin_registry")
@@ -377,7 +378,8 @@ class TestPluginAdapter:
 
         mock_registry.plugins = {"test_plugin": mock_plugin}
 
-        adapter = PluginAdapter()
+        mock_config = Mock()
+        adapter = PluginAdapter(mock_config)
         executor = adapter.get_capability_executor_for_capability("test_capability")
 
         assert executor is not None
@@ -391,20 +393,28 @@ class TestPluginAdapter:
         mock_get_registry.return_value = mock_registry
         mock_registry.plugins = {}
 
-        adapter = PluginAdapter()
+        mock_config = Mock()
+        mock_config.plugins = []  # Empty plugins list
+        adapter = PluginAdapter(mock_config)
         executor = adapter.get_capability_executor_for_capability("nonexistent")
 
-        assert executor is None
+        # Should return a function (executor)
+        assert executor is not None
+        assert callable(executor)
 
     @patch("src.agent.plugins.integration.get_plugin_registry")
     def test_get_capability_executor_no_registry(self, mock_get_registry):
         """Test getting capability executor when registry not available."""
         mock_get_registry.return_value = None
 
-        adapter = PluginAdapter()
+        mock_config = Mock()
+        mock_config.plugins = []  # Empty plugins list
+        adapter = PluginAdapter(mock_config)
         executor = adapter.get_capability_executor_for_capability("test_capability")
 
-        assert executor is None
+        # Should return a function (executor)
+        assert executor is not None
+        assert callable(executor)
 
 
 class TestPluginCapabilityWrapper:
