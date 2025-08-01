@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/RedDotRocket/AgentUp/main/assets/compie.png" alt="Compie Logo" width="200"/>
+  <img src="https://raw.githubusercontent.com/RedDotRocket/AgentUp/main/assets/logo.png" alt="Project Logo" width="200"/>
 </p>
 
 <p align="center"><strong>
@@ -24,20 +24,17 @@
 
 
 <div align="center">
-  <h2>🚧 Project Status: In Active Development 🚧</h2>
-  <p>
-    Join the future of AI Agent Engineering! We're actively building AgentUp and looking for contributors.
-    Want to get involved?
-    <br />
-    <a href="https://github.com/RedDotRocket/AgentUp/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22">
-      <img src="https://img.shields.io/github/issues/RedDotRocket/AgentUp/good%20first%20issue?style=for-the-badge" alt="Good First Issues" />
-    </a>
-    <br />
-    Connect with our growing community on
-    <a href="https://discord.gg/pPcjYzGvbS" aria-label="Join AgentUp Discord Community">Discord</a>
-    to discuss ideas, get help, and find a mentor to help you contribute to the project.
-  </p>
+
+### 🚧 Project Status: In Active Development 🚧
+
+Join the future of AI Agent Engineering! We're actively building **AgentUp** and looking for contributors.
+
+[![Good First Issues](https://img.shields.io/github/issues/RedDotRocket/AgentUp/good%20first%20issue?style=for-the-badge)](https://github.com/RedDotRocket/AgentUp/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+
+Connect with our growing community on [Discord](https://discord.gg/pPcjYzGvbS) to discuss ideas, get help, and find a mentor to help you contribute to the project.
+
 </div>
+
 
 ## Why AgentUp?
 
