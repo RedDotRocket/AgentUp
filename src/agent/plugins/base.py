@@ -59,10 +59,15 @@ class Plugin:
 
     def _discover_capabilities(self):
         """Automatically discover all @capability decorated methods"""
+        self.logger.debug(f"Starting capability discovery for {self.__class__.__name__}")
+
         for _name, method in inspect.getmembers(self, predicate=inspect.ismethod):
+            self.logger.debug(f"Checking method {_name}")
             capabilities = get_capability_metadata(method)
+            self.logger.debug(f"Method {_name} has capabilities: {[c.id for c in capabilities]}")
 
             for capability_meta in capabilities:
+                self.logger.debug(f"Processing capability {capability_meta.id}")
                 # Validate capability metadata
                 errors = validate_capability_metadata(capability_meta)
                 if errors:
@@ -72,8 +77,11 @@ class Plugin:
                 # Bind the handler to this instance
                 capability_meta.handler = method
                 self._capabilities[capability_meta.id] = capability_meta
+                self.logger.debug(f"Registered capability {capability_meta.id} with handler {method}")
 
                 self.logger.debug("Discovered capability", capability_id=capability_meta.id)
+
+        self.logger.debug(f"Final capabilities for {self.__class__.__name__}: {list(self._capabilities.keys())}")
 
     # === Core Plugin Interface ===
 

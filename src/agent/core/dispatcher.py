@@ -651,6 +651,8 @@ def get_function_registry() -> FunctionRegistry:
     global _function_registry
     if _function_registry is None:
         _function_registry = FunctionRegistry()
+        # Register AI functions from capabilities when registry is first created
+        register_ai_functions_from_capabilities()
     return _function_registry
 
 
@@ -770,12 +772,14 @@ def register_ai_functions_from_capabilities():
 
             # Get all available plugin capabilities
             available_plugins = plugin_adapter.list_available_capabilities()
+            logger.debug(f"Available plugin capabilities: {available_plugins}")
 
             # Get configured plugins from agent config
             try:
                 from agent.config import Config
 
                 configured_plugins = {plugin.plugin_id for plugin in Config.plugins}
+                logger.debug(f"Configured plugins: {configured_plugins}")
             except Exception as e:
                 logger.warning(f"Could not load agent config for plugin AI functions: {e}")
                 configured_plugins = set()
@@ -784,11 +788,14 @@ def register_ai_functions_from_capabilities():
             plugin_to_capabilities = {}
             for capability_id in available_plugins:
                 capability_info = plugin_adapter.get_capability_info(capability_id)
+                logger.debug(f"Capability {capability_id} info: {capability_info}")
                 if capability_info and "plugin_name" in capability_info:
                     plugin_name = capability_info["plugin_name"]
                     if plugin_name not in plugin_to_capabilities:
                         plugin_to_capabilities[plugin_name] = []
                     plugin_to_capabilities[plugin_name].append(capability_id)
+
+            logger.debug(f"Plugin to capabilities mapping: {plugin_to_capabilities}")
 
             # Register AI functions only for capabilities from configured plugins
             for capability_id in available_plugins:
@@ -798,6 +805,8 @@ def register_ai_functions_from_capabilities():
                     continue
 
                 plugin_name = capability_info["plugin_name"]
+                logger.debug(f"Processing capability {capability_id} from plugin {plugin_name}")
+
                 if plugin_name not in configured_plugins:
                     logger.debug(
                         f"Skipping AI functions for capability '{capability_id}' from unregisterd plugin '{plugin_name}'"
@@ -805,6 +814,8 @@ def register_ai_functions_from_capabilities():
                     continue
 
                 ai_functions = plugin_adapter.get_ai_functions(capability_id)
+                logger.debug(f"AI functions for {capability_id}: {[f.name for f in ai_functions]}")
+
                 for ai_function in ai_functions:
                     # Convert plugin AIFunction to registry format
                     schema = {
@@ -821,12 +832,14 @@ def register_ai_functions_from_capabilities():
                             from agent.plugins.models import CapabilityContext
 
                             context = CapabilityContext(task=task, metadata={"parameters": kwargs})
-                            result = await func_handler(task, context)
+                            # func_handler is already bound to the plugin instance, just pass context
+                            result = await func_handler(context)
                             return result.content if hasattr(result, "content") else str(result)
 
                         return plugin_function_wrapper
 
                     wrapped_handler = create_wrapper(ai_function.handler)
+                    logger.debug(f"Registering AI function: {ai_function.name}")
                     registry.register_function(ai_function.name, wrapped_handler, schema)
                     plugin_functions_count += 1
 

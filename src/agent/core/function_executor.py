@@ -88,8 +88,12 @@ class FunctionExecutor:
 
             # Handle local function
             handler = self.function_registry.get_handler(function_name)
+            logger.debug(f"Handler for '{function_name}': {handler}")
             logger.info(f"Executing function '{function_name}' with arguments: {arguments}")
             if not handler:
+                logger.error(
+                    f"Function '{function_name}' not found in handlers: {list(self.function_registry._handlers.keys())}"
+                )
                 raise ValueError(f"Function not found: {function_name}")
 
             # Create task with function parameters
