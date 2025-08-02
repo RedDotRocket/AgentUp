@@ -138,6 +138,7 @@ nav:
     - Logging: plugin-development/logging.md
     - Testing: plugin-development/testing.md
     - Development: plugin-development/development.md
+    - Avatar Generation: plugin-development/avatar-generation.md
   - AgentUp Development:
     - AgentUp Development: agentup-development/index.md
     - Configuration: agentup-development/configuration.md
