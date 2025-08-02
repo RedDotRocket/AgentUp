@@ -1,0 +1,36 @@
+"""Tests for {{ display_name }} plugin."""
+
+import pytest
+from agent.plugins.models import CapabilityContext
+from {{ plugin_name_snake }}.plugin import {{ class_name }}
+
+
+@pytest.fixture
+def plugin():
+    """Create plugin instance for testing."""
+    return {{ class_name }}()
+
+
+@pytest.mark.asyncio
+async def test_{{ capability_method_name }}(plugin):
+    """Test the {{ capability_id }} capability."""
+    # Create mock context
+    context = CapabilityContext(
+        request_id="test-123",
+        user_id="test-user",
+        agent_id="test-agent",
+        conversation_id="test-conv",
+        message="Test message",
+        metadata={"parameters": {"input": "test input"}}
+    )
+
+    # Execute capability
+    result = await plugin.{{ capability_method_name }}(context)
+
+    # Verify result
+    assert result is not None
+    if isinstance(result, dict):
+        assert "success" in result
+        assert "content" in result
+    else:
+        assert isinstance(result, str)

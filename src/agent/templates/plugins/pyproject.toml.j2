@@ -2,6 +2,7 @@
 name = "{{ plugin_name }}"
 version = "0.4.0"
 description = "{{ description }}"
+requires-python = ">=3.11"
 authors = [
     { name = "{{ author or 'Your Name' }}"{% if email %}, email = "{{ email }}"{% endif %} }
 ]
@@ -16,7 +17,6 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
 ]
 
 [project.entry-points."agentup.plugins"]

@@ -741,114 +741,11 @@ def create(plugin_name: str | None, template: str, output_dir: str | None, no_gi
         (output_dir / "README.md").write_text(readme_content)
 
         # Create basic test file
-        test_content = f'''"""Tests for {display_name} plugin."""
-
-import pytest
-from agent.plugins.models import CapabilityContext
-from {plugin_name_snake}.plugin import {class_name}
-
-
-@pytest.fixture
-def plugin():
-    """Create plugin instance for testing."""
-    return {class_name}()
-
-
-@pytest.mark.asyncio
-async def test_{capability_method_name}(plugin):
-    """Test the {capability_id} capability."""
-    # Create mock context
-    context = CapabilityContext(
-        request_id="test-123",
-        user_id="test-user",
-        agent_id="test-agent",
-        conversation_id="test-conv",
-        message="Test message",
-        metadata={{"parameters": {{"input": "test input"}}}}
-    )
-
-    # Execute capability
-    result = await plugin.{capability_method_name}(context)
-
-    # Verify result
-    assert result is not None
-    if isinstance(result, dict):
-        assert "success" in result
-        assert "content" in result
-    else:
-        assert isinstance(result, str)
-'''
+        test_content = _render_plugin_template("test_plugin.py.j2", context)
         (tests_dir / f"test_{plugin_name_snake}.py").write_text(test_content)
 
         # Create .gitignore
-        gitignore_content = """# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# PyInstaller
-*.manifest
-*.spec
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-cover/
-
-# Environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-"""
+        gitignore_content = _render_plugin_template(".gitignore.j2", context)
         (output_dir / ".gitignore").write_text(gitignore_content)
 
         # Copy static folder to plugin root
