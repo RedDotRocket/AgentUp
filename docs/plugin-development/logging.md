@@ -351,10 +351,3 @@ class MyPlugin(Plugin):
 
 ### Correlation IDs
 AgentUp automatically includes correlation IDs for request tracking. Your plugin logs will include these automatically when processing requests.
-
-## Related Documentation
-
-- [Plugin Development Guide](development.md)
-- [Testing Plugins](testing.md)
-- [Security and Scopes](scopes-and-security.md)
-- [AgentUp Configuration](../configuration.md)

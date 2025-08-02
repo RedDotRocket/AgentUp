@@ -1,7 +1,7 @@
 # AgentUp Documentation
 
 <p align="center">
-  <img src="images/compie.png" alt="AgentUp Logo" width="200"/>
+  <img src="images/compie-docs.png" alt="AgentUp Logo" width="500"/>
 </p>
 
 <p align="center">

@@ -12,11 +12,11 @@ logging:
   enabled: true
   level: "INFO"
   format: "text"  # Use "json" for production
-  
+
   console:
     enabled: true
     colors: true
-    
+
   correlation_id: true
   request_logging: true
 ```
@@ -46,19 +46,38 @@ logging:
 logging:
   correlation_id: true        # Add correlation IDs to requests
   request_logging: true       # Log HTTP requests/responses
-  
+
   # Module-specific log levels
   modules:
     uvicorn: "INFO"
     httpx: "WARNING"
     my_plugin: "DEBUG"
-    
+
   # Uvicorn integration
   uvicorn:
     access_log: true
     disable_default_handlers: true
     use_colors: true
 ```
+
+### Module-Specific Logging
+
+You can set specific log levels for different modules:
+
+```yaml
+logging:
+  modules:
+    "a2a": "ERROR"                  # Suppress all a2a logs below ERROR level
+    "a2a.utils": "ERROR"            # Specifically suppress a2a.utils logs
+    "a2a.utils.telemetry": "ERROR"  # Specifically suppress telemetry logs
+    "a2a.utils.telemetry": "CRITICAL" # Only critical errors from telemetry
+    "uvicorn": "INFO"               # Uvicorn logs at INFO level
+```
+
+
+!!! note
+    Module names should match the Python import paths, e.g., `a2a.utils.telemetry` you see in the logs:
+    `2025-08-02T06:57:13.034656Z [DEBUG    ] Trace all class None, None [a2a.utils.telemetry]`
 
 ## Using Structured Logging in Code
 
@@ -71,24 +90,24 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 async def my_handler(task, context=None, context_id=None):
-    logger.info("Processing task", 
-                skill="my_handler", 
+    logger.info("Processing task",
+                skill="my_handler",
                 task_id=task.id,
                 user_id=context_id)
-    
+
     try:
         result = await process_task(task)
-        
+
         logger.info("Task completed successfully",
                    skill="my_handler",
                    task_id=task.id,
                    result_length=len(result))
-        
+
         return result
-        
+
     except Exception as e:
         logger.error("Task processing failed",
-                    skill="my_handler", 
+                    skill="my_handler",
                     task_id=task.id,
                     error=str(e),
                     error_type=type(e).__name__)
@@ -108,9 +127,9 @@ class MyPlugin:
                    plugin="my_plugin",
                    skill=context.skill_id,
                    correlation_id=context.correlation_id)
-        
+
         # Your plugin logic here
-        
+
         return SkillResult(content="Success", success=True)
 ```
 
@@ -138,17 +157,17 @@ logging:
   enabled: true
   level: "DEBUG"
   format: "text"
-  
+
   console:
     enabled: true
     colors: true
     show_path: true
-    
+
   # File logging options available in configuration model
-    
+
   correlation_id: true
   request_logging: true
-  
+
   modules:
     uvicorn: "INFO"
     httpx: "WARNING"
@@ -161,22 +180,22 @@ logging:
   enabled: true
   level: "INFO"
   format: "json"  # Structured JSON for log aggregation
-  
+
   console:
     enabled: true
     colors: false  # Disable colors in production
     show_path: true
-    
+
   # Currently console-only - file logging planned for future release
-    
+
   correlation_id: true
   request_logging: true
-  
+
   modules:
     uvicorn: "INFO"
     httpx: "WARNING"
     plugins: "INFO"
-    
+
   uvicorn:
     access_log: true
     disable_default_handlers: true
