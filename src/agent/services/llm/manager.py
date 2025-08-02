@@ -86,12 +86,25 @@ class LLMManager:
                     logger.error(f"Function call failed: {func_call.name}, error: {e}")
                     function_results.append(f"Error: {str(e)}")
 
-            # Combine function results with LLM response
+            # Send function results back to LLM for interpretation
             if function_results:
-                if response.content:
-                    return f"{response.content}\n\nResults: {'; '.join(function_results)}"
-                else:
-                    return "; ".join(function_results)
+                # Add the assistant's function call to the conversation
+                chat_messages.append(
+                    ChatMessage(
+                        role="assistant",
+                        content=response.content if response.content else "",
+                        function_calls=response.function_calls,
+                    )
+                )
+
+                # Add function results to the conversation
+                for func_call, result in zip(response.function_calls, function_results, strict=False):
+                    chat_messages.append(ChatMessage(role="function", content=str(result), name=func_call.name))
+
+                # Get final response from LLM with function results
+                logger.debug("Sending function results back to LLM for final response")
+                final_response = await llm.chat_complete(chat_messages)
+                return final_response.content
 
         return response.content
 
