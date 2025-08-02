@@ -92,7 +92,7 @@ class FunctionExecutor:
             logger.info(f"Executing function '{function_name}' with arguments: {arguments}")
             if not handler:
                 logger.error(
-                    f"Function '{function_name}' not found in handlers: {list(self.function_registry._handlers.keys())}"
+                    f"Function '{function_name}' not found in handlers: {self.function_registry.list_functions()}"
                 )
                 raise ValueError(f"Function not found: {function_name}")
 
