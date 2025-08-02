@@ -98,7 +98,7 @@ class LLMManager:
                 )
 
                 # Add function results to the conversation
-                for func_call, result in zip(response.function_calls, function_results, strict=False):
+                for func_call, result in zip(response.function_calls, function_results, strict=True):
                     chat_messages.append(ChatMessage(role="function", content=str(result), name=func_call.name))
 
                 # Get final response from LLM with function results
