@@ -101,23 +101,23 @@ class ProjectGenerator:
 
         for template_path, output_path in helm_files.items():
             content = self._render_template(template_path)
-            output_path.write_text(content)
+            output_path.write_text(content, encoding="utf-8")
 
     def _create_env_file(self):
         env_file = self.output_dir / ".env"
         if not env_file.exists():
             env_content = self._render_template(".env")
-            env_file.write_text(env_content)
+            env_file.write_text(env_content, encoding="utf-8")
 
     def _generate_config_files(self):
         config_path = self.output_dir / "agentup.yml"
         config_content = self._render_template("config/agentup.yml")
-        config_path.write_text(config_content)
+        config_path.write_text(config_content, encoding="utf-8")
 
     def _write_template_file(self, template_name: str):
         content = self._render_template(template_name)
         output_path = self.output_dir / template_name
-        output_path.write_text(content)
+        output_path.write_text(content, encoding="utf-8")
 
     # ============================================================================
     # TEMPLATE RENDERING

@@ -726,27 +726,27 @@ def create(plugin_name: str | None, template: str, output_dir: str | None, no_gi
 
         # Create pyproject.toml
         pyproject_content = _render_plugin_template("pyproject.toml.j2", context)
-        (output_dir / "pyproject.toml").write_text(pyproject_content)
+        (output_dir / "pyproject.toml").write_text(pyproject_content, encoding="utf-8")
 
         # Create plugin.py
         plugin_code = _render_plugin_template("plugin.py.j2", context)
-        (src_dir / "plugin.py").write_text(plugin_code)
+        (src_dir / "plugin.py").write_text(plugin_code, encoding="utf-8")
 
         # Create __init__.py
         init_content = _render_plugin_template("__init__.py.j2", context)
-        (src_dir / "__init__.py").write_text(init_content)
+        (src_dir / "__init__.py").write_text(init_content, encoding="utf-8")
 
         # Create README.md
         readme_content = _render_plugin_template("README.md.j2", context)
-        (output_dir / "README.md").write_text(readme_content)
+        (output_dir / "README.md").write_text(readme_content, encoding="utf-8")
 
         # Create basic test file
         test_content = _render_plugin_template("test_plugin.py.j2", context)
-        (tests_dir / f"test_{plugin_name_snake}.py").write_text(test_content)
+        (tests_dir / f"test_{plugin_name_snake}.py").write_text(test_content, encoding="utf-8")
 
         # Create .gitignore
         gitignore_content = _render_plugin_template(".gitignore.j2", context)
-        (output_dir / ".gitignore").write_text(gitignore_content)
+        (output_dir / ".gitignore").write_text(gitignore_content, encoding="utf-8")
 
         # Copy static folder to plugin root
         templates_dir = Path(__file__).parent.parent.parent / "templates" / "plugins"
@@ -759,7 +759,7 @@ def create(plugin_name: str | None, template: str, output_dir: str | None, no_gi
         # Create coding agent memory files based on selection
         if coding_agent == "Claude Code":
             claude_md_content = _render_plugin_template("CLAUDE.md.j2", context)
-            (output_dir / "CLAUDE.md").write_text(claude_md_content)
+            (output_dir / "CLAUDE.md").write_text(claude_md_content, encoding="utf-8")
         elif coding_agent == "Cursor":
             cursor_rules_dir = output_dir / ".cursor" / "rules"
             cursor_rules_dir.mkdir(parents=True, exist_ok=True)
@@ -800,7 +800,7 @@ context.metadata: dict[str, Any]
 - Mock CapabilityContext for tests
 - Test both success and error cases
 """
-            (cursor_rules_dir / "agentup_plugin.mdc").write_text(cursor_content)
+            (cursor_rules_dir / "agentup_plugin.mdc").write_text(cursor_content, encoding="utf-8")
 
         # Create GitHub Actions files if requested
         if include_github_actions:
@@ -878,7 +878,7 @@ jobs:
       run: |
         bandit -r src/{plugin_name_snake}/ -ll
 """
-            (github_workflows_dir / "ci.yml").write_text(ci_content)
+            (github_workflows_dir / "ci.yml").write_text(ci_content, encoding="utf-8")
 
             # Create security workflow
             security_content = f"""name: Security
@@ -930,7 +930,7 @@ jobs:
         path: |
           bandit-report.json
 """
-            (github_workflows_dir / "security.yml").write_text(security_content)
+            (github_workflows_dir / "security.yml").write_text(security_content, encoding="utf-8")
 
             # Create dependabot.yml
             github_dir = output_dir / ".github"
@@ -953,7 +953,7 @@ updates:
       - dependency-type: "direct"
       - dependency-type: "indirect"
 """.format(author=author.lower().replace(" ", "-") if author else "author")
-            (github_dir / "dependabot.yml").write_text(dependabot_content)
+            (github_dir / "dependabot.yml").write_text(dependabot_content, encoding="utf-8")
 
         # Initialize git repo
         # Bandit: Add nosec to ignore command injection risk

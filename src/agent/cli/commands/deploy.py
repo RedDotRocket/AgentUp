@@ -29,7 +29,7 @@ def deploy(type: str, output: str | None, port: int, replicas: int, image_name: 
 
     # Load agent config to get name
     try:
-        with open("agentup.yml") as f:
+        with open("agentup.yml", encoding="utf-8") as f:
             config = yaml.safe_load(f)
             agent_name = config.get("agent", {}).get("name", "agent")
             agent_name_clean = agent_name.lower().replace(" ", "-").replace("_", "-")
@@ -118,7 +118,7 @@ CMD ["uv", "run", "uvicorn", "src.agent.main:app", "--host", "0.0.0.0", "--port"
 """
 
     dockerfile_path = output_dir / "Dockerfile"
-    with open(dockerfile_path, "w") as f:
+    with open(dockerfile_path, "w", encoding="utf-8") as f:
         f.write(dockerfile_content)
     click.echo(f"{click.style('✓', fg='green')} Created {dockerfile_path}")
 
@@ -159,7 +159,7 @@ services:
 """
 
     compose_path = output_dir / "docker-compose.yml"
-    with open(compose_path, "w") as f:
+    with open(compose_path, "w", encoding="utf-8") as f:
         f.write(compose_content)
     click.echo(f"{click.style('✓', fg='green')} Created {compose_path}")
 
@@ -202,7 +202,7 @@ helm/
 """
 
     dockerignore_path = output_dir / ".dockerignore"
-    with open(dockerignore_path, "w") as f:
+    with open(dockerignore_path, "w", encoding="utf-8") as f:
         f.write(dockerignore_content)
     click.echo(f"{click.style('✓', fg='green')} Created {dockerignore_path}")
 
@@ -273,7 +273,7 @@ spec:
 """
 
     deployment_path = k8s_dir / "deployment.yaml"
-    with open(deployment_path, "w") as f:
+    with open(deployment_path, "w", encoding="utf-8") as f:
         f.write(deployment_content)
     click.echo(f"{click.style('✓', fg='green')} Created {deployment_path}")
 
@@ -296,7 +296,7 @@ spec:
 """
 
     service_path = k8s_dir / "service.yaml"
-    with open(service_path, "w") as f:
+    with open(service_path, "w", encoding="utf-8") as f:
         f.write(service_content)
     click.echo(f"{click.style('✓', fg='green')} Created {service_path}")
 
@@ -325,7 +325,7 @@ data:
 """
 
     configmap_path = k8s_dir / "configmap.yaml"
-    with open(configmap_path, "w") as f:
+    with open(configmap_path, "w", encoding="utf-8") as f:
         f.write(configmap_content)
     click.echo(f"{click.style('✓', fg='green')} Created {configmap_path}")
 
@@ -342,7 +342,7 @@ stringData:
 """
 
     secret_path = k8s_dir / "secret.yaml"
-    with open(secret_path, "w") as f:
+    with open(secret_path, "w", encoding="utf-8") as f:
         f.write(secret_content)
     click.echo(f"{click.style('✓', fg='green')} Created {secret_path}")
 
@@ -369,7 +369,7 @@ spec:
 """
 
     ingress_path = k8s_dir / "ingress.yaml"
-    with open(ingress_path, "w") as f:
+    with open(ingress_path, "w", encoding="utf-8") as f:
         f.write(ingress_content)
     click.echo(f"{click.style('✓', fg='green')} Created {ingress_path}")
 
@@ -397,7 +397,7 @@ maintainers:
 """
 
     chart_path = helm_dir / "Chart.yaml"
-    with open(chart_path, "w") as f:
+    with open(chart_path, "w", encoding="utf-8") as f:
         f.write(chart_content)
     click.echo(f"{click.style('✓', fg='green')} Created {chart_path}")
 
@@ -477,7 +477,7 @@ agentConfig: |
 """
 
     values_path = helm_dir / "values.yaml"
-    with open(values_path, "w") as f:
+    with open(values_path, "w", encoding="utf-8") as f:
         f.write(values_content)
     click.echo(f"{click.style('✓', fg='green')} Created {values_path}")
 
@@ -501,7 +501,7 @@ agentConfig: |
 """
 
     helmignore_path = helm_dir / ".helmignore"
-    with open(helmignore_path, "w") as f:
+    with open(helmignore_path, "w", encoding="utf-8") as f:
         f.write(helmignore_content)
     click.echo(f"{click.style('✓', fg='green')} Created {helmignore_path}")
 
@@ -560,7 +560,7 @@ app.kubernetes.io/instance: {{{{ .Release.Name }}}}
 """
 
     helpers_path = templates_dir / "_helpers.tpl"
-    with open(helpers_path, "w") as f:
+    with open(helpers_path, "w", encoding="utf-8") as f:
         f.write(helpers_content)
     click.echo(f"{click.style('✓', fg='green')} Created {helpers_path}")
 
@@ -640,7 +640,7 @@ spec:
 """
 
     deployment_path = templates_dir / "deployment.yaml"
-    with open(deployment_path, "w") as f:
+    with open(deployment_path, "w", encoding="utf-8") as f:
         f.write(deployment_content)
     click.echo(f"{click.style('✓', fg='green')} Created {deployment_path}")
 
@@ -666,7 +666,7 @@ spec:
 """
 
     service_path = templates_dir / "service.yaml"
-    with open(service_path, "w") as f:
+    with open(service_path, "w", encoding="utf-8") as f:
         f.write(service_content)
     click.echo(f"{click.style('✓', fg='green')} Created {service_path}")
 
@@ -683,7 +683,7 @@ data:
 """
 
     configmap_path = templates_dir / "configmap.yaml"
-    with open(configmap_path, "w") as f:
+    with open(configmap_path, "w", encoding="utf-8") as f:
         f.write(configmap_content)
     click.echo(f"{click.style('✓', fg='green')} Created {configmap_path}")
 
@@ -700,6 +700,6 @@ stringData:
 """
 
     secret_path = templates_dir / "secret.yaml"
-    with open(secret_path, "w") as f:
+    with open(secret_path, "w", encoding="utf-8") as f:
         f.write(secret_content)
     click.echo(f"{click.style('✓', fg='green')} Created {secret_path}")

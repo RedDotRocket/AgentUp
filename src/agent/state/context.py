@@ -111,7 +111,7 @@ class FileStorage(StateStorage):
         async with self._lock:
             file_path = self._get_file_path(state.context_id)
             try:
-                with open(file_path, "w") as f:
+                with open(file_path, "w", encoding="utf-8") as f:
                     json.dump(state.to_dict(), f)
             except Exception as e:
                 logger.error(f"Error saving state {state.context_id}: {e}")
