@@ -78,6 +78,16 @@ def deploy(type: str, output: str | None, port: int, replicas: int, image_name: 
         click.echo(f"{click.style('✗ Error generating files:', fg='red')} {str(e)}")
 
 
+def _write_deployment_file(file_path: Path, content: str) -> None:
+    """Writes content to a file and prints a success message."""
+    try:
+        file_path.write_text(content, encoding="utf-8")
+        click.echo(f"{click.style('✓', fg='green')} Created {file_path}")
+    except OSError as e:
+        click.echo(f"{click.style('✗', fg='red')} Error creating {file_path}: {e}")
+        raise
+
+
 def generate_docker_files(output_dir: Path, agent_name: str, image_name: str, port: int):
     # Create Dockerfile
     dockerfile_content = f"""FROM python:3.11-slim
@@ -117,10 +127,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \\
 CMD ["uv", "run", "uvicorn", "src.agent.main:app", "--host", "0.0.0.0", "--port", "{port}"]
 """
 
-    dockerfile_path = output_dir / "Dockerfile"
-    with open(dockerfile_path, "w", encoding="utf-8") as f:
-        f.write(dockerfile_content)
-    click.echo(f"{click.style('✓', fg='green')} Created {dockerfile_path}")
+    _write_deployment_file(output_dir / "Dockerfile", dockerfile_content)
 
     # Create docker-compose.yml
     compose_content = f"""version: '3.8'
@@ -158,10 +165,7 @@ services:
 #  valkey_data:
 """
 
-    compose_path = output_dir / "docker-compose.yml"
-    with open(compose_path, "w", encoding="utf-8") as f:
-        f.write(compose_content)
-    click.echo(f"{click.style('✓', fg='green')} Created {compose_path}")
+    _write_deployment_file(output_dir / "docker-compose.yml", compose_content)
 
     # Create .dockerignore
     dockerignore_content = """# Python
@@ -201,10 +205,7 @@ k8s/
 helm/
 """
 
-    dockerignore_path = output_dir / ".dockerignore"
-    with open(dockerignore_path, "w", encoding="utf-8") as f:
-        f.write(dockerignore_content)
-    click.echo(f"{click.style('✓', fg='green')} Created {dockerignore_path}")
+    _write_deployment_file(output_dir / ".dockerignore", dockerignore_content)
 
 
 def generate_k8s_files(output_dir: Path, agent_name: str, image_name: str, image_tag: str, port: int, replicas: int):
@@ -272,10 +273,7 @@ spec:
           name: {agent_name}-config
 """
 
-    deployment_path = k8s_dir / "deployment.yaml"
-    with open(deployment_path, "w", encoding="utf-8") as f:
-        f.write(deployment_content)
-    click.echo(f"{click.style('✓', fg='green')} Created {deployment_path}")
+    _write_deployment_file(k8s_dir / "deployment.yaml", deployment_content)
 
     # Service manifest
     service_content = f"""apiVersion: v1
@@ -295,10 +293,7 @@ spec:
     app: {agent_name}
 """
 
-    service_path = k8s_dir / "service.yaml"
-    with open(service_path, "w", encoding="utf-8") as f:
-        f.write(service_content)
-    click.echo(f"{click.style('✓', fg='green')} Created {service_path}")
+    _write_deployment_file(k8s_dir / "service.yaml", service_content)
 
     # ConfigMap manifest
     configmap_content = f"""apiVersion: v1
@@ -324,10 +319,7 @@ data:
         output_mode: text
 """
 
-    configmap_path = k8s_dir / "configmap.yaml"
-    with open(configmap_path, "w", encoding="utf-8") as f:
-        f.write(configmap_content)
-    click.echo(f"{click.style('✓', fg='green')} Created {configmap_path}")
+    _write_deployment_file(k8s_dir / "configmap.yaml", configmap_content)
 
     # Secret manifest
     secret_content = f"""apiVersion: v1
@@ -341,10 +333,7 @@ stringData:
   # openai-api-key: your-openai-key
 """
 
-    secret_path = k8s_dir / "secret.yaml"
-    with open(secret_path, "w", encoding="utf-8") as f:
-        f.write(secret_content)
-    click.echo(f"{click.style('✓', fg='green')} Created {secret_path}")
+    _write_deployment_file(k8s_dir / "secret.yaml", secret_content)
 
     # Ingress manifest (optional)
     ingress_content = f"""apiVersion: networking.k8s.io/v1
@@ -368,10 +357,7 @@ spec:
               number: {port}
 """
 
-    ingress_path = k8s_dir / "ingress.yaml"
-    with open(ingress_path, "w", encoding="utf-8") as f:
-        f.write(ingress_content)
-    click.echo(f"{click.style('✓', fg='green')} Created {ingress_path}")
+    _write_deployment_file(k8s_dir / "ingress.yaml", ingress_content)
 
 
 def generate_helm_files(output_dir: Path, agent_name: str, image_name: str, port: int):
@@ -396,10 +382,7 @@ maintainers:
     email: your.email@example.com
 """
 
-    chart_path = helm_dir / "Chart.yaml"
-    with open(chart_path, "w", encoding="utf-8") as f:
-        f.write(chart_content)
-    click.echo(f"{click.style('✓', fg='green')} Created {chart_path}")
+    _write_deployment_file(helm_dir / "Chart.yaml", chart_content)
 
     # values.yaml
     values_content = f"""# Default values for {agent_name}
@@ -476,10 +459,7 @@ agentConfig: |
       output_mode: text
 """
 
-    values_path = helm_dir / "values.yaml"
-    with open(values_path, "w", encoding="utf-8") as f:
-        f.write(values_content)
-    click.echo(f"{click.style('✓', fg='green')} Created {values_path}")
+    _write_deployment_file(helm_dir / "values.yaml", values_content)
 
     # Create template files
     create_helm_templates(templates_dir, agent_name)
@@ -500,10 +480,7 @@ agentConfig: |
 .vscode/
 """
 
-    helmignore_path = helm_dir / ".helmignore"
-    with open(helmignore_path, "w", encoding="utf-8") as f:
-        f.write(helmignore_content)
-    click.echo(f"{click.style('✓', fg='green')} Created {helmignore_path}")
+    _write_deployment_file(helm_dir / ".helmignore", helmignore_content)
 
 
 def create_helm_templates(templates_dir: Path, agent_name: str):
@@ -559,10 +536,7 @@ app.kubernetes.io/instance: {{{{ .Release.Name }}}}
 {{{{- end }}}}
 """
 
-    helpers_path = templates_dir / "_helpers.tpl"
-    with open(helpers_path, "w", encoding="utf-8") as f:
-        f.write(helpers_content)
-    click.echo(f"{click.style('✓', fg='green')} Created {helpers_path}")
+    _write_deployment_file(templates_dir / "_helpers.tpl", helpers_content)
 
     # deployment.yaml template
     deployment_content = f"""apiVersion: apps/v1
@@ -639,10 +613,7 @@ spec:
       {{{{- end }}}}
 """
 
-    deployment_path = templates_dir / "deployment.yaml"
-    with open(deployment_path, "w", encoding="utf-8") as f:
-        f.write(deployment_content)
-    click.echo(f"{click.style('✓', fg='green')} Created {deployment_path}")
+    _write_deployment_file(templates_dir / "deployment.yaml", deployment_content)
 
     # Other template files would be created similarly...
     # For brevity, I'll create just the essential ones
@@ -665,10 +636,7 @@ spec:
     {{{{- include "{agent_name}.selectorLabels" . | nindent 4 }}}}
 """
 
-    service_path = templates_dir / "service.yaml"
-    with open(service_path, "w", encoding="utf-8") as f:
-        f.write(service_content)
-    click.echo(f"{click.style('✓', fg='green')} Created {service_path}")
+    _write_deployment_file(templates_dir / "service.yaml", service_content)
 
     # configmap.yaml template
     configmap_content = f"""apiVersion: v1
@@ -682,10 +650,7 @@ data:
 {{{{- .Values.agentConfig | nindent 4 }}}}
 """
 
-    configmap_path = templates_dir / "configmap.yaml"
-    with open(configmap_path, "w", encoding="utf-8") as f:
-        f.write(configmap_content)
-    click.echo(f"{click.style('✓', fg='green')} Created {configmap_path}")
+    _write_deployment_file(templates_dir / "configmap.yaml", configmap_content)
 
     # secret.yaml template
     secret_content = f"""apiVersion: v1
@@ -699,7 +664,4 @@ stringData:
   api-key: {{{{ .Values.config.apiKey | quote }}}}
 """
 
-    secret_path = templates_dir / "secret.yaml"
-    with open(secret_path, "w", encoding="utf-8") as f:
-        f.write(secret_content)
-    click.echo(f"{click.style('✓', fg='green')} Created {secret_path}")
+    _write_deployment_file(templates_dir / "secret.yaml", secret_content)

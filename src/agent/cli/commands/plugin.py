@@ -239,6 +239,12 @@ def _render_plugin_template(template_name: str, context: dict) -> str:
     return template.render(context)
 
 
+def _render_and_write_template(template_name: str, output_path: Path, context: dict) -> None:
+    """Renders a Jinja2 template and writes it to the specified path."""
+    content = _render_plugin_template(template_name, context)
+    output_path.write_text(content, encoding="utf-8")
+
+
 def _to_snake_case(name: str) -> str:
     # Replace hyphens and spaces with underscores
     name = name.replace("-", "_").replace(" ", "_")
@@ -725,28 +731,22 @@ def create(plugin_name: str | None, template: str, output_dir: str | None, no_gi
         }
 
         # Create pyproject.toml
-        pyproject_content = _render_plugin_template("pyproject.toml.j2", context)
-        (output_dir / "pyproject.toml").write_text(pyproject_content, encoding="utf-8")
+        _render_and_write_template("pyproject.toml.j2", output_dir / "pyproject.toml", context)
 
         # Create plugin.py
-        plugin_code = _render_plugin_template("plugin.py.j2", context)
-        (src_dir / "plugin.py").write_text(plugin_code, encoding="utf-8")
+        _render_and_write_template("plugin.py.j2", src_dir / "plugin.py", context)
 
         # Create __init__.py
-        init_content = _render_plugin_template("__init__.py.j2", context)
-        (src_dir / "__init__.py").write_text(init_content, encoding="utf-8")
+        _render_and_write_template("__init__.py.j2", src_dir / "__init__.py", context)
 
         # Create README.md
-        readme_content = _render_plugin_template("README.md.j2", context)
-        (output_dir / "README.md").write_text(readme_content, encoding="utf-8")
+        _render_and_write_template("README.md.j2", output_dir / "README.md", context)
 
         # Create basic test file
-        test_content = _render_plugin_template("test_plugin.py.j2", context)
-        (tests_dir / f"test_{plugin_name_snake}.py").write_text(test_content, encoding="utf-8")
+        _render_and_write_template("test_plugin.py.j2", tests_dir / f"test_{plugin_name_snake}.py", context)
 
         # Create .gitignore
-        gitignore_content = _render_plugin_template(".gitignore.j2", context)
-        (output_dir / ".gitignore").write_text(gitignore_content, encoding="utf-8")
+        _render_and_write_template(".gitignore.j2", output_dir / ".gitignore", context)
 
         # Copy static folder to plugin root
         templates_dir = Path(__file__).parent.parent.parent / "templates" / "plugins"
@@ -758,8 +758,7 @@ def create(plugin_name: str | None, template: str, output_dir: str | None, no_gi
 
         # Create coding agent memory files based on selection
         if coding_agent == "Claude Code":
-            claude_md_content = _render_plugin_template("CLAUDE.md.j2", context)
-            (output_dir / "CLAUDE.md").write_text(claude_md_content, encoding="utf-8")
+            _render_and_write_template("CLAUDE.md.j2", output_dir / "CLAUDE.md", context)
         elif coding_agent == "Cursor":
             cursor_rules_dir = output_dir / ".cursor" / "rules"
             cursor_rules_dir.mkdir(parents=True, exist_ok=True)
