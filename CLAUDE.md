@@ -126,8 +126,7 @@ src/agent/
 ## Development Guidelines
 
 - **Pydantic Handling**:
-  - ALWAYS USE PYDANTIC NATIVE METHODS, NEVER USE .get dict[x,x]
-  - USE PYDANTIC!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! STOP USING .get when we have MODELS!
+  - ALWAYS USE PYDANTIC MODELS over .get style dict
 
 ## Task Completion Workflow
 
@@ -144,14 +143,40 @@ After making code changes, always run:
 
 Tests are organized with pytest markers:
 - `unit`: Fast tests without external dependencies
-- `integration`: Tests with external services
-- `e2e`: End-to-end system tests
-- `performance`: Load and performance tests
-- `security`: Security-focused tests
-- `mcp`: Model Context Protocol tests
-- `a2a`: Agent-to-Agent protocol compliance tests
+
+Run `make test-unit`
 
 Run specific test categories: `uv run pytest -m "unit and not slow"`
+
+## Calling the main endpoint
+
+AgentUp has a single A2A JSON-RPC endoint that should be used to test or validate fixes against an Agent:
+
+```
+```
+```
+curl -s -X POST http://localhost:8000/ \
+```
+      -H "Content-Type: application/json" \
+      -H "X-API-Key: admin-key-123" \
+      -d '{
+        "jsonrpc": "2.0",
+        "method": "message/send",
+        "params": {
+          "message": {
+            "role": "user",
+            "parts": [{"kind": "text", "text": "delete a folder called test"}],
+            "message_id": "msg-001",
+            "kind": "message"
+          }
+        },
+        "id": "req-001"
+      }'
+```
+```
+```
+
+```
 
 ## Configuration Structure
 

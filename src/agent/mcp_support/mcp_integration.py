@@ -19,22 +19,20 @@ async def initialize_mcp_integration(config: dict[str, Any]) -> None:
 
     services = get_services()
 
-    # Initialize MCP client if enabled
-    client_config = mcp_config.get("client", {})
-    if client_config.get("enabled", False):
+    # Initialize MCP client if enabled (using flattened config structure)
+    if mcp_config.get("client_enabled", False):
         logger.info("Initializing MCP client")
-        await _initialize_mcp_client(services, client_config)
+        await _initialize_mcp_client(services, mcp_config)
 
-    # Initialize MCP server if enabled
-    server_config = mcp_config.get("server", {})
-    if server_config.get("enabled", False):
+    # Initialize MCP server if enabled (using flattened config structure)
+    if mcp_config.get("server_enabled", False):
         logger.info("Initializing MCP server")
-        await _initialize_mcp_server(services, server_config)
+        await _initialize_mcp_server(services, mcp_config)
 
 
-async def _initialize_mcp_client(services, client_config: dict[str, Any]) -> None:
-    # Check if we have HTTP servers configured
-    servers = client_config.get("servers", [])
+async def _initialize_mcp_client(services, mcp_config: dict[str, Any]) -> None:
+    # Check if we have HTTP servers configured (servers are at root level of mcp config)
+    servers = mcp_config.get("servers", [])
     http_servers = [s for s in servers if s.get("type") == "http"]
     stdio_servers = [s for s in servers if s.get("type") != "http"]
 
@@ -43,7 +41,7 @@ async def _initialize_mcp_client(services, client_config: dict[str, Any]) -> Non
         from .mcp_http_client import MCPHTTPClientService
 
         try:
-            http_client = MCPHTTPClientService("mcp_http_client", client_config)
+            http_client = MCPHTTPClientService("mcp_http_client", mcp_config)
             await http_client.initialize()
 
             # Register with service registry
@@ -79,7 +77,7 @@ async def _initialize_mcp_client(services, client_config: dict[str, Any]) -> Non
 
         try:
             # Create config with only stdio servers
-            stdio_config = client_config.copy()
+            stdio_config = mcp_config.copy()
             stdio_config["servers"] = stdio_servers
 
             stdio_client = MCPClientService("mcp_stdio_client", stdio_config)
@@ -115,7 +113,7 @@ async def _initialize_mcp_client(services, client_config: dict[str, Any]) -> Non
     logger.info(f"MCP clients initialized: {total_clients}")
 
 
-async def _initialize_mcp_server(services, server_config: dict[str, Any]) -> None:
+async def _initialize_mcp_server(services, mcp_config: dict[str, Any]) -> None:
     try:
         from .mcp_server import MCPServerComponent
     except ImportError as e:
@@ -124,20 +122,20 @@ async def _initialize_mcp_server(services, server_config: dict[str, Any]) -> Non
 
     try:
         # Create and register MCP server
-        mcp_server = MCPServerComponent("mcp_server", server_config)
+        mcp_server = MCPServerComponent("mcp_server", mcp_config)
         await mcp_server.initialize()
 
         # Register with service registry
         services._services["mcp_server"] = mcp_server
         logger.info("Registered MCP server with service registry")
         # Expose AgentUp handlers as MCP tools if enabled
-        if server_config.get("expose_handlers", False):
+        if mcp_config.get("expose_handlers", False):
             await _expose_handlers_as_mcp_tools(mcp_server)
 
         logger.info("MCP server initialized and ready to expose agent tools")
 
         # Start MCP server in background if port is specified
-        port = server_config.get("port")
+        port = mcp_config.get("server_port")
         if port:
             logger.warning(
                 f"Stdio MCP server on port {port} is not supported within FastAPI. Use HTTP MCP endpoint at /mcp instead."
@@ -192,7 +190,11 @@ async def _register_mcp_tools_as_capabilities(mcp_client, available_tools, serve
         # Extract tool scopes from server configuration
         tool_scopes = {}
         for server_config in servers_config:
-            server_tool_scopes = server_config.get("tool_scopes", {})
+            # Handle Pydantic model (use attribute access, not .get())
+            if hasattr(server_config, "tool_scopes"):
+                server_tool_scopes = server_config.tool_scopes or {}
+            else:
+                server_tool_scopes = server_config.get("tool_scopes", {}) if hasattr(server_config, "get") else {}
             tool_scopes.update(server_tool_scopes)
 
         # Register each tool as a capability with scope enforcement
@@ -226,7 +228,11 @@ async def _register_mcp_tools_with_scopes(registry, mcp_client, available_tools,
         # Extract tool scopes from server configuration
         tool_scopes = {}
         for server_config in servers_config:
-            server_tool_scopes = server_config.get("tool_scopes", {})
+            # Handle Pydantic model (use attribute access, not .get())
+            if hasattr(server_config, "tool_scopes"):
+                server_tool_scopes = server_config.tool_scopes or {}
+            else:
+                server_tool_scopes = server_config.get("tool_scopes", {}) if hasattr(server_config, "get") else {}
             tool_scopes.update(server_tool_scopes)
 
         # Register each tool with scope enforcement
@@ -285,10 +291,15 @@ async def _register_mcp_tools_with_scopes(registry, mcp_client, available_tools,
                 f"Registered MCP tool '{original_tool_name}' -> '{sanitized_tool_name}' with scope enforcement: {required_scopes}"
             )
 
+        # Register the MCP client after registering all tools
+        await registry.register_mcp_client(mcp_client)
+        logger.debug("Registered MCP client with function registry")
+
     except Exception as e:
         logger.error(f"Failed to register MCP tools with scope enforcement: {e}")
         # DO NOT fallback to registration without scope enforcement for security
-        # Instead, register with dispatcher only (which uses sanitized names)
+
+        # Always register the MCP client regardless of tool registration success/failure
         await registry.register_mcp_client(mcp_client)
 
 

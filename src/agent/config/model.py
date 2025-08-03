@@ -174,8 +174,6 @@ class MCPServerConfig(BaseModel):
 
     # Tool permissions
     tool_scopes: dict[str, list[str]] = Field(default_factory=dict, description="Tool name to required scopes mapping")
-    allowed_tools: list[str] | None = Field(None, description="Allowed tools (None = all)")
-    blocked_tools: list[str] = Field(default_factory=list, description="Blocked tools")
 
     @model_validator(mode="after")
     def validate_server_config(self) -> MCPServerConfig:

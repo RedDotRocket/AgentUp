@@ -237,7 +237,12 @@ class FunctionRegistry:
         # Extract tool scopes from server configuration
         tool_scopes = {}
         for server_config in servers:
-            server_tool_scopes = server_config.get("tool_scopes", {})
+            # Handle Pydantic model (use attribute access, not .get())
+            if hasattr(server_config, "tool_scopes"):
+                server_tool_scopes = server_config.tool_scopes or {}
+            else:
+                # Fallback for dict-like objects
+                server_tool_scopes = server_config.get("tool_scopes", {}) if hasattr(server_config, "get") else {}
             tool_scopes.update(server_tool_scopes)
 
         # Filter MCP tools based on scopes
