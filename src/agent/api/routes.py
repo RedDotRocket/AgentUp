@@ -295,14 +295,32 @@ async def health_check() -> JSONResponse:
 
 
 @router.get("/services/health")
-async def services_health() -> JSONResponse:
-    try:
-        from agent.services import get_services
+async def services_health(request: Request) -> JSONResponse:
+    health_results = {}
 
-        services = get_services()
-        health_results = await services.health_check_all()
-    except ImportError:
-        health_results = {"error": "Services module not available"}
+    try:
+        # Get services from app state
+        # TODO: Not yet implemented
+        if hasattr(request.app.state, "services"):
+            services = request.app.state.services
+            for service_name, service in services.items():
+                try:
+                    if hasattr(service, "health_check"):
+                        health_results[service_name] = await service.health_check()
+                    else:
+                        health_results[service_name] = {"status": "unknown", "note": "Not implemented"}
+                except Exception as e:
+                    health_results[service_name] = {"status": "error", "error": str(e)}
+
+        # Fallback to legacy services if no new services found
+        if not health_results:
+            from agent.services import get_services
+
+            legacy_services = get_services()
+            health_results = await legacy_services.health_check_all()
+
+    except Exception as e:
+        health_results = {"error": f"Services health check failed: {e}"}
 
     all_healthy = all(result.get("status") == "healthy" for result in health_results.values())
 

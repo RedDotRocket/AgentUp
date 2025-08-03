@@ -108,8 +108,6 @@ def _configure_middleware(app: FastAPI) -> None:
                 "/": {"rpm": 100, "burst": 120},
                 "/mcp": {"rpm": 50, "burst": 60},
                 "/health": {"rpm": 200, "burst": 240},
-                "/status": {"rpm": 60, "burst": 72},
-                "default": {"rpm": 60, "burst": 72},
             },
         )
         app.add_middleware(NetworkRateLimitMiddleware, endpoint_limits=endpoint_limits)
