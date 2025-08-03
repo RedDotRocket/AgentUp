@@ -52,12 +52,6 @@ class PluginSecurityManager:
                         "max_version": plugin_config.get("max_version"),
                     }
 
-        # Always allow built-in/example plugins
-        builtin_plugins = ["greeting", "weather", "text_analysis", "calculator", "configurable"]
-        for plugin_id in builtin_plugins:
-            if plugin_id not in allowed:
-                allowed[plugin_id] = {"builtin": True, "verified": True}
-
         return allowed
 
     def _load_blocked_plugins(self) -> list[str]:
@@ -282,34 +276,6 @@ class PluginSecurityManager:
             logger.warning(f"Security event: {event_type} for plugin {plugin_id}", extra=log_entry)
         else:
             logger.info(f"Security event: {event_type} for plugin {plugin_id}", extra=log_entry)
-
-
-def create_default_security_config() -> dict[str, Any]:
-    """
-    Create default security configuration for new installations.
-
-    Returns:
-        Default security configuration dictionary
-    """
-    return {
-        "plugin_security": {
-            "mode": "configured",  # Only allow explicitly configured plugins
-            "require_explicit_configuration": True,
-            "allowed_plugins": {
-                # Built-in plugins are always allowed
-                "greeting": {"builtin": True, "verified": True},
-                "weather": {"builtin": True, "verified": True},
-                "text_analysis": {"builtin": True, "verified": True},
-                "calculator": {"builtin": True, "verified": True},
-            },
-            "blocked_plugins": [
-                # Examples of potentially dangerous plugin names
-                "system_admin",
-                "file_delete",
-                "network_scanner",
-            ],
-        }
-    }
 
 
 def validate_plugin_configuration(plugin_config: dict[str, Any]) -> tuple[bool, list[str]]:
