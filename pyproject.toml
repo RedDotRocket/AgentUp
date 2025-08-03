@@ -22,6 +22,7 @@ dependencies = [
     "pillow>=11.2.1",
     "asyncio>=3.4.3",
     "fastmcp>=2.8.1",
+    "mcp>=1.0.0",
     "pydantic>=2.11.5",
     "pydantic-settings>=2.7.0",
     "python-dotenv>=1.1.0",
@@ -33,7 +34,6 @@ dependencies = [
     "asgi-correlation-id>=4.3.4",
     "redis>=6.2.0",
     "aiohttp>=3.12.15",
-    
 ]
 
 [project.scripts]

@@ -52,86 +52,56 @@ async def initialize_mcp_integration(config: dict[str, Any]) -> None:
 
 
 async def _initialize_mcp_client(services, mcp_config: dict[str, Any]) -> None:
-    # Check if we have HTTP servers configured (servers are at root level of mcp config)
+    """Initialize unified MCP client with support for all transport types."""
     servers = mcp_config.get("servers", [])
-    http_servers = [s for s in servers if s.get("type") == "http"]
-    stdio_servers = [s for s in servers if s.get("type") != "http"]
 
-    # Initialize HTTP client for agent-to-agent connections
-    if http_servers:
-        from .mcp_http_client import MCPHTTPClientService
+    if not servers:
+        logger.info("No MCP servers configured")
+        return
 
+    from .mcp_client import MCPClientService
+
+    try:
+        # Create unified MCP client with all configured servers
+        mcp_client = MCPClientService("mcp_client", mcp_config)
+        await mcp_client.initialize()
+
+        # Register with service registry
+        services._services["mcp_client"] = mcp_client
+        logger.info("Registered unified MCP client with service registry")
+
+        # Register MCP tools with AI orchestrator
         try:
-            http_client = MCPHTTPClientService("mcp_http_client", mcp_config)
-            await http_client.initialize()
+            from agent.core.dispatcher import get_function_registry
 
-            # Register with service registry
-            services._services["mcp_http_client"] = http_client
-            logger.info("Registered MCP HTTP client with service registry")
+            registry = get_function_registry()
 
-            # Register HTTP MCP tools with AI orchestrator
-            try:
-                from agent.core.dispatcher import get_function_registry
+            available_tools = await mcp_client.get_available_tools()
+            logger.info(f"MCP tools available across all transports: {len(available_tools)}")
 
-                registry = get_function_registry()
+            if available_tools:
+                # Register MCP tools with scope enforcement
+                await _register_mcp_tools_as_capabilities(mcp_client, available_tools, servers)
+                # Also register with function registry for AI integration
+                await _register_mcp_tools_with_scopes(registry, mcp_client, available_tools, servers)
 
-                available_tools = await http_client.get_available_tools()
-                logger.info(f"HTTP MCP tools available: {len(available_tools)}")
-
-                if available_tools:
-                    # Register MCP tools with scope enforcement using new design pattern
-                    await _register_mcp_tools_as_capabilities(http_client, available_tools, http_servers)
-                    # Also register with function registry for AI integration
-                    await _register_mcp_tools_with_scopes(registry, http_client, available_tools, http_servers)
-                    tool_names = [tool.get("name", "unknown") for tool in available_tools]
-                    logger.info(f"HTTP MCP tool names: {', '.join(tool_names)}")
-
-            except Exception as e:
-                logger.error(f"Failed to register HTTP MCP tools: {e}")
+                tool_names = [tool.get("name", "unknown") for tool in available_tools]
+                logger.info(f"Registered MCP tools: {', '.join(tool_names)}")
 
         except Exception as e:
-            logger.error(f"Failed to initialize HTTP MCP client: {e}")
+            logger.error(f"Failed to register MCP tools: {e}")
 
-    # Initialize stdio client for other servers (filesystem, etc.)
-    if stdio_servers:
-        from .mcp_client import MCPClientService
+    except Exception as e:
+        logger.error(f"Failed to initialize unified MCP client: {e}")
 
-        try:
-            # Create config with only stdio servers
-            stdio_config = mcp_config.copy()
-            stdio_config["servers"] = stdio_servers
+    # Log transport summary
+    connected_servers = mcp_client.list_servers() if "mcp_client" in locals() else []
+    transport_summary = {}
+    for server_config in servers:
+        transport = server_config.get("transport", "unknown")
+        transport_summary[transport] = transport_summary.get(transport, 0) + 1
 
-            stdio_client = MCPClientService("mcp_stdio_client", stdio_config)
-            await stdio_client.initialize()
-
-            # Register with service registry
-            services._services["mcp_stdio_client"] = stdio_client
-            logger.info("Registered MCP stdio client with service registry")
-            # Register stdio MCP tools with function dispatcher
-            try:
-                from agent.core.dispatcher import get_function_registry
-
-                registry = get_function_registry()
-
-                available_tools = await stdio_client.get_available_tools()
-                logger.info(f"Stdio MCP tools available: {len(available_tools)}")
-
-                if available_tools:
-                    # Register MCP tools with scope enforcement using new design pattern
-                    await _register_mcp_tools_as_capabilities(stdio_client, available_tools, stdio_servers)
-                    # Also register with function registry for AI integration
-                    await _register_mcp_tools_with_scopes(registry, stdio_client, available_tools, stdio_servers)
-                    tool_names = [tool.get("name", "unknown") for tool in available_tools]
-                    logger.info(f"Stdio MCP tool names: {', '.join(tool_names)}")
-
-            except Exception as e:
-                logger.error(f"Failed to register stdio MCP tools: {e}")
-
-        except Exception as e:
-            logger.error(f"Failed to initialize stdio MCP client: {e}")
-
-    total_clients = len([1 for k in services._services.keys() if "mcp" in k and "client" in k])
-    logger.info(f"MCP clients initialized: {total_clients}")
+    logger.info(f"MCP client initialized with {len(connected_servers)} servers: {transport_summary}")
 
 
 async def _initialize_mcp_server(services, mcp_config: dict[str, Any]) -> None:

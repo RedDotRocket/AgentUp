@@ -17,6 +17,9 @@ class MCPHTTPServer:
     as MCP tools, along with resource management.
     It deliberately avoids expossing MCP servers as MCP servers (bare with me),
     as this would create a circular dependency.
+
+    TODO: This code requires a complete rework, as its incorreclly using JSON-RPC
+    instead of Streamable HTTP.
     """
 
     def __init__(

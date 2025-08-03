@@ -159,32 +159,40 @@ class ServiceConfig(BaseModel):
 
 class MCPServerConfig(BaseModel):
     name: str = Field(..., description="Server name")
-    type: Literal["stdio", "http"] = Field(..., description="Connection type")
+    enabled: bool = Field(True, description="Enable this MCP server")
+    transport: Literal["stdio", "sse", "streamable_http"] = Field(..., description="MCP transport protocol")
 
-    # For stdio type
+    # For stdio transport
     command: str | None = Field(None, description="Command to run for stdio server")
     args: list[str] = Field(default_factory=list, description="Command arguments")
     env: dict[str, str] = Field(default_factory=dict, description="Environment variables")
     working_dir: FilePath | None = Field(None, description="Working directory")
 
-    # For http type
-    url: str | None = Field(None, description="HTTP server URL")
+    # For sse/streamable_http transports
+    url: str | None = Field(None, description="Server URL for HTTP-based transports")
     headers: dict[str, str] = Field(default_factory=dict, description="HTTP headers")
     timeout: int = Field(30, description="Request timeout in seconds")
 
-    # Tool permissions
-    tool_scopes: dict[str, list[str]] = Field(default_factory=dict, description="Tool name to required scopes mapping")
+    # Tool permissions (REQUIRED for security)
+    tool_scopes: dict[str, list[str]] = Field(..., description="Tool name to required scopes mapping (REQUIRED)")
 
     @model_validator(mode="after")
     def validate_server_config(self) -> MCPServerConfig:
-        if self.type == "stdio":
+        if self.transport == "stdio":
             if not self.command:
-                raise ValueError("command is required for stdio server")
-        elif self.type == "http":
+                raise ValueError("command is required for stdio transport")
+        elif self.transport in ("sse", "streamable_http"):
             if not self.url:
-                raise ValueError("url is required for http server")
+                raise ValueError("url is required for sse and streamable_http transports")
             if not self.url.startswith(("http://", "https://")):
-                raise ValueError("HTTP server URL must start with http:// or https://")
+                raise ValueError("Server URL must start with http:// or https://")
+
+        # Validate tool_scopes is not empty (security requirement)
+        if not self.tool_scopes:
+            raise ValueError(
+                "tool_scopes configuration is required for security - all MCP tools must have explicit scope mappings"
+            )
+
         return self
 
 

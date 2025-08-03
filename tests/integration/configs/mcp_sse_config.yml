@@ -1,0 +1,77 @@
+# AgentUp Configuration for MCP SSE Transport Testing
+name: MCP SSE Test Agent
+description: Test agent for MCP SSE transport integration testing
+version: 1.0.0
+
+# Security Configuration
+security:
+  enabled: true
+  auth:
+    api_key:
+      header_name: "X-API-Key"
+      keys:
+        - key: "test-api-key"
+          scopes: ["admin"]
+  scope_hierarchy:
+    admin: ["*"]
+    weather:admin: ["weather:read", "alerts:read"]
+
+# AI Provider Configuration (Mock)
+ai_provider:
+  provider: mock
+  model: mock-gpt-4
+  temperature: 0
+
+# MCP Configuration - SSE Transport
+mcp:
+  enabled: true
+  client_enabled: true
+  servers:
+    - name: "sse_weather"
+      enabled: true
+      transport: "sse"
+      url: "http://localhost:8123/sse"
+      timeout: 30
+      headers:
+        Authorization: "Bearer ${MCP_API_KEY}"
+      tool_scopes:
+        # Unprefixed tool names (for compatibility)
+        get_alerts: ["alerts:read"]
+        get_forecast: ["weather:read"]
+        # Prefixed tool names (server:tool format) - REQUIRED
+        "sse_weather:get_alerts": ["alerts:read"]
+        "sse_weather:get_forecast": ["weather:read"]
+
+# API Configuration
+api:
+  enabled: true
+  host: "127.0.0.1"
+  port: 8000
+  workers: 1
+  reload: false
+  debug: true
+
+# Logging Configuration
+logging:
+  enabled: true
+  level: "DEBUG"
+  format: "text"
+  console:
+    enabled: true
+    colors: false  # Disable colors for CI/testing
+  correlation_id: false
+  request_logging: false
+
+# Middleware Configuration (Minimal for testing)
+middleware:
+  enabled: false
+
+# Push Notifications
+push_notifications:
+  enabled: false
+
+# State Management
+state_management:
+  enabled: true
+  backend: memory
+  ttl: 3600

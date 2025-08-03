@@ -86,7 +86,7 @@ security:
       keys:
         # Simple format - key with scopes list
         - key: "admin-key-123"
-          scopes: ["system:read"]  # Has all permissions via hierarchy
+          scopes: ["admin"]  # Has all permissions via hierarchy
 
   # Scope hierarchy for permission inheritance
   scope_hierarchy:
@@ -96,6 +96,7 @@ security:
     system:admin: ["system:write", "system:read"]
     system:write: ["system:read"]
     web:admin: ["web:search"]
+    weather:admin: ["weather:read", "alerts:read"]
 
 # Middleware configuration
 middleware:
@@ -130,18 +131,32 @@ state_management:
 
 # MCP (Model Context Protocol) configuration
 mcp:
-  enabled: false
-  client_enabled: false
+  enabled: true
+  client_enabled: true
   servers:
-    - name: "filesystem-server"
-      type: "stdio"
-      command: "uvx"
-      args: ["mcp-server-filesystem", "/tmp"]
+    # Streamable HTTP weather server
+    - name: "default"
+      transport: "streamable_http"
+      url: "http://localhost:8123/mcp"
+      timeout: 30
       tool_scopes:
-        read_file: ["files:read"]
-        write_file: ["files:write"]
-        delete_file: ["files:admin"]
-        list_directory: ["files:read"]
+        # Unprefixed tool names (for compatibility)
+        get_alerts: ["alerts:read"]
+        get_forecast: ["weather:read"]
+        # Prefixed tool names (server:tool format)
+        "default:get_alerts": ["alerts:read"]
+        "default:get_forecast": ["weather:read"]
+    
+    # Optional: stdio filesystem server (disabled for now)
+    # - name: "filesystem-server"
+    #   transport: "stdio"
+    #   command: "uvx"
+    #   args: ["mcp-server-filesystem", "/tmp"]
+    #   tool_scopes:
+    #     read_file: ["files:read"]
+    #     write_file: ["files:write"]
+    #     delete_file: ["files:admin"]
+    #     list_directory: ["files:read"]
 
 # Logging configuration
 logging:

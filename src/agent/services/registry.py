@@ -9,7 +9,6 @@ from agent.llm_providers.anthropic import AnthropicProvider
 from agent.llm_providers.ollama import OllamaProvider
 from agent.llm_providers.openai import OpenAIProvider
 from agent.mcp_support.mcp_client import MCPClientService
-from agent.mcp_support.mcp_http_client import MCPHTTPClientService
 from agent.mcp_support.mcp_server import MCPServerComponent
 from agent.utils.helpers import load_callable
 
@@ -324,12 +323,6 @@ class ServiceRegistry(BaseModel):
             return service
         return None
 
-    def get_mcp_http_client(self, name: str = "mcp_http_client") -> Any | None:
-        service = self.get_service(name)
-        if MCPHTTPClientService and isinstance(service, MCPHTTPClientService):
-            return service
-        return None
-
     def get_mcp_server(self, name: str = "mcp_server") -> Any | None:
         service = self.get_service(name)
         if MCPServerComponent and isinstance(service, MCPServerComponent):
@@ -337,15 +330,8 @@ class ServiceRegistry(BaseModel):
         return None
 
     def get_any_mcp_client(self) -> Any | None:
-        # TODO: Look at this logic again, I am not that happy with it.
-        # Try HTTP client first
-        http_client = self.get_mcp_http_client()
-        if http_client:
-            return http_client
-
-        # Fall back to stdio client
-        stdio_client = self.get_mcp_client()
-        return stdio_client
+        """Get the unified MCP client that supports all transport types."""
+        return self.get_mcp_client()
 
     async def close_all(self) -> None:
         for service in self.service_instances.values():

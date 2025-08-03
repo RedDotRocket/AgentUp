@@ -1,17 +1,16 @@
 # Model Context Protocol (MCP) Integration
 
-AgentUp provides comprehensive support for the Model Context Protocol (MCP), enabling seamless integration
+AgentUp provides comprehensive support for the Model Context Protocol (MCP), enabling integration
 with MCP-compliant tools and servers. This allows your agents to leverage external tools and services through a standardized protocol.
 
 ## Overview
 
 MCP (Model Context Protocol) is an open standard that enables Language Models to interact with external tools and data sources in a secure, controlled manner. AgentUp's MCP integration allows your agents to:
 
-- **Connect to MCP servers** via stdio or HTTP transports
+- **Connect to MCP servers** via stdio, SSE or Streamable HTTP
 - **Use MCP tools** as native agent capabilities
 - **Map MCP tools to AgentUp scopes** for fine-grained access control
 - **Serve agent capabilities** as MCP tools for other systems
-- **Maintain security** through scope-based authorization
 
 ## Configuration
 
@@ -20,18 +19,20 @@ MCP support is configured in the `mcp` section of your `agentup.yml`:
 ```yaml
 mcp:
   enabled: true
-
-  # MCP Client - Connect to external MCP servers
   client_enabled: true
-  client_timeout: 30            # Timeout for MCP operations
-
-  # MCP Server - Expose agent capabilities via MCP
-  server_enabled: false         # Set to true to expose your agent as MCP server
-  server_host: "localhost"
-  server_port: 8080
-
-  # MCP Server Connections
-  servers: []                   # List of MCP servers to connect to
+  servers:
+    # SSE weather server
+    - name: "sse"
+      enabled: false
+      transport: "sse"
+      url: "http://example.com/sse"
+      timeout: 30
+      headers:
+        Authorization: "Bearer ${MCP_API_KEY}"
+      tool_scopes:
+        # Unprefixed tool names (for compatibility)
+        get_alerts: ["alerts:read"]
+        get_forecast: ["weather:read"]
 ```
 
 ## Connecting to MCP Servers
@@ -45,99 +46,101 @@ mcp:
   enabled: true
   client_enabled: true
   servers:
-    - name: "filesystem"
-      type: "stdio"
-      command: "python"              # Can use python, uvx, npx, or any executable
-      args: ["/path/to/mcp_server.py"] # Path to your MCP server script
-      env:
-        DEBUG: "1"                   # Optional environment variables
-      working_dir: "/tmp"            # Optional: Set working directory for the server process
-
-      # REQUIRED: Map MCP tools to AgentUp security scopes
-      # Tools are automatically prefixed with server name (e.g., "filesystem:read_file")
+    - name: "stdio"
+      enabled: true
+      transport: "stdio"
+      command: "python"
+      args: ["path/to/weather_server.py", "--transport", "stdio"]
+      timeout: 30
       tool_scopes:
-        "filesystem:read_file": ["files:read"]
-        "filesystem:write_file": ["files:write"]
-        "filesystem:list_directory": ["files:read"]
-        # Also include unprefixed names for compatibility
-        read_file: ["files:read"]
-        write_file: ["files:write"]
-        list_directory: ["files:read"]
+        # Tools to Scope Mapping
+        get_alerts: ["alerts:read"]
+        get_forecast: ["weather:read"]
 ```
 
-### Creating a Python MCP Server
+!!! Note "Command"
+    The `command` field specifies the executable to run. This provides polyglot support for MCP servers written in any language, e.g. 'uvx', 'npx', etc.
 
-Here's a simple example of a Python-based MCP filesystem server:
+### SSE-based MCP Servers
 
-```python
-#!/usr/bin/env python3
-"""Simple MCP Filesystem Server"""
+Connect to MCP servers that communicate via Server-Sent Events (SSE):
 
-import asyncio
-from pathlib import Path
-from mcp.server import Server
-from mcp.server.stdio import stdio_server
-from mcp.types import Tool, TextContent
-
-# Create MCP server instance
-server = Server("filesystem-server")
-WORKSPACE_DIR = Path("/workspace")
-
-@server.list_tools()
-async def list_tools() -> list[Tool]:
-    return [
-        Tool(
-            name="read_file",
-            description="Read contents of a file",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "path": {"type": "string", "description": "File path to read"}
-                },
-                "required": ["path"]
-            }
-        ),
-        Tool(
-            name="write_file",
-            description="Write contents to a file",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "path": {"type": "string", "description": "File path to write"},
-                    "content": {"type": "string", "description": "Content to write"}
-                },
-                "required": ["path", "content"]
-            }
-        )
-    ]
-
-@server.call_tool()
-async def call_tool(name: str, arguments: dict) -> list[TextContent]:
-    if name == "read_file":
-        file_path = WORKSPACE_DIR / arguments["path"]
-        content = file_path.read_text()
-        return [TextContent(type="text", text=content)]
-    elif name == "write_file":
-        file_path = WORKSPACE_DIR / arguments["path"]
-        file_path.write_text(arguments["content"])
-        return [TextContent(type="text", text="File written successfully")]
-
-async def main():
-    async with stdio_server() as (read_stream, write_stream):
-        await server.run(read_stream, write_stream, server.create_initialization_options())
-
-if __name__ == "__main__":
-    asyncio.run(main())
+```yaml
+mcp:
+  enabled: true
+  client_enabled: true
+  servers:
+  - name: "sse"
+        enabled: false
+        transport: "sse"
+        url: "http://localhost:8123/sse"
+        timeout: 30
+        headers:
+          Authorization: "Bearer ${MCP_API_KEY}"
+        tool_scopes:
+          # Tools to Scope Mapping
+          get_alerts: ["alerts:read"]
+          get_forecast: ["weather:read"]
 ```
 
-### Tool Access Control
+!!! Note "Token Authentication"
+    The `Authorization` header is used for token-based authentication. Replace `${MCP_API_KEY}` with your actual API key or token or better still, use environment variables to keep sensitive information secure.
+
+
+### Streamable HTTP-based MCP Servers
+
+Connect to MCP servers that support streaming HTTP responses:
+
+```yaml
+mcp:
+  enabled: true
+  client_enabled: true
+  servers:
+    - name: "streamable_http"
+      enabled: true
+      transport: "streamable_http"
+      url: "http://example.com/mcp"
+      headers:
+        Authorization: "Bearer ${MCP_API_KEY}"
+      timeout: 30
+      tool_scopes:
+        # Tools to Scope Mapping
+        get_alerts: ["alerts:read"]
+        get_forecast: ["weather:read"]
+```
+
+### Authentication
+
+Authentication is handled via the `Authorization` header, which can include API keys or tokens. Use environment variables to keep sensitive information secure.
+
+```yaml
+headers:
+        Authorization: "Bearer ${MCP_API_KEY}"
+```
+
+####   Current MCP Authentication Support
+
+  | Authentication Type | Status | Description |
+  |---------------------|--------|-------------|
+  | Bearer Token Authentication | ✅ Supported | Simple `Authorization: Bearer <token>` headers |
+  | Custom Headers | ✅ Supported | Any HTTP headers can be configured |
+  | Environment Variable Expansion | ✅ Supported | Tokens can be loaded from env vars like `${AUTH_TOKEN}` |
+  | OAuth2 flows | ❌ Not Supported | Authorization code, client credentials, etc. |
+  | Token refresh logic | ❌ Not Supported | Automatic token renewal |
+  | Dynamic token acquisition | ❌ Not Supported | Runtime token fetching |
+  | JWT token validation | ❌ Not Supported | Token signature verification |
+
+Current unsupported features include OAuth2 flows, token refresh logic, dynamic token acquisition, and JWT validation,
+which will be added in future releases. For now, use static tokens or API keys configured via environment variables.
+
+## MCP Tool Configuration
 
 Tool access is controlled through the `tool_scopes` configuration. **Only tools with explicit scope mappings are available** - this provides security by default.
 
 ```yaml
 servers:
   - name: "filesystem"
-    type: "stdio"
+    transport: "stdio"
     command: "python"
     args: ["/path/to/mcp_server.py"]
     tool_scopes:
@@ -153,44 +156,19 @@ servers:
       write_file: ["files:write"]
 ```
 
-**Key Points:**
-- **Security by default**: Tools without explicit `tool_scopes` are automatically denied
-- **No separate allow/block lists needed**: Simply configure or comment out tools in `tool_scopes`
-- **Clear security intent**: Each tool's required permissions are explicitly documented
+#### Tool Name Prefixing
 
-### HTTP-based MCP Servers
+AgentUp automatically prefixes MCP tool names with the server name to avoid conflicts:
 
-Connect to MCP servers over HTTP:
+- **Server name**: `fileserver`
+- **Tool name**: `read_file`
+- **Registered as**: `fileserver:read_file` AND `read_file`
 
-```yaml
-mcp:
-  enabled: true
-  client_enabled: true
-  servers:
-    - name: "github"
-      type: "http"
-      url: "http://localhost:3000/mcp"
-      headers:
-        Authorization: "Bearer ${GITHUB_TOKEN}"
-      timeout: 30                      # Request timeout in seconds (default: 30)
-
-      # REQUIRED: Map tools to scopes (prefixed with server name)
-      tool_scopes:
-        "github:create_issue": ["github:write"]
-        "github:list_issues": ["github:read"]
-        "github:update_issue": ["github:write"]
-        "github:search_code": ["github:read"]
-        # Include unprefixed for compatibility
-        create_issue: ["github:write"]
-        list_issues: ["github:read"]
-        update_issue: ["github:write"]
-        search_code: ["github:read"]
+```bash
+2025-08-04T10:44:31.801840Z [DEBUG    ] Registered MCP tool 'fileserver_read_file:read_file' -> 'fileserver_read_file' with scope enforcement: ['alerts:read'] [agent.mcp_support.mcp_integration]
 ```
 
-
 ## Security and Scopes
-
-### Tool-to-Scope Mapping
 
 Each MCP tool **must** be explicitly mapped to one or more AgentUp security scopes. This ensures:
 
@@ -204,7 +182,7 @@ Each MCP tool **must** be explicitly mapped to one or more AgentUp security scop
 ```yaml
 servers:
   - name: "database"
-    type: "stdio"
+    transport: "stdio"
     command: "mcp-server-postgres"
     args: ["--connection-string", "${DATABASE_URL}"]
     tool_scopes:
@@ -221,17 +199,6 @@ servers:
       # Tools without scope configuration are automatically blocked
       # create_table: ["db:admin"]  # ❌ Disabled by commenting out
 ```
-
-### Tool Name Prefixing
-
-AgentUp automatically prefixes MCP tool names with the server name to avoid conflicts:
-
-- **Server name**: `filesystem`
-- **Tool name**: `read_file`
-- **Registered as**: `filesystem:read_file` AND `read_file`
-
-Configure both prefixed and unprefixed names in `tool_scopes` for maximum compatibility.
-
 
 ## Using MCP Tools in Your Agent
 
@@ -261,45 +228,23 @@ Users can request MCP tool operations using natural language:
 MCP tools can be called via the AgentUp API:
 
 ```bash
-curl -X POST http://localhost:8000/ \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: admin-key-123" \
-  -d '{
-    "jsonrpc": "2.0",
-    "method": "message/send",
-    "params": {
-      "message": {
-        "role": "user",
-        "parts": [{"kind": "text", "text": "list files in /tmp"}],
-        "message_id": "msg-001",
-        "kind": "message"
-      }
-    },
-    "id": "req-001"
-  }'
+curl -s -vvv -X POST http://localhost:8000/ \
+    -H "Content-Type: application/json" \
+    -H "X-API-Key: admin-key-123" \
+    -d '{
+      "jsonrpc": "2.0",
+      "method": "message/send",
+      "params": {
+        "message": {
+          "role": "user",
+          "parts": [{"kind": "text", "text": "What is the weather today in New York?"}],
+          "message_id": "msg-001",
+          "kind": "message"
+        }
+      },
+      "id": "req-001"
+    }'
 ```
-
-### Testing MCP Integration
-
-Test your MCP configuration by:
-
-1. **Starting your agent**: `uv run agentup agent serve`
-2. **Checking logs**: Look for MCP tool registration messages
-3. **Making test requests**: Use natural language to invoke tools
-4. **Verifying security**: Test with insufficient scopes to ensure access is denied
-
-## Exposing Your Agent as an MCP Server
-
-AgentUp can expose your agent's capabilities as an MCP server:
-
-```yaml
-mcp:
-  enabled: true
-  server_enabled: true
-  server_host: "0.0.0.0"  # Listen on all interfaces
-  server_port: 8080
-```
-
 
 ## Troubleshooting
 
@@ -399,7 +344,7 @@ mcp:
   servers:
     # Python-based filesystem server
     - name: "filesystem"
-      type: "stdio"
+      transport: "stdio"
       command: "python"
       args: ["/path/to/filesystem_mcp_server.py"]
       env:
@@ -415,9 +360,9 @@ mcp:
         write_file: ["files:write"]
         list_directory: ["files:read"]
 
-    # GitHub HTTP MCP server
+    # GitHub MCP server
     - name: "github"
-      type: "http"
+      transport: "sse"
       url: "http://localhost:3000/mcp"
       headers:
         Authorization: "Bearer ${GITHUB_TOKEN}"
@@ -450,12 +395,3 @@ security:
         - key: "admin-key-123"
           scopes: ["files:write", "github:read"]
 ```
-
-## Quick Start
-
-1. **Create an MCP server script** (Python example above)
-2. **Configure your `agentup.yml`** with server connection and tool scopes
-3. **Start your agent**: `uv run agentup agent serve`
-4. **Test with natural language**: "List files in /tmp directory"
-
-That's it! Your agent now has MCP tool capabilities with full security integration.

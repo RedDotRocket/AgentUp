@@ -144,26 +144,32 @@ class TestAPIConfig:
 class TestMCPConfig:
     def test_mcp_server_config_stdio(self):
         config = MCPServerConfig(
-            name="test-server", type="stdio", command="python", args=["-m", "mcp_server"], env={"DEBUG": "1"}
+            name="test-server",
+            transport="stdio",
+            command="python",
+            args=["-m", "mcp_server"],
+            env={"DEBUG": "1"},
+            tool_scopes={"test_tool": ["read"]},
         )
 
         assert config.name == "test-server"
-        assert config.type == "stdio"
+        assert config.transport == "stdio"
         assert config.command == "python"
         assert config.args == ["-m", "mcp_server"]
         assert config.env["DEBUG"] == "1"
 
-    def test_mcp_server_config_http(self):
+    def test_mcp_server_config_sse(self):
         config = MCPServerConfig(
-            name="http-server",
-            type="http",
+            name="sse-server",
+            transport="sse",
             url="https://api.example.com/mcp",
             headers={"Authorization": "Bearer token"},
             timeout=60,
+            tool_scopes={"test_tool": ["read"]},
         )
 
-        assert config.name == "http-server"
-        assert config.type == "http"
+        assert config.name == "sse-server"
+        assert config.transport == "sse"
         assert config.url == "https://api.example.com/mcp"
         assert config.headers["Authorization"] == "Bearer token"
         assert config.timeout == 60
@@ -171,17 +177,17 @@ class TestMCPConfig:
     def test_mcp_server_config_validation(self):
         # stdio without command should fail
         with pytest.raises(ValidationError) as exc_info:
-            MCPServerConfig(name="test", type="stdio")
+            MCPServerConfig(name="test", transport="stdio", tool_scopes={"test": ["read"]})
         assert "command is required" in str(exc_info.value)
 
-        # http without url should fail
+        # sse without url should fail
         with pytest.raises(ValidationError) as exc_info:
-            MCPServerConfig(name="test", type="http")
+            MCPServerConfig(name="test", transport="sse", tool_scopes={"test": ["read"]})
         assert "url is required" in str(exc_info.value)
 
-        # Invalid http url should fail
+        # Invalid sse url should fail
         with pytest.raises(ValidationError) as exc_info:
-            MCPServerConfig(name="test", type="http", url="invalid-url")
+            MCPServerConfig(name="test", transport="sse", url="invalid-url", tool_scopes={"test": ["read"]})
         assert "must start with http" in str(exc_info.value)
 
     def test_mcp_config(self):
@@ -190,7 +196,15 @@ class TestMCPConfig:
             client_enabled=True,
             server_enabled=True,
             server_port=9000,
-            servers=[MCPServerConfig(name="local", type="stdio", command="python", args=["-m", "local_server"])],
+            servers=[
+                MCPServerConfig(
+                    name="local",
+                    transport="stdio",
+                    command="python",
+                    args=["-m", "local_server"],
+                    tool_scopes={"test_tool": ["read"]},
+                )
+            ],
         )
 
         assert config.enabled is True
