@@ -153,8 +153,6 @@ Run specific test categories: `uv run pytest -m "unit and not slow"`
 AgentUp has a single A2A JSON-RPC endoint that should be used to test or validate fixes against an Agent:
 
 ```
-```
-```
 curl -s -X POST http://localhost:8000/ \
 ```
       -H "Content-Type: application/json" \
@@ -173,10 +171,7 @@ curl -s -X POST http://localhost:8000/ \
         "id": "req-001"
       }'
 ```
-```
-```
 
-```
 
 ## Configuration Structure
 

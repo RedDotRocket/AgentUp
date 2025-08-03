@@ -52,7 +52,7 @@ mcp:
       env:
         DEBUG: "1"                   # Optional environment variables
       working_dir: "/tmp"            # Optional: Set working directory for the server process
-      
+
       # REQUIRED: Map MCP tools to AgentUp security scopes
       # Tools are automatically prefixed with server name (e.g., "filesystem:read_file")
       tool_scopes:
@@ -98,7 +98,7 @@ async def list_tools() -> list[Tool]:
             }
         ),
         Tool(
-            name="write_file", 
+            name="write_file",
             description="Write contents to a file",
             inputSchema={
                 "type": "object",
@@ -144,10 +144,10 @@ servers:
       # ✅ These tools will be available
       "filesystem:read_file": ["files:read"]
       "filesystem:write_file": ["files:write"]
-      
+
       # ❌ This tool is disabled (commented out)
       # "filesystem:delete_file": ["files:delete"]
-      
+
       # ✅ Include unprefixed names for compatibility
       read_file: ["files:read"]
       write_file: ["files:write"]
@@ -173,11 +173,11 @@ mcp:
       headers:
         Authorization: "Bearer ${GITHUB_TOKEN}"
       timeout: 30                      # Request timeout in seconds (default: 30)
-      
+
       # REQUIRED: Map tools to scopes (prefixed with server name)
       tool_scopes:
         "github:create_issue": ["github:write"]
-        "github:list_issues": ["github:read"] 
+        "github:list_issues": ["github:read"]
         "github:update_issue": ["github:write"]
         "github:search_code": ["github:read"]
         # Include unprefixed for compatibility
@@ -195,7 +195,7 @@ mcp:
 Each MCP tool **must** be explicitly mapped to one or more AgentUp security scopes. This ensures:
 
 1. **Explicit security configuration**: No tools are available without deliberate security review
-2. **Access control enforcement**: Users must have required scopes to use MCP tools  
+2. **Access control enforcement**: Users must have required scopes to use MCP tools
 3. **Comprehensive audit trail**: All MCP tool usage is logged with user context
 4. **Principle of least privilege**: Tools only get explicitly granted permissions
 
@@ -204,7 +204,7 @@ Each MCP tool **must** be explicitly mapped to one or more AgentUp security scop
 ```yaml
 servers:
   - name: "database"
-    type: "stdio" 
+    type: "stdio"
     command: "mcp-server-postgres"
     args: ["--connection-string", "${DATABASE_URL}"]
     tool_scopes:
@@ -212,12 +212,12 @@ servers:
       "database:query": ["db:read"]
       "database:insert": ["db:write"]
       "database:delete": ["db:write", "db:delete"]
-      
+
       # Include unprefixed for compatibility
       query: ["db:read"]
-      insert: ["db:write"] 
+      insert: ["db:write"]
       delete: ["db:write", "db:delete"]
-      
+
       # Tools without scope configuration are automatically blocked
       # create_table: ["db:admin"]  # ❌ Disabled by commenting out
 ```
@@ -227,7 +227,7 @@ servers:
 AgentUp automatically prefixes MCP tool names with the server name to avoid conflicts:
 
 - **Server name**: `filesystem`
-- **Tool name**: `read_file`  
+- **Tool name**: `read_file`
 - **Registered as**: `filesystem:read_file` AND `read_file`
 
 Configure both prefixed and unprefixed names in `tool_scopes` for maximum compatibility.
@@ -244,10 +244,10 @@ Users can request MCP tool operations using natural language:
 ```bash
 # File operations
 "List the files in the /tmp directory"
-"Read the contents of config.json" 
+"Read the contents of config.json"
 "Create a file called notes.txt with the content 'Hello World'"
 
-# Database operations  
+# Database operations
 "Show me all users from the database"
 "Insert a new user with email john@example.com"
 
@@ -265,7 +265,7 @@ curl -X POST http://localhost:8000/ \
   -H "Content-Type: application/json" \
   -H "X-API-Key: admin-key-123" \
   -d '{
-    "jsonrpc": "2.0", 
+    "jsonrpc": "2.0",
     "method": "message/send",
     "params": {
       "message": {

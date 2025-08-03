@@ -1,10 +1,31 @@
 from typing import Any
 
 import structlog
-from mcp import ClientSession, StdioServerParameters  # noqa: F401
-from mcp.client.stdio import stdio_client  # noqa: F401
 
 logger = structlog.get_logger(__name__)
+
+
+def _extract_tool_scopes_from_servers(servers_config: list[Any]) -> dict[str, list[str]]:
+    """Extract and merge tool_scopes from all server configurations.
+
+    Handles both Pydantic models and dict-like objects.
+
+    Args:
+        servers_config: List of server configuration objects
+
+    Returns:
+        Dict mapping tool names to required scopes
+    """
+    tool_scopes = {}
+    for server_config in servers_config:
+        # Handle Pydantic model (use attribute access, not .get())
+        if hasattr(server_config, "tool_scopes"):
+            server_tool_scopes = server_config.tool_scopes or {}
+        else:
+            # Fallback for dict-like objects
+            server_tool_scopes = server_config.get("tool_scopes", {}) if hasattr(server_config, "get") else {}
+        tool_scopes.update(server_tool_scopes)
+    return tool_scopes
 
 
 async def initialize_mcp_integration(config: dict[str, Any]) -> None:
@@ -188,14 +209,7 @@ async def _register_mcp_tools_as_capabilities(mcp_client, available_tools, serve
         from agent.capabilities.manager import register_mcp_tool_as_capability
 
         # Extract tool scopes from server configuration
-        tool_scopes = {}
-        for server_config in servers_config:
-            # Handle Pydantic model (use attribute access, not .get())
-            if hasattr(server_config, "tool_scopes"):
-                server_tool_scopes = server_config.tool_scopes or {}
-            else:
-                server_tool_scopes = server_config.get("tool_scopes", {}) if hasattr(server_config, "get") else {}
-            tool_scopes.update(server_tool_scopes)
+        tool_scopes = _extract_tool_scopes_from_servers(servers_config)
 
         # Register each tool as a capability with scope enforcement
         for tool in available_tools:
@@ -226,14 +240,7 @@ async def _register_mcp_tools_as_capabilities(mcp_client, available_tools, serve
 async def _register_mcp_tools_with_scopes(registry, mcp_client, available_tools, servers_config):
     try:
         # Extract tool scopes from server configuration
-        tool_scopes = {}
-        for server_config in servers_config:
-            # Handle Pydantic model (use attribute access, not .get())
-            if hasattr(server_config, "tool_scopes"):
-                server_tool_scopes = server_config.tool_scopes or {}
-            else:
-                server_tool_scopes = server_config.get("tool_scopes", {}) if hasattr(server_config, "get") else {}
-            tool_scopes.update(server_tool_scopes)
+        tool_scopes = _extract_tool_scopes_from_servers(servers_config)
 
         # Register each tool with scope enforcement
         for tool in available_tools:
