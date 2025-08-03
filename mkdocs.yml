@@ -1,14 +1,14 @@
 site_name: AgentUp Documentation
-site_description: AgentUp is a powerful framework for building AI agents with advanced capabilities.
-site_url: https://docs.agentup.dev
-site_author: AgentUp Team
-repo_url: https://github.com/RedDotRocket/AgentUp
-repo_name: RedDotRocket/AgentUp
-edit_uri: edit/main/docs/
-
+site_description: Documentation for AgentUp, a framework for building AI agents.
+site_url: https://github.com/RedDotRocket/agentup
+repo_url: https://github.com/RedDotRocket/agentup
+repo_name: RedDotRocket/agentup
 theme:
   name: material
-  logo: images/compie-docs.png
+  font:
+    text: Nunito
+    code: Fira Code
+  logo: images/icon.png
   favicon: images/favicon.ico
   features:
     # Content
@@ -35,72 +35,46 @@ theme:
     - toc.follow
 
   palette:
-    - media: "(prefers-color-scheme: light)"
-      scheme: default
-      primary: teal
-      accent: deep orange
+    # Light Mode (Retro Comic Theme)
+    - scheme: default
       toggle:
-        icon: material/brightness-7
+        icon: material/weather-night
         name: Switch to dark mode
-    - media: "(prefers-color-scheme: dark)"
-      scheme: slate
-      primary: teal
-      accent: deep orange
+      primary: custom
+      accent: custom
+
+    # Dark Mode (Retro Comic Dark)
+    - scheme: slate
       toggle:
-        icon: material/brightness-4
+        icon: material/weather-sunny
         name: Switch to light mode
-  font:
-    text: Roboto
-    code: Roboto Mono
-
-plugins:
-  - glightbox:
-      touchNavigation: false
-      loop: false
-      effect: zoom
-      width: 100%
-      height: auto
-      zoomable: true
-      draggable: true
-  - search:
-      separator: '[\s\-,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
-  - minify:
-      minify_html: true
-  - tags:
-
-# extra:
-#   analytics:
-#     provider: google
-#     property: !ENV GOOGLE_ANALYTICS_KEY
+      primary: custom
+      accent: custom
 
 extra_css:
   - stylesheets/extra.css
 
-
 markdown_extensions:
-  - pymdownx.highlight:
-      anchor_linenums: true
-  - pymdownx.inlinehilite
-  - pymdownx.snippets
-  - admonition
-  - pymdownx.arithmatex:
-      generic: true
-  - footnotes
-  - pymdownx.details
-  - pymdownx.tabbed:
-      alternate_style: true
-  - pymdownx.mark
   - attr_list
+  - md_in_html
   - pymdownx.emoji:
       emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
-  - md_in_html
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
   - pymdownx.superfences:
       custom_fences:
         - name: mermaid
           class: mermaid
           format: !!python/name:pymdownx.superfences.fence_code_format
-
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonition
+  - pymdownx.details
 copyright: Copyright &copy; 2025 Red Dot Rocket
 
 nav:

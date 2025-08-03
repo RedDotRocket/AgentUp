@@ -1,5 +1,12 @@
 # AgentUp Documentation
 
+<style>
+  .md-typeset h1,
+  .md-content__button {
+    display: none;
+  }
+</style>
+
 <p align="center">
   <img src="images/compie-docs.png" alt="AgentUp Logo" width="500"/>
 </p>
