@@ -1,6 +1,6 @@
 [project]
 name = "agentup"
-version = "0.5.0"
+version = "0.5.1"
 description = "Create AI agents with all the trappings, out of the box."
 readme = "README.md"
 requires-python = ">=3.11"

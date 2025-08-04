@@ -35,7 +35,7 @@ generates compliant AgentCards from your plugin configuration.
   "protocolVersion": "0.2.6",
   "name": "image-agent",
   "description": "AI Agent image-agent Project.",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "url": "http://localhost:8000",
   "capabilities": {
     "streaming": true,

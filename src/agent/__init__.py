@@ -8,7 +8,7 @@ warnings.filterwarnings(
     module=r"a2a\..*",
 )
 
-__version__ = "0.5.0"
+__version__ = "0.5.1"
 
 # Lazy imports to avoid loading config when using CLI
 # Import these explicitly when needed:

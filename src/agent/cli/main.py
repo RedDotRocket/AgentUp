@@ -19,7 +19,7 @@ def configure_cli_logging():
         format="%(message)s",  # Simple format for CLI
     )
 
-    # Try to configure structlog if available
+    # Try to configure structlog if available, but don't fail if config is missing
     try:
         from agent.config.logging import setup_logging
         from agent.config.model import LoggingConfig
@@ -37,8 +37,8 @@ def configure_cli_logging():
         )
 
         setup_logging(cli_logging_config)
-    except ImportError:
-        # If structlog isn't available, just use basic logging
+    except (ImportError, Exception):
+        # If structlog isn't available or config loading fails, just use basic logging
         pass
 
     # Suppress specific noisy loggers
@@ -48,7 +48,7 @@ def configure_cli_logging():
 
 
 @click.group(help="AgentUp CLI - Create and Manage agents and plugins.\n\nUse one of the subcommands below.")
-@click.version_option(version="0.5.0", prog_name="agentup")
+@click.version_option(version="0.5.1", prog_name="agentup")
 def cli():
     # Configure logging for all CLI commands
     configure_cli_logging()

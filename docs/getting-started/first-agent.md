@@ -253,7 +253,7 @@ We  Agent start up , load the configuration, and register the plugins and activi
     [INFO] Plugin service initialized with 1 plugins [PluginService]
     [INFO] ✓ Initialized PluginService [agent.services.bootstrap]
     [INFO] ================================================== [agent.services.bootstrap]
-    [INFO] Basic Agent v0.5.0 initialized [agent.services.bootstrap]
+    [INFO] Basic Agent v0.5.1 initialized [agent.services.bootstrap]
     [INFO] AI Agent Basic Agent Project. [agent.services.bootstrap]
     [INFO] ================================================== [agent.services.bootstrap]
     [INFO] Active Services (4):      [agent.services.bootstrap]
@@ -468,7 +468,7 @@ curl -s http://localhost:8000/.well-known/agent.json |jq
       ],
       "supportsAuthenticatedExtendedCard": false,
       "url": "http://localhost:8000",
-      "version": "0.5.0"
+      "version": "0.5.1"
     }
     ```
 
