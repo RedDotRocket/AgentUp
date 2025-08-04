@@ -68,7 +68,7 @@ async def _initialize_mcp_client(services, mcp_config: dict[str, Any]) -> None:
 
         # Register with service registry
         services._services["mcp_client"] = mcp_client
-        logger.info("Registered unified MCP client with service registry")
+        logger.debug("Registered unified MCP client with service registry")
 
         # Register MCP tools with AI orchestrator
         try:
@@ -77,7 +77,12 @@ async def _initialize_mcp_client(services, mcp_config: dict[str, Any]) -> None:
             registry = get_function_registry()
 
             available_tools = await mcp_client.get_available_tools()
-            logger.info(f"MCP tools available across all transports: {len(available_tools)}")
+            if not len(available_tools):
+                logger.warning("No MCP tools available across configured transports")
+            else:
+                # Log available tools for debugging
+                tool_names = [tool.get("name", "unknown") for tool in available_tools]
+                logger.debug(f"MCP tools available across all transports: {', '.join(tool_names)}")
 
             if available_tools:
                 # Register MCP tools with scope enforcement

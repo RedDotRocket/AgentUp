@@ -58,7 +58,7 @@ class OptimizedScopeHierarchy:
         for scope in self._hierarchy.keys():
             self._transitive_closures[scope] = self._compute_closure(scope)
 
-        logger.info(f"Pre-computed {len(self._transitive_closures)} scope closures")
+        logger.debug(f"Pre-computed {len(self._transitive_closures)} scope closures")
 
     def _compute_closure(self, scope: str) -> frozenset[str]:
         if scope in self._transitive_closures:
@@ -127,9 +127,8 @@ class ScopeService:
         self._cache_enabled = True
 
     def initialize_hierarchy(self, hierarchy_config: dict[str, list[str]]) -> None:
-        logger.info(f"Initializing scope hierarchy with {len(hierarchy_config)} entries")
         self._hierarchy = OptimizedScopeHierarchy(hierarchy_config)
-        logger.info("Scope hierarchy initialized successfully")
+        logger.debug(f"Scope hierarchy initialized with {len(self._hierarchy.hierarchy)} entries")
 
     def start_request_cache(self) -> ScopeCache:
         cache = ScopeCache()

@@ -92,7 +92,7 @@ class PluginRegistry:
                             "verified": plugin_config.get("verified", False),
                         }
 
-                logger.info(f"Loaded {len(self.allowed_plugins)} configured plugins as allowlist")
+                logger.debug(f"Loaded {len(self.allowed_plugins)} configured plugins in allowlist")
 
         except Exception as e:
             logger.warning(f"Could not load plugin allowlist: {e}. Using empty allowlist for security.")
@@ -108,9 +108,15 @@ class PluginRegistry:
         # Load from filesystem (if enabled in dev mode)
         self._load_filesystem_plugins()
 
-        logger.info(
-            f"Plugin discovery completed. Loaded {len(self.plugins)} plugins with {len(self.capabilities)} capabilities"
-        )
+        if len(self.plugins) == 0:
+            logger.info("No plugins discovered at entry points.")
+        else:
+            # Register capabilities from all loaded plugins
+            for plugin_id, plugin in self.plugins.items():
+                try:
+                    self._register_plugin(plugin_id, plugin)
+                except Exception as e:
+                    logger.error(f"Failed to register plugin {plugin_id}: {e}", exc_info=True)
 
     def _load_entry_point_plugins(self) -> None:
         """Load plugins from Python entry points"""

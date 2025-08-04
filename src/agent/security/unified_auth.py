@@ -230,8 +230,8 @@ class UnifiedAuthenticationManager:
 
         # Build custom scope hierarchy if provided
         scope_hierarchy = config.get("scope_hierarchy", {})
-        logger.info(f"Loading scope hierarchy from config: {scope_hierarchy}")
-        logger.info(f"Config keys available: {list(config.keys())}")
+        logger.debug(f"Loading scope hierarchy from config: {scope_hierarchy}")
+        logger.debug(f"Config keys available: {list(config.keys())}")
 
         if scope_hierarchy:
             for parent, children in scope_hierarchy.items():
@@ -239,7 +239,7 @@ class UnifiedAuthenticationManager:
         else:
             logger.warning("No custom scope hierarchy found in config - scope inheritance disabled")
 
-        logger.info(f"Scope hierarchy initialized with {len(self.scope_hierarchy.hierarchy)} entries")
+        logger.debug(f"Scope hierarchy initialized with {len(self.scope_hierarchy.hierarchy)} entries")
         logger.debug(f"Scope hierarchy: {self.scope_hierarchy.hierarchy}")
         # Initialize authentication providers
         self._initialize_providers()

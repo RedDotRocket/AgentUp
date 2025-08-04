@@ -249,7 +249,7 @@ def create_agent_card(extended: bool = False) -> AgentCard:
 
         package_version = importlib.metadata.version("agentup")
     except (importlib.metadata.PackageNotFoundError, Exception):
-        package_version = "0.0.0" # better to say we don't know, then have some arbitrary version
+        package_version = "0.0.0"  # better to say we don't know, then have some arbitrary version
 
     # Create signatures object only if we have actual signature data
     signatures = None

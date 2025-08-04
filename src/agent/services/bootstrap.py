@@ -192,8 +192,10 @@ class AgentBootstrapper:
 
             # Pass the Pydantic config directly
             capabilities_registered = integrate_plugins_with_capabilities(Config)
-
-            self.logger.info(f"Plugin integration complete: {len(capabilities_registered)} capabilities registered")
+            if len(capabilities_registered) == 0:
+                self.logger.warning("No capabilities registered from plugins")
+            else:
+                self.logger.info(f"Registered {len(capabilities_registered)} capabilities from plugins")
 
         except Exception as e:
             self.logger.error(f"Plugin integration failed: {e}")

@@ -81,7 +81,7 @@ def integrate_plugins_with_capabilities(config: Union["Settings", None] = None) 
 
         # Check if plugin was actually loaded
         if plugin_id not in plugin_registry.plugins:
-            logger.warning(f"Plugin '{plugin_id}' configured but not loaded. Check installation and entry points.")
+            logger.warning(f"Plugin '{plugin_id}' configured but not loaded.")
             logger.debug(f"Available plugins: {list(plugin_registry.plugins.keys())}")
             continue
 
@@ -170,11 +170,6 @@ def integrate_plugins_with_capabilities(config: Union["Settings", None] = None) 
             raise ValueError(
                 f"Plugin capability '{capability_id}' requires proper scope enforcement configuration."
             ) from e
-
-    if registered_count == 0:
-        logger.warning("No plugin capabilities registered, integration complete")
-    else:
-        logger.info(f"Plugin integration complete: registered {registered_count} plugin capabilities")
 
     # Store the registry globally for other components to access
     _plugin_registry_instance[0] = plugin_registry

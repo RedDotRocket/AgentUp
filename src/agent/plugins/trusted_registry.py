@@ -50,10 +50,6 @@ class TrustedPluginRegistry(PluginRegistry):
         # Apply trust-based filtering
         await self._apply_trust_filters()
 
-        logger.info(
-            f"Trusted plugin discovery completed. {len(self.plugins)} plugins loaded, {len(self.trust_results)} verified"
-        )
-
     async def _verify_all_plugins(self):
         """Verify trust for all discovered plugins"""
         verification_tasks = []
