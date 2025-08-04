@@ -24,7 +24,7 @@
 </p>
 
 <p align="center">
-  Designed with security, scalability, and extensibility at its foundation, AgentUp streamlines development through a configuration-driven architecture, with the ability to extend as much as you need via a rich plugin ecosystem.
+The Operating System for AI Agents. Designed with security, scalability, and extensibility at its foundation, AgentUp streamlines blistering fast development through a configuration-driven architecture, yet with the ability to extend as much as you need via a rich plugin ecosystem. Ensuring your agents are portable, maintainable and revision controlled.
 </p>
 
 ## Welcome to the AgentUp documentation! 
