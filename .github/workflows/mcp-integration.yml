@@ -196,7 +196,7 @@ jobs:
 
     - name: Upload JUnit results
       if: always()
-      uses: dorny/test-reporter@31a54ee7ebcacc03a09ea97a7e5465a47b84aea5 # v1
+      uses: dorny/test-reporter@dc3a92680fcc15842eef52e8c4606ea7ce6bd3f3 # v1
       with:
         name: MCP Integration Tests - ${{ matrix.transport }}
         path: test_results/mcp_integration/junit_*.xml
