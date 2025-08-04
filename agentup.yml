@@ -1,7 +1,12 @@
 #  Agent Information
 name: My Agent
 description: AI Agent My Agent Project.
+url: http://localhost:8000
 version: 0.4.0
+provider_organization: AgentUp
+provider_url: https://agentup.dev
+icon_url: https://raw.githubusercontent.com/RedDotRocket/AgentUp/refs/heads/main/assets/icon.png
+documentation_url: https://docs.agentup.dev
 
 # Core plugins configuration with capability-based structure
 plugins:
@@ -146,17 +151,6 @@ mcp:
         # Prefixed tool names (server:tool format)
         "default:get_alerts": ["alerts:read"]
         "default:get_forecast": ["weather:read"]
-    
-    # Optional: stdio filesystem server (disabled for now)
-    # - name: "filesystem-server"
-    #   transport: "stdio"
-    #   command: "uvx"
-    #   args: ["mcp-server-filesystem", "/tmp"]
-    #   tool_scopes:
-    #     read_file: ["files:read"]
-    #     write_file: ["files:write"]
-    #     delete_file: ["files:admin"]
-    #     list_directory: ["files:read"]
 
 # Logging configuration
 logging:

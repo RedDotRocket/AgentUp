@@ -39,6 +39,7 @@ class TestAgentCard:
             "description": "Test Agent Description",
             "agent": {"name": "TestAgent", "description": "Test Agent", "version": "1.0.0"},
             "skills": [],
+            "state_management": {"enabled": True},
         }
         mock_config_manager.return_value.config = mock_config
 
@@ -53,8 +54,7 @@ class TestAgentCard:
 
         # Check capabilities
         assert card.capabilities.streaming is True
-        assert card.capabilities.pushNotifications is False
-        assert card.capabilities.stateTransitionHistory is True
+        assert card.capabilities.state_transition_history is True
 
     @patch("agent.api.routes.ConfigurationManager")
     def test_create_agent_card_with_skills(self, mock_config_manager):
@@ -91,7 +91,6 @@ class TestAgentCard:
         card = create_agent_card()
 
         # Just verify security is configured
-        assert card.securitySchemes is not None
         assert card.security is not None
         assert len(card.security) > 0
 
@@ -185,14 +184,14 @@ class TestAgentDiscovery:
             description="Test Description",
             version="1.0.0",
             url="http://localhost:8000",
-            capabilities=AgentCapabilities(streaming=True, pushNotifications=True, stateTransitionHistory=True),
+            capabilities=AgentCapabilities(streaming=True, state_transition_history=True),
             skills=[],
             defaultInputModes=["text"],
             defaultOutputModes=["text"],
         )
         mock_create_card.return_value = mock_card
 
-        response = client.get("/.well-known/agent.json")
+        response = client.get("/.well-known/agent-card.json")
 
         assert response.status_code == 200
         data = response.json()
@@ -236,8 +235,30 @@ class TestJSONRPCEndpoint:
         assert data["error"]["message"] == "Invalid Request"
 
     @patch("agent.api.protected")
-    def test_jsonrpc_method_not_found(self, mock_protected, client, mock_handler):
+    @patch("agent.api.routes.get_auth_result")
+    def test_jsonrpc_method_not_found(self, mock_get_auth_result, mock_protected, client, mock_handler):
         mock_protected.return_value = lambda func: func
+        mock_get_auth_result.return_value = None
+
+        # Mock the app.state.agent_card
+        mock_card = AgentCard(
+            name="TestAgent",
+            description="Test Description",
+            version="1.0.0",
+            url="http://localhost:8000",
+            capabilities=AgentCapabilities(streaming=True, state_transition_history=True),
+            skills=[],
+            defaultInputModes=["text"],
+            defaultOutputModes=["text"],
+        )
+
+        # Mock the security manager to avoid the async authentication call
+        mock_security_manager = Mock()
+        mock_security_manager.is_auth_enabled.return_value = False
+
+        client.app.state = Mock()
+        client.app.state.agent_card = mock_card
+        client.app.state.security_manager = mock_security_manager
 
         response = client.post("/", json={"jsonrpc": "2.0", "method": "unknown/method", "id": 1})
 

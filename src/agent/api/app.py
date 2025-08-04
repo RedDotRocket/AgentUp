@@ -61,9 +61,12 @@ def _setup_request_handler(app: FastAPI) -> None:
         push_notifier = EnhancedPushNotifier(client=client)
         logger.debug("Using default push notifier")
 
+    # Use the agent_card from app.state (already created in create_app())
+    agent_card = app.state.agent_card
+
     # Create request handler
     request_handler = DefaultRequestHandler(
-        agent_executor=AgentExecutorImpl(agent=create_agent_card()),
+        agent_executor=AgentExecutorImpl(agent=agent_card),
         task_store=InMemoryTaskStore(),
         push_config_store=push_notifier,
         push_sender=push_notifier,
@@ -83,6 +86,9 @@ def create_app() -> FastAPI:
         version=agent_card.version,
         lifespan=lifespan,
     )
+
+    # Store agent_card in app.state for reuse
+    app.state.agent_card = agent_card
 
     # Configure middleware
     _configure_middleware(app)

@@ -1,3 +1,4 @@
+import importlib.metadata
 import re
 import secrets
 import string
@@ -162,6 +163,7 @@ class ProjectGenerator:
             "project_name_snake": self._to_snake_case(self.project_name),
             "project_name_title": self._to_title_case(self.project_name),
             "description": self.config.get("description", ""),
+            "version": self._get_package_version(),
             "features": self.features,
             "feature_config": self.config.get("feature_config", {}),
             "has_env_file": True,  # Most agents will have .env file
@@ -249,6 +251,13 @@ class ProjectGenerator:
     # ============================================================================
     # UTILITY METHODS
     # ============================================================================
+
+    def _get_package_version(self) -> str:
+        """Get the version of the agentup package from metadata."""
+        try:
+            return importlib.metadata.version("agentup")
+        except (importlib.metadata.PackageNotFoundError, Exception):
+            return "0.0.0"  # better to say we don't know, then have some arbitrary version
 
     def _replace_template_vars(self, content: str) -> str:
         replacements = {

@@ -22,7 +22,9 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from agent.config.a2a import (
     AgentCapabilities,
     AgentCard,
+    AgentCardSignature,
     AgentExtension,
+    AgentProvider,
     AgentSkill,
     APIKeySecurityScheme,
     HTTPAuthSecurityScheme,
@@ -181,11 +183,12 @@ def create_agent_card(extended: bool = False) -> AgentCard:
         extensions.append(mcp_extension)
 
     pushNotifications = config.get("push_notifications", {})
+    state_management = config.get("state_management", {})
 
     capabilities = AgentCapabilities(
         streaming=True,  # this is always true, as we support non-streaming and streaming methods
-        pushNotifications=pushNotifications.get("enabled", False),
-        stateTransitionHistory=True,
+        push_notifications=pushNotifications.get("enabled", False),
+        state_transition_history=state_management.get("enabled", False),
         extensions=extensions if extensions else None,
     )
 
@@ -194,6 +197,13 @@ def create_agent_card(extended: bool = False) -> AgentCard:
     security_schemes = {}
     security_requirements = []
 
+    # Get protocol version from a2a-sdk package
+    try:
+        import importlib.metadata
+
+        protocol_version = importlib.metadata.version("a2a-sdk")
+    except (importlib.metadata.PackageNotFoundError, Exception):
+        protocol_version = "0.0.0"  # better to say we don't know, then have some arbitrary version
     if security_config.get("enabled", False):
         auth_type = security_config.get("type", "api_key")
 
@@ -233,17 +243,55 @@ def create_agent_card(extended: bool = False) -> AgentCard:
             security_requirements.append({"OAuth2": required_scopes})
 
     # Create the official AgentCard
+    # Get version from package metadata, fallback to default
+    try:
+        import importlib.metadata
+
+        package_version = importlib.metadata.version("agentup")
+    except (importlib.metadata.PackageNotFoundError, Exception):
+        package_version = "0.0.0" # better to say we don't know, then have some arbitrary version
+
+    # Create signatures object only if we have actual signature data
+    signatures = None
+    signature_header = agent_info.get("signature_header")
+    signature_protected = agent_info.get("signature_protected")
+    signature_value = agent_info.get("signature")
+
+    if signature_header and signature_protected and signature_value:
+        signatures = AgentCardSignature(
+            header=signature_header,
+            protected=signature_protected,
+            signature=signature_value,
+        )
+
     agent_card = AgentCard(
+        protocol_version=protocol_version,
         name=agent_info.get("name", config.get("project_name", "Agent")),
         description=agent_info.get("description", config.get("description", "AI Agent")),
-        version=agent_info.get("version", "0.4.0"),
-        url="http://localhost:8000",
+        url=agent_info.get("url", config.get("url", "http://localhost:8000")),
+        preferred_transport="JSONRPC",
+        provider=AgentProvider(
+            organization=agent_info.get("provider_organization", "AgentUp"),
+            url=agent_info.get("provider_url", "http://localhost:8000"),
+        ),
+        icon_url=agent_info.get(
+            "icon_url",
+            config.get(
+                "icon_url", "https://raw.githubusercontent.com/RedDotRocket/AgentUp/refs/heads/main/assets/icon.png"
+            ),
+        ),
+        version=agent_info.get("version", package_version),
+        documentationUrl=agent_info.get(
+            "documentation_url",
+            config.get("documentation_url", "https://docs.agentup.dev"),
+        ),
         capabilities=capabilities,
-        skills=agent_skills,
+        security=security_requirements if security_requirements else None,
         defaultInputModes=["text"],
         defaultOutputModes=["text"],
+        skills=agent_skills,
         securitySchemes=security_schemes if security_schemes else None,
-        security=security_requirements if security_requirements else None,
+        signatures=signatures,
         supportsAuthenticatedExtendedCard=has_extended_plugins,
     )
 
@@ -295,32 +343,14 @@ async def health_check() -> JSONResponse:
 
 
 @router.get("/services/health")
-async def services_health(request: Request) -> JSONResponse:
-    health_results = {}
-
+async def services_health() -> JSONResponse:
     try:
-        # Get services from app state
-        # TODO: Not yet implemented
-        if hasattr(request.app.state, "services"):
-            services = request.app.state.services
-            for service_name, service in services.items():
-                try:
-                    if hasattr(service, "health_check"):
-                        health_results[service_name] = await service.health_check()
-                    else:
-                        health_results[service_name] = {"status": "unknown", "note": "Not implemented"}
-                except Exception as e:
-                    health_results[service_name] = {"status": "error", "error": str(e)}
+        from agent.services import get_services
 
-        # Fallback to legacy services if no new services found
-        if not health_results:
-            from agent.services import get_services
-
-            legacy_services = get_services()
-            health_results = await legacy_services.health_check_all()
-
-    except Exception as e:
-        health_results = {"error": f"Services health check failed: {e}"}
+        services = get_services()
+        health_results = await services.health_check_all()
+    except ImportError:
+        health_results = {"error": "Services module not available"}
 
     all_healthy = all(result.get("status") == "healthy" for result in health_results.values())
 
@@ -335,7 +365,7 @@ async def services_health(request: Request) -> JSONResponse:
 
 
 # A2A AgentCard
-@router.get("/.well-known/agent.json", response_model=AgentCard)
+@router.get("/.well-known/agent-card.json", response_model=AgentCard)
 async def get_agent_discovery() -> AgentCard:
     return create_agent_card()
 
@@ -403,9 +433,8 @@ async def jsonrpc_endpoint(
         # Get authentication result from request state (set by @protected decorator)
         auth_result = get_auth_result(request)
 
-        # Create JSONRPCHandler with the agent card, which is needed for capabilities,
-        # security schemes, and other metadata for the agent.
-        agent_card = create_agent_card()
+        # Get the agent_card from app.state (created once at startup)
+        agent_card = request.app.state.agent_card
         jsonrpc_handler = JSONRPCHandler(agent_card, handler)
 
         # Route to appropriate handler based on method - wrapped with auth context

@@ -14,7 +14,9 @@ from typing import Any
 from a2a.types import (
     AgentCapabilities,
     AgentCard,
+    AgentCardSignature,
     AgentExtension,
+    AgentProvider,
     AgentSkill,
     APIKeySecurityScheme,
     Artifact,
@@ -138,6 +140,8 @@ __all__ = [
     "AgentSkill",
     "AgentCapabilities",
     "AgentExtension",
+    "AgentProvider",
+    "AgentCardSignature",
     "APIKeySecurityScheme",
     "In",
     "SecurityScheme",
