@@ -1,5 +1,5 @@
 import os
-from functools import lru_cache
+from functools import cache, lru_cache
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -214,15 +214,12 @@ def get_settings() -> Settings:
 
 # Create global Config instance only when accessed
 # This avoids loading configuration when importing the module
-_Config = None
 
 
+@cache
 def get_config() -> Settings:
     """Get the global configuration instance, loading it if necessary."""
-    global _Config
-    if _Config is None:
-        _Config = get_settings()
-    return _Config
+    return get_settings()
 
 
 # For backward compatibility, provide Config as a property-like access
