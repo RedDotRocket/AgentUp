@@ -42,18 +42,65 @@ class MCPClientService:
         for server_config in enabled_servers:
             await self._connect_to_server(server_config)
 
-        # Count successful connections
-        connected_servers = sum(1 for s in self._servers.values() if s.get("connected", False))
-        failed_servers = len(self._servers) - connected_servers
+        # Count successful connections and gather detailed status
+        connected_servers = []
+        failed_servers = []
+
+        for server_name, server_info in self._servers.items():
+            if server_info.get("connected", False):
+                connected_servers.append(server_name)
+            else:
+                failed_servers.append(
+                    {
+                        "name": server_name,
+                        "transport": server_info.get("transport", "unknown"),
+                        "error": server_info.get("error", "Unknown error"),
+                    }
+                )
 
         self._initialized = True
 
-        if connected_servers > 0:
-            logger.info(f"MCP client initialized with {connected_servers} connected servers")
-            if failed_servers > 0:
-                logger.warning(f"{failed_servers} servers failed to connect (check authentication)")
+        # Count available tools
+        total_tools = len(self._available_tools)
+        total_resources = len(self._available_resources)
+
+        # Log detailed connection results
+        if connected_servers:
+            logger.info(
+                f"MCP client initialized successfully: {len(connected_servers)} servers connected, "
+                f"{total_tools} tools available, {total_resources} resources available",
+                extra={
+                    "connected_servers": connected_servers,
+                    "tools_count": total_tools,
+                    "resources_count": total_resources,
+                },
+            )
+
+            # Log connection failures with specific details
+            if failed_servers:
+                for failed in failed_servers:
+                    logger.error(
+                        f"MCP server '{failed['name']}' ({failed['transport']}) failed to connect: {failed['error']}",
+                        extra={
+                            "server_name": failed["name"],
+                            "transport": failed["transport"],
+                            "error": failed["error"],
+                        },
+                    )
+                logger.warning(
+                    f"MCP client partially functional: {len(failed_servers)} of {len(self._servers)} servers failed to connect"
+                )
         else:
-            logger.warning("MCP client initialized but no servers connected successfully")
+            # No servers connected - this is a critical issue
+            logger.error(
+                "MCP client initialization failed: No servers connected successfully. "
+                "MCP functionality will be unavailable.",
+                extra={"configured_servers": len(enabled_servers), "failed_servers": len(failed_servers)},
+            )
+
+            # Log specific failure details
+            for failed in failed_servers:
+                logger.error(f"Server '{failed['name']}' ({failed['transport']}): {failed['error']}")
 
     async def _connect_to_server(self, server_config: dict[str, Any]) -> None:
         """Connect to a server using the appropriate transport protocol."""
@@ -82,29 +129,67 @@ class MCPClientService:
         except Exception as e:
             error_msg = str(e)
 
-            # Check for common authentication errors in the exception chain
+            # Provide specific, actionable error messages based on common failure patterns
             if "403" in error_msg or "Forbidden" in error_msg:
-                logger.error(
-                    f"Authentication failed for MCP server '{server_name}': Invalid or missing authentication token"
+                enhanced_error = (
+                    f"Authentication failed for MCP server '{server_name}': Invalid or missing authentication token. "
+                    f"Check your API key or authentication token in the server configuration."
                 )
+                logger.error(enhanced_error)
             elif "401" in error_msg or "Unauthorized" in error_msg:
-                logger.error(f"Authentication required for MCP server '{server_name}': Missing authorization header")
+                enhanced_error = (
+                    f"Authentication required for MCP server '{server_name}': Missing authorization header. "
+                    f"Ensure the server configuration includes valid authentication credentials."
+                )
+                logger.error(enhanced_error)
+            elif "Connection refused" in error_msg or "refused" in error_msg.lower():
+                enhanced_error = (
+                    f"Connection refused to MCP server '{server_name}': Server may not be running or URL may be incorrect. "
+                    f"Verify the server is running and the URL/port in your configuration is correct."
+                )
+                logger.error(enhanced_error)
+            elif "timeout" in error_msg.lower() or "timed out" in error_msg.lower():
+                enhanced_error = (
+                    f"Connection timeout to MCP server '{server_name}': Server is not responding. "
+                    f"Check if the server is running and network connectivity is available."
+                )
+                logger.error(enhanced_error)
+            elif "Name or service not known" in error_msg or "getaddrinfo failed" in error_msg:
+                enhanced_error = (
+                    f"DNS resolution failed for MCP server '{server_name}': Cannot resolve hostname. "
+                    f"Check the server URL/hostname in your configuration."
+                )
+                logger.error(enhanced_error)
             elif "unhandled errors in a TaskGroup" in error_msg:
                 # TaskGroup exceptions often wrap the real error
-                logger.error(f"Failed to connect to MCP server '{server_name}': Connection or authentication error")
+                enhanced_error = (
+                    f"Connection error to MCP server '{server_name}': {error_msg}. "
+                    f"This may be due to authentication, network, or server configuration issues."
+                )
+                logger.error(enhanced_error)
             else:
-                logger.error(f"Failed to establish session with {server_name}: {e}")
+                enhanced_error = (
+                    f"Failed to establish session with MCP server '{server_name}': {error_msg}. "
+                    f"Check server configuration and ensure the server is running and accessible."
+                )
+                logger.error(enhanced_error)
 
-            # Store server as failed
+            # Include impact information
+            logger.debug(
+                f"MCP server '{server_name}' failure will result in unavailable tools/resources from this server. "
+                f"Other configured servers may still function normally."
+            )
+
+            # Store server as failed with enhanced error information
             self._servers[server_name] = {
                 "config": server_config,
                 "transport": transport,
                 "connected": False,
-                "error": str(e),
+                "error": enhanced_error,
+                "original_error": str(e),
             }
 
             # Don't raise - allow other servers to connect
-            # raise
 
     def _create_transport_client(self, server_config: dict[str, Any]):
         """Create appropriate transport client based on configuration."""

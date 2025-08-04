@@ -34,7 +34,6 @@ class MCPService(Service):
             await initialize_mcp_integration(self.config.config)
 
             self._initialized = True
-            self.logger.info("MCP integration initialized successfully")
 
         except Exception as e:
             self.logger.error(f"Failed to initialize MCP integration: {e}")
