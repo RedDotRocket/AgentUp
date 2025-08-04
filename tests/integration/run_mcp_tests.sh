@@ -207,7 +207,7 @@ health_check() {
     # Test stdio transport (simple startup test)
     log_info "Testing stdio transport server startup..."
     # For stdio, we just test that the server can be imported and starts without immediate errors
-    if python -c "
+    if uv run python -c "
 import sys
 sys.path.insert(0, 'scripts/mcp')
 try:
@@ -225,7 +225,7 @@ except Exception as e:
     fi
     
     # Test HTTP transport
-    python scripts/mcp/weather_server.py --transport sse --port $((MCP_SERVER_PORT + 1)) \
+    uv run python scripts/mcp/weather_server.py --transport sse --port $((MCP_SERVER_PORT + 1)) \
         --auth-token "$AUTH_TOKEN" > "$temp_dir/sse_test.log" 2>&1 &
     local sse_pid=$!
     CLEANUP_PIDS+=("$sse_pid")
