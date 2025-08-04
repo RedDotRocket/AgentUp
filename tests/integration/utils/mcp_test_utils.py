@@ -82,7 +82,8 @@ class AgentUpServerManager:
     """Manages AgentUp server lifecycle for testing."""
 
     def __init__(self, config_path: str, port: int = 8000):
-        self.config_path = config_path
+        # Ensure we have an absolute path
+        self.config_path = os.path.abspath(config_path)
         self.port = port
         self.process: subprocess.Popen | None = None
 
@@ -94,10 +95,13 @@ class AgentUpServerManager:
         env = os.environ.copy()
         env["AGENT_CONFIG_PATH"] = self.config_path
         env["SERVER_PORT"] = str(self.port)
+        # Disable telemetry/tracing that causes hanging in tests
+        env["OTEL_SDK_DISABLED"] = "true"
+        env["A2A_TELEMETRY_DISABLED"] = "true"
 
         # Start AgentUp server
         self.process = subprocess.Popen(
-            ["uv", "run", "agentup", "agent", "serve", "--port", str(self.port)],
+            ["uv", "run", "agentup", "agent", "serve", "--config", self.config_path, "--port", str(self.port)],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
@@ -212,7 +216,12 @@ def generate_mcp_config(
 
     # Configure LLM provider
     if mock_llm:
-        config["ai_provider"] = {"provider": "mock", "model": "mock-gpt", "temperature": 0}
+        config["ai_provider"] = {
+            "provider": "openai",
+            "api_key": "sk-test-key-for-integration-tests",
+            "model": "gpt-4o-mini",
+            "temperature": 0,
+        }
     else:
         config["ai_provider"] = {
             "provider": "openai",

@@ -16,10 +16,11 @@ security:
     admin: ["*"]
     weather:admin: ["weather:read", "alerts:read"]
 
-# AI Provider Configuration (Mock)
+# AI Provider Configuration (Test)
 ai_provider:
-  provider: mock
-  model: mock-gpt-4
+  provider: openai
+  api_key: sk-test-key-for-integration-tests
+  model: gpt-4o-mini
   temperature: 0
 
 # MCP Configuration - SSE Transport
