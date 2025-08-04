@@ -256,8 +256,12 @@ class ProjectGenerator:
         """Get the version of the agentup package from metadata."""
         try:
             return importlib.metadata.version("agentup")
-        except (importlib.metadata.PackageNotFoundError, Exception):
-            return "0.0.0"  # better to say we don't know, then have some arbitrary version
+        except importlib.metadata.PackageNotFoundError:
+            logger.warning("Package 'agentup' not found in metadata")
+            return "0.0.0"
+        except Exception as e:
+            logger.warning(f"Failed to get version for package 'agentup': {e}")
+            return "0.0.0"
 
     def _replace_template_vars(self, content: str) -> str:
         replacements = {

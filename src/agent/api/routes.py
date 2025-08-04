@@ -1,3 +1,4 @@
+import importlib.metadata
 from collections.abc import AsyncGenerator
 from datetime import datetime
 from typing import Any
@@ -57,6 +58,25 @@ task_storage: dict[str, dict[str, Any]] = {}
 
 # Request handler instance management
 _request_handler: DefaultRequestHandler | None = None
+
+
+def _get_package_version(package_name: str) -> str:
+    """Get the version of a package from metadata.
+
+    Args:
+        package_name: Name of the package to get version for
+
+    Returns:
+        Package version string or "0.0.0" if not found
+    """
+    try:
+        return importlib.metadata.version(package_name)
+    except importlib.metadata.PackageNotFoundError:
+        logger.warning(f"Package '{package_name}' not found in metadata")
+        return "0.0.0"
+    except Exception as e:
+        logger.warning(f"Failed to get version for package '{package_name}': {e}")
+        return "0.0.0"
 
 
 def set_request_handler_instance(handler: DefaultRequestHandler):
@@ -198,12 +218,7 @@ def create_agent_card(extended: bool = False) -> AgentCard:
     security_requirements = []
 
     # Get protocol version from a2a-sdk package
-    try:
-        import importlib.metadata
-
-        protocol_version = importlib.metadata.version("a2a-sdk")
-    except (importlib.metadata.PackageNotFoundError, Exception):
-        protocol_version = "0.0.0"  # better to say we don't know, then have some arbitrary version
+    protocol_version = _get_package_version("a2a-sdk")
     if security_config.get("enabled", False):
         auth_type = security_config.get("type", "api_key")
 
@@ -244,12 +259,7 @@ def create_agent_card(extended: bool = False) -> AgentCard:
 
     # Create the official AgentCard
     # Get version from package metadata, fallback to default
-    try:
-        import importlib.metadata
-
-        package_version = importlib.metadata.version("agentup")
-    except (importlib.metadata.PackageNotFoundError, Exception):
-        package_version = "0.0.0"  # better to say we don't know, then have some arbitrary version
+    package_version = _get_package_version("agentup")
 
     # Create signatures object only if we have actual signature data
     signatures = None
