@@ -55,7 +55,32 @@ class MockLLMProvider:
         """
         content_lower = content.lower()
 
-        # Weather forecast patterns
+        # Direct coordinate patterns - CHECK FIRST to avoid location name lookups
+        coord_pattern = r"(?:weather|forecast).*?(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)"
+        match = re.search(coord_pattern, content_lower)
+        if match:
+            lat = float(match.group(1))
+            lon = float(match.group(2))
+            return {"name": "get_forecast", "arguments": {"latitude": lat, "longitude": lon}}
+
+        # Weather alerts patterns - CHECK SECOND to avoid false matches with forecast patterns
+        alert_patterns = [
+            r"alert.*(?:in|for)\s+([a-z]{2})\b",
+            r"alerts.*(?:in|for)\s+([a-z]{2})\b",  # Added "alerts" plural
+            r"warning.*(?:in|for)\s+([a-z]{2})\b",
+            r"warnings.*(?:in|for)\s+([a-z]{2})\b",  # Added "warnings" plural
+            r"get.*alert.*(?:in|for)\s+([a-z]{2})\b",  # Added "get" prefix
+            r"storm.*(?:in|for)\s+([a-z]{2})\b",
+            r"(?:weather\s+)?alert.*\s+([a-z]{2})\b",  # Fixed pattern
+        ]
+
+        for pattern in alert_patterns:
+            match = re.search(pattern, content_lower)
+            if match:
+                state = match.group(1).upper()
+                return {"name": "get_alerts", "arguments": {"state": state}}
+
+        # Weather forecast patterns - CHECK LAST to avoid conflicts
         forecast_patterns = [
             r"weather.*(?:in|for)\s+(.+?)(?:\s|$|,|\?)",
             r"forecast.*(?:in|for)\s+(.+?)(?:\s|$|,|\?)",
@@ -67,30 +92,14 @@ class MockLLMProvider:
             match = re.search(pattern, content_lower)
             if match:
                 location = match.group(1).strip()
+                # Skip if this looks like an alert request that didn't match above
+                if "alert" in location or "warning" in location:
+                    continue
+                # Skip if this looks like coordinates that didn't match above (safety check)
+                if re.search(r"\d+\.?\d*\s*,\s*-?\d+\.?\d*", location):
+                    continue
                 lat, lon = self._get_coordinates_for_location(location)
                 return {"name": "get_forecast", "arguments": {"latitude": lat, "longitude": lon}}
-
-        # Weather alerts patterns
-        alert_patterns = [
-            r"alert.*(?:in|for)\s+([a-z]{2})\b",
-            r"warning.*(?:in|for)\s+([a-z]{2})\b",
-            r"(?:weather\s+)?alert.*([a-z]{2})",
-            r"storm.*(?:in|for)\s+([a-z]{2})\b",
-        ]
-
-        for pattern in alert_patterns:
-            match = re.search(pattern, content_lower)
-            if match:
-                state = match.group(1).upper()
-                return {"name": "get_alerts", "arguments": {"state": state}}
-
-        # Direct coordinate patterns
-        coord_pattern = r"(?:weather|forecast).*?(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)"
-        match = re.search(coord_pattern, content_lower)
-        if match:
-            lat = float(match.group(1))
-            lon = float(match.group(2))
-            return {"name": "get_forecast", "arguments": {"latitude": lat, "longitude": lon}}
 
         return None
 

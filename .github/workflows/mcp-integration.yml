@@ -44,25 +44,25 @@ jobs:
     name: MCP Health Check
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
-    
+
     - name: Install uv
       uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v4
       with:
         enable-cache: true
-    
+
     - name: Set up Python
       run: |
         uv python install 3.11
         uv python pin 3.11
-    
+
     - name: Install dependencies
       run: |
         uv sync --all-extras --dev
-    
+
     - name: Run MCP health check
       run: |
         chmod +x tests/integration/run_mcp_tests.sh
@@ -70,7 +70,7 @@ jobs:
       env:
         MCP_API_KEY: "test-token-123"
         RUN_MCP_TESTS: "1"
-    
+
     - name: Upload health check logs
       if: always()
       uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
@@ -84,7 +84,7 @@ jobs:
     needs: mcp-health-check
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    
+
     strategy:
       fail-fast: false
       matrix:
@@ -99,45 +99,45 @@ jobs:
           - transport: stdio
             port: null
             auth_required: false
-    
+
     env:
       MCP_API_KEY: "test-token-123"
       INVALID_MCP_API_KEY: "wrong-token-456"
       RUN_MCP_TESTS: "1"
       TRANSPORT_TYPE: ${{ matrix.transport }}
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
-    
+
     - name: Install uv
       uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v4
       with:
         enable-cache: true
-    
+
     - name: Set up Python
       run: |
         uv python install 3.11
         uv python pin 3.11
-    
+
     - name: Install dependencies
       run: |
         uv sync --all-extras --dev
-    
+
     - name: Set up test environment
       run: |
         # Create test results directory
         mkdir -p test_results/mcp_integration
-        
+
         # Set debug logging if requested
         if [[ "${{ github.event.inputs.debug_mode }}" == "true" ]]; then
           echo "PYTEST_LOG_LEVEL=DEBUG" >> $GITHUB_ENV
         fi
-    
+
     - name: Run MCP integration tests - ${{ matrix.transport }}
       run: |
         chmod +x tests/integration/run_mcp_tests.sh
-        
+
         # Run tests for specific transport or all if requested
         if [[ "${{ github.event.inputs.transport_type }}" == "all" || "${{ github.event.inputs.transport_type }}" == "" ]]; then
           tests/integration/run_mcp_tests.sh transport ${{ matrix.transport }}
@@ -149,35 +149,35 @@ jobs:
         fi
       env:
         PYTEST_ARGS: "--tb=short --log-cli-level=${{ env.PYTEST_LOG_LEVEL || 'INFO' }}"
-    
+
     - name: Run authentication tests - ${{ matrix.transport }}
       if: matrix.auth_required
       run: |
         # Test authentication failure scenarios
         export MCP_API_KEY="$INVALID_MCP_API_KEY"
-        
+
         uv run pytest tests/integration/test_mcp_integration.py::TestMCPAuthentication::test_invalid_authentication_sse \
           -v -s --tb=short \
           --junit-xml=test_results/mcp_integration/junit_auth_fail_${{ matrix.transport }}.xml \
           --log-cli-level=INFO || true  # Don't fail the build on auth failure tests
-        
+
         # Reset to valid token
         export MCP_API_KEY="test-token-123"
-    
+
     - name: Collect test artifacts
       if: always()
       run: |
         # Collect logs and results
         mkdir -p artifacts/${{ matrix.transport }}
         cp -r test_results/mcp_integration/* artifacts/${{ matrix.transport }}/ 2>/dev/null || true
-        
+
         # Create summary
         echo "## MCP Integration Test Summary - ${{ matrix.transport }}" > artifacts/${{ matrix.transport }}/summary.md
         echo "Transport: ${{ matrix.transport }}" >> artifacts/${{ matrix.transport }}/summary.md
         echo "Auth Required: ${{ matrix.auth_required }}" >> artifacts/${{ matrix.transport }}/summary.md
         echo "Test Time: $(date)" >> artifacts/${{ matrix.transport }}/summary.md
         echo "" >> artifacts/${{ matrix.transport }}/summary.md
-        
+
         # Add test results if available
         if [[ -f "test_results/mcp_integration/junit_${{ matrix.transport }}.xml" ]]; then
           echo "### Test Results" >> artifacts/${{ matrix.transport }}/summary.md
@@ -185,7 +185,7 @@ jobs:
           grep -o 'failures="[0-9]*"' test_results/mcp_integration/junit_${{ matrix.transport }}.xml | head -1 >> artifacts/${{ matrix.transport }}/summary.md || true
           grep -o 'errors="[0-9]*"' test_results/mcp_integration/junit_${{ matrix.transport }}.xml | head -1 >> artifacts/${{ matrix.transport }}/summary.md || true
         fi
-    
+
     - name: Upload test results - ${{ matrix.transport }}
       if: always()
       uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
@@ -193,7 +193,7 @@ jobs:
         name: mcp-integration-results-${{ matrix.transport }}
         path: artifacts/${{ matrix.transport }}/
         retention-days: 14
-    
+
     - name: Upload JUnit results
       if: always()
       uses: dorny/test-reporter@31a54ee7ebcacc03a09ea97a7e5465a47b84aea5 # v1
@@ -209,34 +209,34 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     if: always() && (github.event_name == 'push' || github.event.inputs.transport_type == 'all')
-    
+
     env:
       MCP_API_KEY: "test-token-123"
       RUN_MCP_TESTS: "1"
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
-    
+
     - name: Install uv
       uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v4
       with:
         enable-cache: true
-    
+
     - name: Set up Python
       run: |
         uv python install 3.11
         uv python pin 3.11
-    
+
     - name: Install dependencies
       run: |
         uv sync --all-extras --dev
-    
+
     - name: Run comprehensive MCP tests
       run: |
         chmod +x tests/integration/run_mcp_tests.sh
         tests/integration/run_mcp_tests.sh all
-    
+
     - name: Generate final test report
       if: always()
       run: |
@@ -244,19 +244,19 @@ jobs:
         echo "# MCP Integration Test Report" > final_report.md
         echo "Generated: $(date)" >> final_report.md
         echo "" >> final_report.md
-        
+
         # Add summary from test results
         if [[ -f "test_results/mcp_integration/test_report.md" ]]; then
           cat test_results/mcp_integration/test_report.md >> final_report.md
         fi
-        
+
         # Add coverage information if available
         if [[ -f "test_results/mcp_integration/coverage.xml" ]]; then
           echo "" >> final_report.md
           echo "## Coverage Report" >> final_report.md
           echo "Coverage data available in artifacts." >> final_report.md
         fi
-    
+
     - name: Upload comprehensive results
       if: always()
       uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
@@ -266,16 +266,16 @@ jobs:
           test_results/mcp_integration/
           final_report.md
         retention-days: 30
-    
+
     - name: Comment on PR
       if: github.event_name == 'pull_request' && always()
       uses: actions/github-script@v7
       with:
         script: |
           const fs = require('fs');
-          
+
           let reportContent = 'MCP Integration Tests completed.\n\n';
-          
+
           try {
             if (fs.existsSync('final_report.md')) {
               reportContent += fs.readFileSync('final_report.md', 'utf8');
@@ -283,12 +283,12 @@ jobs:
           } catch (error) {
             reportContent += 'Report generation failed: ' + error.message;
           }
-          
+
           // Truncate if too long
           if (reportContent.length > 65536) {
             reportContent = reportContent.substring(0, 65500) + '\n\n... (truncated)';
           }
-          
+
           github.rest.issues.createComment({
             issue_number: context.issue.number,
             owner: context.repo.owner,
@@ -300,36 +300,36 @@ jobs:
     name: MCP Security Scan
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
-    
+
     - name: Install uv
       uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v4
       with:
         enable-cache: true
-    
+
     - name: Set up Python
       run: |
         uv python install 3.11
         uv python pin 3.11
-    
+
     - name: Install dependencies
       run: |
         uv sync --all-extras --dev
-    
+
     - name: Run security scan on MCP code
       run: |
         # Run bandit on MCP-related code
         uv run bandit -r src/agent/mcp_support/ -ll -f json -o mcp_security_report.json || true
         uv run bandit -r scripts/mcp/ -ll -f json -o mcp_scripts_security_report.json || true
-        
+
         # Check for sensitive information in test files
         echo "Checking for sensitive information in MCP test files..."
         grep -r -i "password\|secret\|token" tests/integration/configs/ || true
         grep -r -i "api[_-]key" tests/integration/ || true
-    
+
     - name: Upload security scan results
       if: always()
       uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
