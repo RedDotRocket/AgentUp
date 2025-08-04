@@ -61,6 +61,11 @@ logging:
     colors: false  # Disable colors for CI/testing
   correlation_id: false
   request_logging: false
+  modules:
+    "a2a": "CRITICAL"                  # Suppress all a2a logs below ERROR level
+    "a2a.utils": "CRITICAL"            # Specifically suppress a2a.utils logs
+    "a2a.utils.telemetry": "CRITICAL"  # Specifically suppress telemetry logs
+    "a2a.utils.telemetry": "CRITICAL" # Only critical errors from telemetry
 
 # Middleware Configuration (Minimal for testing)
 middleware:

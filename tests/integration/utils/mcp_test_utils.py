@@ -262,7 +262,7 @@ async def send_json_rpc_request(
 
     payload = {"jsonrpc": "2.0", "method": method, "params": params, "id": request_id}
 
-    headers = {"X-API-Key": api_key}
+    headers = {"Content-Type": "application/json", "X-API-Key": api_key}
 
     async with httpx.AsyncClient(timeout=timeout) as client:
         response = await client.post(url, json=payload, headers=headers)
