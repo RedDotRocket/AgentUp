@@ -124,6 +124,26 @@ body {
   border-color: var(--rust-500) !important;
 }
 
+/* Repository link styling */
+.md-header .md-source {
+  color: var(--charcoal-800) !important;
+  font-weight: 700 !important;
+}
+
+.md-header .md-source__repository {
+  color: var(--charcoal-900) !important;
+  font-weight: 800 !important;
+  font-family: 'Nunito', sans-serif !important;
+}
+
+.md-header .md-source:hover {
+  color: var(--teal-700) !important;
+}
+
+.md-header .md-source:hover .md-source__repository {
+  color: var(--teal-800) !important;
+}
+
 /* Navigation styling */
 .md-nav__title {
   font-family: 'Bungee', cursive !important;

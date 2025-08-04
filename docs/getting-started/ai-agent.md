@@ -73,9 +73,9 @@ agentup plugin list
 ```bash
     Loaded Plugins
 ╭──────────────┬──────────────────┬─────────┬────────╮
-│ Plugin  │ Name   │ Version │ Status │
+│ Plugin  │ Name   │ Version │    |  Status │
 ├──────────────┼──────────────────┼─────────┼────────┤
-│ sys_tools    │ File Read   │  0.2.2  │ loaded │
+│ sys_tools    │ File Read   │  0.2.2  │ loaded      │
 ╰──────────────┴──────────────────┴─────────┴────────╯
 ```
 
