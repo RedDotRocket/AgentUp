@@ -41,6 +41,10 @@ async def temp_config_dir():
 @pytest.fixture(params=["sse", "streamable_http", "stdio"])
 def transport_type(request):
     """Parametrized fixture for different MCP transport types."""
+    # Allow filtering by environment variable for individual transport testing
+    filter_transport = os.getenv("PYTEST_CURRENT_TEST_TRANSPORT")
+    if filter_transport and request.param != filter_transport:
+        pytest.skip(f"Skipping {request.param} transport (filtering for {filter_transport})")
     return request.param
 
 

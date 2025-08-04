@@ -71,16 +71,16 @@ mcp:
   client_enabled: true
   servers:
   - name: "sse"
-        enabled: false
-        transport: "sse"
-        url: "http://localhost:8123/sse"
-        timeout: 30
-        headers:
-          Authorization: "Bearer ${MCP_API_KEY}"
-        tool_scopes:
-          # Tools to Scope Mapping
-          get_alerts: ["alerts:read"]
-          get_forecast: ["weather:read"]
+    enabled: false
+    transport: "sse"
+    url: "http://localhost:8123/sse"
+    timeout: 30
+    headers:
+      Authorization: "Bearer ${MCP_API_KEY}"
+    tool_scopes:
+      # Tools to Scope Mapping
+      get_alerts: ["alerts:read"]
+      get_forecast: ["weather:read"]
 ```
 
 !!! Note "Token Authentication"
