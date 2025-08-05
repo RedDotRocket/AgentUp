@@ -72,7 +72,7 @@ class ReleaseManager:
                 return False
             
             self.pyproject_path.write_text(new_content, encoding='utf-8')
-            logger.info("Updated pyproject.toml", old_version=self.get_current_version(), new_version=new_version)
+            logger.info("Updated pyproject.toml", old_version=re.search(r'^version = ["\']([^"\']+)["\']', old_content, re.MULTILINE).group(1), new_version=new_version)
             return True
             
         except Exception as e:
