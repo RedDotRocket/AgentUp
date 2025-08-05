@@ -8,13 +8,10 @@ import click
 import questionary
 from jinja2 import Environment, FileSystemLoader
 from rich import box
-from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
 from ...utils.version import get_version
-
-console = Console()
 
 # Standard library modules that should not be used as plugin names
 _STDLIB_MODULES = {
@@ -386,18 +383,19 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
                                     )
                             except Exception as e:
                                 if debug or verbose:
-                                    console.print(
-                                        f"[dim red]Warning: Could not load plugin {plugin_name}: {e}[/dim red]"
+                                    click.secho(
+                                        f"Warning: Could not load plugin {plugin_name}: {e}",
+                                        fg="yellow",
                                     )
                                 continue
                     except Exception as e:
                         if debug or verbose:
-                            console.print(f"[dim red]Warning: Could not load plugin {plugin_name}: {e}[/dim red]")
+                            click.secho(f"Warning: Could not load plugin {plugin_name}: {e}", fg="red")
                         continue
 
                 output["capabilities"] = capabilities_for_json
 
-            console.print_json(json.dumps(output, indent=2))
+            click.secho(json.dumps(output, indent=2))
             return
 
         if format == "yaml":
@@ -406,7 +404,7 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
             output = {
                 "plugins": [
                     {
-                        "name": plugin_info["name"],
+                        "plugin_id": plugin_info["name"],
                         "version": plugin_info["version"],
                         "package": plugin_info["package"],
                         "status": plugin_info["status"],
@@ -453,25 +451,26 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
                                     )
                             except Exception as e:
                                 if debug or verbose:
-                                    console.print(
-                                        f"[dim red]Warning: Could not load plugin {plugin_name}: {e}[/dim red]"
+                                    click.secho(
+                                        f"Warning: Could not load plugin {plugin_name}: {e}",
+                                        fg="red"
                                     )
                                 continue
                     except Exception as e:
                         if debug or verbose:
-                            console.print(f"[dim red]Warning: Could not load plugin {plugin_name}: {e}[/dim red]")
+                            click.secho(f"Warning: Could not load plugin {plugin_name}: {e}", fg="red")
                         continue
 
                 output["capabilities"] = capabilities_for_yaml
 
-            console.print(yaml.dump(output, default_flow_style=False))
+            click.secho(yaml.dump(output, default_flow_style=False))
             return
 
         # Table format (default)
         if not all_available_plugins:
-            console.print("[yellow]No plugins found.[/yellow]")
-            console.print("\nTo create a plugin: [cyan]agentup plugin create[/cyan]")
-            console.print("To install from registry: [cyan]agentup plugin install <name>[/cyan]")
+            click.secho("[yellow]No plugins found.[/yellow]")
+            click.secho("\nTo create a plugin: [cyan]agentup plugin create[/cyan]")
+            click.secho("To install from registry: [cyan]agentup plugin install <name>[/cyan]")
             return
 
         # Plugins table - show all available plugins
@@ -508,11 +507,11 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
 
             plugin_table.add_row(*row)
 
-        console.print(plugin_table)
+        click.secho(plugin_table)
 
         # Only show capabilities table if --capabilities flag is used
         if capabilities:
-            console.print()  # Blank line
+            click.secho()  # Blank line
 
             # For capabilities display, we need to temporarily load plugins to get their capabilities
             # This is only done when explicitly requested with -c flag
@@ -544,6 +543,8 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
                             cap_definitions = plugin_instance.get_capability_definitions()
 
                             for cap_def in cap_definitions:
+                                click.echo(f"Processing capability: {cap_def.id} from plugin {plugin_name}")
+                                click.echo(f"AI Function: {cap_def.ai_function}")
                                 all_capabilities_info.append(
                                     {
                                         "id": cap_def.id,
@@ -559,12 +560,12 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
                         except Exception as e:
                             # Skip failed plugin loads but don't show errors in list command
                             if debug or verbose:
-                                console.print(f"[dim red]Warning: Could not load plugin {plugin_name}: {e}[/dim red]")
+                                click.secho(f"Warning: Could not load plugin {plugin_name}: {e}", fg="red)")
                             continue
 
                 except Exception as e:
                     if debug or verbose:
-                        console.print(f"[dim red]Warning: Could not find entry point for {plugin_name}: {e}[/dim red]")
+                        click.secho(f"Warning: Could not find entry point for {plugin_name}: {e}", fg="red")
                     continue
 
             if all_capabilities_info:
@@ -594,17 +595,17 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
 
                     capabilities_table.add_row(*row)
 
-                console.print(capabilities_table)
+                click.secho(capabilities_table)
             else:
-                console.print("[yellow]No capabilities found. This may indicate:")
-                console.print("  • No plugins are installed")
-                console.print("  • Plugins have issues loading")
-                console.print("  • Use --verbose to see loading details[/yellow]")
+                click.secho("No capabilities found. This may indicate:", fg="yellow")
+                click.secho("  • No plugins are installed", fg="yellow")
+                click.secho("  • Plugins have issues loading", fg="yellow")
+                click.secho("  • Use --verbose to see loading details", fg="yellow")
 
     except ImportError:
-        console.print("[red]Plugin system not available. Please check your installation.[/red]")
+        click.secho("[red]Plugin system not available. Please check your installation.[/red]")
     except Exception as e:
-        console.print(f"[red]Error listing plugins: {e}[/red]")
+        click.secho(f"[red]Error listing plugins: {e}[/red]")
 
 
 @plugin.command()
@@ -613,8 +614,8 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
 @click.option("--output-dir", "-o", type=click.Path(), help="Output directory for the plugin")
 @click.option("--no-git", is_flag=True, help="Skip git initialization")
 def create(plugin_name: str | None, template: str, output_dir: str | None, no_git: bool):
-    console.print("[bold cyan]AgentUp Plugin Creator[/bold cyan]")
-    console.print("Let's create a new plugin!\n")
+    click.secho("[bold cyan]AgentUp Plugin Creator[/bold cyan]")
+    click.secho("Let's create a new plugin!\n")
 
     # Interactive prompts if not provided
     if not plugin_name:
@@ -630,7 +631,7 @@ def create(plugin_name: str | None, template: str, output_dir: str | None, no_gi
         ).ask()
 
         if not plugin_name:
-            console.print("Cancelled.")
+            click.secho("Cancelled.", fg="yellow")
             return
 
     # Normalize plugin name
@@ -639,7 +640,7 @@ def create(plugin_name: str | None, template: str, output_dir: str | None, no_gi
     # Validate the name even if provided via CLI
     is_valid, error_msg = _validate_plugin_name(plugin_name)
     if not is_valid:
-        console.print(f"[red]Error: {error_msg}[/red]")
+        click.secho(f"Error: {error_msg}", fg="red")
         return
 
     # Get plugin details
@@ -693,12 +694,12 @@ def create(plugin_name: str | None, template: str, output_dir: str | None, no_gi
 
     if output_dir.exists():
         if not questionary.confirm(f"Directory {output_dir} exists. Overwrite?", default=False).ask():
-            console.print("Cancelled.")
+            click.secho("Cancelled.", fg="yellow")
             return
         shutil.rmtree(output_dir)
 
     # Create plugin structure
-    console.print(f"\n[cyan]Creating plugin in {output_dir}...[/cyan]")
+    click.secho(f"\nCreating plugin in {output_dir}...", fg="green")
 
     try:
         # Create directories
@@ -968,16 +969,16 @@ updates:
             )  # nosec
 
         # Success message
-        console.print("\n[green]✓ Plugin created successfully![/green]")
-        console.print(f"\nLocation: [cyan]{output_dir}[/cyan]")
-        console.print("\n[bold]Next steps:[/bold]")
-        console.print(f"1. cd {output_dir}")
-        console.print("2. pip install -e .")
-        console.print(f"3. Edit src/{plugin_name_snake}/plugin.py")
-        console.print("4. Test with your AgentUp agent")
+        click.secho("\n✓ Plugin created successfully!", fg="green")
+        click.secho(f"\nLocation: {output_dir}", fg="cyan")
+        click.secho("\nNext steps:", fg="yellow")
+        click.secho(f"1. cd {output_dir}")
+        click.secho("2. pip install -e .")
+        click.secho(f"3. Edit src/{plugin_name_snake}/plugin.py")
+        click.secho("4. Test with your AgentUp agent")
 
     except Exception as e:
-        console.print(f"[red]Error creating plugin: {e}[/red]")
+        click.secho(f"[red]Error creating plugin: {e}[/red]")
         if output_dir.exists():
             shutil.rmtree(output_dir)
 
@@ -989,10 +990,10 @@ updates:
 @click.option("--force", "-f", is_flag=True, help="Force reinstall if already installed")
 def install(plugin_name: str, source: str, url: str | None, force: bool):
     if source in ["git", "local"] and not url:
-        console.print(f"[red]Error: --url is required for {source} source[/red]")
+        click.secho(f"Error: --url is required for {source} source", fg="red")
         return
 
-    console.print(f"[cyan]Installing plugin '{plugin_name}' from {source}...[/cyan]")
+    click.secho(f"Installing plugin '{plugin_name}' from {source}...", fg="cyan")
 
     try:
         # Prepare pip command
@@ -1019,26 +1020,26 @@ def install(plugin_name: str, source: str, url: str | None, force: bool):
         result = subprocess.run(cmd, capture_output=True, text=True)  # nosec
 
         if result.returncode == 0:
-            console.print(f"[green]✓ Successfully installed {plugin_name}[/green]")
-            console.print("\n[bold]Next steps:[/bold]")
-            console.print("1. Restart your agent to load the new plugin")
-            console.print("2. Run [cyan]agentup plugin list[/cyan] to verify installation")
+            click.secho(f"[green]✓ Successfully installed {plugin_name}[/green]")
+            click.secho("\nNext steps:", fg="yellow")
+            click.secho("1. Restart your agent to load the new plugin")
+            click.secho("2. Run agentup plugin list to verify installation", fg="cyan")
         else:
-            console.print(f"[red]✗ Failed to install {plugin_name}[/red]")
-            console.print(f"[red]{result.stderr}[/red]")
+            click.secho(f"✗ Failed to install {plugin_name}", fg="red")
+            click.secho(f"{result.stderr}", fg="red")
 
     except Exception as e:
-        console.print(f"[red]Error installing plugin: {e}[/red]")
+        click.secho(f"[red]Error installing plugin: {e}[/red]")
 
 
 @plugin.command()
 @click.argument("plugin_name")
 def uninstall(plugin_name: str):
     if not questionary.confirm(f"Uninstall plugin '{plugin_name}'?", default=False).ask():
-        console.print("Cancelled.")
+        click.secho("Cancelled.")
         return
 
-    console.print(f"[cyan]Uninstalling plugin '{plugin_name}'...[/cyan]")
+    click.secho(f"Uninstalling plugin '{plugin_name}'...", fg="cyan")
 
     try:
         cmd = [sys.executable, "-m", "pip", "uninstall", "-y", plugin_name]
@@ -1047,13 +1048,13 @@ def uninstall(plugin_name: str):
         result = subprocess.run(cmd, capture_output=True, text=True)  # nosec
 
         if result.returncode == 0:
-            console.print(f"[green]✓ Successfully uninstalled {plugin_name}[/green]")
+            click.secho(f"✓ Successfully uninstalled {plugin_name}", fg="green")
         else:
-            console.print(f"[red]✗ Failed to uninstall {plugin_name}[/red]")
-            console.print(f"[red]{result.stderr}[/red]")
+            click.secho(f"✗ Failed to uninstall {plugin_name}", fg="red")
+            click.secho(f"{result.stderr}", fg="red")
 
     except Exception as e:
-        console.print(f"[red]Error uninstalling plugin: {e}[/red]")
+        click.secho(f"[red]Error uninstalling plugin: {e}[/red]")
 
 
 @plugin.command()
@@ -1065,21 +1066,21 @@ def reload(plugin_name: str):
         manager = get_plugin_registry()
 
         if plugin_name not in manager.plugins:
-            console.print(f"[yellow]Plugin '{plugin_name}' not found[/yellow]")
+            click.secho(f"Plugin '{plugin_name}' not found", fg="yellow")
             return
 
-        console.print(f"[cyan]Reloading plugin '{plugin_name}'...[/cyan]")
+        click.secho(f"Reloading plugin '{plugin_name}'...", fg="cyan")
 
         if manager.reload_plugin(plugin_name):
-            console.print(f"[green]✓ Successfully reloaded {plugin_name}[/green]")
+            click.secho(f"✓ Successfully reloaded {plugin_name}", fg="green")
         else:
-            console.print(f"[red]✗ Failed to reload {plugin_name}[/red]")
-            console.print("[dim]Note: Entry point plugins cannot be reloaded[/dim]")
+            click.secho(f"✗ Failed to reload {plugin_name}", fg="red")
+            click.secho("[dim]Note: Entry point plugins cannot be reloaded[/dim]")
 
     except ImportError:
-        console.print("[red]Plugin system not available.[/red]")
+        click.secho("Plugin system not available.", fg="red")
     except Exception as e:
-        console.print(f"[red]Error reloading plugin: {e}[/red]")
+        click.secho(f"Error reloading plugin: {e}", fg="red")
 
 
 @plugin.command()
@@ -1092,7 +1093,7 @@ def info(capability_id: str):
         capability = manager.get_capability(capability_id)
 
         if not capability:
-            console.print(f"[yellow]Capability '{capability_id}' not found[/yellow]")
+            click.secho(f"Capability '{capability_id}' not found", fg="yellow")
             return
 
         # Get plugin info
@@ -1161,12 +1162,12 @@ def info(capability_id: str):
             padding=(1, 2),
         )
 
-        console.print(panel)
+        click.secho(panel)
 
     except ImportError:
-        console.print("[red]Plugin system not available.[/red]")
+        click.secho("Plugin system not available.", fg="red")
     except Exception as e:
-        console.print(f"[red]Error getting capability info: {e}[/red]")
+        click.secho(f"Error getting capability info: {e}", fg="red")
 
 
 @plugin.command()
@@ -1177,7 +1178,7 @@ def validate():
 
         manager = get_plugin_registry()
 
-        console.print("[cyan]Validating plugins...[/cyan]\n")
+        click.secho("Validating plugins...", fg="cyan")
 
         # Get capability configurations
         capability_configs = {plugin.plugin_id: plugin.config or {} for plugin in Config.plugins}
@@ -1225,19 +1226,19 @@ def validate():
             if validation.warnings:
                 if issues:
                     issues += " | "
-                issues += "[yellow]Warnings: " + "; ".join(validation.warnings) + "[/yellow]"
+                issues += "Warnings: " + "; ".join(validation.warnings)
 
             table.add_row(capability_id, plugin, status, issues)
 
-        console.print(table)
+            click.print(table)
 
         if all_valid:
-            console.print("\n[green]✓ All plugins validated successfully![/green]")
+            click.secho("\n✓ All plugins validated successfully!", fg="green")
         else:
-            console.print("\n[red]✗ Some plugins have validation errors.[/red]")
-            console.print("Please check your agentup.yml and fix the issues.")
+            click.secho("\n[red]✗ Some plugins have validation errors.[/red]")
+            click.secho("Please check your agentup.yml and fix the issues.")
 
     except ImportError:
-        console.print("[red]Plugin system not available.[/red]")
+        click.secho("[red]Plugin system not available.[/red]")
     except Exception as e:
-        console.print(f"[red]Error validating plugins: {e}[/red]")
+        click.secho(f"[red]Error validating plugins: {e}[/red]")
