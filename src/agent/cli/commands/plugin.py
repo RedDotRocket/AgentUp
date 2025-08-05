@@ -298,7 +298,7 @@ def plugin():
 @plugin.command("list")
 @click.option("--verbose", "-v", is_flag=True, help="Show detailed plugin information and logging")
 @click.option("--capabilities", "-c", is_flag=True, help="Show available capabilities/AI functions")
-@click.option("--format", "-f", type=click.Choice(["table", "json", "yaml"]), default="table", help="Output format")
+@click.option("--format", "-f", type=click.Choice(["table", "json", "yaml", "agentup-config"]), default="table", help="Output format")
 @click.option("--debug", is_flag=True, help="Show debug logging output")
 def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
     try:
@@ -465,6 +465,83 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
                 output["capabilities"] = capabilities_for_yaml
 
             console.print(yaml.dump(output, default_flow_style=False))
+            return
+
+        if format == "agentup-config":
+            import yaml
+
+            # For agentup-config format, always include capabilities (no -c flag needed)
+            plugins_config = []
+            
+            for plugin_info in all_available_plugins:
+                plugin_name = plugin_info["name"]
+                
+                # Start with basic plugin structure
+                plugin_config = {
+                    "plugin_id": plugin_name,
+                    "name": plugin_info.get("display_name", plugin_name.replace("_", " ").replace("-", " ").title() + " Plugin"),
+                    "description": f"A plugin for {plugin_name.replace('_', ' ').replace('-', ' ')} functionality.",
+                    "priority": 50,
+                    "tags": [plugin_name.replace("_", "").replace("-", "")],
+                    "input_mode": "text",
+                    "output_mode": "text",
+                    "capabilities": []
+                }
+                
+                # Generate better name and description
+                base_name = plugin_name.replace("_", " ").replace("-", " ").title()
+                if base_name.lower().endswith("plugin"):
+                    plugin_config["name"] = base_name
+                else:
+                    plugin_config["name"] = base_name + " Plugin"
+                
+                # Load capabilities for this plugin
+                try:
+                    import importlib.metadata
+
+                    entry_points = importlib.metadata.entry_points()
+
+                    if hasattr(entry_points, "select"):
+                        plugin_entries = entry_points.select(group="agentup.plugins", name=plugin_name)
+                    else:
+                        plugin_entries = [
+                            ep for ep in entry_points.get("agentup.plugins", []) if ep.name == plugin_name
+                        ]
+
+                    for entry_point in plugin_entries:
+                        try:
+                            plugin_class = entry_point.load()
+                            plugin_instance = plugin_class()
+                            cap_definitions = plugin_instance.get_capability_definitions()
+
+                            for cap_def in cap_definitions:
+                                capability_config = {
+                                    "capability_id": cap_def.id,
+                                    "required_scopes": cap_def.required_scopes,
+                                    "enabled": True
+                                }
+                                plugin_config["capabilities"].append(capability_config)
+                                
+                        except Exception as e:
+                            if debug or verbose:
+                                console.print(
+                                    f"[dim red]Warning: Could not load plugin {plugin_name}: {e}[/dim red]"
+                                )
+                            continue
+                except Exception as e:
+                    if debug or verbose:
+                        console.print(f"[dim red]Warning: Could not find entry point for {plugin_name}: {e}[/dim red]")
+                    continue
+                
+                # Only add plugins that have capabilities
+                if plugin_config["capabilities"]:
+                    plugins_config.append(plugin_config)
+            
+            if plugins_config:
+                output = {"plugins": plugins_config}
+                console.print(yaml.dump(output, default_flow_style=False, allow_unicode=True, width=1000))
+            else:
+                console.print("plugins: []")
             return
 
         # Table format (default)
