@@ -99,7 +99,7 @@ async def initialize_mcp_integration(config: dict[str, Any]) -> None:
         ):
             logger.info(f"MCP integration initialization complete: {components_status}", extra=log_context)
         else:
-            logger.warning(f"MCP integration partially initialized: {components_status}", extra=log_context)
+            logger.debug(f"MCP integration partially initialized: {components_status}", extra=log_context)
     else:
         logger.warning(
             "MCP integration enabled but no components configured",

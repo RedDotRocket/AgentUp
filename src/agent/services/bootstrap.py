@@ -256,7 +256,7 @@ class AgentBootstrapper:
             for feature in features:
                 self.logger.info(f"  ✓ {feature}")
 
-        self.logger.info("=" * 50)
+        self.logger.info("=" * 20)
 
     def get_service(self, service_name: str) -> Service | None:
         """Get a service by name.

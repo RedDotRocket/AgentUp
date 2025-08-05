@@ -38,10 +38,10 @@ security:
       keys:
         # Note, the following key is randomly generated during AgentUp project creation
         - key: "{{ generate_api_key() }}"
-          scopes: ["api:read", "files:read"]
+          scopes: ["api:read"{% if has_mcp %}, "files:read", "files:write"{% endif %}]
 {% if generate_multiple_keys %}
         - key: "{{ generate_api_key() }}"
-          scopes: ["api:read", "files:read"]
+          scopes: ["api:read"{% if has_mcp %}, "files:read"{% endif %}]
 {% endif %}
 {% elif auth_type == 'jwt' %}
     jwt:
@@ -112,6 +112,7 @@ security:
     files:admin: ["files:write", "files:read", "files:sensitive"]
     files:write: ["files:read"]
     files:sensitive: ["files:read"]
+    files:read: []
     system:admin: ["system:write", "system:read"]
     system:write: ["system:read"]
     system:read: []
@@ -177,35 +178,20 @@ services:{{ ' ' + services | tojson if services else ' {}' }}
 # Model Context Protocol
 mcp:
   enabled: true
-  client:
-    enabled: {{ mcp_client_enabled | default(true) }}
-{% if mcp_servers %}
-    servers:
-{% for server in mcp_servers %}
-{% if server == 'filesystem' %}
-      - name: filesystem
-        command: npx
-        args: ['-y', '@modelcontextprotocol/server-filesystem', '{{ mcp_filesystem_path | default("/tmp") }}']
-        env: {}
-{% elif server == 'github' %}
-      - name: github
-        command: npx
-        args: ['-y', '@modelcontextprotocol/server-github']
-        env:
-          GITHUB_PERSONAL_ACCESS_TOKEN: '${GITHUB_TOKEN}'
-{% elif server == 'custom' and mcp_custom_server %}
-      - {{ mcp_custom_server | tojson }}
-{% endif %}
-{% endfor %}
-{% else %}
-    servers: []
-{% endif %}
-  server:
-    enabled: {{ mcp_server_enabled | default(true) }}
-    name: {{ project_name }}-mcp-server
-    expose_handlers: true
-    expose_resources: [agent_status, agent_capabilities]
-    port: {{ mcp_server_port | default(8001) }}
+  client_enabled: {{ mcp_client_enabled | default(true) }}
+  server_enabled: {{ mcp_server_enabled | default(true) }}
+  server_host: "localhost"
+  server_port: {{ mcp_server_port | default(8080) }}
+  servers:
+    - name: filesystem-server
+      transport: stdio
+      command: npx
+      args: ['-y', '@modelcontextprotocol/server-filesystem', '{{ mcp_filesystem_path | default("/tmp") }}']
+      env: {}
+      tool_scopes:
+        read_file: ["files:read"]
+        write_file: ["files:write"]
+        list_directory: ["files:read"]
 {% endif %}
 
 
