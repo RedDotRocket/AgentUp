@@ -2,7 +2,7 @@
 name: My Agent
 description: AI Agent My Agent Project.
 url: http://localhost:8000
-version: 0.5.1
+version: 0.5.2
 provider_organization: AgentUp
 provider_url: https://agentup.dev
 icon_url: https://raw.githubusercontent.com/RedDotRocket/AgentUp/refs/heads/main/assets/icon.png
