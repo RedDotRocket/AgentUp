@@ -52,8 +52,12 @@ class ProjectGenerator:
         self._generate_config_files()
 
         # Copy weather server if MCP is enabled
+
         if "mcp" in self.features:
             self._copy_weather_server()
+            logger.debug("MCP feature detected, weather server copied.")
+        else:
+            logger.debug("MCP feature not detected, skipping weather server copy")
 
     # ============================================================================
     # CONFIGURATION & FEATURES
@@ -143,6 +147,9 @@ class ProjectGenerator:
             shutil.copy2(source_path, dest_path)
             # Make it executable
             dest_path.chmod(0o755)
+            print(f"DEBUG: Successfully copied weather server to {dest_path}")
+        else:
+            print(f"ERROR: Source weather server not found at {source_path}")
 
     # ============================================================================
     # TEMPLATE RENDERING

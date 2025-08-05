@@ -110,7 +110,9 @@ def create_agent(
 
     if quick:
         project_config["description"] = f"AI Agent {name} Project."
-        project_config["features"] = []  # Empty features for quick mode
+        # Include default checked features in quick mode
+        default_features = [choice.value for choice in get_feature_choices() if choice.checked]
+        project_config["features"] = default_features
         project_config["feature_config"] = {}
     else:
         description = questionary.text("Description:", default=f"AI Agent {name} Project.", style=custom_style).ask()

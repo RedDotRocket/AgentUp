@@ -83,7 +83,7 @@ class MCPClientService:
                     server_summaries.append(tool_summary)
 
             if server_summaries:
-                logger.info(
+                logger.debug(
                     f"MCP initialized: {len(connected_servers)} server(s) connected with tools: "
                     + "; ".join(server_summaries)
                 )
