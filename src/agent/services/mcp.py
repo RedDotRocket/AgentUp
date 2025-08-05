@@ -19,7 +19,7 @@ class MCPService(Service):
         self._mcp_server = None
 
     async def initialize(self) -> None:
-        self.logger.info("Initializing MCP service")
+        self.logger.debug("Initializing MCP service")
 
         mcp_config = self.config.get("mcp", {})
         if not mcp_config.get("enabled", False):

@@ -257,7 +257,7 @@ def register_mcp_tool_as_capability(tool_name: str, mcp_client, tool_scopes: lis
 
     # Register like any other capability
     register_capability_function(tool_name, mcp_tool_executor)
-    logger.info(f"Registered MCP tool as capability: {tool_name} (scopes: {tool_scopes})")
+    logger.debug(f"Registered MCP tool as capability: {tool_name} (scopes: {tool_scopes})")
 
 
 # Middleware configuration cache

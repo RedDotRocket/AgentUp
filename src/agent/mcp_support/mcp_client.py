@@ -60,21 +60,33 @@ class MCPClientService:
 
         self._initialized = True
 
-        # Count available tools
-        total_tools = len(self._available_tools)
-        total_resources = len(self._available_resources)
+        # Count available tools (removed as they're not used in the new logging format)
 
         # Log detailed connection results
         if connected_servers:
-            logger.info(
-                f"MCP client initialized successfully: {len(connected_servers)} servers connected, "
-                f"{total_tools} tools available, {total_resources} resources available",
-                extra={
-                    "connected_servers": connected_servers,
-                    "tools_count": total_tools,
-                    "resources_count": total_resources,
-                },
-            )
+            # Create a summary of tools with scopes for each server
+            server_summaries = []
+            for server in connected_servers:
+                server_tools = [
+                    (tool_name, tool_info)
+                    for tool_name, tool_info in self._available_tools.items()
+                    if tool_info["server"] == server
+                ]
+                if server_tools:
+                    tool_summary = f"{server}: "
+                    tool_details = []
+                    for _, tool_info in server_tools:
+                        scopes = tool_info.get("scopes", [])
+                        scope_str = f"[{', '.join(scopes)}]" if scopes else "[no scopes]"
+                        tool_details.append(f"{tool_info['name']} {scope_str}")
+                    tool_summary += ", ".join(tool_details)
+                    server_summaries.append(tool_summary)
+
+            if server_summaries:
+                logger.info(
+                    f"MCP initialized: {len(connected_servers)} server(s) connected with tools: "
+                    + "; ".join(server_summaries)
+                )
 
             # Log connection failures with specific details
             if failed_servers:
@@ -107,7 +119,7 @@ class MCPClientService:
         server_name = server_config["name"]
         transport = server_config["transport"]
 
-        logger.info(f"Connecting to MCP server '{server_name}' using {transport} transport")
+        logger.debug(f"Connecting to MCP server '{server_name}' using {transport} transport")
 
         # Create appropriate client based on transport type
         transport_context = self._create_transport_client(server_config)
@@ -124,7 +136,7 @@ class MCPClientService:
             # Store server info for future connections
             self._servers[server_name] = {"config": server_config, "transport": transport, "connected": True}
 
-            logger.info(f"Successfully connected to MCP server: {server_name}")
+            logger.debug(f"Successfully connected to MCP server: {server_name}")
 
         except Exception as e:
             error_msg = str(e)
@@ -265,7 +277,7 @@ class MCPClientService:
                 logger.debug(f"Registered tool: {tool_key}")
 
             tools_count = len(tools_result.tools)
-            logger.info(f"Discovered {tools_count} tools from {server_name}")
+            logger.debug(f"Discovered {tools_count} tools from {server_name}")
 
         except Exception as e:
             logger.warning(f"Could not list tools from {server_name}: {e}")
@@ -284,7 +296,7 @@ class MCPClientService:
                 }
 
             resources_count = len(resources_result.resources)
-            logger.info(f"Discovered {resources_count} resources from {server_name}")
+            logger.debug(f"Discovered {resources_count} resources from {server_name}")
 
         except Exception as e:
             logger.debug(f"Could not list resources from {server_name} (this may be normal): {e}")
@@ -292,7 +304,7 @@ class MCPClientService:
         if tools_count == 0 and resources_count == 0:
             logger.warning(f"No tools or resources discovered from {server_name}")
         else:
-            logger.info(
+            logger.debug(
                 f"Successfully discovered capabilities from {server_name}: "
                 f"{tools_count} tools, {resources_count} resources"
             )

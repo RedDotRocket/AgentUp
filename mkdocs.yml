@@ -13,29 +13,29 @@ theme:
   features:
     # # Content
     # # - navigation.tabs  # Enables tabbed navigation
-    # - content.tooltips
-    # - content.action.edit
-    # - content.action.view
-    # - content.code.annotate
-    # - content.code.copy
-    # - content.tabs.link
-    # - content.code.select
+    - content.tooltips
+    - content.action.edit
+    - content.action.view
+    - content.code.annotate
+    - content.code.copy
+    - content.tabs.link
+    - content.code.select
     # # # Nav
     # # - navigation.instant  # Enables mobile hamburger menu
     # # - navigation.expand  # Expand all sections by default
     # # - navigation.path
     # # - navigation.tabs
     # # - navigation.sections
-    # - navigation.footer
+    - navigation.footer
     # # - navigation.indexes
     # # - navigation.top
     # # - navigation.tracking
     # # # Search
-    # - search.highlight
-    # - search.share
-    # - search.suggest
+    - search.highlight
+    - search.share
+    - search.suggest
     # # # Table of Contents
-    # # - toc.follow
+    - toc.follow
 
   palette:
     # Light Mode (Retro Comic Theme)
@@ -121,6 +121,7 @@ nav:
     - Configuration: agentup-development/configuration.md
     - Customization: agentup-development/customization.md
     - Template System: agentup-development/template-system.md
+    - Release Management: agentup-development/release.md
   - Advanced:
     - Push Notifications: advanced/push-notifications.md
     - Streaming: advanced/streaming.md

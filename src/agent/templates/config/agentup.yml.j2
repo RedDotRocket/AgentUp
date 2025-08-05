@@ -24,7 +24,7 @@ plugins:
     capabilities:
       - capability_id: {{ project_name_snake }}_capability
         required_scopes: ["api:read"]
-        enabled: true
+        enabled: false
 
 # Security Configuration
 security:
@@ -44,9 +44,9 @@ security:
           scopes: ["api:read"{% if has_mcp %}, "files:read"{% endif %}]
 {% endif %}
 {% elif auth_type == 'jwt' %}
-    jwt:
-      # Note: The secret key is randomly generated during AgentUp project creation
-      secret_key: '{{ generate_jwt_secret() }}'
+    bearer:
+      # Note: JWT Bearer token authentication
+      jwt_secret: "${JWT_SECRET:{{ generate_jwt_secret() }}}"
       algorithm: HS256
       issuer: {{ project_name_snake }}
       audience: a2a-clients
@@ -105,7 +105,7 @@ security:
 {% endif %}
   # Scope hierarchy for fine-grained authorization
   scope_hierarchy:
-{% if auth_type == 'oauth2' %}
+{% if auth_type == 'oauth2' or auth_type == 'jwt' %}
     api:admin: ["api:write", "api:read"]
     api:write: ["api:read"]
     api:read: []
@@ -116,12 +116,14 @@ security:
     system:admin: ["system:write", "system:read"]
     system:write: ["system:read"]
     system:read: []
+    weather:admin: ["weather:read", "alerts:read"]
 {% else %}
     api:write: ["api:read"]
     api:read: []
     files:write: ["files:read"]
     files:read: []
     system:read: []
+    weather:admin: ["weather:read", "alerts:read"]
 {% endif %}
 {% endif -%}
 {%- if ai_provider_config %}
@@ -179,19 +181,16 @@ services:{{ ' ' + services | tojson if services else ' {}' }}
 mcp:
   enabled: true
   client_enabled: {{ mcp_client_enabled | default(true) }}
-  server_enabled: {{ mcp_server_enabled | default(true) }}
-  server_host: "localhost"
-  server_port: {{ mcp_server_port | default(8080) }}
   servers:
-    - name: filesystem-server
-      transport: stdio
-      command: npx
-      args: ['-y', '@modelcontextprotocol/server-filesystem', '{{ mcp_filesystem_path | default("/tmp") }}']
-      env: {}
+    - name: "stdio"
+      enabled: true
+      transport: "stdio"
+      command: "python"
+      args: ["scripts/mcp/weather_server.py", "--transport", "stdio"]
+      timeout: 30
       tool_scopes:
-        read_file: ["files:read"]
-        write_file: ["files:write"]
-        list_directory: ["files:read"]
+        "stdio:get_alerts": ["alerts:read"]
+        "stdio:get_forecast": ["weather:read"]
 {% endif %}
 
 

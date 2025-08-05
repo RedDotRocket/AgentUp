@@ -35,7 +35,7 @@ async def initialize_mcp_integration(config: dict[str, Any]) -> None:
         logger.info("MCP integration disabled in configuration")
         return
 
-    logger.info("Initializing MCP service")
+    logger.debug("Initializing MCP service")
 
     # Get service registry
     from agent.services import get_services
@@ -46,7 +46,7 @@ async def initialize_mcp_integration(config: dict[str, Any]) -> None:
 
     # Initialize MCP client if enabled (using flattened config structure)
     if mcp_config.get("client_enabled", False):
-        logger.info("Initializing MCP client")
+        logger.debug("Initializing MCP client")
         await _initialize_mcp_client(services, mcp_config)
 
         # Check if client initialization was successful
@@ -56,7 +56,7 @@ async def initialize_mcp_integration(config: dict[str, Any]) -> None:
 
     # Initialize MCP server if enabled (using flattened config structure)
     if mcp_config.get("server_enabled", False):
-        logger.info("Initializing MCP server")
+        logger.debug("Initializing MCP server")
         await _initialize_mcp_server(services, mcp_config)
 
         # Check if server initialization was successful
@@ -97,7 +97,7 @@ async def initialize_mcp_integration(config: dict[str, Any]) -> None:
         if (not mcp_config.get("client_enabled", False) or client_initialized) and (
             not mcp_config.get("server_enabled", False) or server_initialized
         ):
-            logger.info(f"MCP integration initialization complete: {components_status}", extra=log_context)
+            logger.debug(f"MCP integration initialization complete: {components_status}", extra=log_context)
         else:
             logger.debug(f"MCP integration partially initialized: {components_status}", extra=log_context)
     else:

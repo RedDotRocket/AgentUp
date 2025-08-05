@@ -263,13 +263,13 @@ class FunctionRegistry:
 
     async def register_mcp_client(self, mcp_client) -> None:
         # CONDITIONAL_MCP_IMPORTS
-        logger.info(f"Registering MCP client, initialized: {mcp_client.is_initialized if mcp_client else False}")
+        logger.debug(f"Registering MCP client, initialized: {mcp_client.is_initialized if mcp_client else False}")
         self._mcp_client = mcp_client
 
         if mcp_client and mcp_client.is_initialized:
             # Get available MCP tools
             mcp_tools = await mcp_client.get_available_tools()
-            logger.info(f"Got {len(mcp_tools)} MCP tools from client")
+            logger.debug(f"Got {len(mcp_tools)} MCP tools from client")
 
             for tool_schema in mcp_tools:
                 original_name = tool_schema.get("name", "unknown")
@@ -283,7 +283,7 @@ class FunctionRegistry:
                 cleaned_schema["original_name"] = original_name  # Keep for MCP calls
 
                 self._mcp_tools[function_name] = cleaned_schema
-                logger.info(f"Registered MCP tool in function registry: {original_name} -> {function_name}")
+                logger.debug(f"Registered MCP tool in function registry: {original_name} -> {function_name}")
         else:
             logger.warning(
                 f"Cannot register MCP client - client: {mcp_client is not None}, initialized: {mcp_client.is_initialized if mcp_client else False}"

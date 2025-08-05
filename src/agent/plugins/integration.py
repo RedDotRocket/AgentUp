@@ -81,7 +81,7 @@ def integrate_plugins_with_capabilities(config: Union["Settings", None] = None) 
 
         # Check if plugin was actually loaded
         if plugin_id not in plugin_registry.plugins:
-            logger.warning(f"Plugin '{plugin_id}' configured but not loaded.")
+            logger.info(f"Plugin '{plugin_id}' configured but not loaded.")
             logger.debug(f"Available plugins: {list(plugin_registry.plugins.keys())}")
             continue
 

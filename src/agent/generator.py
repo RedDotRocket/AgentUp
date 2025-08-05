@@ -51,6 +51,10 @@ class ProjectGenerator:
         self._create_env_file()
         self._generate_config_files()
 
+        # Copy weather server if MCP is enabled
+        if "mcp" in self.features:
+            self._copy_weather_server()
+
     # ============================================================================
     # CONFIGURATION & FEATURES
     # ============================================================================
@@ -120,6 +124,25 @@ class ProjectGenerator:
         content = self._render_template(template_name)
         output_path = self.output_dir / template_name
         output_path.write_text(content, encoding="utf-8")
+
+    def _copy_weather_server(self):
+        """Copy the weather server script to the MCP scripts directory."""
+        import shutil
+        from pathlib import Path
+
+        # Source path to the weather server
+        source_path = Path(__file__).parent.parent.parent / "scripts" / "mcp" / "weather_server.py"
+
+        # Destination path in the generated project
+        scripts_dir = self.output_dir / "scripts" / "mcp"
+        scripts_dir.mkdir(parents=True, exist_ok=True)
+        dest_path = scripts_dir / "weather_server.py"
+
+        # Copy the file
+        if source_path.exists():
+            shutil.copy2(source_path, dest_path)
+            # Make it executable
+            dest_path.chmod(0o755)
 
     # ============================================================================
     # TEMPLATE RENDERING

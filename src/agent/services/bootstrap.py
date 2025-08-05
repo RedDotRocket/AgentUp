@@ -53,7 +53,11 @@ class AgentBootstrapper:
                     await service.initialize()
                     self.services.append(service)
                     self._service_map[service_name.lower()] = service
-                    self.logger.info(f"✓ Initialized {service_name}")
+                    # Only log essential services at INFO level
+                    if service_name in ["MCPService"]:
+                        self.logger.debug(f"✓ Initialized {service_name}")
+                    else:
+                        self.logger.info(f"✓ Initialized {service_name}")
                 except Exception as e:
                     self.logger.error(f"✗ Failed to initialize {service_name}: {e}")
                     # Cleanup any already initialized services
@@ -168,6 +172,16 @@ class AgentBootstrapper:
     async def _create_mcp_service(self, capability_registry: BuiltinCapabilityRegistry) -> Service:
         from .mcp import MCPService
 
+        # Check if weather MCP server is configured and warn user
+        mcp_config = self.config.get("mcp", {})
+        servers = mcp_config.get("servers", [])
+        for server in servers:
+            if server.get("name") == "stdio" and "weather_server.py" in str(server.get("args", [])):
+                self.logger.warning(
+                    "Weather MCP server detected. This is a demo server, set to disabled in agentup.yml, to remove."
+                )
+                break
+
         return MCPService(self.config, capability_registry)
 
     async def _create_push_service(self) -> Service:
@@ -193,7 +207,7 @@ class AgentBootstrapper:
             # Pass the Pydantic config directly
             capabilities_registered = integrate_plugins_with_capabilities(Config)
             if len(capabilities_registered) == 0:
-                self.logger.warning("No capabilities registered from plugins")
+                self.logger.debug("No capabilities registered from plugins")
             else:
                 self.logger.info(f"Registered {len(capabilities_registered)} capabilities from plugins")
 
