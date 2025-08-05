@@ -322,7 +322,7 @@ def configure_features(features: list) -> dict[str, Any]:
         # MCP (Model Context Protocol) configuration
         # Configure filesystem server path
         # Bandit, marking as nosec, because there is unlikely to be a safer default path for a user to select
-        fs_path = questionary.text("Filesystem server root path:", default="/tmp", style=custom_style).ask()  # nosec
+        fs_path = "/tmp"  # nosec
         config["mcp_filesystem_path"] = fs_path
 
     if "deployment" in features:

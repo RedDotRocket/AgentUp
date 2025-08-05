@@ -205,6 +205,8 @@ __all__ = [
 
 
 # Version info
-__version__ = "0.5.1"
+from ..utils.version import get_version  # noqa: E402
+
+__version__ = get_version()
 __author__ = "AgentUp Team"
 __description__ = "security module for AgentUp agents"

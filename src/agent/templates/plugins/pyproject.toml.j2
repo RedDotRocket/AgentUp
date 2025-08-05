@@ -1,13 +1,13 @@
 [project]
 name = "{{ plugin_name }}"
-version = "0.5.1"
+version = "{{ plugin_version | default('1.0.0') }}"
 description = "{{ description }}"
 requires-python = ">=3.11"
 authors = [
     { name = "{{ author or 'Your Name' }}"{% if email %}, email = "{{ email }}"{% endif %} }
 ]
 dependencies = [
-    "agentup>=0.5.1",
+    "agentup>={{ agentup_version }}",
 ]
 
 classifiers = [

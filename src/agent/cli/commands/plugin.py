@@ -12,6 +12,8 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
+from ...utils.version import get_version
+
 console = Console()
 
 # Standard library modules that should not be used as plugin names
@@ -728,6 +730,7 @@ def create(plugin_name: str | None, template: str, output_dir: str | None, no_gi
             "template": template,
             "coding_agent": coding_agent,
             "include_github_actions": include_github_actions,
+            "agentup_version": get_version(),  # Current AgentUp version for templates
         }
 
         # Create pyproject.toml

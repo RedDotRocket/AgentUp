@@ -9,6 +9,7 @@ import structlog
 from jinja2 import Environment, FileSystemLoader
 
 from .config.model import AgentConfig, MiddlewareConfig
+from .utils.version import get_version
 
 logger = structlog.get_logger(__name__)
 
@@ -164,6 +165,7 @@ class ProjectGenerator:
             "project_name_title": self._to_title_case(self.project_name),
             "description": self.config.get("description", ""),
             "version": self._get_package_version(),
+            "agentup_version": get_version(),  # Current AgentUp version for templates
             "features": self.features,
             "feature_config": self.config.get("feature_config", {}),
             "has_env_file": True,  # Most agents will have .env file

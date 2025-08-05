@@ -1,6 +1,6 @@
 [project]
 name = "{{ project_name_snake }}"
-version = "0.5.1"
+version = "{{ project_version | default('1.0.0') }}"
 description = "{{ description }}"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -13,7 +13,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "agentup>=0.5.1",  # AgentUp framework - provides all core functionality
+    "agentup>={{ agentup_version }}",  # AgentUp framework - provides all core functionality
 ]
 
 

@@ -1,5 +1,7 @@
 import warnings
 
+from .utils.version import get_version
+
 # Suppress a2a-sdk deprecation warnings for camelCase field aliases
 warnings.filterwarnings(
     "ignore",
@@ -8,7 +10,7 @@ warnings.filterwarnings(
     module=r"a2a\..*",
 )
 
-__version__ = "0.5.1"
+__version__ = get_version()
 
 # Lazy imports to avoid loading config when using CLI
 # Import these explicitly when needed:

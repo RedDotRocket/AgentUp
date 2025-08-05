@@ -89,7 +89,7 @@ def register_capability(self) -> CapabilityDefinition:
     return CapabilityDefinition(
         id="{{ capability_id }}",
         name="{{ display_name }}",
-        version="0.5.1",
+        version="{{ agentup_version }}",
         description="{{ description }}",
         capabilities=[CapabilityType.TEXT],  # Add capabilities as needed
         tags=["{{ plugin_name }}", "custom"],

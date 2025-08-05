@@ -4,6 +4,8 @@ from unittest.mock import Mock
 
 import yaml
 
+from agent.utils.version import get_version
+
 
 def create_test_config(
     name: str = "test-agent",
@@ -30,7 +32,7 @@ def create_test_agent_config(
     agent_name: str = "test-agent", llm_service: str = "openai", llm_model: str = "gpt-4o-mini", **kwargs
 ) -> dict[str, Any]:
     config = {
-        "agent": {"name": agent_name, "description": f"Test agent {agent_name}", "version": "0.5.1"},
+        "agent": {"name": agent_name, "description": f"Test agent {agent_name}", "version": get_version()},
         "routing": {"default_mode": "ai", "fallback_capability": "ai_assistant"},
         "skills": [
             {
@@ -208,8 +210,12 @@ class AgentConfigBuilder:
     def __init__(self):
         self.config = {}
 
-    def with_agent(self, name: str = "test-agent", description: str = None, version: str = "0.5.1"):
-        self.config["agent"] = {"name": name, "description": description or f"Test agent {name}", "version": version}
+    def with_agent(self, name: str = "test-agent", description: str = None, version: str = None):
+        self.config["agent"] = {
+            "name": name,
+            "description": description or f"Test agent {name}",
+            "version": version or get_version(),
+        }
         return self
 
     def with_ai(self, llm_service: str = "openai", model: str = "gpt-4o-mini", enabled: bool = True):
