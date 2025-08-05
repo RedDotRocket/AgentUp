@@ -134,8 +134,8 @@ class ProjectGenerator:
         import shutil
         from pathlib import Path
 
-        # Source path to the weather server
-        source_path = Path(__file__).parent.parent.parent / "scripts" / "mcp" / "weather_server.py"
+        # Source path to the weather server (now in utils)
+        source_path = Path(__file__).parent / "utils" / "mcp_demo_weather_server.py"
 
         # Destination path in the generated project
         scripts_dir = self.output_dir / "scripts" / "mcp"
@@ -147,9 +147,9 @@ class ProjectGenerator:
             shutil.copy2(source_path, dest_path)
             # Make it executable
             dest_path.chmod(0o755)
-            print(f"DEBUG: Successfully copied weather server to {dest_path}")
+            logger.info(f"Successfully copied weather server from {source_path} to {dest_path}")
         else:
-            print(f"ERROR: Source weather server not found at {source_path}")
+            logger.error(f"Source weather server not found at {source_path}")
 
     # ============================================================================
     # TEMPLATE RENDERING
