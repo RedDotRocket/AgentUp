@@ -59,13 +59,13 @@ license: "MIT"               # Optional: License type
 plugins:
   # Simple plugin enablement
   - plugin_id: system_tools
-  
+
   # Plugin with configuration
   - plugin_id: web_tools
     config:
       timeout: 30
       retries: 3
-      
+
   # Plugin with middleware override
   - plugin_id: expensive_api
     middleware_override:
@@ -83,20 +83,20 @@ middleware:
     config:
       requests_per_minute: 60
       burst_limit: 10
-      
+
   # Authentication
   - name: authentication
     config:
       method: api_key
       required_scopes: ["read", "write"]
-      
+
   # Request logging
   - name: request_logging
     config:
       log_level: INFO
       include_request_body: false
       include_response_body: false
-      
+
   # Response caching
   - name: caching
     config:
@@ -132,13 +132,13 @@ authentication:
       - key: "${API_KEY_2}"
         name: "production"
         scopes: ["read"]
-    
+
     # Bearer token authentication
     bearer_tokens:
       - token: "${BEARER_TOKEN}"
         issuer: "my-service"
         audience: "my-agent"
-    
+
     # OAuth2 authentication
     oauth2:
       provider: "google"
@@ -156,7 +156,7 @@ server:
   workers: 1                  # Number of worker processes
   timeout: 30                 # Request timeout
   max_request_size: 10485760  # 10MB max request size
-  
+
   # TLS configuration (optional)
   tls:
     enabled: true
@@ -170,7 +170,7 @@ server:
 logging:
   level: INFO                 # DEBUG, INFO, WARNING, ERROR
   format: "json"              # json, text
-  
+
   handlers:
     - type: console
       level: INFO
@@ -285,7 +285,7 @@ plugins:
     config:
       # Restrict file operations to safe directories
       allowed_paths: ["/app/data", "/tmp"]
-  
+
   # External API integration
   - plugin_id: web_tools
     config:
@@ -302,7 +302,7 @@ Create different configurations for different environments:
 # Development
 cp config/development.yaml agent_config.yaml
 
-# Production  
+# Production
 cp config/production.yaml agent_config.yaml
 
 # Testing
@@ -318,7 +318,7 @@ plugins:
   # Load development plugins only in dev environment
   - plugin_id: debug_tools
     enabled: "${ENVIRONMENT:production}" != "production"
-  
+
   # Load production plugins only in production
   - plugin_id: monitoring
     enabled: "${ENVIRONMENT}" == "production"
@@ -332,7 +332,7 @@ middleware:
   - name: rate_limiting
     config:
       requests_per_minute: "${RATE_LIMIT:60}"
-      
+
   # Authentication only in production
   - name: authentication
     enabled: "${REQUIRE_AUTH:false}" == "true"
@@ -353,7 +353,7 @@ development:
   plugins:
     - plugin_id: debug_tools
 
-# Production extends base  
+# Production extends base
 production:
   <<: *base
   plugins:
