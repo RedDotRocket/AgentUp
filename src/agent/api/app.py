@@ -32,6 +32,9 @@ async def lifespan(app: FastAPI):
         # Single line initialization!
         await bootstrapper.initialize_services(app)
 
+        # Now that services (including MCP) are initialized, create the real agent card with MCP skills
+        app.state.agent_card = create_agent_card()
+
         # Setup request handler with services
         _setup_request_handler(app)
 
@@ -77,6 +80,7 @@ def _setup_request_handler(app: FastAPI) -> None:
 
 
 def create_app() -> FastAPI:
+    # Create initial agent card for FastAPI metadata (before services are initialized)
     agent_card = create_agent_card()
 
     # Create FastAPI app
@@ -87,8 +91,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # Store agent_card in app.state for reuse
-    app.state.agent_card = agent_card
+    # Agent card will be recreated after services initialize in lifespan()
 
     # Configure middleware
     _configure_middleware(app)

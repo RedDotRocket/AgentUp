@@ -178,6 +178,7 @@ services:{{ ' ' + services | tojson if services else ' {}' }}
 
 
 # Model Context Protocol
+# MCP tools are automatically exposed as skills in your AgentCard for multi-agent discovery
 mcp:
   enabled: true
   client_enabled: {{ mcp_client_enabled | default(true) }}
@@ -188,9 +189,15 @@ mcp:
       command: "python"
       args: ["scripts/mcp/weather_server.py", "--transport", "stdio"]
       timeout: 30
+      # Expose MCP tools as skills in AgentCard for multi-agent discovery
+      expose_as_skills: true
+      # MCP tools with explicit scope mapping become available as agent skills
       tool_scopes:
         "stdio:get_alerts": ["alerts:read"]
         "stdio:get_forecast": ["weather:read"]
+        # For compatibility, include unprefixed names
+        get_alerts: ["alerts:read"]
+        get_forecast: ["weather:read"]
 {% endif %}
 
 

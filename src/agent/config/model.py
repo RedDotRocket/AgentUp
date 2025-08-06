@@ -176,6 +176,11 @@ class MCPServerConfig(BaseModel):
     # Tool permissions (REQUIRED for security)
     tool_scopes: dict[str, list[str]] = Field(..., description="Tool name to required scopes mapping (REQUIRED)")
 
+    # Multi-agent discovery
+    expose_as_skills: bool = Field(
+        False, description="Expose MCP tools as skills in AgentCard for multi-agent discovery"
+    )
+
     @model_validator(mode="after")
     def validate_server_config(self) -> MCPServerConfig:
         if self.transport == "stdio":

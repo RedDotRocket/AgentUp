@@ -267,14 +267,15 @@ class MCPClientService:
             tools_result = await session.list_tools()
 
             for tool in tools_result.tools:
-                tool_key = f"{server_name}:{tool.name}"
+                # Use clean tool name, store server info separately
+                tool_key = tool.name
                 self._available_tools[tool_key] = {
                     "server": server_name,
                     "name": tool.name,
                     "description": tool.description,
                     "inputSchema": tool.inputSchema,
                 }
-                logger.debug(f"Registered tool: {tool_key}")
+                logger.debug(f"Registered tool: {tool_key} from server {server_name}")
 
             tools_count = len(tools_result.tools)
             logger.debug(f"Discovered {tools_count} tools from {server_name}")
@@ -287,7 +288,8 @@ class MCPClientService:
             resources_result = await session.list_resources()
 
             for resource in resources_result.resources:
-                resource_key = f"{server_name}:{resource.name}"
+                # Use clean resource name, store server info separately
+                resource_key = resource.name
                 self._available_resources[resource_key] = {
                     "server": server_name,
                     "name": resource.name,
@@ -317,6 +319,8 @@ class MCPClientService:
                 "name": tool_key,
                 "description": tool_info["description"],
                 "parameters": tool_info.get("inputSchema", {}),
+                "server": tool_info["server"],  # Include server information for capability registration
+                "inputSchema": tool_info.get("inputSchema", {}),  # Include original inputSchema
             }
             tools.append(schema)
         return tools

@@ -666,7 +666,7 @@ state_management:
 
 ## MCP (Model Context Protocol) Configuration
 
-Enable MCP support for tool integration:
+Enable MCP support for tool integration and multi-agent discovery:
 
 ```yaml
 mcp:
@@ -689,6 +689,8 @@ mcp:
       args: ["mcp-server-filesystem", "/workspace"]
       env:
         WORKSPACE_ROOT: "/workspace"
+      # Expose as skills in AgentCard (default: false)
+      expose_as_skills: true
       # Map MCP tools to AgentUp scopes
       tool_scopes:
         read_file: ["files:read"]
@@ -700,10 +702,24 @@ mcp:
       url: "http://localhost:3000/mcp"
       headers:
         Authorization: "Bearer ${GITHUB_TOKEN}"
+      expose_as_skills: false  # Don't expose in AgentCard
       tool_scopes:
         create_issue: ["github:write"]
         list_issues: ["github:read"]
 ```
+
+### MCP Tools in AgentCards
+
+When MCP servers have `expose_as_skills: true`, their tools are exposed as **skills** in your agent's AgentCard (at `/.well-known/agent-card.json`). This enables:
+
+- **Multi-agent discovery**: Orchestrators can discover and delegate to your MCP capabilities
+- **Ecosystem integration**: Any MCP server becomes available to the entire multi-agent system  
+- **Standards compliance**: Uses A2A protocol standards for agent communication
+
+**Tool-to-Skill Mapping:**
+- MCP tool `filesystem:read_file` becomes skill `mcp_read_file`
+- Inherits security scopes from `tool_scopes` configuration
+- Includes server name and "mcp" in skill tags
 
 ---
 

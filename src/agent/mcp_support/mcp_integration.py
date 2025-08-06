@@ -241,24 +241,26 @@ async def _register_mcp_tools_as_capabilities(mcp_client, available_tools, serve
 
         # Register each tool as a capability with scope enforcement
         for tool in available_tools:
-            original_tool_name = tool.get("name", "unknown")
-            required_scopes = tool_scopes.get(original_tool_name)
+            # tool is a dict from MCP client, not a Pydantic model
+            tool_name = tool["name"]  # Clean tool name (no colon prefix)
+            server_name = tool["server"]  # Server name stored directly in tool data
+            required_scopes = tool_scopes.get(tool_name)  # tool_scopes is a dict, .get() is correct
 
             # SECURITY: Require explicit scope configuration
             if required_scopes is None:
-                logger.error(f"MCP tool '{original_tool_name}' requires explicit scope configuration in agentup.yml")
+                logger.error(f"MCP tool '{tool_name}' requires explicit scope configuration in agentup.yml")
                 raise ValueError(
-                    f"MCP tool '{original_tool_name}' requires explicit scope configuration. "
+                    f"MCP tool '{tool_name}' requires explicit scope configuration. "
                     f"Add 'tool_scopes' configuration with required scopes for this tool."
                 )
 
-            # Convert MCP tool names to valid capability names (replace colons with underscores)
-            sanitized_tool_name = original_tool_name.replace(":", "_")
+            # Clean tool names no longer need colon sanitization, just ensure valid identifier
+            capability_name = tool_name.replace("-", "_")  # Only replace hyphens for valid Python identifiers
 
-            # Register using the design pattern with sanitized name
-            register_mcp_tool_as_capability(sanitized_tool_name, mcp_client, required_scopes)
+            # Register with clean name, server name, and pass the tool data for rich information
+            await register_mcp_tool_as_capability(capability_name, mcp_client, required_scopes, server_name, tool)
             logger.debug(
-                f"Registered MCP tool as capability: '{original_tool_name}' -> '{sanitized_tool_name}' with scopes: {required_scopes}"
+                f"Registered MCP tool as capability: '{tool_name}' -> '{capability_name}' from server '{server_name}' with scopes: {required_scopes}"
             )
 
     except Exception as e:

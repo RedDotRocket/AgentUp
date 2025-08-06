@@ -10,6 +10,7 @@ MCP (Model Context Protocol) is an open standard that enables Language Models to
 - **Connect to MCP servers** via stdio, SSE or Streamable HTTP
 - **Use MCP tools** as native agent capabilities
 - **Map MCP tools to AgentUp scopes** for fine-grained access control
+- **Expose MCP tools in AgentCards** for multi-agent system discovery
 - **Serve agent capabilities** as MCP tools for other systems
 
 ## Configuration
@@ -199,6 +200,77 @@ servers:
       # Tools without scope configuration are automatically blocked
       # create_table: ["db:admin"]  # ❌ Disabled by commenting out
 ```
+
+## MCP Tools in AgentCards
+
+AgentUp automatically exposes MCP tools as **skills** in your agent's AgentCard, making them discoverable by orchestrators and other agents in multi-agent systems.
+
+### Automatic Skill Registration
+
+When MCP servers are configured with `expose_as_skills: true`, their tools are automatically included in your agent's AgentCard:
+
+```yaml
+# Agent with MCP filesystem server
+mcp:
+  enabled: true
+  client_enabled: true
+  servers:
+    - name: "filesystem"
+      transport: "stdio"
+      command: "uvx"
+      args: ["mcp-server-filesystem", "/workspace"]
+      expose_as_skills: true  # Enable AgentCard skill exposure
+      tool_scopes:
+        read_file: ["files:read"]
+        write_file: ["files:write"]
+        list_directory: ["files:read"]
+```
+
+The AgentCard (at `/.well-known/agent-card.json`) will automatically include:
+
+```json
+{
+  "skills": [
+    {
+      "id": "mcp_read_file",
+      "name": "filesystem:read_file", 
+      "description": "Read a file from the filesystem",
+      "inputModes": ["text"],
+      "outputModes": ["text"],
+      "tags": ["mcp", "filesystem"]
+    },
+    {
+      "id": "mcp_write_file",
+      "name": "filesystem:write_file",
+      "description": "Write content to a file", 
+      "inputModes": ["text"],
+      "outputModes": ["text"],
+      "tags": ["mcp", "filesystem"]
+    }
+    // ... other MCP tools
+  ]
+}
+```
+
+### Multi-Agent Discovery
+
+This enables powerful multi-agent workflows:
+
+1. **Orchestrator Discovery**: An orchestrator agent can fetch your AgentCard and see all available MCP tools as callable functions
+2. **Agent Delegation**: The orchestrator can delegate tasks to your agent knowing exactly what MCP capabilities are available
+3. **Ecosystem Integration**: Any MCP server becomes immediately available to the entire multi-agent system
+
+### Configuration Options
+
+- **expose_as_skills**: `boolean` (default: `false`) - Set to `true` to expose MCP tools as skills in AgentCard
+- **tool_scopes**: `dict` (required) - Maps tool names to required security scopes
+
+### Skill Naming Convention
+
+- **Skill ID**: `mcp_{tool_name}` (colons replaced with underscores)
+- **Skill Name**: Original MCP tool name (e.g., `filesystem:read_file`)  
+- **Tags**: Always includes `"mcp"` and the server name
+- **Security**: Inherits the scopes configured in `tool_scopes`
 
 ## Using MCP Tools in Your Agent
 

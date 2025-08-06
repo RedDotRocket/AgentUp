@@ -96,6 +96,7 @@ class TestAgentCard:
 
     @patch("agent.api.routes.ConfigurationManager")
     def test_create_agent_card_caching(self, mock_config_manager):
+        """Test that AgentCard creation works (caching removed for simplicity)."""
         mock_config = {
             "project_name": "CachedAgent",
             "agent": {"name": "CachedAgent", "description": "Test caching", "version": "1.0.0"},
@@ -103,28 +104,19 @@ class TestAgentCard:
         }
         mock_config_manager.return_value.config = mock_config
 
-        # Clear any existing cache
-        import agent.api.routes
-
-        agent.api.routes._cached_agent_card = None
-        agent.api.routes._cached_extended_agent_card = None
-        agent.api.routes._cached_config_hash = None
-
-        # First call should create the card
+        # Create agent cards
         card1 = create_agent_card()
-
-        # Second call should return cached version
         card2 = create_agent_card()
 
-        # Should be the same instance (cached)
-        assert card1 is card2
+        # Cards should be equal but not necessarily the same instance (no caching)
+        assert card1 == card2
         assert card1.name == "CachedAgent"
 
-        # Test extended cards are cached separately
+        # Test extended cards
         extended_card1 = create_agent_card(extended=True)
         extended_card2 = create_agent_card(extended=True)
 
-        assert extended_card1 is extended_card2
+        assert extended_card1 == extended_card2
 
 
 class TestRequestHandlerManagement:
@@ -177,8 +169,8 @@ class TestAgentDiscovery:
         app.include_router(router)
         return TestClient(app)
 
-    @patch("agent.api.routes.create_agent_card")
-    def test_agent_discovery_endpoint(self, mock_create_card, client):
+    def test_agent_discovery_endpoint(self, client):
+        # Create a mock agent card and attach it to the app state
         mock_card = AgentCard(
             name="TestAgent",
             description="Test Description",
@@ -189,7 +181,9 @@ class TestAgentDiscovery:
             defaultInputModes=["text"],
             defaultOutputModes=["text"],
         )
-        mock_create_card.return_value = mock_card
+
+        # Set the agent_card in app.state for the test
+        client.app.state.agent_card = mock_card
 
         response = client.get("/.well-known/agent-card.json")
 

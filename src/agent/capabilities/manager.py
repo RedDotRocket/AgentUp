@@ -1,10 +1,13 @@
 from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 from a2a.types import Task
 
 from agent.config import Config
+
+if TYPE_CHECKING:
+    from agent.mcp_support.model import MCPCapabilityInfo
 
 # Import middleware decorators
 from agent.middleware import rate_limited, retryable, timed
@@ -91,6 +94,9 @@ logger = structlog.get_logger(__name__)
 
 # Capability registry - unified for all capability executors
 _capabilities: dict[str, Callable[[Task], str]] = {}
+
+# MCP capability tracking - stores metadata about MCP tools registered as capabilities
+_mcp_capabilities: dict[str, "MCPCapabilityInfo"] = {}
 
 
 def register_plugin_capability(plugin_config: dict[str, Any]) -> None:
@@ -183,7 +189,9 @@ def register_plugin_capability(plugin_config: dict[str, Any]) -> None:
     logger.info(f"Registered plugin capability with scope enforcement: {capability_id} (scopes: {required_scopes})")
 
 
-def register_mcp_tool_as_capability(tool_name: str, mcp_client, tool_scopes: list[str]) -> None:
+async def register_mcp_tool_as_capability(
+    tool_name: str, mcp_client, tool_scopes: list[str], server_name: str = "unknown", tool_data: dict | None = None
+) -> None:
     """Register MCP tool as capability with scope enforcement.
 
     It registers external MCP tools as capabilities with the same scope enforcement
@@ -257,6 +265,32 @@ def register_mcp_tool_as_capability(tool_name: str, mcp_client, tool_scopes: lis
 
     # Register like any other capability
     register_capability_function(tool_name, mcp_tool_executor)
+
+    # Track this as an MCP capability with Pydantic model
+    from agent.mcp_support.model import MCPCapabilityInfo
+
+    # Use tool data passed directly from registration (rich MCP tool info)
+    if tool_data:
+        original_name = tool_data["name"]  # Clean original name from MCP server
+        description = tool_data.get("description", "")  # Rich description from MCP server
+        input_schema = tool_data.get("inputSchema", {})  # Parameter schema from MCP server
+    else:
+        original_name = tool_name
+        description = ""
+        input_schema = {}
+
+    # Create capability info with rich MCP tool data
+    _mcp_capabilities[tool_name] = MCPCapabilityInfo(
+        name=tool_name,
+        original_name=original_name,
+        description=description,
+        server_name=server_name,
+        scopes=tool_scopes,
+        parameters=input_schema,  # Use inputSchema from MCP
+        input_schema=input_schema,
+        output_schema={},  # MCP doesn't provide output schema
+    )
+
     logger.debug(f"Registered MCP tool as capability: {tool_name} (scopes: {tool_scopes})")
 
 
@@ -570,6 +604,15 @@ def get_all_capabilities() -> dict[str, Callable[[Task], str]]:
 
 def list_capabilities() -> list[str]:
     return list(_capabilities.keys())
+
+
+def get_mcp_capabilities() -> dict[str, "MCPCapabilityInfo"]:
+    """Get all MCP capabilities registered as agent capabilities.
+
+    Returns:
+        Dictionary mapping capability name to MCPCapabilityInfo model
+    """
+    return _mcp_capabilities.copy()
 
 
 def apply_global_middleware() -> None:

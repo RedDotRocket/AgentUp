@@ -451,10 +451,7 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
                                     )
                             except Exception as e:
                                 if debug or verbose:
-                                    click.secho(
-                                        f"Warning: Could not load plugin {plugin_name}: {e}",
-                                        fg="red"
-                                    )
+                                    click.secho(f"Warning: Could not load plugin {plugin_name}: {e}", fg="red")
                                 continue
                     except Exception as e:
                         if debug or verbose:

@@ -321,6 +321,33 @@ class MCPCapability(BaseModel):
         return len(self.supported_notifications)
 
 
+class MCPCapabilityInfo(BaseModel):
+    """Metadata about an MCP tool registered as an agent capability.
+
+    This tracks MCP tools that have been converted to agent capabilities
+    for exposure in AgentCards and multi-agent systems.
+    """
+
+    name: str = Field(..., description="MCP tool name (sanitized for capability use)")
+    original_name: str = Field(..., description="Original MCP tool name")
+    description: str = Field(default="", description="Tool description from MCP server")
+    server_name: str = Field(..., description="Name of MCP server providing this tool")
+    scopes: list[str] = Field(default_factory=list, description="Required scopes for this tool")
+    parameters: dict[str, Any] = Field(default_factory=dict, description="Tool parameter schema")
+    input_schema: dict[str, Any] = Field(default_factory=dict, description="JSON schema for input")
+    output_schema: dict[str, Any] = Field(default_factory=dict, description="JSON schema for output")
+
+    @field_validator("name")
+    @classmethod
+    def validate_capability_name(cls, v: str) -> str:
+        """Ensure capability name is valid (alphanumeric + underscores)."""
+        import re
+
+        if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", v):
+            raise ValueError("Capability name must be valid identifier (underscores allowed)")
+        return v
+
+
 # MCP Validators using validation framework
 class MCPResourceValidator(BaseValidator[MCPResource]):
     def validate(self, model: MCPResource) -> ValidationResult:
@@ -427,6 +454,7 @@ __all__ = [
     "MCPMessage",
     "MCPSession",
     "MCPCapability",
+    "MCPCapabilityInfo",
     "MCPResourceValidator",
     "MCPToolValidator",
     "MCPSessionValidator",
