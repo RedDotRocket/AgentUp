@@ -797,7 +797,7 @@ wheels = [
 
 [[package]]
 name = "fastmcp"
-version = "2.11.1"
+version = "2.11.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "authlib" },
@@ -812,9 +812,9 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "rich" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/92/89/d100073d15cdfa5fa029107b44ef55916b04ed6010ff2b0f7bed92a35ed9/fastmcp-2.11.1.tar.gz", hash = "sha256:2b5af21b093d4926fef17a9a162d5729a2fcb46f3b195699762fa01f61ac3c60", size = 2672724, upload-time = "2025-08-04T15:39:29.623Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7d/44/9957bf4373be797fa596a8a08c0e0c2ea255c0a02002aff06c29216484b6/fastmcp-2.11.2.tar.gz", hash = "sha256:bb958010faf987ff158a75ee9950bb6ea4e7b01940dd9ec0e9f0f6a419c4f6b8", size = 2675200, upload-time = "2025-08-06T17:19:39.744Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a6/9f/f3703867a8be93f2a139f6664fa7ff46c5c844e28998ce288f7b919ed197/fastmcp-2.11.1-py3-none-any.whl", hash = "sha256:9f0b6a3f61dcf6f688a0a24b8b507be24bfae051a00b7d590c01395d63da8c00", size = 256573, upload-time = "2025-08-04T15:39:27.594Z" },
+    { url = "https://files.pythonhosted.org/packages/3d/78/bf9ea9311e5bb0e64d2d480136ec29b22d43620eafcec756e9fa78a7ddd1/fastmcp-2.11.2-py3-none-any.whl", hash = "sha256:3e358f65e41f5f85b8fb0303131cc1c8b122f43a7aff9b47b74157e615fe5484", size = 257133, upload-time = "2025-08-06T17:19:38.228Z" },
 ]
 
 [[package]]
