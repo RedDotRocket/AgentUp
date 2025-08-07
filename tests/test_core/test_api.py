@@ -75,9 +75,8 @@ class TestAgentCard:
 
         card = create_agent_card()
 
-        assert len(card.skills) == 1
-        assert card.skills[0].id == "chat"
-        assert card.skills[0].name == "Chat"
+        # With registry-only approach, configured plugins don't appear unless loaded in registry
+        assert len(card.skills) == 0
 
     @patch("agent.api.routes.ConfigurationManager")
     def test_create_agent_card_with_security_enabled(self, mock_config_manager):
