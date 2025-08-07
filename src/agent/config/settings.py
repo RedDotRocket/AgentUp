@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Annotated, Any
 
 from dotenv import load_dotenv
-from pydantic import Field
+from pydantic import Field, HttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from ..types import ConfigDict as ConfigDictType
@@ -53,6 +53,9 @@ class Settings(BaseSettings):
 
     # Environment
     environment: str = Field("development", pattern="^(development|staging|production)$")
+
+    # Multi-agent orchestration
+    orchestrator: HttpUrl | None = Field(None, description="Orchestrator URL for multi-agent registration")
 
     # Module paths for dynamic loading
     dispatcher_path: ModulePath | None = None

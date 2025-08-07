@@ -148,6 +148,18 @@ class AgentBootstrapper:
             except Exception as e:
                 self.logger.warning(f"Push notification service not available: {e}")
 
+        # 8. Agent Registration Service (MUST be last - needs complete AgentCard)
+        # This should be initialized after all other services so the AgentCard
+        # contains all capabilities when the orchestrator fetches it
+        from agent.config import Config
+
+        if Config.orchestrator:
+            try:
+                registration_service = await self._create_registration_service()
+                services.append(registration_service)
+            except Exception as e:
+                self.logger.warning(f"Agent registration service not available: {e}")
+
         return services
 
     async def _create_security_service(self) -> Service:
@@ -188,6 +200,11 @@ class AgentBootstrapper:
         from .push import PushNotificationService
 
         return PushNotificationService(self.config)
+
+    async def _create_registration_service(self) -> Service:
+        from .agent_registration import AgentRegistrationClient
+
+        return AgentRegistrationClient(self.config)
 
     async def _integrate_plugins(self) -> None:
         """Integrate plugins using the new PluginRegistry system."""

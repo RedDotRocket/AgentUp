@@ -170,6 +170,8 @@ class ServiceRegistry(BaseModel):
 
     def __init__(self, config: AgentConfig | None = None, **data):
         raw = Config.model_dump() if config is None else config.model_dump()
+        # Filter out orchestrator field which only exists in Settings, not AgentConfig
+        raw.pop("orchestrator", None)
         agent_config = AgentConfig.model_validate(raw)
 
         # Initialize Pydantic fields

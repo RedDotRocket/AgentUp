@@ -170,6 +170,32 @@ class ServiceDependency(BaseModel):
         return v
 
 
+class AgentRegistrationPayload(BaseModel):
+    """Payload for agent registration with an orchestrator."""
+
+    agent_url: str = Field(..., description="URL where this agent can be reached")
+    name: str = Field(..., description="Agent name")
+    version: str = Field(..., description="Agent version")
+    agent_card_url: str = Field(..., description="URL to agent's card endpoint")
+    description: str | None = Field(None, description="Agent description")
+
+    @field_validator("agent_url", "agent_card_url")
+    @classmethod
+    def validate_urls(cls, v: str) -> str:
+        if not v.startswith(("http://", "https://")):
+            raise ValueError("URL must start with http:// or https://")
+        return v
+
+    @field_validator("version")
+    @classmethod
+    def validate_version(cls, v: str) -> str:
+        import re
+
+        if not re.match(r"^\d+\.\d+\.\d+(-[\w\.-]+)?$", v):
+            raise ValueError("Version must follow semantic versioning (e.g., 1.0.0)")
+        return v
+
+
 class ServiceConfiguration(BaseModel):
     registration: ServiceRegistration = Field(..., description="Service registration data")
     health_config: dict[str, Any] = Field(
@@ -298,4 +324,5 @@ __all__ = [
     "ServiceMetrics",
     "ServiceDependency",
     "ServiceConfiguration",
+    "AgentRegistrationPayload",
 ]
