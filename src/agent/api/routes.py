@@ -79,6 +79,15 @@ def _get_package_version(package_name: str) -> str:
         return "0.0.0"
 
 
+def _clear_agent_card_cache() -> None:
+    """Clear the agent card cache to force regeneration."""
+    global _cached_agent_card, _cached_extended_agent_card, _cached_config_hash
+    _cached_agent_card = None
+    _cached_extended_agent_card = None
+    _cached_config_hash = None
+    logger.debug("Agent card cache cleared")
+
+
 def set_request_handler_instance(handler: DefaultRequestHandler):
     global _request_handler
     _request_handler = handler
@@ -123,6 +132,10 @@ def _get_mcp_skills_for_agent_card() -> list[AgentSkill]:
 
         mcp_capabilities = get_mcp_capabilities()
 
+        # If no capabilities are available, return empty list
+        if not mcp_capabilities:
+            return mcp_skills
+
         for capability_id, capability_info in mcp_capabilities.items():
             # Only include capabilities from servers with expose_as_skills: true
             server_name = capability_info.server_name
@@ -150,7 +163,10 @@ def _get_mcp_skills_for_agent_card() -> list[AgentSkill]:
                     f"Skipping capability '{capability_id}' (server '{server_name}' has expose_as_skills={server_expose_flags.get(server_name, False)})"
                 )
 
-        logger.debug(f"Added {len(mcp_skills)} MCP tools as AgentCard skills from servers with expose_as_skills=true")
+        if mcp_skills:
+            logger.debug(
+                f"Added {len(mcp_skills)} MCP tools as AgentCard skills from servers with expose_as_skills=true"
+            )
 
     except Exception as e:
         logger.error(f"Failed to get MCP capabilities for AgentCard: {e}")
@@ -179,6 +195,15 @@ def create_agent_card(extended: bool = False) -> AgentCard:
     config_str = str(sorted(config.items()))
     # Bandit issue: B324 - Using hashlib.md5() is acceptable here for caching purposes
     current_config_hash = hashlib.md5(config_str.encode()).hexdigest()  # nosec
+
+    # Check if we can use cached version
+    if _cached_config_hash == current_config_hash:
+        if extended and _cached_extended_agent_card is not None:
+            logger.debug("Using cached extended AgentCard")
+            return _cached_extended_agent_card
+        elif not extended and _cached_agent_card is not None:
+            logger.debug("Using cached AgentCard")
+            return _cached_agent_card
 
     # Cache miss - regenerate agent card
     agent_info = config.get("agent", {})

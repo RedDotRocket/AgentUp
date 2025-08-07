@@ -33,6 +33,10 @@ async def lifespan(app: FastAPI):
         await bootstrapper.initialize_services(app)
 
         # Now that services (including MCP) are initialized, create the real agent card with MCP skills
+        # Clear cache to force regeneration since services may have changed capabilities
+        from agent.api.routes import _clear_agent_card_cache
+
+        _clear_agent_card_cache()
         app.state.agent_card = create_agent_card()
 
         # Setup request handler with services
