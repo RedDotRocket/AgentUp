@@ -180,21 +180,6 @@ def create_agent_card(extended: bool = False) -> AgentCard:
     # Bandit issue: B324 - Using hashlib.md5() is acceptable here for caching purposes
     current_config_hash = hashlib.md5(config_str.encode()).hexdigest()  # nosec
 
-    logger.info(
-        f"DEBUG: create_agent_card called, current_hash: {current_config_hash[:8]}, cached_hash: {_cached_config_hash[:8] if _cached_config_hash else 'None'}"
-    )
-
-    # Temporarily disable caching for debugging MCP skills
-    # Check if we can use cached version
-    # if _cached_config_hash == current_config_hash:
-    #     logger.info("DEBUG: Using cached AgentCard")
-    #     if extended and _cached_extended_agent_card is not None:
-    #         return _cached_extended_agent_card
-    #     elif not extended and _cached_agent_card is not None:
-    #         return _cached_agent_card
-    # else:
-    logger.info("DEBUG: Cache disabled - regenerating AgentCard")
-
     # Cache miss - regenerate agent card
     agent_info = config.get("agent", {})
     plugins = config.get("plugins", [])
