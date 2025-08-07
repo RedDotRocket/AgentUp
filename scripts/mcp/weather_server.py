@@ -23,7 +23,7 @@ from mcp.server.fastmcp import FastMCP
 from starlette.responses import JSONResponse
 
 # Initialize FastMCP server for Weather tools
-mcp = FastMCP(name="weather", version="1.0.0")
+mcp = FastMCP(name="weather")
 
 # Configure logging to match AgentUp's format exactly
 
