@@ -214,14 +214,12 @@ def create_agent_card(extended: bool = False) -> AgentCard:
 
     registry = get_plugin_registry()
     if registry and registry.plugins:
+        # Create a lookup for plugin configurations by their ID for efficient access
+        plugins_by_id = {p.get("plugin_id"): p for p in plugins if p.get("plugin_id")}
+
         # Get loaded plugins from the registry's plugins attribute
         for plugin_id, _plugin_instance in registry.plugins.items():
-            # Find corresponding config
-            plugin_config = None
-            for p in plugins:
-                if p.get("plugin_id") == plugin_id:
-                    plugin_config = p
-                    break
+            plugin_config = plugins_by_id.get(plugin_id)
 
             if plugin_config:
                 plugin_visibility = plugin_config.get("visibility", "public")
