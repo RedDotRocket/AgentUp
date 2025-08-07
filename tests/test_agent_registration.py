@@ -118,7 +118,9 @@ class TestAgentRegistrationClient:
         mock_config_class.api.port = 8001
 
         # Mock the registration method to avoid actual HTTP calls
-        with patch.object(registration_client, "_register_with_orchestrator", new_callable=AsyncMock):
+        with patch.object(
+            registration_client, "_register_with_orchestrator", new_callable=AsyncMock, return_value=True
+        ):
             await registration_client.initialize()
 
             assert registration_client._initialized is True
@@ -135,9 +137,32 @@ class TestAgentRegistrationClient:
         mock_config_class.api.host = "0.0.0.0"  # Should convert to localhost
         mock_config_class.api.port = 8001
 
-        with patch.object(registration_client, "_register_with_orchestrator", new_callable=AsyncMock):
+        with patch.object(
+            registration_client, "_register_with_orchestrator", new_callable=AsyncMock, return_value=True
+        ):
             await registration_client.initialize()
 
+            assert registration_client.agent_url == "http://localhost:8001"
+
+    @patch("agent.config.Config")
+    async def test_initialize_with_failed_registration(self, mock_config_class, registration_client):
+        """Test initialization when registration fails."""
+        # Mock Config with orchestrator URL
+        mock_config_class.orchestrator = "http://localhost:8050"
+        mock_config_class.project_name = "Test Agent"
+        mock_config_class.version = "1.0.0"
+        mock_config_class.description = "Test description"
+        mock_config_class.api.host = "127.0.0.1"
+        mock_config_class.api.port = 8001
+
+        # Mock the registration method to return False (failed)
+        with patch.object(
+            registration_client, "_register_with_orchestrator", new_callable=AsyncMock, return_value=False
+        ):
+            await registration_client.initialize()
+
+            assert registration_client._initialized is False
+            assert registration_client.orchestrator_url == "http://localhost:8050"
             assert registration_client.agent_url == "http://localhost:8001"
 
     @patch("httpx.AsyncClient")

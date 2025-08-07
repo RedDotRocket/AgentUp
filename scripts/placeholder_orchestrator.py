@@ -76,9 +76,10 @@ async def register_agent(payload: AgentRegistrationPayload) -> JSONResponse:
         "timestamp": timestamp
     }
 
-    # Fetch AgentCard in background
-    asyncio.create_task(fetch_agent_card(payload.agent_card_url, len(registrations)))
+    # Append registration data first to get correct index
     registrations.append(registration_data)
+    # Fetch AgentCard in background with the correct index
+    asyncio.create_task(fetch_agent_card(payload.agent_card_url, len(registrations) - 1))
 
     logger.info("✅ Registration acknowledged, fetching AgentCard...")
 

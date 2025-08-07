@@ -69,19 +69,20 @@ class AgentRegistrationClient(Service):
         self.agent_url = f"http://{agent_host}:{port}"
 
         # Perform registration
-        await self._register_with_orchestrator(agent_info)
+        self._initialized = await self._register_with_orchestrator(agent_info)
 
-        self._initialized = True
-
-    async def _register_with_orchestrator(self, agent_info: dict[str, Any]) -> None:
+    async def _register_with_orchestrator(self, agent_info: dict[str, Any]) -> bool:
         """Register this agent with the orchestrator.
 
         Args:
             agent_info: Dictionary containing agent metadata
+
+        Returns:
+            bool: True if registration succeeded, False if it failed
         """
         if not self.orchestrator_url or not self.agent_url:
             self.logger.warning("Missing orchestrator or agent URL, skipping registration")
-            return
+            return False
 
         # Prepare registration payload
         payload = AgentRegistrationPayload(
@@ -114,7 +115,7 @@ class AgentRegistrationClient(Service):
                             orchestrator_url=self.orchestrator_url,
                             response_data=response.json() if response.content else None,
                         )
-                        return
+                        return True
                     else:
                         self.logger.warning(
                             f"Registration failed with status {response.status_code}",
@@ -154,6 +155,7 @@ class AgentRegistrationClient(Service):
             f"Failed to register with orchestrator after {self.max_retries} attempts",
             orchestrator_url=self.orchestrator_url,
         )
+        return False
 
     async def shutdown(self) -> None:
         """Clean up registration service resources."""
