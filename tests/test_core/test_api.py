@@ -169,8 +169,9 @@ class TestAgentDiscovery:
         app.include_router(router)
         return TestClient(app)
 
-    def test_agent_discovery_endpoint(self, client):
-        # Create a mock agent card and attach it to the app state
+    @patch("agent.api.routes.create_agent_card")
+    def test_agent_discovery_endpoint(self, mock_create_card, client):
+        # Create a mock agent card
         mock_card = AgentCard(
             name="TestAgent",
             description="Test Description",
@@ -182,8 +183,8 @@ class TestAgentDiscovery:
             defaultOutputModes=["text"],
         )
 
-        # Set the agent_card in app.state for the test
-        client.app.state.agent_card = mock_card
+        # Mock create_agent_card to return our test card
+        mock_create_card.return_value = mock_card
 
         response = client.get("/.well-known/agent-card.json")
 
