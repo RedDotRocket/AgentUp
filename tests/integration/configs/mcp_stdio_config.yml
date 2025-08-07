@@ -35,9 +35,6 @@ mcp:
       args: ["scripts/mcp/weather_server.py", "--transport", "stdio"]
       timeout: 30
       tool_scopes:
-        # Unprefixed tool names (for compatibility)
-        get_alerts: ["alerts:read"]
-        get_forecast: ["weather:read"]
         # Prefixed tool names (server:tool format) - REQUIRED
         "stdio_weather:get_alerts": ["alerts:read"]
         "stdio_weather:get_forecast": ["weather:read"]

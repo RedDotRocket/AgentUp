@@ -36,9 +36,6 @@ mcp:
       headers:
         Authorization: "Bearer ${MCP_API_KEY}"
       tool_scopes:
-        # Unprefixed tool names (for compatibility)
-        get_alerts: ["alerts:read"]
-        get_forecast: ["weather:read"]
         # Prefixed tool names (server:tool format) - REQUIRED
         "streamable_weather:get_alerts": ["alerts:read"]
         "streamable_weather:get_forecast": ["weather:read"]

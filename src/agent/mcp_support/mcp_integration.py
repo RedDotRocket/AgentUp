@@ -244,14 +244,16 @@ async def _register_mcp_tools_as_capabilities(mcp_client, available_tools, serve
             # tool is a dict from MCP client, not a Pydantic model
             tool_name = tool["name"]  # Clean tool name (no colon prefix)
             server_name = tool["server"]  # Server name stored directly in tool data
-            required_scopes = tool_scopes.get(tool_name)  # tool_scopes is a dict, .get() is correct
+            # Use prefixed tool name for scope lookup (server_name:tool_name)
+            prefixed_tool_name = f"{server_name}:{tool_name}"
+            required_scopes = tool_scopes.get(prefixed_tool_name)  # tool_scopes is a dict, .get() is correct
 
             # SECURITY: Require explicit scope configuration
             if required_scopes is None:
-                logger.error(f"MCP tool '{tool_name}' requires explicit scope configuration in agentup.yml")
+                logger.error(f"MCP tool '{prefixed_tool_name}' requires explicit scope configuration in agentup.yml")
                 raise ValueError(
-                    f"MCP tool '{tool_name}' requires explicit scope configuration. "
-                    f"Add 'tool_scopes' configuration with required scopes for this tool."
+                    f"MCP tool '{prefixed_tool_name}' requires explicit scope configuration. "
+                    f"Add 'tool_scopes' configuration with required scopes for this tool using the format '{server_name}:{tool_name}'."
                 )
 
             # Clean tool names no longer need colon sanitization, just ensure valid identifier
@@ -275,14 +277,17 @@ async def _register_mcp_tools_with_scopes(registry, mcp_client, available_tools,
         # Register each tool with scope enforcement
         for tool in available_tools:
             original_tool_name = tool.get("name", "unknown")
-            required_scopes = tool_scopes.get(original_tool_name)
+            server_name = tool.get("server", "unknown")
+            # Use prefixed tool name for scope lookup (server_name:tool_name)
+            prefixed_tool_name = f"{server_name}:{original_tool_name}"
+            required_scopes = tool_scopes.get(prefixed_tool_name)
 
             # SECURITY: Require explicit scope configuration - no automatic assignment
             if required_scopes is None:
-                logger.error(f"MCP tool '{original_tool_name}' requires explicit scope configuration in agentup.yml")
+                logger.error(f"MCP tool '{prefixed_tool_name}' requires explicit scope configuration in agentup.yml")
                 raise ValueError(
-                    f"MCP tool '{original_tool_name}' requires explicit scope configuration. "
-                    f"Add 'tool_scopes' configuration with required scopes for this tool."
+                    f"MCP tool '{prefixed_tool_name}' requires explicit scope configuration. "
+                    f"Add 'tool_scopes' configuration with required scopes for this tool using the format '{server_name}:{original_tool_name}'."
                 )
 
             # Convert MCP tool names to valid function names (replace colons with underscores)

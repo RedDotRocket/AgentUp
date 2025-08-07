@@ -191,13 +191,11 @@ mcp:
       timeout: 30
       # Expose MCP tools as skills in AgentCard for multi-agent discovery
       expose_as_skills: true
-      # MCP tools with explicit scope mapping become available as agent skills
+      # MCP tools require explicit scope mapping using server:tool format
+      # This prevents naming conflicts when multiple servers expose similar tools
       tool_scopes:
         "stdio:get_alerts": ["alerts:read"]
         "stdio:get_forecast": ["weather:read"]
-        # For compatibility, include unprefixed names
-        get_alerts: ["alerts:read"]
-        get_forecast: ["weather:read"]
 {% endif %}
 
 
