@@ -50,7 +50,7 @@ class MCPServerManager:
             # For stdio transport, immediate exit is expected, not a failure
             if self.transport == "stdio":
                 # Check if the output indicates successful startup
-                if "Starting MCP Weather Server" in stderr or "Tools available" in stderr:
+                if "Starting MCP Weather Server" in stderr or "Available tools" in stderr:
                     # Server started successfully and exited normally
                     pass
                 else:
