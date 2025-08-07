@@ -488,10 +488,14 @@ class AgentConfig(BaseModel):
     @field_validator("version")
     @classmethod
     def validate_version(cls, v: str) -> str:
-        import re
+        import semver
 
-        if not re.match(r"^\d+\.\d+\.\d+(?:-[\w.-]+)?$", v):
-            raise ValueError("Version must follow semantic versioning (e.g., 1.0.0)")
+        try:
+            semver.Version.parse(v)
+        except ValueError:
+            raise ValueError(
+                "Version must follow semantic versioning (e.g., 1.0.0, 1.2.3-alpha.1, 1.0.0+build.123)"
+            ) from None
         return v
 
     @computed_field  # Modern Pydantic v2 computed property

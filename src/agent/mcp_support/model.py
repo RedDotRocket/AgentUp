@@ -145,10 +145,14 @@ class MCPTool(BaseModel):
     @field_validator("version")
     @classmethod
     def validate_version(cls, v: str) -> str:
-        import re
+        import semver
 
-        if not re.match(r"^\d+\.\d+\.\d+(-[\w\.-]+)?(\+[\w\.-]+)?$", v):
-            raise ValueError("Version must follow semantic versioning (e.g., 1.0.0)")
+        try:
+            semver.Version.parse(v)
+        except ValueError:
+            raise ValueError(
+                "Version must follow semantic versioning (e.g., 1.0.0, 1.2.3-alpha.1, 1.0.0+build.123)"
+            ) from None
         return v
 
     @property
@@ -302,10 +306,14 @@ class MCPCapability(BaseModel):
         if v is None:
             return v
 
-        import re
+        import semver
 
-        if not re.match(r"^\d+\.\d+\.\d+(-[\w\.-]+)?(\+[\w\.-]+)?$", v):
-            raise ValueError("Version must follow semantic versioning (e.g., 1.0.0)")
+        try:
+            semver.Version.parse(v)
+        except ValueError:
+            raise ValueError(
+                "Version must follow semantic versioning (e.g., 1.0.0, 1.2.3-alpha.1, 1.0.0+build.123)"
+            ) from None
         return v
 
     @property

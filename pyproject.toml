@@ -34,6 +34,7 @@ dependencies = [
     "asgi-correlation-id>=4.3.4",
     "redis>=6.2.0",
     "aiohttp>=3.12.15",
+    "semver>=3.0.4",
 ]
 
 [project.scripts]
