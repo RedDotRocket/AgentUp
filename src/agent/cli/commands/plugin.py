@@ -8,6 +8,7 @@ import click
 import questionary
 from jinja2 import Environment, FileSystemLoader
 from rich import box
+from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
@@ -295,9 +296,16 @@ def plugin():
 @plugin.command("list")
 @click.option("--verbose", "-v", is_flag=True, help="Show detailed plugin information and logging")
 @click.option("--capabilities", "-c", is_flag=True, help="Show available capabilities/AI functions")
-@click.option("--format", "-f", type=click.Choice(["table", "json", "yaml"]), default="table", help="Output format")
+@click.option(
+    "--format", "-f", type=click.Choice(["table", "json", "yaml", "agentup-cfg"]), default="table", help="Output format"
+)
+@click.option("--agentup-cfg", is_flag=True, help="Output in agentup.yml format (same as --format agentup-cfg)")
 @click.option("--debug", is_flag=True, help="Show debug logging output")
-def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
+def list_plugins(verbose: bool, capabilities: bool, format: str, agentup_cfg: bool, debug: bool):
+    # Handle --agentup-cfg flag (shortcut for --format agentup-cfg)
+    if agentup_cfg:
+        format = "agentup-cfg"
+
     try:
         # Configure logging based on verbose/debug flags
         import logging
@@ -378,7 +386,7 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
                                             "description": cap_def.description,
                                             "plugin": plugin_name,
                                             "required_scopes": cap_def.required_scopes,
-                                            "ai_function": hasattr(cap_def, "ai_function") and cap_def.ai_function,
+                                            "ai_function": cap_def.is_ai_capability,
                                         }
                                     )
                             except Exception as e:
@@ -446,7 +454,7 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
                                             "description": cap_def.description,
                                             "plugin": plugin_name,
                                             "required_scopes": cap_def.required_scopes,
-                                            "ai_function": hasattr(cap_def, "ai_function") and cap_def.ai_function,
+                                            "ai_function": cap_def.is_ai_capability,
                                         }
                                     )
                             except Exception as e:
@@ -461,6 +469,104 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
                 output["capabilities"] = capabilities_for_yaml
 
             click.secho(yaml.dump(output, default_flow_style=False))
+            return
+
+        if format == "agentup-cfg":
+            from collections import OrderedDict
+
+            import yaml
+
+            console = Console()
+
+            # Custom representer to maintain field order
+            def represent_ordereddict(dumper, data):
+                return dumper.represent_dict(data.items())
+
+            yaml.add_representer(OrderedDict, represent_ordereddict)
+
+            # For agentup-cfg format, always include capabilities (no -c flag needed)
+            plugins_config = []
+
+            for plugin_info in all_available_plugins:
+                plugin_name = plugin_info["name"]
+                package_name = plugin_info["package"]
+
+                # Generate better name and description
+                base_name = plugin_name.replace("_", " ").replace("-", " ").title()
+                if base_name.lower().endswith("plugin"):
+                    display_name = base_name
+                else:
+                    display_name = base_name + " Plugin"
+
+                # Use OrderedDict to maintain field order
+                plugin_config = OrderedDict(
+                    [
+                        ("plugin_id", plugin_name),
+                        ("package", package_name),
+                        ("name", display_name),
+                        (
+                            "description",
+                            f"A plugin for {plugin_name.replace('_', ' ').replace('-', ' ')} functionality",
+                        ),
+                        ("tags", [plugin_name.replace("_", "-").replace(" ", "-").lower()]),
+                        ("input_mode", "text"),
+                        ("output_mode", "text"),
+                        ("priority", 50),
+                        ("capabilities", []),
+                    ]
+                )
+
+                # Load capabilities for this plugin
+                try:
+                    import importlib.metadata
+
+                    entry_points = importlib.metadata.entry_points()
+
+                    if hasattr(entry_points, "select"):
+                        plugin_entries = entry_points.select(group="agentup.plugins", name=plugin_name)
+                    else:
+                        plugin_entries = [
+                            ep for ep in entry_points.get("agentup.plugins", []) if ep.name == plugin_name
+                        ]
+
+                    for entry_point in plugin_entries:
+                        try:
+                            plugin_class = entry_point.load()
+                            plugin_instance = plugin_class()
+                            cap_definitions = plugin_instance.get_capability_definitions()
+
+                            for cap_def in cap_definitions:
+                                capability_config = OrderedDict(
+                                    [
+                                        ("capability_id", cap_def.id),
+                                        ("required_scopes", cap_def.required_scopes),
+                                        ("enabled", True),
+                                    ]
+                                )
+                                plugin_config["capabilities"].append(capability_config)
+
+                        except Exception as e:
+                            if debug or verbose:
+                                console.print(f"[dim red]Warning: Could not load plugin {plugin_name}: {e}[/dim red]")
+                            continue
+                except Exception as e:
+                    if debug or verbose:
+                        console.print(f"[dim red]Warning: Could not find entry point for {plugin_name}: {e}[/dim red]")
+                    continue
+
+                # Only add plugins that have capabilities
+                if plugin_config["capabilities"]:
+                    plugins_config.append(plugin_config)
+
+            if plugins_config:
+                output = {"plugins": plugins_config}
+                # Use sort_keys=False to preserve order, default_flow_style=False for block style
+                yaml_output = yaml.dump(
+                    output, default_flow_style=False, allow_unicode=True, sort_keys=False, width=1000, indent=2
+                )
+                console.print(yaml_output)
+            else:
+                console.print("plugins: []")
             return
 
         # Table format (default)
@@ -504,7 +610,8 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
 
             plugin_table.add_row(*row)
 
-        click.secho(plugin_table)
+        console = Console()
+        console.print(plugin_table)
 
         # Only show capabilities table if --capabilities flag is used
         if capabilities:
@@ -540,8 +647,6 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
                             cap_definitions = plugin_instance.get_capability_definitions()
 
                             for cap_def in cap_definitions:
-                                click.echo(f"Processing capability: {cap_def.id} from plugin {plugin_name}")
-                                click.echo(f"AI Function: {cap_def.ai_function}")
                                 all_capabilities_info.append(
                                     {
                                         "id": cap_def.id,
@@ -549,7 +654,7 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
                                         "description": cap_def.description,
                                         "plugin": plugin_name,
                                         "scopes": cap_def.required_scopes,
-                                        "ai_function": hasattr(cap_def, "ai_function") and cap_def.ai_function,
+                                        "ai_function": cap_def.is_ai_capability,
                                         "tags": getattr(cap_def, "tags", []),
                                     }
                                 )
@@ -592,7 +697,7 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, debug: bool):
 
                     capabilities_table.add_row(*row)
 
-                click.secho(capabilities_table)
+                console.print(capabilities_table)
             else:
                 click.secho("No capabilities found. This may indicate:", fg="yellow")
                 click.secho("  • No plugins are installed", fg="yellow")
@@ -1159,7 +1264,8 @@ def info(capability_id: str):
             padding=(1, 2),
         )
 
-        click.secho(panel)
+        console = Console()
+        console.print(panel)
 
     except ImportError:
         click.secho("Plugin system not available.", fg="red")
@@ -1201,6 +1307,7 @@ def validate():
                 all_valid = False
 
         # Display results
+        console = Console()
         table = Table(title="Plugin Validation Results", box=box.ROUNDED, title_style="bold cyan")
         table.add_column("Capability", style="cyan")
         table.add_column("Plugin", style="dim")
@@ -1227,7 +1334,7 @@ def validate():
 
             table.add_row(capability_id, plugin, status, issues)
 
-            click.print(table)
+        console.print(table)
 
         if all_valid:
             click.secho("\n✓ All plugins validated successfully!", fg="green")
