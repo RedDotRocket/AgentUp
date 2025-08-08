@@ -208,6 +208,8 @@ class TestPluginListCommand:
         assert result.exit_code == 0
         assert "Available Plugins" in result.output
         # Verbose mode should show additional columns
+        assert "Configured" in result.output
+        assert "Module" in result.output
 
     def test_list_plugins_debug_mode(self, runner):
         """Test listing plugins with debug flag."""

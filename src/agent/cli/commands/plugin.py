@@ -288,6 +288,59 @@ def _validate_plugin_name(name: str) -> tuple[bool, str]:
     return True, ""
 
 
+def _load_plugin_capabilities(plugin_name: str, verbose: bool = False, debug: bool = False) -> list[dict]:
+    """Load capabilities for a given plugin.
+
+    Args:
+        plugin_name: Name of the plugin to load capabilities for
+        verbose: Whether to show verbose output
+        debug: Whether to show debug output
+
+    Returns:
+        List of capability definitions as dictionaries
+    """
+    capabilities = []
+
+    try:
+        import importlib.metadata
+
+        entry_points = importlib.metadata.entry_points()
+
+        if hasattr(entry_points, "select"):
+            plugin_entries = entry_points.select(group="agentup.plugins", name=plugin_name)
+        else:
+            plugin_entries = [ep for ep in entry_points.get("agentup.plugins", []) if ep.name == plugin_name]
+
+        for entry_point in plugin_entries:
+            try:
+                plugin_class = entry_point.load()
+                plugin_instance = plugin_class()
+                cap_definitions = plugin_instance.get_capability_definitions()
+
+                for cap_def in cap_definitions:
+                    capabilities.append(
+                        {
+                            "id": cap_def.id,
+                            "name": cap_def.name,
+                            "description": cap_def.description,
+                            "required_scopes": cap_def.required_scopes,
+                            "is_ai_function": cap_def.is_ai_capability,
+                            "tags": getattr(cap_def, "tags", []),
+                        }
+                    )
+
+            except Exception as e:
+                if debug or verbose:
+                    click.secho(f"Warning: Could not load plugin {plugin_name}: {e}", fg="yellow", err=True)
+                continue
+
+    except Exception as e:
+        if debug or verbose:
+            click.secho(f"Warning: Could not find entry point for {plugin_name}: {e}", fg="yellow", err=True)
+
+    return capabilities
+
+
 @click.group("plugin", help="Manage plugins and their configurations.")
 def plugin():
     pass
@@ -356,50 +409,22 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, agentup_cfg: bo
 
             # Only include capabilities if -c flag is used
             if capabilities:
-                # Discover capabilities for JSON output (same as table output)
                 capabilities_for_json = []
                 for plugin_info in all_available_plugins:
                     plugin_name = plugin_info["name"]
-                    try:
-                        import importlib.metadata
+                    plugin_capabilities = _load_plugin_capabilities(plugin_name, verbose, debug)
 
-                        entry_points = importlib.metadata.entry_points()
-
-                        if hasattr(entry_points, "select"):
-                            plugin_entries = entry_points.select(group="agentup.plugins", name=plugin_name)
-                        else:
-                            plugin_entries = [
-                                ep for ep in entry_points.get("agentup.plugins", []) if ep.name == plugin_name
-                            ]
-
-                        for entry_point in plugin_entries:
-                            try:
-                                plugin_class = entry_point.load()
-                                plugin_instance = plugin_class()
-                                cap_definitions = plugin_instance.get_capability_definitions()
-
-                                for cap_def in cap_definitions:
-                                    capabilities_for_json.append(
-                                        {
-                                            "id": cap_def.id,
-                                            "name": cap_def.name,
-                                            "description": cap_def.description,
-                                            "plugin": plugin_name,
-                                            "required_scopes": cap_def.required_scopes,
-                                            "ai_function": cap_def.is_ai_capability,
-                                        }
-                                    )
-                            except Exception as e:
-                                if debug or verbose:
-                                    click.secho(
-                                        f"Warning: Could not load plugin {plugin_name}: {e}",
-                                        fg="yellow",
-                                    )
-                                continue
-                    except Exception as e:
-                        if debug or verbose:
-                            click.secho(f"Warning: Could not load plugin {plugin_name}: {e}", fg="red")
-                        continue
+                    for cap in plugin_capabilities:
+                        capabilities_for_json.append(
+                            {
+                                "id": cap["id"],
+                                "name": cap["name"],
+                                "description": cap["description"],
+                                "plugin": plugin_name,
+                                "required_scopes": cap["required_scopes"],
+                                "ai_function": cap["is_ai_function"],
+                            }
+                        )
 
                 output["capabilities"] = capabilities_for_json
 
@@ -428,43 +453,19 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, agentup_cfg: bo
                 capabilities_for_yaml = []
                 for plugin_info in all_available_plugins:
                     plugin_name = plugin_info["name"]
-                    try:
-                        import importlib.metadata
+                    plugin_capabilities = _load_plugin_capabilities(plugin_name, verbose, debug)
 
-                        entry_points = importlib.metadata.entry_points()
-
-                        if hasattr(entry_points, "select"):
-                            plugin_entries = entry_points.select(group="agentup.plugins", name=plugin_name)
-                        else:
-                            plugin_entries = [
-                                ep for ep in entry_points.get("agentup.plugins", []) if ep.name == plugin_name
-                            ]
-
-                        for entry_point in plugin_entries:
-                            try:
-                                plugin_class = entry_point.load()
-                                plugin_instance = plugin_class()
-                                cap_definitions = plugin_instance.get_capability_definitions()
-
-                                for cap_def in cap_definitions:
-                                    capabilities_for_yaml.append(
-                                        {
-                                            "id": cap_def.id,
-                                            "name": cap_def.name,
-                                            "description": cap_def.description,
-                                            "plugin": plugin_name,
-                                            "required_scopes": cap_def.required_scopes,
-                                            "ai_function": cap_def.is_ai_capability,
-                                        }
-                                    )
-                            except Exception as e:
-                                if debug or verbose:
-                                    click.secho(f"Warning: Could not load plugin {plugin_name}: {e}", fg="red")
-                                continue
-                    except Exception as e:
-                        if debug or verbose:
-                            click.secho(f"Warning: Could not load plugin {plugin_name}: {e}", fg="red")
-                        continue
+                    for cap in plugin_capabilities:
+                        capabilities_for_yaml.append(
+                            {
+                                "id": cap["id"],
+                                "name": cap["name"],
+                                "description": cap["description"],
+                                "plugin": plugin_name,
+                                "required_scopes": cap["required_scopes"],
+                                "ai_function": cap["is_ai_function"],
+                            }
+                        )
 
                 output["capabilities"] = capabilities_for_yaml
 
@@ -517,42 +518,17 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, agentup_cfg: bo
                 )
 
                 # Load capabilities for this plugin
-                try:
-                    import importlib.metadata
+                plugin_capabilities = _load_plugin_capabilities(plugin_name, verbose, debug)
 
-                    entry_points = importlib.metadata.entry_points()
-
-                    if hasattr(entry_points, "select"):
-                        plugin_entries = entry_points.select(group="agentup.plugins", name=plugin_name)
-                    else:
-                        plugin_entries = [
-                            ep for ep in entry_points.get("agentup.plugins", []) if ep.name == plugin_name
+                for cap in plugin_capabilities:
+                    capability_config = OrderedDict(
+                        [
+                            ("capability_id", cap["id"]),
+                            ("required_scopes", cap["required_scopes"]),
+                            ("enabled", True),
                         ]
-
-                    for entry_point in plugin_entries:
-                        try:
-                            plugin_class = entry_point.load()
-                            plugin_instance = plugin_class()
-                            cap_definitions = plugin_instance.get_capability_definitions()
-
-                            for cap_def in cap_definitions:
-                                capability_config = OrderedDict(
-                                    [
-                                        ("capability_id", cap_def.id),
-                                        ("required_scopes", cap_def.required_scopes),
-                                        ("enabled", True),
-                                    ]
-                                )
-                                plugin_config["capabilities"].append(capability_config)
-
-                        except Exception as e:
-                            if debug or verbose:
-                                console.print(f"[dim red]Warning: Could not load plugin {plugin_name}: {e}[/dim red]")
-                            continue
-                except Exception as e:
-                    if debug or verbose:
-                        console.print(f"[dim red]Warning: Could not find entry point for {plugin_name}: {e}[/dim red]")
-                    continue
+                    )
+                    plugin_config["capabilities"].append(capability_config)
 
                 # Only add plugins that have capabilities
                 if plugin_config["capabilities"]:
@@ -623,52 +599,20 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, agentup_cfg: bo
 
             for plugin_info in all_available_plugins:
                 plugin_name = plugin_info["name"]
+                plugin_capabilities = _load_plugin_capabilities(plugin_name, verbose, debug)
 
-                try:
-                    # Try to load the plugin class to get its capabilities
-                    import importlib.metadata
-
-                    entry_points = importlib.metadata.entry_points()
-
-                    # Handle different Python versions
-                    if hasattr(entry_points, "select"):
-                        plugin_entries = entry_points.select(group="agentup.plugins", name=plugin_name)
-                    else:
-                        plugin_entries = [
-                            ep for ep in entry_points.get("agentup.plugins", []) if ep.name == plugin_name
-                        ]
-
-                    for entry_point in plugin_entries:
-                        try:
-                            plugin_class = entry_point.load()
-                            plugin_instance = plugin_class()
-
-                            # Get capability definitions
-                            cap_definitions = plugin_instance.get_capability_definitions()
-
-                            for cap_def in cap_definitions:
-                                all_capabilities_info.append(
-                                    {
-                                        "id": cap_def.id,
-                                        "name": cap_def.name,
-                                        "description": cap_def.description,
-                                        "plugin": plugin_name,
-                                        "scopes": cap_def.required_scopes,
-                                        "ai_function": cap_def.is_ai_capability,
-                                        "tags": getattr(cap_def, "tags", []),
-                                    }
-                                )
-
-                        except Exception as e:
-                            # Skip failed plugin loads but don't show errors in list command
-                            if debug or verbose:
-                                click.secho(f"Warning: Could not load plugin {plugin_name}: {e}", fg="red)")
-                            continue
-
-                except Exception as e:
-                    if debug or verbose:
-                        click.secho(f"Warning: Could not find entry point for {plugin_name}: {e}", fg="red")
-                    continue
+                for cap in plugin_capabilities:
+                    all_capabilities_info.append(
+                        {
+                            "id": cap["id"],
+                            "name": cap["name"],
+                            "description": cap["description"],
+                            "plugin": plugin_name,
+                            "scopes": cap["required_scopes"],
+                            "ai_function": cap["is_ai_function"],
+                            "tags": cap["tags"],
+                        }
+                    )
 
             if all_capabilities_info:
                 capabilities_table = Table(title="Available Capabilities", box=box.ROUNDED, title_style="bold cyan")
