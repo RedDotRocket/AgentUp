@@ -108,7 +108,7 @@ class TestTestHelpers:
         assert "openai" in config["services"]
         assert config["services"]["openai"]["settings"]["model"] == "gpt-4"
         assert len(config["skills"]) == 1
-        assert config["skills"][0]["skill_id"] == "test_skill"
+        assert config["skills"][0]["plugin_id"] == "test_skill"
 
     def test_build_predefined_configs(self):
         minimal = build_minimal_config()
@@ -117,7 +117,7 @@ class TestTestHelpers:
         # Test minimal
         assert minimal["agent"]["name"] == "minimal-test"
         assert len(minimal["skills"]) == 1
-        assert minimal["skills"][0]["skill_id"] == "echo"
+        assert minimal["skills"][0]["plugin_id"] == "echo"
 
         # Test standard
         assert standard["agent"]["name"] == "standard-test"

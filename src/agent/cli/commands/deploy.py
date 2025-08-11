@@ -312,7 +312,7 @@ data:
       description: A2A Agent deployed on Kubernetes
       version: 0.5.1
     skills:
-      - skill_id: hello_world
+      - plugin_id: hello_world
         name: Hello World
         description: A simple greeting
         input_mode: text
@@ -452,7 +452,7 @@ agentConfig: |
     description: A2A Agent deployed with Helm
     version: 0.5.1
   skills:
-    - skill_id: hello_world
+    - plugin_id: hello_world
       name: Hello World
       description: A simple greeting
       input_mode: text

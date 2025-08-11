@@ -266,7 +266,6 @@ class PluginAdapter:
             "output_mode": capability.output_mode,
             "tags": capability.tags,
             "priority": capability.priority,
-            "system_prompt": capability.system_prompt,
         }
 
     def get_ai_functions(self, capability_id: str):

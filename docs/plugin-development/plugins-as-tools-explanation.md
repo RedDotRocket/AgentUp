@@ -155,8 +155,8 @@ mcp:
     expose_handlers: true
 
 skills:
-  - skill_id: analyze_image  # Built-in skill
-  - skill_id: ai_assistant   # AI-powered skill that can call tools
+  - plugin_id: analyze_image  # Built-in skill
+  - plugin_id: ai_assistant   # AI-powered skill that can call tools
 ```
 
 ### 2. Available Tools to LLM
@@ -195,13 +195,13 @@ await mcp_client.call_tool("write_file", {"path": "/tmp/analysis.txt", "content"
 
 ```yaml
 skills:
-  - skill_id: weather_lookup
+  - plugin_id: weather_lookup
     name: Weather Lookup
     description: Get current weather for a location
     tags: [weather, external_api]
     # This skill can be called by LLMs when AI routing is enabled
     
-  - skill_id: file_processor  
+  - plugin_id: file_processor  
     name: File Processor
     description: Process uploaded files
     tags: [file, processing, multimodal]
@@ -217,10 +217,10 @@ routing:
 
 # OR per-skill
 skills:
-  - skill_id: data_analysis
+  - plugin_id: data_analysis
     routing_mode: ai  # Available as LLM tool
     
-  - skill_id: simple_greeting
+  - plugin_id: simple_greeting
     routing_mode: direct  # Direct keyword matching only
     keywords: [hello, hi]
 ```

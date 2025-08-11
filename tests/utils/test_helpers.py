@@ -36,7 +36,7 @@ def create_test_agent_config(
         "routing": {"default_mode": "ai", "fallback_capability": "ai_assistant"},
         "skills": [
             {
-                "skill_id": "ai_assistant",
+                "plugin_id": "ai_assistant",
                 "name": "AI Assistant",
                 "description": "General purpose AI assistant",
                 "input_mode": "text",
@@ -246,14 +246,14 @@ class AgentConfigBuilder:
     def with_anthropic_service(self, name: str = "anthropic", model: str = "claude-3-haiku-20240307"):
         return self.with_service(name, "llm", provider="anthropic", api_key="${ANTHROPIC_API_KEY}", model=model)
 
-    def with_skill(self, skill_id: str, name: str = None, **config):
+    def with_skill(self, plugin_id: str, name: str = None, **config):
         if "skills" not in self.config:
             self.config["skills"] = []
 
         skill = {
-            "skill_id": skill_id,
-            "name": name or skill_id.replace("_", " ").title(),
-            "description": f"Test skill {skill_id}",
+            "plugin_id": plugin_id,
+            "name": name or plugin_id.replace("_", " ").title(),
+            "description": f"Test skill {plugin_id}",
             "input_mode": "text",
             "output_mode": "text",
             **config,

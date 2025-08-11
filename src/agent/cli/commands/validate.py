@@ -60,9 +60,6 @@ def validate(config: str, check_env: bool, check_handlers: bool, strict: bool):
     if "ai" in config_data:
         validate_system_prompt_section(config_data["ai"], errors, warnings)
 
-    # Validate plugin system prompts in plugins
-    validate_plugin_system_prompts(config_data.get("plugins", []), errors, warnings)
-
     # Check environment variables
     if check_env:
         check_environment_variables(config_data, errors, warnings)
@@ -556,42 +553,6 @@ def validate_system_prompt_section(ai_config: dict[str, Any], errors: list[str],
         warnings.append("System prompt may lack clear role definition")
 
     click.echo(f"{click.style('✓', fg='green')} System prompt validated")
-
-
-def validate_plugin_system_prompts(plugins: list[dict[str, Any]], errors: list[str], warnings: list[str]):
-    plugin_prompt_count = 0
-
-    for i, plugin in enumerate(plugins):
-        if not isinstance(plugin, dict):
-            continue
-
-        plugin_id = plugin.get("plugin_id", f"plugin_{i}")
-
-        # Check if plugin has plugin-specific system prompt
-        if "system_prompt" in plugin:
-            plugin_prompt_count += 1
-            system_prompt = plugin["system_prompt"]
-
-            if not isinstance(system_prompt, str):
-                errors.append(f"Plugin '{plugin_id}' system_prompt must be a string")
-                continue
-
-            # Validate length
-            if len(system_prompt) < 10:
-                warnings.append(f"Plugin '{plugin_id}' system prompt is very short")
-            elif len(system_prompt) > 4000:
-                warnings.append(f"Plugin '{plugin_id}' system prompt is very long - may impact performance")
-
-            # Check for plugin-specific guidance
-            prompt_lower = system_prompt.lower()
-            plugin_name_lower = plugin.get("name", plugin_id).lower()
-            if plugin_name_lower not in prompt_lower and plugin_id.lower() not in prompt_lower:
-                warnings.append(f"Plugin '{plugin_id}' system prompt may lack plugin-specific guidance")
-
-    if plugin_prompt_count > 0:
-        click.echo(f"{click.style('✓', fg='green')} Plugin system prompts validated ({plugin_prompt_count} found)")
-    else:
-        click.echo(f"{click.style('✓', fg='green')} No plugin system prompts found")
 
 
 def validate_middleware_section(

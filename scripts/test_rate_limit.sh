@@ -274,7 +274,7 @@ echo "- Tested rate limit recovery functionality"
 echo "- Validated JSON responses and error handling"
 echo
 echo -e "${BLUE}Rate Limiting Configuration:${NC}"
-echo "- Rate limiting is applied per skill_id and user combination"
+echo "- Rate limiting is applied per plugin_id and user combination"
 echo "- Different handlers may have different rate limits configured"
 echo "- Rate limited requests return proper JSON-RPC error responses"
 echo "- Rate limits reset over time using token bucket algorithm"

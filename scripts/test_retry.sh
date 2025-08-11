@@ -55,13 +55,13 @@ check_dependencies() {
 # Enhanced function to test retry behavior with timing analysis
 test_retry_scenario() {
     local test_name="$1"
-    local skill_id="$2"
+    local plugin_id="$2"
     local content="$3"
     local expected_behavior="$4"
     local timeout_override="${5:-$TIMEOUT}"
 
     echo -e "${YELLOW}Test: $test_name${NC}"
-    echo "Skill: $skill_id"
+    echo "Skill: $plugin_id"
     echo "Content: $content"
     echo "Expected: $expected_behavior"
     echo
@@ -75,7 +75,7 @@ test_retry_scenario() {
             "jsonrpc": "2.0",
             "method": "send_message",
             "params": {
-                "skill_id": "'"$skill_id"'",
+                "plugin_id": "'"$plugin_id"'",
                 "messages": [{"role": "user", "content": "'"$content"'"}]
             },
             "id": "retry-test-'"$(date +%s)"'"
@@ -313,7 +313,7 @@ response=$(curl -s --max-time 5 -X POST "$SERVER_URL/" \
         "jsonrpc": "2.0", 
         "method": "send_message",
         "params": {
-            "skill_id": "retry_test",
+            "plugin_id": "retry_test",
             "messages": [{"role": "user", "content": "test handler exists"}]
         },
         "id": "handler-check"

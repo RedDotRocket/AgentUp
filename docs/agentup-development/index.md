@@ -123,7 +123,7 @@ agentup agent create weather-test --template standard
 # Configure agent to use your plugin
 echo "
 skills:
-  - skill_id: weather_plugin
+  - plugin_id: weather_plugin
     routing_mode: ai
 " >> weather-test/agent_config.yaml
 
@@ -546,7 +546,7 @@ agentup agent create test-minimal --template minimal
 cd test-minimal
 
 # Add your plugin
-echo "skills: [{skill_id: your_plugin}]" >> agent_config.yaml
+echo "skills: [{plugin_id: your_plugin}]" >> agent_config.yaml
 
 # Test specific scenarios
 curl -X POST http://localhost:8000/ \
@@ -580,7 +580,7 @@ pip install your-plugin
 ## Configuration
 ```yaml
 skills:
-  - skill_id: your_plugin
+  - plugin_id: your_plugin
     config:
       api_key: ${YOUR_API_KEY}
 ```

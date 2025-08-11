@@ -125,7 +125,7 @@ class MyPlugin:
     def execute_skill(self, context):
         logger.info("Plugin processing request",
                    plugin="my_plugin",
-                   skill=context.skill_id,
+                   skill=context.plugin_id,
                    correlation_id=context.correlation_id)
 
         # Your plugin logic here

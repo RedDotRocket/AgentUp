@@ -80,7 +80,7 @@ class TestStateConfigResolution:
 
     def test_resolve_state_config_global(self):
         global_config = {"enabled": True, "backend": "memory"}
-        skill_config = {"skill_id": "test_skill", "name": "Test Skill"}
+        skill_config = {"plugin_id": "test_skill", "name": "Test Skill"}
 
         with patch("src.agent.handlers.handlers._load_state_config", return_value=global_config):
             with patch("src.agent.handlers.handlers._get_plugin_config", return_value=skill_config):
@@ -91,7 +91,7 @@ class TestStateConfigResolution:
     def test_resolve_state_config_skill_override(self):
         global_config = {"enabled": True, "backend": "memory"}
         skill_config = {
-            "skill_id": "test_skill",
+            "plugin_id": "test_skill",
             "name": "Test Skill",
             "state_override": {"enabled": True, "backend": "file", "config": {"storage_dir": "/tmp"}},
         }
@@ -262,7 +262,7 @@ class TestGlobalStateApplication:
         with patch("src.agent.handlers.handlers._load_state_config", return_value=state_config):
             with patch("src.agent.handlers.handlers._apply_state_to_handler") as mock_apply_state:
                 # Mock apply_state to return a "wrapped" version
-                def mock_apply(handler, skill_id):
+                def mock_apply(handler, plugin_id):
                     wrapped = AsyncMock()
                     wrapped._agentup_state_applied = True
                     return wrapped
@@ -343,7 +343,7 @@ class TestGlobalStateApplication:
         with patch("src.agent.handlers.handlers._load_state_config", return_value=state_config):
             with patch("src.agent.handlers.handlers._apply_state_to_handler") as mock_apply_state:
                 # Mock apply_state to return a "wrapped" version
-                def mock_apply(handler, skill_id):
+                def mock_apply(handler, plugin_id):
                     wrapped = AsyncMock()
                     wrapped._agentup_state_applied = True
                     return wrapped
