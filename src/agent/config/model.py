@@ -8,7 +8,6 @@ for type safety and validation.
 from __future__ import annotations
 
 import os
-from abc import ABC
 from enum import Enum
 from pathlib import Path
 from typing import Any, Literal
@@ -20,7 +19,7 @@ from ..types import ConfigDict as ConfigDictType
 from ..types import FilePath, LogLevel, ModulePath, ServiceName, ServiceType, Version
 
 
-class BaseAgent(BaseModel, ABC):
+class BaseAgent(BaseModel):
     model_config = {
         "arbitrary_types_allowed": True,
         "extra": "allow",
