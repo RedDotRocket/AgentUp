@@ -489,10 +489,10 @@ AgentUp is fully compliant with A2A Protocol Specification v0.2.6:
 
 ### Executor Integration
 
-The `GenericAgentExecutor` (`src/agent/core/executor.py`) provides A2A-compliant task execution:
+The `AgentUpExecutor` (`src/agent/core/executor.py`) provides A2A-compliant task execution:
 
 ```python
-class GenericAgentExecutor(AgentExecutor):
+class AgentUpExecutor(AgentExecutor):
     """A2A-compliant executor for AgentUp agents.
     Handles both direct plugin routing and AI-based routing.
     """

@@ -29,11 +29,11 @@ from agent.config.a2a import BaseAgent
 logger = structlog.get_logger(__name__)
 
 
-class GenericAgentExecutor(AgentExecutor):
-    """Generic executor for AgentUp agents.
-    This executor handles both BaseAgent and AgentCard instances, allowing
-    for flexible routing based on keywords and patterns defined in the agent's config.
-    It supports both direct routing to specific plugins and AI-based routing using the dispatcher.
+class AgentUpExecutor(AgentExecutor):
+    """AgentUpExecutor executor for AgentUp agents.
+    The AgentUpExecutor allows us to inject Middleware into the agent's execution
+    context. This is where all the AgentUp logic maps out from A2A'isms.
+    A2A Handler → AgentUp Executor → Main Dispatcher
     """
 
     def __init__(self, agent: BaseAgent | AgentCard):

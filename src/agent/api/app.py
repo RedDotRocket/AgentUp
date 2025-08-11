@@ -10,7 +10,7 @@ from fastapi import FastAPI
 
 from agent.config.a2a import JSONRPCError
 from agent.config.constants import DEFAULT_SERVER_HOST, DEFAULT_SERVER_PORT
-from agent.core.executor import GenericAgentExecutor as AgentExecutorImpl
+from agent.core.executor import AgentUpExecutor
 from agent.push.notifier import EnhancedPushNotifier
 from agent.services import AgentBootstrapper, ConfigurationManager
 
@@ -73,7 +73,7 @@ def _setup_request_handler(app: FastAPI) -> None:
 
     # Create request handler
     request_handler = DefaultRequestHandler(
-        agent_executor=AgentExecutorImpl(agent=agent_card),
+        agent_executor=AgentUpExecutor(agent=agent_card),
         task_store=InMemoryTaskStore(),
         push_config_store=push_notifier,
         push_sender=push_notifier,
