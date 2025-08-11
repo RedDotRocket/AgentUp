@@ -83,3 +83,6 @@ memory/
 
 # mkdocs
 site/
+
+# misc
+.foam/
