@@ -33,6 +33,11 @@ class CapabilityMetadata:
     streaming: bool = False
     multimodal: bool = False
     handler: Callable | None = None
+    # A2A AgentSkill fields
+    examples: list[str] = field(default_factory=list)
+    input_modes: list[str] = field(default_factory=lambda: ["text/plain"])
+    output_modes: list[str] = field(default_factory=lambda: ["text/plain"])
+    security: list[dict[str, list[str]]] = field(default_factory=list)
 
     def to_capability_types(self) -> list[CapabilityType]:
         """Convert metadata to CapabilityType list"""
@@ -66,6 +71,11 @@ def capability(
     state_schema: dict | None = None,
     streaming: bool = False,
     multimodal: bool = False,
+    # A2A AgentSkill parameters
+    examples: list[str] | None = None,
+    input_modes: list[str] | None = None,
+    output_modes: list[str] | None = None,
+    security: list[dict[str, list[str]]] | None = None,
 ) -> Callable:
     """
     Decorator that marks a method as a plugin capability.
@@ -89,6 +99,11 @@ def capability(
         state_schema: JSON schema for capability state
         streaming: Whether capability supports streaming
         multimodal: Whether capability supports multimodal input/output
+        examples: Example usage strings for A2A AgentSkill
+        input_modes: List of supported input MIME types (A2A AgentSkill)
+        output_modes: List of supported output MIME types (A2A AgentSkill)
+        security: Security requirements for A2A AgentSkill
+
 
     Returns:
         Decorated function with capability metadata attached
@@ -131,6 +146,11 @@ def capability(
             streaming=streaming,
             multimodal=multimodal,
             handler=func,
+            # A2A AgentSkill parameters
+            examples=examples or [],
+            input_modes=input_modes or ["text/plain"],
+            output_modes=output_modes or ["text/plain"],
+            security=security or [],
         )
 
         # Store metadata on the function

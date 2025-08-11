@@ -64,36 +64,41 @@ def create_agent_card(extended: bool = False) -> AgentCard:
     # Add MCP tools as skills
     agent_skills.extend(_get_mcp_skills_for_agent_card())
 
-    # Get plugin information from the plugin registry
+    # Get capability information from the plugin registry
     from agent.plugins.manager import get_plugin_registry
 
     registry = get_plugin_registry()
-    if registry and registry.plugins:
+    if registry and registry.capabilities:
         # Create a lookup for plugin configurations by their ID for efficient access
         plugins_by_id = {p.get("plugin_id"): p for p in plugins if p.get("plugin_id")}
 
-        # Get loaded plugins from the registry's plugins attribute
-        for plugin_id, _plugin_instance in registry.plugins.items():
-            plugin_config = plugins_by_id.get(plugin_id)
+        # Iterate over all registered capabilities instead of plugins
+        for capability_id, capability_metadata in registry.capabilities.items():
+            # Find the plugin that owns this capability
+            plugin_id = registry.capability_to_plugin.get(capability_id)
+            plugin_config = plugins_by_id.get(plugin_id) if plugin_id else None
 
-            if plugin_config:
-                plugin_visibility = plugin_config.get("visibility", "public")
+            # Determine visibility - default to public if no plugin config
+            plugin_visibility = plugin_config.get("visibility", "public") if plugin_config else "public"
 
-                # Track if any extended plugins exist
-                if plugin_visibility == "extended":
-                    has_extended_plugins = True
+            # Track if any extended plugins exist
+            if plugin_visibility == "extended":
+                has_extended_plugins = True
 
-                # Include plugin in card based on visibility and card type
-                if plugin_visibility == "public" or (extended and plugin_visibility == "extended"):
-                    agent_skill = AgentSkill(
-                        id=plugin_id,
-                        name=plugin_config.get("name") or plugin_id,
-                        description=plugin_config.get("description") or f"Plugin {plugin_id}",
-                        inputModes=[plugin_config.get("input_mode", "text")],
-                        outputModes=[plugin_config.get("output_mode", "text")],
-                        tags=plugin_config.get("tags", ["general"]),
-                    )
-                    agent_skills.append(agent_skill)
+            # Include capability in card based on visibility and card type
+            if plugin_visibility == "public" or (extended and plugin_visibility == "extended"):
+                # Create AgentSkill from capability metadata using A2A fields
+                agent_skill = AgentSkill(
+                    id=capability_metadata.id,
+                    name=capability_metadata.name,
+                    description=capability_metadata.description,
+                    inputModes=capability_metadata.input_modes,  # Use A2A field
+                    outputModes=capability_metadata.output_modes,  # Use A2A field
+                    tags=capability_metadata.tags or ["general"],
+                    examples=capability_metadata.examples,  # A2A field
+                    security=capability_metadata.security,  # A2A field
+                )
+                agent_skills.append(agent_skill)
 
     # Create capabilities object with extensions
     extensions = []
