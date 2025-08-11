@@ -8,6 +8,7 @@ for type safety and validation.
 from __future__ import annotations
 
 import os
+from abc import ABC
 from enum import Enum
 from pathlib import Path
 from typing import Any, Literal
@@ -17,6 +18,17 @@ from pydantic_settings import BaseSettings
 
 from ..types import ConfigDict as ConfigDictType
 from ..types import FilePath, LogLevel, ModulePath, ServiceName, ServiceType, Version
+
+
+class BaseAgent(BaseModel, ABC):
+    model_config = {
+        "arbitrary_types_allowed": True,
+        "extra": "allow",
+    }
+
+    agent_name: str = Field(description="The name of the agent.")
+    description: str = Field(description="A brief description of the agent's purpose.")
+    content_types: list[str] = Field(description="Supported content types.")
 
 
 class EnvironmentVariable(BaseModel):
@@ -591,6 +603,7 @@ def expand_env_vars(value: Any) -> Any:
 # Re-export key models
 __all__ = [
     "AgentConfig",
+    "BaseAgent",
     "ServiceConfig",
     "LoggingConfig",
     "APIConfig",

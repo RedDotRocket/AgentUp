@@ -8,13 +8,13 @@ from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.server.tasks import InMemoryTaskStore
 from fastapi import FastAPI
 
-from agent.config.a2a import JSONRPCError
+from agent.a2a.agentcard import create_agent_card
 from agent.config.constants import DEFAULT_SERVER_HOST, DEFAULT_SERVER_PORT
 from agent.core.executor import AgentUpExecutor
 from agent.push.notifier import EnhancedPushNotifier
 from agent.services import AgentBootstrapper, ConfigurationManager
 
-from .routes import create_agent_card, jsonrpc_error_handler, router, set_request_handler_instance
+from .routes import router, set_request_handler_instance
 
 # Configure logging
 structlog.contextvars.clear_contextvars()
@@ -34,9 +34,9 @@ async def lifespan(app: FastAPI):
 
         # Now that services (including MCP) are initialized, create the real agent card with MCP skills
         # Clear cache to force regeneration since services may have changed capabilities
-        from agent.api.routes import _clear_agent_card_cache
+        from agent.a2a.agentcard import clear_agent_card_cache
 
-        _clear_agent_card_cache()
+        clear_agent_card_cache()
         app.state.agent_card = create_agent_card()
 
         # Setup request handler with services
@@ -100,9 +100,8 @@ def create_app() -> FastAPI:
     # Configure middleware
     _configure_middleware(app)
 
-    # Add routes and exception handlers
+    # Add routes
     app.include_router(router)
-    app.add_exception_handler(JSONRPCError, jsonrpc_error_handler)
 
     return app
 

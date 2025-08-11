@@ -24,7 +24,7 @@ from a2a.utils import (
 )
 from a2a.utils.errors import ServerError
 
-from agent.config.a2a import BaseAgent
+from agent.config.model import BaseAgent
 
 logger = structlog.get_logger(__name__)
 

@@ -1,13 +1,9 @@
-import json
-
-# Import the API components to test
 import sys
 from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI
 
 # Import FastAPI testing utilities
 from fastapi.testclient import TestClient
@@ -15,24 +11,22 @@ from fastapi.testclient import TestClient
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 from a2a.server.request_handlers import DefaultRequestHandler
+from a2a.types import (
+    AgentCapabilities,
+    AgentCard,
+)
 
 from agent.api import (
     create_agent_card,
     get_request_handler,
-    jsonrpc_error_handler,
     router,
     set_request_handler_instance,
     sse_generator,
 )
-from agent.config.a2a import (
-    AgentCapabilities,
-    AgentCard,
-    JSONRPCError,
-)
 
 
 class TestAgentCard:
-    @patch("agent.api.routes.ConfigurationManager")
+    @patch("agent.a2a.agentcard.ConfigurationManager")
     def test_create_agent_card_minimal(self, mock_config_manager):
         mock_config = {
             "project_name": "TestAgent",
@@ -56,7 +50,7 @@ class TestAgentCard:
         assert card.capabilities.streaming is True
         assert card.capabilities.state_transition_history is True
 
-    @patch("agent.api.routes.ConfigurationManager")
+    @patch("agent.a2a.agentcard.ConfigurationManager")
     def test_create_agent_card_with_skills(self, mock_config_manager):
         mock_config = {
             "agent": {"name": "SkillfulAgent", "description": "Agent with skills", "version": "2.0.0"},
@@ -78,7 +72,7 @@ class TestAgentCard:
         # With registry-only approach, configured plugins don't appear unless loaded in registry
         assert len(card.skills) == 0
 
-    @patch("agent.api.routes.ConfigurationManager")
+    @patch("agent.a2a.agentcard.ConfigurationManager")
     def test_create_agent_card_with_security_enabled(self, mock_config_manager):
         mock_config = {
             "agent": {"name": "SecureAgent"},
@@ -93,7 +87,7 @@ class TestAgentCard:
         assert card.security is not None
         assert len(card.security) > 0
 
-    @patch("agent.api.routes.ConfigurationManager")
+    @patch("agent.a2a.agentcard.ConfigurationManager")
     def test_create_agent_card_caching(self, mock_config_manager):
         """Test that AgentCard creation works (caching removed for simplicity)."""
         mock_config = {
@@ -293,21 +287,6 @@ class TestSSEGenerator:
         assert len(result) == 2
         assert result[0] == 'data: {"data": "ok"}\n\n'
         assert "Stream error" in result[1]
-
-
-class TestJSONRPCErrorHandler:
-    @pytest.mark.asyncio
-    async def test_jsonrpc_error_handler(self):
-        request = Mock(spec=Request)
-        error = JSONRPCError(code=-32600, message="Invalid Request", data={"detail": "Missing required field"})
-
-        response = await jsonrpc_error_handler(request, error)
-
-        assert isinstance(response, JSONResponse)
-        assert response.status_code == 400
-        content = json.loads(response.body)
-        assert content["error"]["code"] == -32600
-        assert content["error"]["message"] == "Invalid Request"
 
 
 if __name__ == "__main__":
