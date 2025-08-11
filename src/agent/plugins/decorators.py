@@ -148,8 +148,8 @@ def capability(
             handler=func,
             # A2A AgentSkill parameters
             examples=examples or [],
-            input_modes=input_modes or ["text/plain"],
-            output_modes=output_modes or ["text/plain"],
+            input_modes=input_modes if input_modes is not None else ["text/plain"],
+            output_modes=output_modes if output_modes is not None else ["text/plain"],
             security=security or [],
         )
 
