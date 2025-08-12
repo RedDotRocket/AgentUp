@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from a2a.types import Message, Role, Task
@@ -24,7 +24,7 @@ class MessageProcessor:
                     message = Message(
                         role=msg.get("role", "user"),
                         content=msg.get("content", ""),
-                        timestamp=msg.get("timestamp", datetime.utcnow().isoformat()),
+                        timestamp=msg.get("timestamp", datetime.now(timezone.utc).isoformat()),
                     )
                     messages.append(message)
                 except Exception:
@@ -71,18 +71,18 @@ class MessageProcessor:
                     {
                         "role": getattr(message, "role", "unknown"),
                         "content": getattr(message, "content", ""),
-                        "timestamp": getattr(message, "timestamp", datetime.utcnow().isoformat()),
+                        "timestamp": getattr(message, "timestamp", datetime.now(timezone.utc).isoformat()),
                     }
                 )
         return history
 
     @staticmethod
     def create_system_message(content: str) -> dict[str, Any]:
-        return {"role": "system", "content": content, "timestamp": datetime.utcnow().isoformat()}
+        return {"role": "system", "content": content, "timestamp": datetime.now(timezone.utc).isoformat()}
 
     @staticmethod
     def create_assistant_message(content: str) -> dict[str, Any]:
-        return {"role": "assistant", "content": content, "timestamp": datetime.utcnow().isoformat()}
+        return {"role": "assistant", "content": content, "timestamp": datetime.now(timezone.utc).isoformat()}
 
 
 class ConversationContext:
@@ -124,7 +124,7 @@ class ConversationContext:
         context = cls.get_context(task_id)
         history = context.get("conversation_history", [])
 
-        history.append({"role": role, "content": content, "timestamp": datetime.utcnow().isoformat()})
+        history.append({"role": role, "content": content, "timestamp": datetime.now(timezone.utc).isoformat()})
 
         # Keep only last 20 messages to prevent memory issues
         if len(history) > 20:

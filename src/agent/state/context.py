@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import structlog
@@ -275,8 +275,8 @@ class ConversationContext:
             state = ConversationState(
                 context_id=context_id,
                 user_id=user_id,
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
                 metadata={},
                 variables={},
                 history=[],
@@ -293,7 +293,7 @@ class ConversationContext:
             if hasattr(state, key):
                 setattr(state, key, value)
 
-        state.updated_at = datetime.utcnow()
+        state.updated_at = datetime.now(timezone.utc)
         await self.storage.set(state)
 
     async def add_to_history(
@@ -304,7 +304,7 @@ class ConversationContext:
         message = {
             "role": role,
             "content": content,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "metadata": metadata or {},
         }
 
@@ -314,7 +314,7 @@ class ConversationContext:
         if len(state.history) > 100:
             state.history = state.history[-100:]
 
-        state.updated_at = datetime.utcnow()
+        state.updated_at = datetime.now(timezone.utc)
         await self.storage.set(state)
 
     async def get_history(self, context_id: str, limit: int | None = None) -> list[dict[str, Any]]:
@@ -331,7 +331,7 @@ class ConversationContext:
     async def set_variable(self, context_id: str, key: str, value: Any) -> None:
         state = await self.get_or_create(context_id)
         state.variables[key] = value
-        state.updated_at = datetime.utcnow()
+        state.updated_at = datetime.now(timezone.utc)
         await self.storage.set(state)
 
     async def get_variable(self, context_id: str, key: str, default: Any = None) -> Any:
@@ -343,7 +343,7 @@ class ConversationContext:
     async def set_metadata(self, context_id: str, key: str, value: Any) -> None:
         state = await self.get_or_create(context_id)
         state.metadata[key] = value
-        state.updated_at = datetime.utcnow()
+        state.updated_at = datetime.now(timezone.utc)
         await self.storage.set(state)
 
     async def get_metadata(self, context_id: str, key: str, default: Any = None) -> Any:
@@ -356,7 +356,7 @@ class ConversationContext:
         await self.storage.delete(context_id)
 
     async def cleanup_old_contexts(self, max_age_hours: int = 24) -> int:
-        cutoff_time = datetime.utcnow() - timedelta(hours=max_age_hours)
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
         cleaned = 0
 
         for context_id in await self.storage.list_contexts():

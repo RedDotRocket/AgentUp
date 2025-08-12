@@ -1,6 +1,6 @@
 import importlib
 from collections.abc import Callable
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from a2a.types import Task
@@ -106,7 +106,7 @@ def generate_task_id() -> str:
 
 
 def get_timestamp() -> str:
-    return datetime.utcnow().isoformat()
+    return datetime.now(timezone.utc).isoformat()
 
 
 # Export utility functions
