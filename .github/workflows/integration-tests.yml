@@ -46,7 +46,7 @@ jobs:
       if: matrix.installation == 'minimal'
       run: |
         # Install without CrewAI to test optional dependency handling
-        uv sync --no-extra --dev
+        uv sync --dev
         uv pip install -e .
         echo "Testing minimal installation without CrewAI"
 
@@ -160,7 +160,7 @@ jobs:
     - name: Install dependencies with specific CrewAI version
       run: |
         # Install base dependencies
-        uv sync --no-extra --dev
+        uv sync --dev
         uv pip install -e .
 
         # Install specific CrewAI version

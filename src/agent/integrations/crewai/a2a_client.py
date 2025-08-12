@@ -13,7 +13,16 @@ logger = structlog.get_logger(__name__)
 
 
 class A2AClient:
-    """Client for communicating with AgentUp agents via A2A protocol."""
+    """Client for communicating with AgentUp agents via A2A protocol.
+
+    This client MUST be used as an async context manager to ensure proper resource cleanup:
+
+    Example:
+        async with A2AClient("http://localhost:8000", api_key="your-key") as client:
+            response = await client.send_message("Hello, agent!")
+
+    Using the client outside of a context manager will raise a RuntimeError.
+    """
 
     def __init__(
         self,
@@ -45,6 +54,7 @@ class A2AClient:
         """Async context manager exit."""
         if self.client:
             await self.client.aclose()
+        return None
 
     def _get_headers(self) -> dict[str, str]:
         """Get request headers with authentication."""
@@ -68,9 +78,15 @@ class A2AClient:
 
         Returns:
             The A2A response as a dictionary
+
+        Raises:
+            RuntimeError: If client is not properly initialized via context manager
         """
         if not self.client:
-            self.client = AsyncClient(timeout=self.timeout)
+            raise RuntimeError(
+                "A2AClient must be used as an async context manager. "
+                "Use 'async with A2AClient(...) as client:' to ensure proper resource cleanup."
+            )
 
         message_id = message_id or f"msg-{uuid.uuid4()}"
         request_id = f"req-{uuid.uuid4()}"
@@ -155,9 +171,15 @@ class A2AClient:
 
         Yields:
             Chunks of the streaming response
+
+        Raises:
+            RuntimeError: If client is not properly initialized via context manager
         """
         if not self.client:
-            self.client = AsyncClient(timeout=self.timeout)
+            raise RuntimeError(
+                "A2AClient must be used as an async context manager. "
+                "Use 'async with A2AClient(...) as client:' to ensure proper resource cleanup."
+            )
 
         message_id = f"msg-{uuid.uuid4()}"
         request_id = f"req-{uuid.uuid4()}"
@@ -209,9 +231,15 @@ class A2AClient:
 
         Returns:
             The AgentCard as a dictionary
+
+        Raises:
+            RuntimeError: If client is not properly initialized via context manager
         """
         if not self.client:
-            self.client = AsyncClient(timeout=self.timeout)
+            raise RuntimeError(
+                "A2AClient must be used as an async context manager. "
+                "Use 'async with A2AClient(...) as client:' to ensure proper resource cleanup."
+            )
 
         try:
             response = await self.client.get(f"{self.base_url}/.well-known/agent-card.json")
@@ -229,9 +257,15 @@ class A2AClient:
 
         Returns:
             Task status information
+
+        Raises:
+            RuntimeError: If client is not properly initialized via context manager
         """
         if not self.client:
-            self.client = AsyncClient(timeout=self.timeout)
+            raise RuntimeError(
+                "A2AClient must be used as an async context manager. "
+                "Use 'async with A2AClient(...) as client:' to ensure proper resource cleanup."
+            )
 
         try:
             response = await self.client.get(

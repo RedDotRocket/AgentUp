@@ -104,7 +104,7 @@ jobs:
     - name: Install minimal dependencies (without CrewAI)
       run: |
         # Install without extras to verify optional dependencies work
-        uv sync --no-extra --dev
+        uv sync --dev
         uv pip install -e .
 
     - name: Verify CrewAI is not installed

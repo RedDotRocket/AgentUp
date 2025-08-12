@@ -47,7 +47,7 @@ pip install agentup[crewai]
 pip install agentup
 
 # Option 3: Install from source with CrewAI support
-git clone https://github.com/your-org/agentup.git
+git clone https://github.com/RedDotRocket/agentup.git
 cd agentup
 pip install -e ".[crewai]"
 ```
@@ -102,7 +102,8 @@ These components are useful for building custom integrations or using AgentUp wi
 from agent.integrations.crewai import A2AClient, AgentUpDiscovery
 
 async def use_agentup_directly():
-    # Direct A2A communication
+    # IMPORTANT: A2AClient MUST be used as an async context manager
+    # This ensures proper resource cleanup and prevents connection leaks
     async with A2AClient(base_url="http://localhost:8000") as client:
         response = await client.send_message("Hello from Python")
         print(response)
@@ -646,7 +647,7 @@ async def robust_agent_call(tool: AgentUpTool, query: str) -> str:
 ### 3. Resource Management
 
 ```python
-# Use async context managers
+# ALWAYS use async context managers for A2AClient to prevent resource leaks
 async def process_multiple_queries(queries: list[str]):
     async with A2AClient(base_url="http://localhost:8000") as client:
         results = []
@@ -736,21 +737,27 @@ class A2AClient:
         max_retries: int = 3
     )
 
+    # Context manager methods - handles httpx.AsyncClient lifecycle
+    async def __aenter__(self) -> A2AClient
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None
+
+    # All methods require proper context manager usage
     async def send_message(
         message: str,
         context_id: Optional[str] = None,
         message_id: Optional[str] = None
-    ) -> dict[str, Any]
+    ) -> dict[str, Any]  # Raises RuntimeError if not in context
 
     async def stream_message(
         message: str,
         context_id: Optional[str] = None
-    ) -> AsyncGenerator[dict[str, Any], None]
+    ) -> AsyncGenerator[dict[str, Any], None]  # Raises RuntimeError if not in context
 
-    async def get_agent_card() -> dict[str, Any]
-    async def get_task_status(task_id: str) -> dict[str, Any]
-    def extract_text_from_response(response: dict[str, Any]) -> str
+    async def get_agent_card() -> dict[str, Any]  # Raises RuntimeError if not in context
+    async def get_task_status(task_id: str) -> dict[str, Any]  # Raises RuntimeError if not in context
+    def extract_text_from_response(response: dict[str, Any]) -> str  # Safe utility method
 ```
+
 
 ### AgentUpDiscovery
 
@@ -837,7 +844,7 @@ uv sync --all-extras --dev
 uv run pytest tests/thirdparty/ -v
 
 # Test minimal installation
-uv sync --no-extra --dev
+uv sync --dev
 uv run pytest tests/test_core/ tests/test_cli/ -v
 
 # Test specific CrewAI integration
@@ -845,12 +852,3 @@ uv sync --extra crewai --dev
 uv run pytest tests/thirdparty/test_agentup_tool.py -v
 ```
 
-### CI/CD Integration
-
-The GitHub Actions workflow automatically tests both configurations:
-
-1. **Full Installation**: Tests with all extras including CrewAI
-2. **Minimal Installation**: Tests without CrewAI to ensure graceful degradation
-3. **Version Compatibility**: Tests against multiple CrewAI versions
-
-This ensures the integration works correctly whether CrewAI is installed or not.
