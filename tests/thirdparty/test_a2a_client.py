@@ -1,7 +1,3 @@
-"""Tests for A2A client."""
-
-from unittest.mock import AsyncMock, MagicMock, patch
-
 import httpx
 import pytest
 
@@ -28,6 +24,7 @@ class TestA2AClient:
     @pytest.mark.asyncio
     async def test_send_message_success(self, client, mock_response):
         """Test successful message sending."""
+
         def mock_handler(request):
             # Verify request details
             assert request.url == "http://test:8000"
@@ -36,6 +33,7 @@ class TestA2AClient:
 
             # Parse and verify request JSON
             import json
+
             request_data = json.loads(request.content.decode())
             assert request_data["jsonrpc"] == "2.0"
             assert request_data["method"] == "message/send"
@@ -56,8 +54,10 @@ class TestA2AClient:
     @pytest.mark.asyncio
     async def test_send_message_with_context_id(self, client, mock_response):
         """Test message sending with context ID."""
+
         def mock_handler(request):
             import json
+
             request_data = json.loads(request.content.decode())
             assert request_data["params"]["context_id"] == "test-context"
             return httpx.Response(200, json=mock_response)

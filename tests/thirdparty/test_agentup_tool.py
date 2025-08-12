@@ -50,6 +50,7 @@ class TestAgentUpTool:
 
     def test_run_synchronous(self, tool):
         """Test synchronous _run method."""
+
         # Mock the entire _arun method instead of trying to mock the internals
         async def mock_arun(query, context_id=None):
             return "Test response"
@@ -66,19 +67,14 @@ class TestAgentUpTool:
     async def test_arun_asynchronous(self, tool):
         """Test asynchronous _arun method."""
         # Mock the A2AClient to avoid actual HTTP calls
-        with patch('agent.integrations.crewai.agentup_tool.A2AClient') as mock_a2a_class:
+        with patch("agent.integrations.crewai.agentup_tool.A2AClient") as mock_a2a_class:
             # Create a mock A2A client
             mock_client = AsyncMock()
             mock_a2a_class.return_value.__aenter__.return_value = mock_client
             mock_a2a_class.return_value.__aexit__.return_value = AsyncMock()
 
             # Mock the send_message method properly with async return
-            mock_response = {
-                "message": {
-                    "role": "assistant",
-                    "parts": [{"kind": "text", "text": "Async response"}]
-                }
-            }
+            mock_response = {"message": {"role": "assistant", "parts": [{"kind": "text", "text": "Async response"}]}}
 
             # Create proper mock functions for both methods
             async def mock_send_message(*args, **kwargs):

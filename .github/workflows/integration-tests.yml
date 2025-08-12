@@ -46,7 +46,7 @@ jobs:
       if: matrix.installation == 'minimal'
       run: |
         # Install without CrewAI to test optional dependency handling
-        uv sync --no-extras --dev
+        uv sync --no-extra --dev
         uv pip install -e .
         echo "Testing minimal installation without CrewAI"
 
@@ -83,7 +83,7 @@ jobs:
         uv run python -c "
         import sys
         import warnings
-        
+
         # Test importing the integration module
         try:
             from agent.integrations import crewai
@@ -91,7 +91,7 @@ jobs:
         except ImportError as e:
             print(f'✗ Failed to import integration module: {e}')
             sys.exit(1)
-        
+
         # Test importing AgentUpTool
         installation = '${{ matrix.installation }}'
         if installation == 'with-crewai':
@@ -123,12 +123,12 @@ jobs:
         # Verify the system works without CrewAI
         uv run python -c "
         import warnings
-        
+
         # Capture the warning about CrewAI not being installed
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter('always')
             from agent.integrations import crewai
-            
+
             # Check that a warning was issued
             assert len(w) > 0, 'No warning issued when CrewAI is not installed'
             warning_msg = str(w[0].message)
@@ -160,16 +160,16 @@ jobs:
     - name: Install dependencies with specific CrewAI version
       run: |
         # Install base dependencies
-        uv sync --no-extras --dev
+        uv sync --no-extra --dev
         uv pip install -e .
-        
+
         # Install specific CrewAI version
         if [ "${{ matrix.crewai-version }}" = "latest" ]; then
           uv pip install crewai
         else
           uv pip install crewai==${{ matrix.crewai-version }}
         fi
-        
+
         # Show installed version
         uv run python -c "import crewai; print(f'Testing with CrewAI version: {crewai.__version__}')"
 

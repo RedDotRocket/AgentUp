@@ -837,7 +837,7 @@ uv sync --all-extras --dev
 uv run pytest tests/thirdparty/ -v
 
 # Test minimal installation
-uv sync --no-extras --dev
+uv sync --no-extra --dev
 uv run pytest tests/test_core/ tests/test_cli/ -v
 
 # Test specific CrewAI integration
