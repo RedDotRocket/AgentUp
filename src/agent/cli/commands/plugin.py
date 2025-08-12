@@ -547,9 +547,17 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, agentup_cfg: bo
 
         # Table format (default)
         if not all_available_plugins:
-            click.secho("[yellow]No plugins found.[/yellow]")
-            click.secho("\nTo create a plugin: [cyan]agentup plugin create[/cyan]")
-            click.secho("To install from registry: [cyan]agentup plugin install <name>[/cyan]")
+            click.secho("No plugins found", fg="yellow")
+            click.secho(
+                "\nTo create a plugin: "
+                + click.style("agentup plugin create ", fg="cyan")
+                + click.style("<plugin_name>", fg="blue")
+            )
+            click.secho(
+                "To install from registry: "
+                + click.style("agentup plugin install ", fg="cyan")
+                + click.style("<plugin_name>", fg="blue")
+            )
             return
 
         # Plugins table - show all available plugins
