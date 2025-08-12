@@ -1,0 +1,178 @@
+name: Integration Tests
+
+on:
+  push:
+    branches: [ main, develop, crew-ai ]
+    paths:
+      - 'src/agent/integrations/**'
+      - 'tests/thirdparty/**'
+      - 'pyproject.toml'
+      - '.github/workflows/integration-tests.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'src/agent/integrations/**'
+      - 'tests/thirdparty/**'
+      - 'pyproject.toml'
+      - '.github/workflows/integration-tests.yml'
+
+jobs:
+  test-crewai-integration:
+    name: Test CrewAI Integration
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        installation: [minimal, with-crewai]
+        python-version: ["3.11", "3.12"]
+
+    steps:
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v4
+      with:
+        enable-cache: true
+        cache-dependency-glob: |
+          **/pyproject.toml
+          **/uv.lock
+
+    - name: Set up Python ${{ matrix.python-version }}
+      run: |
+        uv python install ${{ matrix.python-version }}
+        uv python pin ${{ matrix.python-version }}
+
+    - name: Install dependencies (minimal)
+      if: matrix.installation == 'minimal'
+      run: |
+        # Install without CrewAI to test optional dependency handling
+        uv sync --no-extras --dev
+        uv pip install -e .
+        echo "Testing minimal installation without CrewAI"
+
+    - name: Install dependencies (with CrewAI)
+      if: matrix.installation == 'with-crewai'
+      run: |
+        # Install with CrewAI extra
+        uv sync --extra crewai --dev
+        uv pip install -e .
+        echo "Testing full installation with CrewAI"
+
+    - name: Verify CrewAI installation status
+      run: |
+        if [ "${{ matrix.installation }}" = "minimal" ]; then
+          # Verify CrewAI is NOT installed
+          if uv run python -c "import crewai" 2>/dev/null; then
+            echo "ERROR: CrewAI should not be installed in minimal mode"
+            exit 1
+          else
+            echo "✓ CrewAI is not installed (expected for minimal)"
+          fi
+        else
+          # Verify CrewAI IS installed
+          if uv run python -c "import crewai; print(f'✓ CrewAI version: {crewai.__version__}')" 2>/dev/null; then
+            echo "✓ CrewAI is installed"
+          else
+            echo "ERROR: CrewAI should be installed in with-crewai mode"
+            exit 1
+          fi
+        fi
+
+    - name: Test CrewAI integration imports
+      run: |
+        uv run python -c "
+        import sys
+        import warnings
+        
+        # Test importing the integration module
+        try:
+            from agent.integrations import crewai
+            print('✓ Integration module imported')
+        except ImportError as e:
+            print(f'✗ Failed to import integration module: {e}')
+            sys.exit(1)
+        
+        # Test importing AgentUpTool
+        installation = '${{ matrix.installation }}'
+        if installation == 'with-crewai':
+            try:
+                from agent.integrations.crewai import AgentUpTool
+                print('✓ AgentUpTool imported successfully')
+            except ImportError as e:
+                print(f'✗ Failed to import AgentUpTool: {e}')
+                sys.exit(1)
+        else:
+            # Should raise ImportError in minimal mode
+            try:
+                from agent.integrations.crewai import AgentUpTool
+                print('✗ AgentUpTool should not be importable without CrewAI')
+                sys.exit(1)
+            except ImportError:
+                print('✓ AgentUpTool correctly raises ImportError without CrewAI')
+        "
+
+    - name: Run integration tests
+      if: matrix.installation == 'with-crewai'
+      run: |
+        # Run CrewAI integration tests only when CrewAI is installed
+        uv run pytest tests/thirdparty/ -v --tb=short
+
+    - name: Test graceful degradation
+      if: matrix.installation == 'minimal'
+      run: |
+        # Verify the system works without CrewAI
+        uv run python -c "
+        import warnings
+        
+        # Capture the warning about CrewAI not being installed
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter('always')
+            from agent.integrations import crewai
+            
+            # Check that a warning was issued
+            assert len(w) > 0, 'No warning issued when CrewAI is not installed'
+            warning_msg = str(w[0].message)
+            assert 'CrewAI' in warning_msg, f'Warning does not mention CrewAI: {warning_msg}'
+            print(f'✓ Warning correctly issued: {warning_msg}')
+        "
+
+  test-crewai-versions:
+    name: Test CrewAI Version Compatibility
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        crewai-version: ["0.157.0", "latest"]
+
+    steps:
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v4
+      with:
+        enable-cache: true
+
+    - name: Set up Python
+      run: |
+        uv python install 3.11
+        uv python pin 3.11
+
+    - name: Install dependencies with specific CrewAI version
+      run: |
+        # Install base dependencies
+        uv sync --no-extras --dev
+        uv pip install -e .
+        
+        # Install specific CrewAI version
+        if [ "${{ matrix.crewai-version }}" = "latest" ]; then
+          uv pip install crewai
+        else
+          uv pip install crewai==${{ matrix.crewai-version }}
+        fi
+        
+        # Show installed version
+        uv run python -c "import crewai; print(f'Testing with CrewAI version: {crewai.__version__}')"
+
+    - name: Run integration tests
+      run: |
+        uv run pytest tests/thirdparty/ -v --tb=short

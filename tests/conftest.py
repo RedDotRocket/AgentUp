@@ -8,6 +8,10 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 import yaml
 
+# Prevent litellm from downloading price data during tests which gets pulled in
+# care of CrewAI Integration
+os.environ["LITELLM_LOCAL_MODEL_COST_MAP"] = "true"
+
 # Test data directory
 TEST_DATA_DIR = Path(__file__).parent / "fixtures"
 

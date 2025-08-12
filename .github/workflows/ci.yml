@@ -61,6 +61,11 @@ jobs:
       run: |
         make test-unit-coverage
 
+    - name: Run thirdparty tests (CrewAI integration)
+      run: |
+        # Tests should pass with CrewAI installed via --all-extras
+        uv run pytest tests/thirdparty/ -v
+
     - name: Upload coverage reports
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       with:
@@ -76,10 +81,66 @@ jobs:
           .coverage
           coverage.xml
 
+  test-minimal:
+    name: Test Minimal Installation (without CrewAI)
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v4
+      with:
+        enable-cache: true
+        cache-dependency-glob: |
+          **/pyproject.toml
+          **/uv.lock
+
+    - name: Set up Python
+      run: |
+        uv python install 3.11
+        uv python pin 3.11
+
+    - name: Install minimal dependencies (without CrewAI)
+      run: |
+        # Install without extras to verify optional dependencies work
+        uv sync --no-extras --dev
+        uv pip install -e .
+
+    - name: Verify CrewAI is not installed
+      run: |
+        # This should fail if CrewAI is installed
+        ! uv run python -c "import crewai" 2>/dev/null
+        echo "✓ CrewAI is not installed (as expected for minimal installation)"
+
+    - name: Test imports work without CrewAI
+      run: |
+        # Test that the integration module can be imported without CrewAI
+        uv run python -c "
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            try:
+                from agent.integrations.crewai import AgentUpTool
+                print('ERROR: AgentUpTool should not be importable without CrewAI')
+                exit(1)
+            except ImportError as e:
+                print(f'✓ Expected ImportError: {e}')
+        
+        # But the module itself should import with a warning
+        from agent.integrations import crewai
+        print('✓ Integration module imports successfully')
+        "
+
+    - name: Run core tests without CrewAI
+      run: |
+        # Run core tests to ensure they don't depend on CrewAI
+        uv run pytest tests/test_core/ tests/test_cli/ -v --tb=short
+
   build:
     name: Build Package
     runs-on: ubuntu-latest
-    needs: test
+    needs: [test, test-minimal]
 
     steps:
     - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4

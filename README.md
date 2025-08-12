@@ -52,9 +52,6 @@
 
   <br/>
 
-
-
-
 ## Why AgentUp?
 
 **Operating System for AI Agents** - Built on operating system principles, AgentUp provides a robust foundation for creating AI agents through its highly extensible architecture. Its pluggable design lets you customize and add functionality without touching core code - giving you the flexibility to build exactly what you need while maintaining system stability, and ensuring your agents are portable and maintainable.
@@ -64,7 +61,6 @@
 **Security by Design** - Tools / MCP servers (Plugins!) are protected with AgentUp's fine-grained scope-based access control system. Fine-grained permissions ensure your plugins and MCP servers only access what they need, when they need it and only if granted so by you (`file:write`, `api:read`, `db:write`). Built-in authentication for OAuth2, JWT, and API keys integrates with your existing identity providers.
 
 **Plugin Ecosystem** - Extend functionality through a growing ecosystem of community plugins, or build your own. Plugins inherit all of AgentUp's middleware, security, and operational features automatically. Version plugins independently and integrate seamlessly with your existing CI/CD pipeline.
-
 
 ## Advanced Architecture with Production Aspirations
 
@@ -102,6 +98,13 @@ is built on the A2A (Agent-to-Agent) specification, and the maintainer is active
 **Configuration as Code** - Agent behavior, data sources, and workflows are defined through version-controlled YAML configuration. No framework internals to learn, no boilerplate to maintain. Your agents are portable across environments and teams.
 
 **Real-Time Operations** - Built-in support for streaming responses, asynchronous operations, and push notifications. Monitor agent performance and behavior through comprehensive logging and configurable metrics collection.
+
+### Current Integrations
+
+AgentUp Agents are able to present themselves as Tools to different frameworks, which brings the advantage of ensuring all Tool usage
+is consistent and secure, tracked and traceable.
+
+- [CrewAI](https://crewai.com), see [documentation](docs/integrations/crewai.md) for details.
 
 ## Get Started in Minutes
 

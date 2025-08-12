@@ -58,7 +58,7 @@ test: ## Run all tests (unit + integration + e2e)
 	uv run pytest tests/ -v
 
 test-unit: ## Run unit tests only (fast)
-	uv run pytest tests/test_*.py tests/test_core/ tests/test_cli/  -v -m "not integration and not e2e and not performance"
+	uv run pytest tests/test_*.py tests/test_core/ tests/test_cli/  tests/thirdparty -v -m "not integration and not e2e and not performance"
 
 test-unit-coverage: ## Run unit tests with coverage report
 	uv run pytest tests/test_*.py tests/test_core/ tests/test_cli/  --cov=src --cov-report=html --cov-report=term-missing -m "not integration and not e2e and not performance"

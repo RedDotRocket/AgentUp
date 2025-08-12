@@ -45,6 +45,9 @@ agent = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
 ]
+crewai = [
+    "crewai>=0.157.0",
+]
 dev = [
     "ruff>=0.8.0",
     "mypy>=1.13.0",

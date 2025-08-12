@@ -104,6 +104,8 @@ nav:
     - OAuth2 Provider Configuration: security/oauth2-provider-configuration.md
     - GitHub OAuth2 Setup: security/github_oauth2_setup.md
     - Scope-based Authorization: security/scope-based-authorization.md
+  - Integrations:
+    - CrewAI: integrations/crewai.md
   - Plugin Development:
     - Plugin Development: plugin-development/index.md
     - Getting Started: plugin-development/getting-started.md
