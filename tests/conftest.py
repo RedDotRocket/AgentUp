@@ -1,5 +1,6 @@
 import os
 import tempfile
+import warnings
 from collections.abc import Generator
 from pathlib import Path
 from typing import Any
@@ -8,9 +9,18 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 import yaml
 
+warnings.filterwarnings(
+    "ignore",
+    message=".*open_text is deprecated.*",
+    category=DeprecationWarning,
+    module="litellm.*"
+)
+
 # Prevent litellm from downloading price data during tests which gets pulled in
 # care of CrewAI Integration
 os.environ["LITELLM_LOCAL_MODEL_COST_MAP"] = "true"
+
+
 
 # Test data directory
 TEST_DATA_DIR = Path(__file__).parent / "fixtures"

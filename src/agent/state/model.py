@@ -7,14 +7,15 @@ variables, and backend configuration.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import timedelta, timezone
 from enum import Enum
 from typing import Any, Generic, Literal, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
-from ..types import TTL, FilePath, SessionId, Timestamp, UserId
-from ..types import ConfigDict as ConfigDictType
+from agent.types import TTL, FilePath, SessionId, Timestamp, UserId
+from agent.types import ConfigDict as ConfigDictType
+from agent.utils import utc_now
 
 # Generic type for state variables
 T = TypeVar("T")
@@ -35,8 +36,8 @@ class StateVariable(BaseModel, Generic[T]):
     key: str = Field(..., description="Variable key")
     value: T = Field(..., description="Variable value")
     type_name: StateVariableType = Field(..., description="Variable type")
-    created_at: Timestamp = Field(default_factory=datetime.utcnow, description="Creation time")
-    updated_at: Timestamp = Field(default_factory=datetime.utcnow, description="Last update time")
+    created_at: Timestamp = Field(default_factory=utc_now, description="Creation time")
+    updated_at: Timestamp = Field(default_factory=utc_now, description="Last update time")
     ttl: TTL | None = Field(None, description="Time-to-live in seconds")
     version: int = Field(1, description="Variable version for optimistic locking")
 
@@ -68,11 +69,18 @@ class StateVariable(BaseModel, Generic[T]):
     def is_expired(self) -> bool:
         if not self.ttl:
             return False
-        expires_at = self.updated_at + timedelta(seconds=self.ttl)
-        return datetime.utcnow() > expires_at
+        # Ensure updated_at is timezone-aware before calculation
+        if self.updated_at.tzinfo is None:
+            # Assume it's UTC if naive, and make it aware
+            aware_updated_at = self.updated_at.replace(tzinfo=timezone.utc)
+        else:
+            aware_updated_at = self.updated_at
+
+        expires_at = aware_updated_at + timedelta(seconds=self.ttl)
+        return utc_now() > expires_at
 
     def touch(self) -> None:
-        self.updated_at = datetime.utcnow()
+        self.updated_at = utc_now()
         self.version += 1
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -90,7 +98,7 @@ class ConversationMessage(BaseModel):
     id: str = Field(..., description="Message identifier")
     role: ConversationRole = Field(..., description="Message role")
     content: str = Field(..., description="Message content")
-    timestamp: Timestamp = Field(default_factory=datetime.utcnow, description="Message timestamp")
+    timestamp: Timestamp = Field(default_factory=utc_now, description="Message timestamp")
 
     # Message metadata
     metadata: dict[str, str] = Field(default_factory=dict, description="Message metadata")
@@ -137,9 +145,9 @@ class ConversationState(BaseModel):
     session_id: SessionId | None = Field(None, description="Session identifier")
 
     # Timestamps
-    created_at: Timestamp = Field(default_factory=datetime.utcnow, description="Creation time")
-    updated_at: Timestamp = Field(default_factory=datetime.utcnow, description="Last update time")
-    last_activity: Timestamp = Field(default_factory=datetime.utcnow, description="Last activity time")
+    created_at: Timestamp = Field(default_factory=utc_now, description="Creation time")
+    updated_at: Timestamp = Field(default_factory=utc_now, description="Last update time")
+    last_activity: Timestamp = Field(default_factory=utc_now, description="Last activity time")
 
     # State data
     variables: dict[str, StateVariable] = Field(default_factory=dict, description="State variables")
@@ -178,7 +186,7 @@ class ConversationState(BaseModel):
 
     def add_message(self, message: ConversationMessage) -> None:
         self.history.append(message)
-        self.last_activity = datetime.utcnow()
+        self.last_activity = utc_now()
         self.updated_at = self.last_activity
 
         # Enforce history size limit
@@ -209,7 +217,7 @@ class ConversationState(BaseModel):
             # Create new variable
             self.variables[key] = StateVariable(key=key, value=value, type_name=var_type, ttl=ttl)
 
-        self.updated_at = datetime.utcnow()
+        self.updated_at = utc_now()
 
     def get_variable(self, key: str, default: Any = None) -> Any:
         if key not in self.variables:
@@ -225,7 +233,7 @@ class ConversationState(BaseModel):
     def delete_variable(self, key: str) -> bool:
         if key in self.variables:
             del self.variables[key]
-            self.updated_at = datetime.utcnow()
+            self.updated_at = utc_now()
             return True
         return False
 
@@ -236,7 +244,7 @@ class ConversationState(BaseModel):
             del self.variables[key]
 
         if expired_keys:
-            self.updated_at = datetime.utcnow()
+            self.updated_at = utc_now()
 
         return len(expired_keys)
 
@@ -424,7 +432,7 @@ class StateOperation(BaseModel):
     key: str | None = Field(None, description="Variable key")
 
     # Timing
-    timestamp: Timestamp = Field(default_factory=datetime.utcnow, description="Operation timestamp")
+    timestamp: Timestamp = Field(default_factory=utc_now, description="Operation timestamp")
     duration_ms: float | None = Field(None, description="Operation duration")
 
     # Result
@@ -456,7 +464,7 @@ class StateMetrics(BaseModel):
 
     # Time window
     measurement_window: timedelta = Field(..., description="Measurement time window")
-    measured_at: Timestamp = Field(default_factory=datetime.utcnow, description="Measurement time")
+    measured_at: Timestamp = Field(default_factory=utc_now, description="Measurement time")
 
 
 class StateConfig(BaseModel):

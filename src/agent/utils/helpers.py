@@ -108,6 +108,9 @@ def generate_task_id() -> str:
 def get_timestamp() -> str:
     return datetime.now(timezone.utc).isoformat()
 
+def utc_now():
+    return datetime.now(timezone.utc)
+
 
 # Export utility functions
 __all__ = [
@@ -117,4 +120,5 @@ __all__ = [
     "sanitize_input",
     "generate_task_id",
     "get_timestamp",
+    "utc_now",
 ]
