@@ -91,9 +91,8 @@ class SecurityManager:
 
             # Create unified auth manager with security config
             unified_auth_manager = create_unified_auth_manager(self.security_config)
-            logger.debug(
-                f"Unified authentication manager initialized with {len(unified_auth_manager.scope_hierarchy.hierarchy)} scope hierarchy rules"
-            )
+            scope_summary = unified_auth_manager.get_scope_summary()
+            logger.debug(f"Unified authentication manager initialized with scope rules: {scope_summary}")
         except Exception as e:
             # TODO: Maybe raise a specific exception here?
             logger.warning(f"Failed to initialize unified authentication manager: {e}")

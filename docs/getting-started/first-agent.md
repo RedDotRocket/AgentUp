@@ -11,12 +11,12 @@ In this tutorial, you'll create a simple as they come, out of the box, basic Age
 
 ## Create the Agent Project
 
-Creating an agent project is straightforward. Use the `agentup agent create` command to scaffold a new agent project.
+Creating an agent project is straightforward. Use the `agentup init` command to scaffold a new agent project.
 
 Open your terminal and run:
 
 ```bash
-agentup agent create
+agentup init
 ```
 
 Follow the prompts to set up your agent:
@@ -37,6 +37,7 @@ o toggle, <i> to invert)
    ○ MCP Integration (Model Context Protocol)
    ○ Push Notifications (webhooks)
    ○ Development Features (filesystem plugins, debug mode)
+   ○ Deployment (Docker, Helm Charts)
 ```
 
 After selecting only `Authentication Method`, you select `API Key`:
@@ -62,7 +63,7 @@ Location: /Users/lhinds/basic_agent
 Next steps:
   1. cd basic_agent
   2. uv sync                    # Install dependencies
-  3. agentup agent serve        # Start development server
+  3. agentup run                # Start development server
 ```
 
 
@@ -70,14 +71,14 @@ You should see:
 ```
 basic_agent
 ├── agentup.yml
-├── pyproject.toml
+├── agentup.lock
 └── README.md
 ```
 
 Let's walk through the key files:
 
 - **`agentup.yml`**: Main configuration file for your agent.
-- **`pyproject.toml`**: Agent metadata and Plugin dependencies (more on this later).
+- **`agentup.lock`**: Agent Plugin dependencies (more on this later).
 - **`README.md`**: Basic documentation for your agent.
 
 ## Understand the Basic Configuration
@@ -98,9 +99,16 @@ First we have our basic agent configuration:
 
 ```yaml
 name: "basic-agent"
-description: "AI Agent Basic Agent Project"
-version: "0.1.0"
+description: AI Agent Lukes Agent Project.
+version: 0.5.7
+url: http://localhost:8000
+provider_organization: AgentUp
+provider_url: https://agentup.dev
+icon_url: https://raw.githubusercontent.com/RedDotRocket/AgentUp/refs/heads/main/assets/icon.png
+documentation_url: https://docs.agentup.dev
 ```
+
+You're free to change any of these!
 
 ### Agent Security Configuration
 
@@ -159,7 +167,6 @@ and intuitive way to manage access control.
     system:read: []
 ```
 
-
 Each scope may inherit the permissions of one or more "child" scopes. If a user is granted a higher-level
 (or "parent") scope, they automatically receive the permissions of all lower-level (or "child") scopes listed under it.
 
@@ -169,16 +176,26 @@ state what is allowed to use within the `plugin` configuration.
 
 For example:
 
-```yaml hl_lines="5"
+```yaml hl_lines="11"
 plugins:
-  - plugin_id: hello
+  - package: "agentup-hello"
+    enabled: true
+    middleware:
+      - name: "cached"
+        params:
+          default_ttl: 60
     capabilities:
-      - capability_id: hello
-        required_scopes: ["api:read"] # - I need this scope to be invoked
+      file_operations:
         enabled: true
+        required_scopes: ["files:write", "files:read"]
+        middleware:
+          - name: "rate_limited"
+            params:
+              requests_per_minute: 30
 ```
 
-This means the `hello` plugin requires the `api:read` scope to be invoked. If an API key does not have this scope, it will not be able to use the `hello` capability.
+This means the `agentup-hello` plugin requires the `"files:write", "files:read"` scope to be invoked. If an
+API key does not have this scope, it will not be able to use the `agentup-hello` capability.
 
 ```yaml hl_lines="4"
  api_key:
@@ -231,8 +248,7 @@ Right, let's start the agent and see if everything is working as expected!
 
 ```bash
 # Start the agent
-agentup agent serve
-```
+agentup run
 
 !!! tip "Under the hood"
     AgentUp uses FastAPI under the hood, so you don't have to use `agentup agent serve` to start your agent, you can also use `uvicorn` directly if you prefer, for example you may want to use the `--reload` option or `--workers` option to run multiple instances of your agent for load balancing.

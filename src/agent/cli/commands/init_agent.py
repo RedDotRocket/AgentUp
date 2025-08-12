@@ -78,7 +78,7 @@ def init_agent(
 
     if quick:
         project_config["description"] = f"AI Agent {name} Project."
-        project_config["version"] = version or "v0.0.1"
+        project_config["version"] = version or "0.0.1"
         # Include default checked features in quick mode
         default_features = [choice.value for choice in get_feature_choices() if choice.checked]
         project_config["features"] = default_features
@@ -90,7 +90,7 @@ def init_agent(
         project_config["features"] = []
 
         if not version:
-            version = questionary.text("Version:", default="v0.0.1", style=custom_style).ask()
+            version = questionary.text("Version:", default="0.0.1", style=custom_style).ask()
 
         project_config["version"] = version
 
@@ -167,20 +167,20 @@ def init_agent(
         # Initialize git repository unless --no-git flag is used
         if not no_git:
             click.echo(f"{click.style('Initializing git repository...', fg='yellow')}")
-            if initialize_git_repo(output_dir):
+            success, error = initialize_git_repo(output_dir)
+            if success:
                 click.echo(f"{click.style('Git repository initialized', fg='green')}")
             else:
-                click.echo(
-                    f"{click.style('  Warning: Could not initialize git repository (git not found or failed)', fg='yellow')}"
-                )
+                click.echo(f"{click.style(f'  Warning: Could not initialize git repository: {error}', fg='yellow')}")
 
         click.echo(f"\n{click.style('✓ Project created successfully!', fg='green', bold=True)}")
         click.echo(f"\nLocation: {output_dir}")
         click.echo("\nNext steps:")
         click.echo(f"  1. cd {output_dir.name}")
         click.echo("  2. uv sync                # Install dependencies")
-        click.echo("  3. agentup run            # Start development server")
-        click.echo("  4. pip install agentup-brave --extra-index-url https://api.agentup.dev/simple # for plugins")
+        click.echo("  3. uv add <plugin_name>   # Add AgentUp plugins")
+        click.echo("  4. agentup plugin sync    # Sync plugins with config")
+        click.echo("  5. agentup run            # Start development server")
 
     except Exception as e:
         click.echo(f"{click.style('✗ Error:', fg='red')} {str(e)}")

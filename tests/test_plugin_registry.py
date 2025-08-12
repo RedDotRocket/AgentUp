@@ -479,17 +479,17 @@ class TestPluginAllowlist:
 
         registry = PluginRegistry(config)
 
-        # Should have empty allowlist on error
-        assert registry.allowed_plugins == {}
+        # Should have None allowlist on error (fail-secure)
+        assert registry.allowed_plugins is None
 
     def test_is_plugin_allowed_no_allowlist(self):
         """Test plugin allowed check when no allowlist configured."""
         registry = PluginRegistry()
         registry.allowed_plugins = {}  # Empty allowlist
 
-        # Should allow all when no allowlist
+        # Fail-secure: Should deny when empty allowlist
         result = registry._is_plugin_allowed("any_plugin", None)
-        assert result is True
+        assert result is False
 
     def test_is_plugin_allowed_plugin_in_allowlist(self):
         """Test plugin allowed check when plugin in allowlist."""

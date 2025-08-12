@@ -86,9 +86,8 @@ class FunctionRegistry:
 
             scope_service = get_scope_service()
             if not scope_service._hierarchy:
-                # If no scope hierarchy available, return all tools (fallback behavior)
-                logger.warning("No scope hierarchy available - falling back to all tools")
-                return self.get_function_schemas()
+                logger.error("No scope hierarchy available - denying all tool access")
+                return []
 
             available_tools = []
             logger.debug("Using optimized scope service for tool filtering")
@@ -144,7 +143,6 @@ class FunctionRegistry:
             return []
 
     def _get_plugin_tools(self, scope_service, user_scopes: set[str]) -> list[dict[str, Any]]:
-        from agent.config import Config
         from agent.plugins.integration import get_plugin_adapter
         from agent.security.audit_logger import get_security_audit_logger
 
@@ -170,35 +168,32 @@ class FunctionRegistry:
 
             user_id = f"session_{hashlib.sha256(uuid.uuid4().bytes).hexdigest()}"
 
-        logger.debug(
-            f"Plugin capability filtering - adapter: {plugin_adapter is not None}, config: {Config is not None}"
-        )
-
         if not plugin_adapter:
             return tools
 
-        configured_plugins = Config.plugins
-        logger.debug(f"Found {len(configured_plugins)} configured plugins")
+        # Get plugins from the integration system instead of old config
+        from agent.plugins.integration import get_plugin_registry_instance
 
-        for plugin_config in configured_plugins:
-            plugin_id = plugin_config.plugin_id
+        plugin_registry = get_plugin_registry_instance()
+
+        if not plugin_registry:
+            return tools
+
+        for plugin_id, plugin_instance in plugin_registry.plugins.items():
             if not plugin_id:
                 continue
 
-            logger.debug(f"Processing plugin: {plugin_id}")
+            # Get capabilities from modern decorator-based plugins
+            try:
+                plugin_capabilities = plugin_instance.get_capability_definitions()
 
-            # Handle new capability-based config structure
-            if plugin_config.capabilities:
-                capabilities_list = plugin_config.capabilities
-                logger.debug(f"Plugin '{plugin_id}' has {len(capabilities_list)} capabilities defined")
-
-                for capability_config in capabilities_list:
-                    capability_id = capability_config.capability_id
-                    required_scopes = capability_config.required_scopes or []
+                for capability_def in plugin_capabilities:
+                    capability_id = capability_def.id
+                    # Get required scopes from the @capability decorator
+                    required_scopes = capability_def.required_scopes
 
                     # Use centralized scope validation
                     result = scope_service.validate_multiple_scopes(user_scopes, required_scopes)
-                    logger.debug(f"Capability '{capability_id}' access: {result.has_access}")
 
                     if result.has_access:
                         # Get AI functions for this capability
@@ -210,18 +205,14 @@ class FunctionRegistry:
                                 "parameters": ai_function.parameters,
                             }
                             tools.append(tool_spec)
-                            logger.debug(f"Granted AI function '{ai_function.name}' for capability '{capability_id}'")
                     else:
                         # Log function access denied for security audit
                         ai_functions = plugin_adapter.get_ai_functions(capability_id)
                         for ai_function in ai_functions:
                             audit_logger.log_function_access_denied(user_id, ai_function.name, len(required_scopes))
-            else:
-                # Handle legacy config structure
-                logger.warning(f"Plugin '{plugin_id}' using legacy config structure - no scope enforcement")
-                audit_logger.log_configuration_error(
-                    f"plugin_{plugin_id}", "legacy_config_no_scope_enforcement", {"plugin_id": plugin_id}
-                )
+            except Exception as e:
+                logger.warning(f"Failed to get capabilities for plugin '{plugin_id}': {e}")
+                continue
         return tools
 
     def _get_mcp_tools(self, scope_service, user_scopes: set[str]) -> list[dict[str, Any]]:
@@ -414,13 +405,12 @@ class FunctionDispatcher:
                             f"User '{getattr(auth_result, 'user_id', 'unknown')}' has no scopes - no tools available"
                         )
                 else:
-                    # No authentication at all - fallback to all functions (for development/testing)
-                    function_schemas = self.function_registry.get_function_schemas()
-                    logger.warning("No authentication context found, using all available functions")
+                    # No authentication - no tools available
+                    function_schemas = []
+                    logger.error("No authentication context found - denying all tool access")
             except Exception as e:
                 logger.error(f"Error retrieving function schemas: {e}", exc_info=True)
-                # Fallback to all functions on error
-                function_schemas = self.function_registry.get_function_schemas()
+                function_schemas = []
             logger.info(f"Available function schemas for AI: {len(function_schemas)} functions")
             if len(function_schemas) == 0:
                 logger.warning("No function schemas available for AI - this will prevent tool calling")
@@ -771,49 +761,49 @@ def register_ai_functions_from_capabilities():
 
             # Get all available plugin capabilities
             available_plugins = plugin_adapter.list_available_capabilities()
-            logger.debug(f"Available plugin capabilities: {available_plugins}")
 
-            # Get configured plugins from agent config
+            # Get configured plugins from unified configuration
             try:
-                from agent.config import Config
+                from agent.config.plugin_resolver import get_plugin_resolver
 
-                configured_plugins = {plugin.plugin_id for plugin in Config.plugins}
-                logger.debug(f"Configured plugins: {configured_plugins}")
+                resolver = get_plugin_resolver()
+                if resolver:
+                    # Get enabled plugins from intent config
+                    enabled_plugins = {}
+                    for package_name, plugin_config in resolver.intent_config.plugins.items():
+                        if plugin_config.enabled:
+                            enabled_plugins[package_name] = plugin_config
+                    configured_plugins = set(enabled_plugins.keys())
+                else:
+                    configured_plugins = set()
             except Exception as e:
-                logger.warning(f"Could not load agent config for plugin AI functions: {e}")
+                logger.warning(f"Could not load unified plugin config for AI functions: {e}")
                 configured_plugins = set()
 
             # Build mapping of plugin names to capabilities
             plugin_to_capabilities = {}
             for capability_id in available_plugins:
                 capability_info = plugin_adapter.get_capability_info(capability_id)
-                logger.debug(f"Capability {capability_id} info: {capability_info}")
                 if capability_info and "plugin_name" in capability_info:
                     plugin_name = capability_info["plugin_name"]
                     if plugin_name not in plugin_to_capabilities:
                         plugin_to_capabilities[plugin_name] = []
                     plugin_to_capabilities[plugin_name].append(capability_id)
 
-            logger.debug(f"Plugin to capabilities mapping: {plugin_to_capabilities}")
-
             # Register AI functions only for capabilities from configured plugins
             for capability_id in available_plugins:
                 capability_info = plugin_adapter.get_capability_info(capability_id)
                 if not capability_info or "plugin_name" not in capability_info:
-                    logger.debug(f"Skipping AI functions for capability without plugin info: {capability_id}")
                     continue
 
                 plugin_name = capability_info["plugin_name"]
-                logger.debug(f"Processing capability {capability_id} from plugin {plugin_name}")
 
-                if plugin_name not in configured_plugins:
-                    logger.debug(
-                        f"Skipping AI functions for capability '{capability_id}' from unregisterd plugin '{plugin_name}'"
-                    )
+                # Normalize plugin name to match configuration format (hyphens)
+                normalized_plugin_name = plugin_name.replace("_", "-")
+                if normalized_plugin_name not in configured_plugins:
                     continue
 
                 ai_functions = plugin_adapter.get_ai_functions(capability_id)
-                logger.debug(f"AI functions for {capability_id}: {[f.name for f in ai_functions]}")
 
                 for ai_function in ai_functions:
                     # Convert plugin AIFunction to registry format
@@ -838,7 +828,6 @@ def register_ai_functions_from_capabilities():
                         return plugin_function_wrapper
 
                     wrapped_handler = create_wrapper(ai_function.handler)
-                    logger.debug(f"Registering AI function: {ai_function.name}")
                     registry.register_function(ai_function.name, wrapped_handler, schema)
                     plugin_functions_count += 1
 

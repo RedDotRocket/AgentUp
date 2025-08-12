@@ -1,10 +1,3 @@
-"""
-Pydantic models for AgentUp middleware system.
-
-This module defines all middleware-related data structures using Pydantic models
-for type safety and validation.
-"""
-
 from __future__ import annotations
 
 import tempfile

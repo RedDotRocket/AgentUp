@@ -43,53 +43,6 @@ class AuthContext:
             raise HTTPException(status_code=403, detail=f"Insufficient permissions. Required scope: {scope}")
 
 
-class ScopeHierarchy:
-    def __init__(self):
-        self._hierarchy_config = {}
-        self._initialized = False
-
-    def add_scope_inheritance(self, parent_scope: str, child_scopes: list[str]) -> None:
-        self._hierarchy_config[parent_scope] = child_scopes
-        logger.debug(f"Added scope inheritance: {parent_scope} -> {child_scopes}")
-
-        # Reinitialize scope service with updated config
-        if self._hierarchy_config:
-            get_scope_service().initialize_hierarchy(self._hierarchy_config)
-            self._initialized = True
-
-    def expand_scopes(self, user_scopes: list[str]) -> set[str]:
-        if not self._initialized:
-            logger.warning("Scope hierarchy not initialized - returning original scopes")
-            return set(user_scopes)
-
-        # Use optimized service but maintain debug logging for compatibility
-        scope_service = get_scope_service()
-        expanded_frozen = scope_service.expand_user_scopes(user_scopes)
-        expanded_set = set(expanded_frozen)
-
-        # Reduced logging - only show summary
-        logger.debug(f"Scope expansion: {len(user_scopes)} -> {len(expanded_set)} scopes")
-
-        return expanded_set
-
-    def validate_scope(self, user_scopes: list[str], required_scope: str) -> bool:
-        if not self._initialized:
-            logger.warning("Scope hierarchy not initialized - denying access")
-            return False
-
-        scope_service = get_scope_service()
-        result = scope_service.validate_scope_access(user_scopes, required_scope)
-
-        # Minimal logging for compatibility
-        logger.debug(f"Scope validation: required='{required_scope}', result={result.has_access}")
-
-        return result.has_access
-
-    @property
-    def hierarchy(self) -> dict[str, list[str]]:
-        return self._hierarchy_config.copy()
-
-
 class AuthenticationProvider:
     async def authenticate(self, request: Request) -> AuthContext | None:
         raise NotImplementedError
@@ -224,23 +177,22 @@ class APIKeyAuthProvider(AuthenticationProvider):
 class UnifiedAuthenticationManager:
     def __init__(self, config: dict[str, Any]):
         self.config = config
-        self.scope_hierarchy = ScopeHierarchy()
         self.auth_providers: list[AuthenticationProvider] = []
         self.auth_enabled = config.get("enabled", True)
 
-        # Build custom scope hierarchy if provided
+        # Initialize scope service with hierarchy if provided
         scope_hierarchy = config.get("scope_hierarchy", {})
         logger.debug(f"Loading scope hierarchy from config: {scope_hierarchy}")
         logger.debug(f"Config keys available: {list(config.keys())}")
 
         if scope_hierarchy:
-            for parent, children in scope_hierarchy.items():
-                self.scope_hierarchy.add_scope_inheritance(parent, children)
+            scope_service = get_scope_service()
+            scope_service.initialize_hierarchy(scope_hierarchy)
+            logger.debug(f"Scope hierarchy initialized with {len(scope_hierarchy)} entries")
+            logger.debug(f"Scope hierarchy: {scope_hierarchy}")
         else:
             logger.warning("No custom scope hierarchy found in config - scope inheritance disabled")
 
-        logger.debug(f"Scope hierarchy initialized with {len(self.scope_hierarchy.hierarchy)} entries")
-        logger.debug(f"Scope hierarchy: {self.scope_hierarchy.hierarchy}")
         # Initialize authentication providers
         self._initialize_providers()
 
@@ -350,15 +302,17 @@ class UnifiedAuthenticationManager:
                         auth_context.user_id, client_ip, provider.get_auth_type().value
                     )
 
-                    # Expand scopes using hierarchy
-                    expanded_scopes = self.scope_hierarchy.expand_scopes(auth_context.scopes)
+                    # Expand scopes using scope service
+                    scope_service = get_scope_service()
+                    expanded_scopes = scope_service.expand_user_scopes(auth_context.scopes)
                     auth_context.scopes = list(expanded_scopes)
 
                     # Validate required scopes if specified
                     if required_scopes:
                         missing_scopes = []
                         for scope in required_scopes:
-                            if not self.scope_hierarchy.validate_scope(auth_context.scopes, scope):
+                            result = scope_service.validate_scope_access(auth_context.scopes, scope)
+                            if not result.has_access:
                                 missing_scopes.append(scope)
 
                         if missing_scopes:
@@ -398,17 +352,17 @@ class UnifiedAuthenticationManager:
         raise HTTPException(status_code=401, detail="Authentication required")
 
     def validate_scope_access(self, user_scopes: list[str], required_scope: str) -> bool:
-        # Use the optimized service directly for better performance
         scope_service = get_scope_service()
-        if scope_service._hierarchy:  # Service is initialized
+        if scope_service._hierarchy:
             result = scope_service.validate_scope_access(user_scopes, required_scope)
             return result.has_access
+        return False
 
     def get_scope_summary(self) -> dict[str, Any]:
         scope_service = get_scope_service()
         if scope_service._hierarchy:
-            # Use optimized service summary (safe for logging)
             return scope_service.get_hierarchy_summary()
+        return {"error": "No hierarchy available"}
 
 
 # Global manager instance

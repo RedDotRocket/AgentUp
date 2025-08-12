@@ -1,6 +1,6 @@
 [project]
 name = "{{ project_name_snake }}"
-version = "{{ version | default('v0.0.1') }}"
+version = "{{ version | default('0.0.1') }}"
 description = "{{ description }}"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -18,3 +18,6 @@ classifiers = [
 dependencies = [
     "agentup>={{ agentup_version }}",  # AgentUp framework - provides all core functionality
 ]
+
+[tool.uv]
+extra-index-url = ["https://api.agentup.dev/simple"]

@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.13'",
@@ -44,9 +44,11 @@ dependencies = [
     { name = "fastapi" },
     { name = "fastmcp" },
     { name = "httpx" },
+    { name = "importlib-metadata" },
     { name = "jinja2" },
     { name = "mcp" },
     { name = "numpy" },
+    { name = "packaging" },
     { name = "pillow" },
     { name = "psutil" },
     { name = "pydantic" },
@@ -95,6 +97,13 @@ docs = [
     { name = "pymdown-extensions" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "coverage" },
+    { name = "mypy-extensions" },
+    { name = "pathspec" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "a2a-sdk", extras = ["sql"], specifier = ">=0.3.0" },
@@ -108,6 +117,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.115.12" },
     { name = "fastmcp", specifier = ">=2.8.1" },
     { name = "httpx", specifier = ">=0.28.1" },
+    { name = "importlib-metadata", specifier = ">=8.7.0" },
     { name = "jinja2", specifier = ">=3.1.0" },
     { name = "mcp", specifier = ">=1.0.0" },
     { name = "mkdocs", marker = "extra == 'docs'", specifier = ">=1.6.1" },
@@ -120,7 +130,8 @@ requires-dist = [
     { name = "mkdocs-minify-plugin", marker = "extra == 'docs'", specifier = ">=0.8.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.13.0" },
     { name = "numpy", specifier = ">=1.26.4" },
-    { name = "pillow", specifier = ">=11.2.1" },
+    { name = "packaging", specifier = ">=23.0" },
+    { name = "pillow", specifier = ">=11.3.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.2.0" },
     { name = "psutil", specifier = ">=7.0.0" },
     { name = "pydantic", specifier = ">=2.11.5" },
@@ -147,6 +158,13 @@ requires-dist = [
     { name = "valkey", specifier = ">=6.0.0" },
 ]
 provides-extras = ["agent", "crewai", "dev", "docs"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "coverage", specifier = ">=7.9.1" },
+    { name = "mypy-extensions", specifier = ">=1.1.0" },
+    { name = "pathspec", specifier = ">=0.12.1" },
+]
 
 [[package]]
 name = "aiohappyeyeballs"

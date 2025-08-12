@@ -286,6 +286,22 @@ class SecurityConfig(BaseModel):
     )
     scope_hierarchy: dict[str, list[str]] = Field(default_factory=dict, description="Scope hierarchy configuration")
 
+    @field_validator("scope_hierarchy", mode="before")
+    @classmethod
+    def validate_scope_hierarchy(cls, v):
+        """Handle None values for scope_hierarchy."""
+        if v is None:
+            return {}
+        return v
+
+    @field_validator("auth", mode="before")
+    @classmethod
+    def validate_auth(cls, v):
+        """Handle None values for auth."""
+        if v is None:
+            return {}
+        return v
+
 
 class PluginCapabilityConfig(BaseModel):
     capability_id: str = Field(..., description="Capability identifier")

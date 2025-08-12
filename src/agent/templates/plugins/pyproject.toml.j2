@@ -1,6 +1,6 @@
 [project]
 name = "{{ plugin_name }}"
-version = "{{ version | default('v0.0.1') }}"
+version = "{{ version | default('0.0.1') }}"
 description = "{{ description }}"
 requires-python = ">=3.11"
 authors = [
@@ -35,3 +35,6 @@ packages = ["src/{{ plugin_name_snake }}"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+
+[tool.uv]
+extra-index-url = ["https://api.agentup.dev/simple"]

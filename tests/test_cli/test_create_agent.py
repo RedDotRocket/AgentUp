@@ -184,7 +184,7 @@ class TestCreateAgentCommand:
     def test_init_agent_git_initialization(self, runner, mock_generator, temp_dir, mock_feature_choices):
         with (
             patch("pathlib.Path.cwd", return_value=temp_dir),
-            patch("agent.cli.commands.init_agent.initialize_git_repo", return_value=True) as mock_git,
+            patch("agent.cli.commands.init_agent.initialize_git_repo", return_value=(True, None)) as mock_git,
             patch("agent.cli.commands.init_agent.questionary") as mock_q,
         ):
             # Mock service selection
@@ -200,7 +200,7 @@ class TestCreateAgentCommand:
     def test_init_agent_git_initialization_failure(self, runner, mock_generator, temp_dir, mock_feature_choices):
         with (
             patch("pathlib.Path.cwd", return_value=temp_dir),
-            patch("agent.cli.commands.init_agent.initialize_git_repo", return_value=False) as _mock_git,
+            patch("agent.cli.commands.init_agent.initialize_git_repo", return_value=(False, "Mock git error")) as _mock_git,
             patch("agent.cli.commands.init_agent.questionary") as mock_q,
         ):
             # Mock service selection

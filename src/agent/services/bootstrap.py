@@ -177,10 +177,6 @@ class AgentBootstrapper:
 
         return StateManager(self.config)
 
-    async def _create_plugin_service(self, capability_registry: BuiltinCapabilityRegistry) -> Service:
-        """DEPRECATED: Legacy plugin service - now using direct integration."""
-        raise NotImplementedError("PluginService is deprecated - using direct plugin integration")
-
     async def _create_mcp_service(self, capability_registry: BuiltinCapabilityRegistry) -> Service:
         from .mcp import MCPService
 
@@ -217,8 +213,6 @@ class AgentBootstrapper:
 
         try:
             self.logger.info("Integrating plugins with capabilities system")
-
-            # Use the new integration function instead of legacy PluginService
             from agent.plugins.integration import integrate_plugins_with_capabilities
 
             # Pass the Pydantic config directly
@@ -226,7 +220,9 @@ class AgentBootstrapper:
             if len(capabilities_registered) == 0:
                 self.logger.debug("No capabilities registered from plugins")
             else:
-                self.logger.info(f"Registered {len(capabilities_registered)} capabilities from plugins")
+                self.logger.info(
+                    f"Registered {len(capabilities_registered)} capabilities from plugins"
+                )
 
         except Exception as e:
             self.logger.error(f"Plugin integration failed: {e}")

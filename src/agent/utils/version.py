@@ -117,22 +117,24 @@ def _get_version_source() -> str:
 
 
 def to_version_case(version: str) -> str | None:
-    """Normalizes a version string into a standard format like v1.0.0."""
+    """Normalizes a version string into semantic versioning format (e.g., 1.0.0)."""
     if not version:
         return None
 
     cleaned_text = re.sub(r"[\s_-]+", ".", version.strip())
-    match = re.match(r"^(v?)(\d+(?:\.\d+){0,2})$", cleaned_text, re.IGNORECASE)
+    # Remove any existing 'v' prefix for consistency
+    cleaned_text = re.sub(r"^v", "", cleaned_text, flags=re.IGNORECASE)
+
+    match = re.match(r"^(\d+(?:\.\d+){0,2})$", cleaned_text)
 
     if match:
-        v_part = match.group(1) or "v"
-        numbers_part = match.group(2)
+        numbers_part = match.group(1)
 
         if numbers_part.count(".") == 1:
             numbers_part += ".0"
         elif numbers_part.count(".") == 0:
             numbers_part += ".0.0"
 
-        return f"{v_part.lower()}{numbers_part}"
+        return numbers_part
 
     return version

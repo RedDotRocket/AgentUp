@@ -146,7 +146,7 @@ class ProjectGenerator:
             shutil.copy2(source_path, dest_path)
             # Make it executable
             dest_path.chmod(0o755)
-            logger.info(f"Successfully copied weather server from {source_path} to {dest_path}")
+            logger.debug(f"Successfully copied weather server from {source_path} to {dest_path}")
         else:
             logger.error(f"Source weather server not found at {source_path}")
 

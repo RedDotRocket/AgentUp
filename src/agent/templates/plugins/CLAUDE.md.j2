@@ -38,7 +38,25 @@ class {{ class_name }}(Plugin):
         name="{{ display_name }}",
         description="{{ description }}",
         scopes=["api:read"],
-        ai_function=True
+        ai_function=True,
+        ai_parameters={
+            "type": "object",
+            "properties": {
+                "some_attribute": {"type": "string", "description": "Some action description"},
+                "encoding": {"type": "string", "description": "Text encoding (default: utf-8)", "default": "utf-8"},
+            },
+            "required": ["some_attribute"],
+        },
+        # A2A AgentSkill metadata
+        examples=[
+            "Example one of tool usage",
+            "Example two of tool usage",
+            "Example three of tool usage",
+            "Example four of tool usage"
+        ],
+        input_modes=["text/plain"],
+        output_modes=["text/plain", "application/json"],
+        security=[{"scopes": ["object:read"]}]
     )
     async def handle_request(self, context: CapabilityContext) -> str:
         # Your capability logic here
@@ -75,6 +93,8 @@ The plugin is registered via entry point in `pyproject.toml`:
   ```
 
 ### Pydantic v2 Patterns
+- **Use `BaseModel` from `pydantic`**: Import directly from `pydantic`
+- **Avoid .get()** and instead using pydantic dot notation.
 - **Field validators**: Use `@field_validator` instead of deprecated `@validator`
 - **Model validators**: Use `@model_validator(mode='after')` instead of `@root_validator`
 - **Always add @classmethod**: Required for field validators in Pydantic v2
@@ -117,7 +137,7 @@ async def handle_request(self, context: CapabilityContext) -> str:
     id="{{ capability_id }}_ai",
     name="{{ display_name }} AI Function",
     description="AI-callable function for {{ description }}",
-    scopes=["api:read"],
+    scopes=["domain:value"],
     ai_function=True,
     ai_parameters={
         "type": "object",
@@ -154,7 +174,7 @@ class {{ class_name }}(Plugin):
         id="{{ capability_id }}_text",
         name="Text Processing",
         description="Process text input",
-        scopes=["api:read"]
+        scopes=["domain:value"] # e.g. files:write
     )
     async def process_text(self, context: CapabilityContext) -> str:
         # Text processing logic
@@ -164,7 +184,7 @@ class {{ class_name }}(Plugin):
         id="{{ capability_id }}_analyze",
         name="Data Analysis",
         description="Analyze data",
-        scopes=["api:read", "data:read"]
+        scopes=["domain:value"]
     )
     async def analyze_data(self, context: CapabilityContext) -> str:
         # Analysis logic
@@ -195,7 +215,18 @@ class {{ class_name }}(Plugin):
 1. Install in development mode: `pip install -e .`
 2. Create test agent: `agentup init test-agent --quick`
 3. Configure plugin in agent's `agentup.yml`
-4. Test with: `agentup run`
+```yaml
+plugins:
+  {{ plugin_name }}:
+    capabilities:
+      {{ capability_id }}:
+        required_scopes:
+          - domain:value
+      delete_file:
+        required_scopes:
+          - domain:value
+```
+4. Test with: `agentup agent serve`
 
 ### Testing
 ```bash

@@ -19,7 +19,7 @@ dependencies = [
     "pytest>=8.4.0",
     "pytest-asyncio>=1.0.0",
     "numpy>=1.26.4",
-    "pillow>=11.2.1",
+    "pillow>=11.3.0",
     "asyncio>=3.4.3",
     "fastmcp>=2.8.1",
     "mcp>=1.0.0",
@@ -35,6 +35,8 @@ dependencies = [
     "redis>=6.2.0",
     "aiohttp>=3.12.15",
     "semver>=3.0.4",
+    "packaging>=23.0",
+    "importlib-metadata>=8.7.0",
 ]
 
 [project.scripts]
@@ -149,3 +151,10 @@ ignore_missing_imports = true
 [tool.bandit]
 exclude_dirs = ["tests", ".venv", "venv", "build", "dist"]
 skips = ["B101"]  # assert_used
+
+[dependency-groups]
+dev = [
+    "coverage>=7.9.1",
+    "mypy-extensions>=1.1.0",
+    "pathspec>=0.12.1",
+]

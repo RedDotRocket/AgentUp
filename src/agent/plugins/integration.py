@@ -24,7 +24,31 @@ from .models import CapabilityContext
 logger = structlog.get_logger(__name__)
 
 
-def integrate_plugins_with_capabilities(config: Union["Settings", None] = None) -> dict[str, list[str]]:
+class PluginConfigWrapper:
+    """Wrapper to make dict-based plugin config compatible with attribute access"""
+
+    def __init__(self, data: dict):
+        self.plugin_id = data["plugin_id"]
+        self.package = data.get("package", "")
+        self.enabled = data.get("enabled", True)
+        self.config = data.get("config", {})
+        self.capabilities = [CapabilityConfigWrapper(cap) for cap in data.get("capabilities", [])]
+
+
+class CapabilityConfigWrapper:
+    """Wrapper to make dict-based capability config compatible with attribute access"""
+
+    def __init__(self, data: dict):
+        self.capability_id = data["capability_id"]
+        self.name = data.get("name", "")
+        self.description = data.get("description", "")
+        self.required_scopes = data.get("required_scopes", [])
+        self.enabled = data.get("enabled", True)
+
+
+def integrate_plugins_with_capabilities(
+    config: Union["Settings", None] = None,
+) -> dict[str, list[str]]:
     """
     Integrate the new plugin system with the existing capability registry.
 
@@ -52,20 +76,8 @@ def integrate_plugins_with_capabilities(config: Union["Settings", None] = None) 
 
         config = Config
 
-    # Get configured plugins from the agent config
-    try:
-        configured_plugins = config.plugins
-        logger.debug(f"Found {len(configured_plugins)} configured plugins")
-    except Exception as e:
-        logger.warning(f"Could not load agent config, no plugins will be registered: {e}")
-        configured_plugins = []
-
     registered_count = 0
     capabilities_to_register = {}  # capability_id -> scope_requirements
-
-    if not configured_plugins:
-        logger.error("No plugin configuration found in agentup.yml - explicit configuration required")
-        raise ValueError("Plugin configuration is required in agentup.yml.")
 
     # First, discover plugins
     logger.debug("Discovering plugins via entry points")
@@ -74,63 +86,58 @@ def integrate_plugins_with_capabilities(config: Union["Settings", None] = None) 
         f"Plugin registry now has {len(plugin_registry.plugins)} loaded plugins: {list(plugin_registry.plugins.keys())}"
     )
 
-    # Process configured plugins and determine which capabilities to register
-    for plugin_config in configured_plugins:
-        plugin_id = plugin_config.plugin_id
-        logger.debug(f"Processing plugin config for: {plugin_id}")
+    # Get the set of plugins that are configured from settings
+    _configured_plugin_ids = set()
 
-        # Check if plugin was actually loaded
-        if plugin_id not in plugin_registry.plugins:
-            logger.info(f"Plugin '{plugin_id}' configured but not loaded.")
-            logger.debug(f"Available plugins: {list(plugin_registry.plugins.keys())}")
+    # Get configured capabilities from settings (regardless of enabled state)
+    configured_capabilities = set()
+    try:
+        if hasattr(config, "plugins") and config.plugins:
+            for plugin_config in config.plugins:
+                for capability_config in plugin_config.capabilities:
+                    configured_capabilities.add(capability_config.capability_id)
+    except Exception as e:
+        logger.debug(f"Could not load plugin configuration: {e}")
+        configured_capabilities = set()
+
+    # Process all discovered plugins - register those that are configured or have no lock file
+    for plugin_id, plugin_instance in plugin_registry.plugins.items():
+        logger.debug(f"Processing discovered plugin: {plugin_id}")
+
+        # Process all discovered plugins (no lock file filtering)
+
+        # Configure the plugin with default/empty config
+        try:
+            plugin_instance.configure({})
+            logger.debug(f"Configured plugin '{plugin_id}' with empty config")
+        except Exception as e:
+            logger.warning(f"Failed to configure plugin '{plugin_id}': {e}")
             continue
 
-        # Check if this plugin uses the new capability-based structure
-        if not plugin_config.capabilities:
-            logger.error(f"Plugin '{plugin_id}' has no capabilities defined in configuration")
-            logger.warning(
-                f"Plugin '{plugin_id}' must define capabilities in the configuration. "
-                f"Add 'capabilities' section with explicit scope requirements."
-            )
-            continue
-
-        # Configure the plugin
-        plugin_instance = plugin_registry.get_plugin(plugin_id)
-        if plugin_instance:
-            # Configure plugin with global config
-            plugin_instance.configure(plugin_config.config)
-            logger.debug(f"Configured plugin '{plugin_id}' with settings")
-
-            # Get the plugin's actual capabilities
+        # Get the plugin's capabilities (defined via @capability decorators)
+        try:
             plugin_capabilities = plugin_instance.get_capability_definitions()
             logger.debug(
                 f"Plugin '{plugin_id}' provides {len(plugin_capabilities)} capabilities: {[cap.id for cap in plugin_capabilities]}"
             )
-        else:
-            logger.error(f"Could not get plugin instance for '{plugin_id}'")
+        except Exception as e:
+            logger.warning(f"Failed to get capabilities for plugin '{plugin_id}': {e}")
             continue
 
-        # Process each capability configuration
-        for capability_config in plugin_config.capabilities:
-            capability_id = capability_config.capability_id
-            required_scopes = capability_config.required_scopes or []
-            enabled = capability_config.enabled
+        # Only register capabilities that are both provided by plugin AND configured in settings
+        for capability_def in plugin_capabilities:
+            capability_id = capability_def.id
 
-            logger.debug(f"Processing capability config: {capability_id}, enabled={enabled}, scopes={required_scopes}")
+            # Skip if capability is not configured in settings
+            if configured_capabilities and capability_id not in configured_capabilities:
+                logger.debug(f"Capability '{capability_id}' not configured in settings, skipping")
+                continue
 
-            if enabled:
-                # Check if capability actually exists in the plugin
-                plugin_capability_ids = [cap.id for cap in plugin_capabilities]
-                if capability_id not in plugin_capability_ids:
-                    logger.warning(
-                        f"Capability '{capability_id}' from plugin '{plugin_id}' is configured "
-                        f"but not provided by the plugin. Available capabilities: {plugin_capability_ids}"
-                    )
-                    continue
+            # The @capability decorator defines the required scopes
+            required_scopes = capability_def.required_scopes
 
-                # Store for registration
-                capabilities_to_register[capability_id] = required_scopes
-                logger.debug(f"Will register capability '{capability_id}' with scopes: {required_scopes}")
+            logger.debug(f"Registering capability '{capability_id}' with scopes: {required_scopes}")
+            capabilities_to_register[capability_id] = required_scopes
 
     logger.debug(f"Total capabilities to register: {len(capabilities_to_register)}")
 
@@ -147,19 +154,19 @@ def integrate_plugins_with_capabilities(config: Union["Settings", None] = None) 
     for capability_id, required_scopes in capabilities_to_register.items():
         # Skip if capability executor already exists (don't override existing executors)
         if capability_id in _capabilities:
-            logger.debug(f"Capability '{capability_id}' already registered as executor, skipping plugin")
+            logger.debug(
+                f"Capability '{capability_id}' already registered as executor, skipping plugin"
+            )
             continue
 
         try:
-            logger.info(f"Registering plugin capability '{capability_id}' with scopes: {required_scopes}")
-
             from agent.capabilities.manager import register_plugin_capability
 
             plugin_config = {"capability_id": capability_id, "required_scopes": required_scopes}
 
             # Register using the framework's scope enforcement pattern
             register_plugin_capability(plugin_config)
-            logger.info(f"Successfully registered plugin capability '{capability_id}' with scopes: {required_scopes}")
+            logger.info(f"Capability Registered: '{capability_id}' with scopes: {required_scopes}")
             registered_count += 1
 
         except Exception as e:

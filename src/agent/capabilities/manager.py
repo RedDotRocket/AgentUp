@@ -142,9 +142,35 @@ def register_plugin_capability(plugin_config: dict[str, Any]) -> None:
             auth_result = get_current_auth()
             context = create_capability_context(task, auth_result)
 
+        # Resolve effective scopes using the plugin resolver if available
+        effective_scopes = required_scopes
+        try:
+            from agent.config import get_plugin_resolver
+
+            resolver = get_plugin_resolver()
+            if resolver:
+                # Get the actual plugin name that provides this capability
+                plugin_name = capability_id  # Default fallback
+                try:
+                    capability_info = plugin_adapter.get_capability_info(capability_id)
+                    if capability_info and "plugin_name" in capability_info:
+                        plugin_name = capability_info["plugin_name"]
+                except Exception:
+                    pass
+
+                # Get effective scopes from the resolver
+                effective_scopes = resolver.get_effective_scopes(plugin_name, capability_id, required_scopes)
+                logger.debug(f"Using plugin resolver for effective scopes: {effective_scopes}")
+            else:
+                logger.debug(f"Plugin resolver not available, using decorator scopes: {required_scopes}")
+
+        except Exception as e:
+            logger.debug(f"Error getting effective scopes, using decorator scopes: {e}")
+            effective_scopes = required_scopes
+
         # Check scope access with comprehensive audit logging
         access_granted = True
-        for scope in required_scopes:
+        for scope in effective_scopes:
             if not context.has_scope(scope):
                 access_granted = False
                 break
@@ -156,7 +182,7 @@ def register_plugin_capability(plugin_config: dict[str, Any]) -> None:
             capability_id=capability_id,
             user_id=context.user_id or "anonymous",
             user_scopes=context.user_scopes,
-            required_scopes=required_scopes,
+            required_scopes=effective_scopes,
             success=access_granted,
         )
 
@@ -174,7 +200,7 @@ def register_plugin_capability(plugin_config: dict[str, Any]) -> None:
                 capability_id=capability_id,
                 user_id=context.user_id or "anonymous",
                 user_scopes=context.user_scopes,
-                required_scopes=required_scopes,
+                required_scopes=effective_scopes,
                 success=True,
                 execution_time_ms=execution_time,
             )
@@ -185,8 +211,13 @@ def register_plugin_capability(plugin_config: dict[str, Any]) -> None:
             raise
 
     # Register the wrapped executor
-    register_capability_function(capability_id, scope_enforced_executor)
-    logger.info(f"Registered plugin capability with scope enforcement: {capability_id} (scopes: {required_scopes})")
+    try:
+        register_capability_function(capability_id, scope_enforced_executor)
+        logger.debug(
+            f"Registered plugin capability with scope enforcement: {capability_id} (scopes: {required_scopes})"
+        )
+    except Exception as e:
+        logger.error(f"Failed to register plugin capability: {capability_id} - {e}")
 
 
 async def register_mcp_tool_as_capability(
@@ -486,6 +517,35 @@ def _apply_state_to_capability(executor: Callable, capability_id: str) -> Callab
 
 
 def _resolve_middleware_config(capability_id: str) -> list[dict[str, Any]]:
+    # Try to use the new plugin resolver if available
+    try:
+        from agent.config import get_plugin_resolver
+
+        resolver = get_plugin_resolver()
+        if resolver:
+            # Get the actual plugin name that provides this capability
+            plugin_name = capability_id  # Default fallback
+            try:
+                from agent.plugins.integration import get_plugin_adapter
+
+                adapter = get_plugin_adapter()
+                if adapter:
+                    capability_info = adapter.get_capability_info(capability_id)
+                    if capability_info and "plugin_name" in capability_info:
+                        plugin_name = capability_info["plugin_name"]
+                        logger.debug(f"Resolved capability '{capability_id}' to plugin '{plugin_name}'")
+            except Exception as e:
+                logger.debug(f"Could not resolve plugin name for capability '{capability_id}': {e}")
+
+            # Use the new resolver to get effective middleware
+            effective_middleware = resolver.get_effective_middleware(plugin_name, capability_id)
+            logger.debug(f"Using plugin resolver for middleware config: {effective_middleware}")
+            return effective_middleware
+
+    except Exception as e:
+        logger.debug(f"Plugin resolver not available, falling back to legacy config: {e}")
+
+    # Fallback to legacy configuration loading
     global_middleware_configs = _load_middleware_config()
 
     # Get the actual plugin name that provides this capability

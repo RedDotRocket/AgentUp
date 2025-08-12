@@ -5,11 +5,13 @@ the current AgentUp version, particularly for YAML config files.
 """
 
 import re
+import shutil
 from pathlib import Path
 
 import structlog
 import yaml
 
+from ..config.model import PluginConfig
 from .version import get_version
 
 logger = structlog.get_logger(__name__)
@@ -156,3 +158,210 @@ def validate_config_version(config_path: Path, expected_version: str = None) -> 
     except Exception as e:
         logger.error("Failed to validate config version", path=str(config_path), error=str(e))
         return False
+
+
+def add_plugin_to_config(config_path: Path, plugin_config: PluginConfig, backup: bool = True) -> bool:
+    """Add a plugin configuration to agentup.yml.
+
+    Args:
+        config_path: Path to the agentup.yml file
+        plugin_config: Plugin configuration to add
+        backup: Whether to create backup of existing config
+
+    Returns:
+        True if plugin was added successfully
+    """
+    if not config_path.exists():
+        logger.debug("Configuration file not found", path=str(config_path))
+        return False
+
+    # Create backup if requested
+    if backup:
+        backup_path = config_path.with_suffix(".yml.backup")
+        shutil.copy2(config_path, backup_path)
+        logger.debug("Created config backup", backup_path=str(backup_path))
+
+    try:
+        # Read current content to preserve formatting
+        with open(config_path, encoding="utf-8") as f:
+            content = f.read()
+
+        # Parse YAML to check for existing plugin
+        config_data = yaml.safe_load(content)
+        existing_plugins = config_data.get("plugins", [])
+
+        # Check if plugin already exists
+        if any(p.get("plugin_id") == plugin_config.plugin_id for p in existing_plugins):
+            return False
+
+        # Convert plugin config to dict for YAML serialization
+        plugin_dict = plugin_config.model_dump(exclude_unset=True)
+
+        # Add plugin to the list
+        existing_plugins.append(plugin_dict)
+        config_data["plugins"] = existing_plugins
+
+        # Write updated config preserving structure
+        with open(config_path, "w", encoding="utf-8") as f:
+            yaml.dump(
+                config_data, f, default_flow_style=False, sort_keys=False, indent=2, width=120, allow_unicode=True
+            )
+
+        logger.info("Added plugin to configuration", plugin_id=plugin_config.plugin_id, path=str(config_path))
+        return True
+
+    except Exception as e:
+        logger.error("Failed to add plugin to config", path=str(config_path), error=str(e))
+        # Restore backup on failure
+        if backup:
+            backup_path = config_path.with_suffix(".yml.backup")
+            if backup_path.exists():
+                shutil.copy2(backup_path, config_path)
+                logger.info("Restored config from backup due to error")
+        return False
+
+
+def remove_plugin_from_config(config_path: Path, plugin_id: str, backup: bool = True) -> bool:
+    """Remove a plugin configuration from agentup.yml.
+
+    Args:
+        config_path: Path to the agentup.yml file
+        plugin_id: ID of plugin to remove
+        backup: Whether to create backup of existing config
+
+    Returns:
+        True if plugin was removed successfully
+    """
+    if not config_path.exists():
+        logger.debug("Configuration file not found", path=str(config_path))
+        return False
+
+    # Create backup if requested
+    if backup:
+        backup_path = config_path.with_suffix(".yml.backup")
+        shutil.copy2(config_path, backup_path)
+        logger.debug("Created config backup", backup_path=str(backup_path))
+
+    try:
+        # Read and parse config
+        with open(config_path, encoding="utf-8") as f:
+            config_data = yaml.safe_load(f)
+
+        plugins = config_data.get("plugins", [])
+
+        # Find and remove plugin
+        original_count = len(plugins)
+        plugins = [p for p in plugins if p.get("plugin_id") != plugin_id]
+
+        if len(plugins) == original_count:
+            logger.debug("Plugin not found in config", plugin_id=plugin_id)
+            return False
+
+        config_data["plugins"] = plugins
+
+        # Write updated config
+        with open(config_path, "w", encoding="utf-8") as f:
+            yaml.dump(
+                config_data, f, default_flow_style=False, sort_keys=False, indent=2, width=120, allow_unicode=True
+            )
+
+        logger.info("Removed plugin from configuration", plugin_id=plugin_id, path=str(config_path))
+        return True
+
+    except Exception as e:
+        logger.error("Failed to remove plugin from config", path=str(config_path), error=str(e))
+        # Restore backup on failure
+        if backup:
+            backup_path = config_path.with_suffix(".yml.backup")
+            if backup_path.exists():
+                shutil.copy2(backup_path, config_path)
+                logger.info("Restored config from backup due to error")
+        return False
+
+
+def update_plugin_in_config(config_path: Path, plugin_config: PluginConfig, backup: bool = True) -> bool:
+    """Update an existing plugin configuration in agentup.yml.
+
+    Args:
+        config_path: Path to the agentup.yml file
+        plugin_config: Updated plugin configuration
+        backup: Whether to create backup of existing config
+
+    Returns:
+        True if plugin was updated successfully
+    """
+    if not config_path.exists():
+        logger.debug("Configuration file not found", path=str(config_path))
+        return False
+
+    # Create backup if requested
+    if backup:
+        backup_path = config_path.with_suffix(".yml.backup")
+        shutil.copy2(config_path, backup_path)
+        logger.debug("Created config backup", backup_path=str(backup_path))
+
+    try:
+        # Read and parse config
+        with open(config_path, encoding="utf-8") as f:
+            config_data = yaml.safe_load(f)
+
+        plugins = config_data.get("plugins", [])
+
+        # Find and update plugin
+        plugin_updated = False
+        for i, plugin in enumerate(plugins):
+            if plugin.get("plugin_id") == plugin_config.plugin_id:
+                # Convert new plugin config to dict
+                plugin_dict = plugin_config.model_dump(exclude_unset=True)
+                plugins[i] = plugin_dict
+                plugin_updated = True
+                break
+
+        if not plugin_updated:
+            logger.debug("Plugin not found in config for update", plugin_id=plugin_config.plugin_id)
+            return False
+
+        config_data["plugins"] = plugins
+
+        # Write updated config
+        with open(config_path, "w", encoding="utf-8") as f:
+            yaml.dump(
+                config_data, f, default_flow_style=False, sort_keys=False, indent=2, width=120, allow_unicode=True
+            )
+
+        logger.info("Updated plugin in configuration", plugin_id=plugin_config.plugin_id, path=str(config_path))
+        return True
+
+    except Exception as e:
+        logger.error("Failed to update plugin in config", path=str(config_path), error=str(e))
+        # Restore backup on failure
+        if backup:
+            backup_path = config_path.with_suffix(".yml.backup")
+            if backup_path.exists():
+                shutil.copy2(backup_path, config_path)
+                logger.info("Restored config from backup due to error")
+        return False
+
+
+def get_plugins_from_config(config_path: Path) -> list[dict]:
+    """Get all plugin configurations from agentup.yml.
+
+    Args:
+        config_path: Path to the agentup.yml file
+
+    Returns:
+        List of plugin configuration dictionaries
+    """
+    if not config_path.exists():
+        logger.debug("Configuration file not found", path=str(config_path))
+        return []
+
+    try:
+        with open(config_path, encoding="utf-8") as f:
+            config_data = yaml.safe_load(f)
+
+        return config_data.get("plugins", [])
+
+    except Exception as e:
+        logger.error("Failed to read plugins from config", path=str(config_path), error=str(e))
+        return []

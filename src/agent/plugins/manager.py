@@ -49,9 +49,12 @@ class PluginRegistry:
         # Store configuration
         self._config = config
 
-        # Plugin allowlist for security
-        self.allowed_plugins: dict[str, dict] = {}
-        self._load_plugin_allowlist()
+        # Enhanced plugin security system
+        self.security_mode = "configured"  # "allowlist", "configured", "permissive"
+        self.allowed_plugins: dict[str, dict] | None = None
+        self.blocked_plugins: list[str] = []
+        self.allowlist_load_failed = False
+        self._load_plugin_security_config()
 
     @property
     def config(self) -> dict[str, Any]:
@@ -66,19 +69,30 @@ class PluginRegistry:
                 raise ImportError("Configuration module not found. Ensure 'agent.config' is available") from e
         return self._config
 
-    def _load_plugin_allowlist(self):
-        """Load plugin allowlist from configuration"""
+    def _load_plugin_security_config(self):
+        """Load plugin security configuration with enhanced modes and validation"""
         try:
             config = self.config
             security_config = config.get("plugin_security", {})
 
-            if security_config.get("mode") == "allowlist":
-                # Load from explicit allowlist in config
+            # Set security mode
+            self.security_mode = security_config.get("mode", "configured")
+
+            # Load blocked plugins
+            self.blocked_plugins = security_config.get("blocked_plugins", [])
+
+            if self.security_mode == "allowlist":
+                # Explicit allowlist mode - only specified plugins allowed
                 self.allowed_plugins = security_config.get("allowed_plugins", {})
-                logger.info(f"Loaded allowlist with {len(self.allowed_plugins)} allowed plugins")
+                logger.info(f"Security mode: allowlist with {len(self.allowed_plugins)} allowed plugins")
+            elif self.security_mode == "permissive":
+                # Permissive mode - all plugins allowed except blocked
+                self.allowed_plugins = None
+                logger.info(f"Security mode: permissive with {len(self.blocked_plugins)} blocked plugins")
             else:
-                # Default: allow plugins explicitly configured in the plugins section
+                # Configured mode (default) - allow explicitly configured plugins
                 configured_plugins = config.get("plugins", [])
+                self.allowed_plugins = {}
                 for plugin_config in configured_plugins:
                     plugin_id = plugin_config.get("plugin_id")
                     if plugin_id:
@@ -90,13 +104,16 @@ class PluginRegistry:
                         self.allowed_plugins[plugin_id] = {
                             "package": package,
                             "verified": plugin_config.get("verified", False),
+                            "min_version": plugin_config.get("min_version"),
+                            "max_version": plugin_config.get("max_version"),
                         }
 
-                logger.debug(f"Loaded {len(self.allowed_plugins)} configured plugins in allowlist")
+                logger.info(f"Security mode: configured with {len(self.allowed_plugins)} allowed plugins")
 
         except Exception as e:
-            logger.warning(f"Could not load plugin allowlist: {e}. Using empty allowlist for security.")
-            self.allowed_plugins = {}
+            logger.error(f"Failed to load plugin security configuration: {e}")
+            self.allowed_plugins = None
+            self.allowlist_load_failed = True
 
     def discover_plugins(self) -> None:
         """Discover and load all allowed plugins"""
@@ -251,24 +268,59 @@ class PluginRegistry:
         logger.info(f"Loaded filesystem plugin '{plugin_name}' from {plugin_dir}")
 
     def _is_plugin_allowed(self, plugin_name: str, dist) -> bool:
-        """Check if a plugin is allowed to be loaded"""
-        if not self.allowed_plugins:
-            # If no allowlist configured, allow all (less secure but more permissive)
-            return True
-
-        if plugin_name not in self.allowed_plugins:
+        """Enhanced plugin security check with multiple modes and validation"""
+        # Fail-secure: deny if security config failed to load
+        if self.allowlist_load_failed:
+            logger.warning(f"Plugin security config loading failed, denying plugin '{plugin_name}'")
             return False
 
-        # Check package name matches if specified
-        allowed_config = self.allowed_plugins[plugin_name]
-        expected_package = allowed_config.get("package")
+        # Check blocked list first (applies to all modes)
+        if plugin_name in self.blocked_plugins:
+            logger.warning(f"Plugin '{plugin_name}' is explicitly blocked")
+            return False
 
+        # Permissive mode: allow everything except blocked
+        if self.security_mode == "permissive":
+            return True
+
+        # Allowlist/Configured modes: require explicit permission
+        if self.allowed_plugins is None:
+            logger.warning(f"No plugin allowlist configured, denying plugin '{plugin_name}'")
+            return False
+
+        if not self.allowed_plugins:
+            # Explicit empty allowlist means no plugins allowed
+            logger.debug(f"Empty plugin allowlist, denying plugin '{plugin_name}'")
+            return False
+
+        if plugin_name not in self.allowed_plugins:
+            logger.debug(f"Plugin '{plugin_name}' not in allowlist (mode: {self.security_mode})")
+            return False
+
+        allowed_config = self.allowed_plugins[plugin_name]
+
+        # Check package name matches if specified
+        expected_package = allowed_config.get("package")
         if expected_package and dist:
             actual_package = dist.name
             if actual_package != expected_package:
                 logger.warning(
                     f"Plugin {plugin_name} package mismatch: expected {expected_package}, got {actual_package}"
                 )
+                return False
+
+        # Check version constraints if specified
+        if dist:
+            version = dist.version
+            min_version = allowed_config.get("min_version")
+            max_version = allowed_config.get("max_version")
+
+            if min_version and not self._version_satisfies(version, f">={min_version}"):
+                logger.warning(f"Plugin {plugin_name} version {version} below minimum {min_version}")
+                return False
+
+            if max_version and not self._version_satisfies(version, f"<={max_version}"):
+                logger.warning(f"Plugin {plugin_name} version {version} above maximum {max_version}")
                 return False
 
         return True
@@ -338,7 +390,9 @@ class PluginRegistry:
         """Execute a capability by ID"""
         if capability_id not in self.capabilities:
             return CapabilityResult(
-                content=f"Capability '{capability_id}' not found", success=False, error="Capability not found"
+                content=f"Capability '{capability_id}' not found",
+                success=False,
+                error="Capability not found",
             )
 
         plugin_id = self.capability_to_plugin[capability_id]
@@ -536,7 +590,11 @@ class PluginRegistry:
 
     async def get_health_status(self) -> dict:
         """Get health status of all plugins"""
-        health = {"total_plugins": len(self.plugins), "total_capabilities": len(self.capabilities), "plugin_status": {}}
+        health = {
+            "total_plugins": len(self.plugins),
+            "total_capabilities": len(self.capabilities),
+            "plugin_status": {},
+        }
 
         for plugin_id, plugin in self.plugins.items():
             try:
@@ -546,6 +604,107 @@ class PluginRegistry:
                 health["plugin_status"][plugin_id] = {"status": "error", "error": str(e)}
 
         return health
+
+    def validate_plugin_config(self, plugin_config: dict[str, Any]) -> tuple[bool, list[str]]:
+        """Validate plugin configuration for security issues"""
+        issues = []
+
+        # Check required fields
+        if not plugin_config.get("plugin_id"):
+            issues.append("Plugin ID is required")
+
+        # Check for dangerous scope combinations
+        capabilities = plugin_config.get("capabilities", [])
+        dangerous_scopes = {"system:admin", "files:admin", "network:admin"}
+
+        for capability in capabilities:
+            scopes = set(capability.get("required_scopes", []))
+            if dangerous_scopes.intersection(scopes):
+                issues.append(f"Capability '{capability.get('capability_id')}' requires dangerous scopes: {scopes}")
+
+        # Check for suspicious configurations
+        suspicious_patterns = ["eval", "exec", "system", "subprocess", "__import__"]
+        config_str = str(plugin_config).lower()
+
+        for pattern in suspicious_patterns:
+            if pattern in config_str:
+                issues.append(f"Configuration contains suspicious pattern: {pattern}")
+
+        return len(issues) == 0, issues
+
+    def _version_satisfies(self, version: str, constraint: str) -> bool:
+        """Check if version satisfies constraint using packaging library"""
+        try:
+            from packaging import version as pkg_version
+
+            v = pkg_version.parse(version)
+
+            if constraint.startswith(">="):
+                min_v = pkg_version.parse(constraint[2:])
+                return v >= min_v
+            elif constraint.startswith("<="):
+                max_v = pkg_version.parse(constraint[2:])
+                return v <= max_v
+            elif constraint.startswith(">"):
+                min_v = pkg_version.parse(constraint[1:])
+                return v > min_v
+            elif constraint.startswith("<"):
+                max_v = pkg_version.parse(constraint[1:])
+                return v < max_v
+            elif constraint.startswith("=="):
+                exact_v = pkg_version.parse(constraint[2:])
+                return v == exact_v
+
+            return True
+
+        except ImportError:
+            # Fallback to string comparison if packaging not available
+            logger.warning("packaging library not available for version checking")
+            return True
+        except Exception as e:
+            logger.warning(f"Version constraint check failed for {version} {constraint}: {e}")
+            return True
+
+    def get_security_report(self, plugin_id: str) -> dict[str, Any]:
+        """Generate security report for a plugin"""
+        report = {
+            "plugin_id": plugin_id,
+            "security_mode": self.security_mode,
+            "allowed": False,
+            "reason": "",
+            "security_level": "unknown",
+        }
+
+        # Check if plugin is loaded
+        if plugin_id in self.plugins:
+            report["loaded"] = True
+            plugin_def = self.plugin_definitions.get(plugin_id)
+            if plugin_def:
+                report["status"] = plugin_def.status.value
+        else:
+            report["loaded"] = False
+
+        # Check allowlist status
+        if plugin_id in self.blocked_plugins:
+            report["allowed"] = False
+            report["reason"] = "Plugin is explicitly blocked"
+        elif self.security_mode == "permissive":
+            report["allowed"] = True
+            report["reason"] = "Permissive mode allows all non-blocked plugins"
+            report["security_level"] = "permissive"
+        elif self.allowed_plugins and plugin_id in self.allowed_plugins:
+            report["allowed"] = True
+            report["reason"] = f"Plugin allowed in {self.security_mode} mode"
+            config = self.allowed_plugins[plugin_id]
+            if config.get("verified"):
+                report["security_level"] = "verified"
+            else:
+                report["security_level"] = "configured"
+        else:
+            report["allowed"] = False
+            report["reason"] = f"Plugin not allowed in {self.security_mode} mode"
+
+        return report
 
 
 # Global plugin registry instance

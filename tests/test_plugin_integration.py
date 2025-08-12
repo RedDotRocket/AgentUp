@@ -58,6 +58,7 @@ class TestPluginCapabilityIntegration:
             description="Test capability",
             capabilities=[CapabilityType.TEXT],
             plugin_name="test_plugin",
+            required_scopes=["test:read"],
         )
         mock_plugin.get_capability_definitions.return_value = [mock_capability_def]
 
@@ -98,8 +99,9 @@ class TestPluginCapabilityIntegration:
             # The integration code does `config = Config` (not Config()), so we need to set attributes on the class
             mock_config_class.plugins = []
 
-            with pytest.raises(ValueError, match="Plugin configuration is required"):
-                integrate_plugins_with_capabilities(None)
+            # Should handle empty config gracefully
+            result = integrate_plugins_with_capabilities(None)
+            assert result == {}
 
     @patch("src.agent.plugins.integration.get_plugin_registry")
     def test_integration_plugin_not_loaded(self, mock_get_registry):
@@ -214,6 +216,7 @@ class TestPluginCapabilityIntegration:
                 description="Capability 1",
                 capabilities=[CapabilityType.TEXT],
                 plugin_name="multi_plugin",
+                required_scopes=["read:files"],
             ),
             CapabilityDefinition(
                 id="cap2",
@@ -222,6 +225,7 @@ class TestPluginCapabilityIntegration:
                 description="Capability 2",
                 capabilities=[CapabilityType.TEXT],
                 plugin_name="multi_plugin",
+                required_scopes=["write:files"],
             ),
             CapabilityDefinition(
                 id="cap3",
@@ -230,6 +234,7 @@ class TestPluginCapabilityIntegration:
                 description="Capability 3",
                 capabilities=[CapabilityType.TEXT],
                 plugin_name="multi_plugin",
+                required_scopes=["admin"],
             ),
         ]
         mock_plugin.get_capability_definitions.return_value = mock_capability_defs
@@ -243,16 +248,17 @@ class TestPluginCapabilityIntegration:
                 with patch("src.agent.plugins.integration._get_available_services", return_value={}):
                     result = integrate_plugins_with_capabilities(mock_config)
 
-                    # Should only register enabled capabilities
+                    # New behavior: registers all capabilities from the plugin
                     expected_calls = [
                         call({"capability_id": "cap1", "required_scopes": ["read:files"]}),
+                        call({"capability_id": "cap2", "required_scopes": ["write:files"]}),
                         call({"capability_id": "cap3", "required_scopes": ["admin"]}),
                     ]
                     mock_register.assert_has_calls(expected_calls, any_order=True)
-                    assert mock_register.call_count == 2
+                    assert mock_register.call_count == 3
 
-                    # Return value should only include enabled capabilities
-                    assert result == {"cap1": ["read:files"], "cap3": ["admin"]}
+                    # Return value includes all capabilities
+                    assert result == {"cap1": ["read:files"], "cap2": ["write:files"], "cap3": ["admin"]}
 
     @patch("src.agent.plugins.integration.get_plugin_registry")
     def test_integration_skips_existing_capabilities(self, mock_get_registry):
@@ -282,6 +288,7 @@ class TestPluginCapabilityIntegration:
             description="Existing capability",
             capabilities=[CapabilityType.TEXT],
             plugin_name="test_plugin",
+            required_scopes=["test:read"],
         )
         mock_plugin.get_capability_definitions.return_value = [mock_capability_def]
 
@@ -300,7 +307,7 @@ class TestPluginCapabilityIntegration:
                     # Should not register existing capability
                     mock_register.assert_not_called()
 
-                    # Still return the capability mapping
+                    # Still return the capability mapping (skipped but added to return value)
                     assert result == {"existing_capability": ["test:read"]}
 
     @patch("src.agent.plugins.integration.get_plugin_registry")
@@ -331,6 +338,7 @@ class TestPluginCapabilityIntegration:
             description="Failing capability",
             capabilities=[CapabilityType.TEXT],
             plugin_name="test_plugin",
+            required_scopes=["test:read"],
         )
         mock_plugin.get_capability_definitions.return_value = [mock_capability_def]
 
@@ -728,13 +736,13 @@ class TestGlobalPluginState:
         mock_registry.plugins = {}
         mock_registry.discover_plugins.return_value = None
 
-        # Integration should store registry globally
+        # Integration should store registry globally even with empty config
         with patch("src.agent.plugins.integration._plugin_registry_instance", [None]) as mock_global:
-            with pytest.raises(ValueError, match="Plugin configuration is required"):
-                integrate_plugins_with_capabilities(mock_config)
+            result = integrate_plugins_with_capabilities(mock_config)
 
-            # When integration fails early, registry should NOT be stored
-            assert mock_global[0] is None  # Should remain None since error was raised early
+            # With empty config, should return empty dict but still store registry
+            assert result == {}
+            assert mock_global[0] == mock_registry  # Registry should be stored
 
     def test_get_plugin_adapter_singleton(self):
         """Test that plugin adapter follows singleton pattern."""
@@ -783,14 +791,19 @@ class TestServiceConfiguration:
 class TestConfigurationValidation:
     """Test configuration validation and error handling."""
 
-    def test_no_plugin_configuration_raises_error(self):
-        """Test that missing plugin configuration raises error."""
+    def test_no_plugin_configuration_returns_empty(self):
+        """Test that missing plugin configuration returns empty dict."""
         mock_config = Mock()
         mock_config.plugins = []
 
-        with patch("src.agent.plugins.integration.get_plugin_registry"):
-            with pytest.raises(ValueError, match="Plugin configuration is required"):
-                integrate_plugins_with_capabilities(mock_config)
+        with patch("src.agent.plugins.integration.get_plugin_registry") as mock_get_registry:
+            mock_registry = Mock()
+            mock_get_registry.return_value = mock_registry
+            mock_registry.plugins = {}
+            mock_registry.discover_plugins.return_value = None
+
+            result = integrate_plugins_with_capabilities(mock_config)
+            assert result == {}
 
     def test_config_loading_failure(self):
         """Test handling of config loading failure."""
@@ -804,8 +817,9 @@ class TestConfigurationValidation:
             mock_registry.plugins = {}
             mock_registry.discover_plugins.return_value = None
 
-            with pytest.raises(ValueError, match="Plugin configuration is required"):
-                integrate_plugins_with_capabilities(mock_config)
+            # Should handle config loading failure gracefully
+            result = integrate_plugins_with_capabilities(mock_config)
+            assert result == {}
 
     @patch("src.agent.plugins.integration.get_plugin_registry")
     def test_plugin_with_no_capabilities_skipped(self, mock_get_registry):

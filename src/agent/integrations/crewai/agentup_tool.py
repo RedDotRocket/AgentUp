@@ -19,7 +19,7 @@ class AgentUpToolInput(BaseModel):
 
 try:
     # Try to import CrewAI's BaseTool
-    from crewai.tools import BaseTool
+    from crewai.tools import BaseTool  # type: ignore  # noqa: I001
 
     class AgentUpTool(BaseTool):
         """Tool for integrating AgentUp agents into CrewAI workflows."""

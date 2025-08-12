@@ -137,12 +137,12 @@ class CapabilityContext:
             from agent.security.unified_auth import get_unified_auth_manager
 
             auth_manager = get_unified_auth_manager()
-            if auth_manager and auth_manager.scope_hierarchy:
+            if auth_manager:
                 logger.info(f"Checking if user has scope '{scope}'")
                 logger.debug(f"User scopes: {list(self.user_scopes)}")
-                return auth_manager.scope_hierarchy.validate_scope(list(self.user_scopes), scope)
+                return auth_manager.validate_scope_access(list(self.user_scopes), scope)
             else:
-                # Fallback to simple scope checking if no hierarchy available
+                # Fallback to simple scope checking if no auth manager available
                 return scope in self.user_scopes
         except ImportError:
             # Fallback if unified auth not available
@@ -154,13 +154,12 @@ class CapabilityContext:
             from agent.security.unified_auth import get_unified_auth_manager
 
             auth_manager = get_unified_auth_manager()
-            if auth_manager and auth_manager.scope_hierarchy:
+            if auth_manager:
                 return all(
-                    auth_manager.scope_hierarchy.validate_scope(list(self.user_scopes), scope)
-                    for scope in required_scopes
+                    auth_manager.validate_scope_access(list(self.user_scopes), scope) for scope in required_scopes
                 )
             else:
-                # Fallback to simple scope checking if no hierarchy available
+                # Fallback to simple scope checking if no auth manager available
                 return required_scopes.issubset(self.user_scopes)
         except ImportError:
             # Fallback if unified auth not available

@@ -26,8 +26,9 @@ from agent.api import (
 
 
 class TestAgentCard:
+    @patch("agent.plugins.manager.get_plugin_registry")
     @patch("agent.a2a.agentcard.ConfigurationManager")
-    def test_create_agent_card_minimal(self, mock_config_manager):
+    def test_create_agent_card_minimal(self, mock_config_manager, mock_get_registry):
         mock_config = {
             "project_name": "TestAgent",
             "description": "Test Agent Description",
@@ -36,6 +37,12 @@ class TestAgentCard:
             "state_management": {"enabled": True},
         }
         mock_config_manager.return_value.config = mock_config
+
+        # Mock empty plugin registry
+        mock_registry = Mock()
+        mock_registry.capabilities = {}
+        mock_registry.capability_to_plugin = {}
+        mock_get_registry.return_value = mock_registry
 
         card = create_agent_card()
 
@@ -50,8 +57,9 @@ class TestAgentCard:
         assert card.capabilities.streaming is True
         assert card.capabilities.state_transition_history is True
 
+    @patch("agent.plugins.manager.get_plugin_registry")
     @patch("agent.a2a.agentcard.ConfigurationManager")
-    def test_create_agent_card_with_skills(self, mock_config_manager):
+    def test_create_agent_card_with_skills(self, mock_config_manager, mock_get_registry):
         mock_config = {
             "agent": {"name": "SkillfulAgent", "description": "Agent with skills", "version": "2.0.0"},
             "plugins": [
@@ -66,6 +74,12 @@ class TestAgentCard:
             ],
         }
         mock_config_manager.return_value.config = mock_config
+
+        # Mock empty plugin registry
+        mock_registry = Mock()
+        mock_registry.capabilities = {}
+        mock_registry.capability_to_plugin = {}
+        mock_get_registry.return_value = mock_registry
 
         card = create_agent_card()
 

@@ -30,10 +30,17 @@ def setup_cli_logging():
 
     # Check for explicit log level from environment or default to WARNING
     log_level = os.environ.get("AGENTUP_LOG_LEVEL", "WARNING").upper()
+    is_debug = log_level == "DEBUG"
 
     try:
         from agent.config.logging import setup_logging
         from agent.config.model import LoggingConfig
+
+        # In debug mode, allow resolver logs through, otherwise suppress them
+        resolver_level = "INFO" if is_debug else "CRITICAL"  # noqa: F841
+        cache_level = (  # noqa: F841
+            "WARNING" if is_debug else "CRITICAL"
+        )  # Suppress cache debug logs even in debug mode
 
         # Create logging config
         cli_logging_config = LoggingConfig(
@@ -41,9 +48,8 @@ def setup_cli_logging():
             format="text",
             console={"colors": True},
             modules={
-                "agent.plugins": "WARNING",
+                "agent.plugins": "WARNING",  # Suppress plugin discovery logs
                 "agent.plugins.manager": "WARNING",
-                "pluggy": "WARNING",
             },
         )
         setup_logging(cli_logging_config)
@@ -54,13 +60,31 @@ def setup_cli_logging():
             format="%(message)s",
         )
         # Suppress specific noisy loggers in fallback mode
+        # Suppress specific noisy loggers (but allow them in debug mode)
+        resolver_log_level = logging.INFO if is_debug else logging.CRITICAL
+        cache_log_level = (
+            logging.WARNING if is_debug else logging.CRITICAL
+        )  # Suppress cache debug logs
+
         logging.getLogger("agent.plugins").setLevel(logging.WARNING)
         logging.getLogger("agent.plugins.manager").setLevel(logging.WARNING)
+        logging.getLogger("agent.config.plugin_resolver").setLevel(resolver_log_level)
+        logging.getLogger("agent.resolver").setLevel(resolver_log_level)
+        logging.getLogger("agent.resolver.dependency_resolver").setLevel(resolver_log_level)
+        logging.getLogger("agent.resolver.error_handler").setLevel(resolver_log_level)
+        logging.getLogger("agent.resolver.reporters").setLevel(resolver_log_level)
+        logging.getLogger("agent.resolver.providers").setLevel(resolver_log_level)
+        logging.getLogger("agent.resolver.cache").setLevel(
+            cache_log_level
+        )  # Suppress cache debug logs
+        logging.getLogger("agent.resolver.installer").setLevel(resolver_log_level)
+        logging.getLogger("agent.resolver.lock_manager").setLevel(resolver_log_level)
         logging.getLogger("pluggy").setLevel(logging.WARNING)
 
 
 @click.group(
-    cls=OrderedGroup, help="AgentUp CLI - Create and Manage agents and plugins.\n\nUse one of the subcommands below."
+    cls=OrderedGroup,
+    help="AgentUp CLI - Create and Manage agents and plugins.\n\nUse one of the subcommands below.",
 )
 @click.version_option(version=get_version(), prog_name="agentup")
 def cli():

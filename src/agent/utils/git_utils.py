@@ -42,12 +42,14 @@ def get_git_author_info() -> dict[str, str | None]:
     return author_info
 
 
-def initialize_git_repo(project_path: Path) -> bool:
+def initialize_git_repo(project_path: Path) -> tuple[bool, str | None]:
     """
     Initialize a git repository in the project directory.
 
     Returns:
-        bool: True if git initialization was successful, False otherwise.
+        tuple[bool, str | None]: (success, error_message)
+        - success: True if git initialization was successful, False otherwise
+        - error_message: Error description if failed, None if successful
 
     Bandit:
         This function uses subprocess to run git commands, which is generally safe
@@ -62,7 +64,9 @@ def initialize_git_repo(project_path: Path) -> bool:
 
         subprocess.run(["git", "commit", "-m", "Initial commit"], cwd=project_path, check=True, capture_output=True)  # nosec
 
-        return True
+        return True, None
 
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return False
+    except subprocess.CalledProcessError as e:
+        return False, f"Git command failed: {e.cmd} (exit code {e.returncode})"
+    except FileNotFoundError:
+        return False, "Git not found. Please install Git."

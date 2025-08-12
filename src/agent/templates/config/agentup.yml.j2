@@ -1,3 +1,6 @@
+# API version for configuration evolution
+apiVersion: v1
+
 # Agent Information
 name: {{ project_name }}
 description: {{ description }}
@@ -8,23 +11,84 @@ provider_url: https://agentup.dev
 icon_url: https://raw.githubusercontent.com/RedDotRocket/AgentUp/refs/heads/main/assets/icon.png
 documentation_url: https://docs.agentup.dev
 
+# Global defaults for plugin configuration
+global_defaults:
+  middleware:
+{% if has_middleware and 'rate_limit' in feature_config.get('middleware', []) %}
+    rate_limited:
+      requests_per_minute: {{ rate_limit_rpm | default(60) }}
+      burst_size: {{ rate_limit_burst | default(72) }}
+{% endif %}
+{% if has_middleware and 'cache' in feature_config.get('middleware', []) %}
+    cached:
+      backend_type: {{ cache_backend | default('memory') }}
+      default_ttl: {{ middleware_cache_ttl | default(300) }}
+      max_size: {{ cache_max_size | default(1000) }}
+{% if cache_backend == 'valkey' %}
+      valkey_url: "${VALKEY_URL:valkey://localhost:6379}"
+      valkey_db: 1
+{% endif %}
+{% endif %}
+{% if has_middleware and 'retry' in feature_config.get('middleware', []) %}
+    retryable:
+      max_attempts: {{ retry_max_attempts | default(3) }}
+      initial_delay: {{ retry_initial_delay | default(1.0) }}
+      max_delay: {{ retry_max_delay | default(60.0) }}
+{% endif %}
 
-# Agent Plugin Configuration
-plugins:
-  - plugin_id: {{ project_name_snake }}_plugin
-    package: {{ project_name | lower | replace(' ', '-') | replace('_', '-') }}-plugin  # PyPI package name (required for plugin system)
-    name: {{ project_name }} Plugin
-    description: A plugin for {{ project_name }}
-    tags: [{{ project_name | lower }}, plugin]
-    input_mode: text
-    output_mode: text
-    keywords: [{{ project_name | lower }}, plugin]
-    patterns: ['^{{ project_name | lower }}', '^help']
-    priority: 50
+# Plugin configurations with overrides
+plugins:{% if initial_plugins %}
+{% for plugin in initial_plugins %}
+  - package: {{ plugin.package }}
+    enabled: {{ plugin.enabled | default(true) }}
+{% if plugin.middleware %}
+    middleware:
+{% for mw in plugin.middleware %}
+      - name: {{ mw.name }}
+        params: {{ mw.params | tojson }}
+{% endfor %}
+{% endif %}
+{% if plugin.capabilities %}
     capabilities:
-      - capability_id: {{ project_name_snake }}_capability
-        required_scopes: ["api:read"]
-        enabled: false
+{% for cap_id, cap_config in plugin.capabilities.items() %}
+      {{ cap_id }}:
+        enabled: {{ cap_config.enabled | default(true) }}
+{% if cap_config.required_scopes %}
+        required_scopes: {{ cap_config.required_scopes | tojson }}
+{% endif %}
+{% if cap_config.middleware %}
+        middleware:
+{% for mw in cap_config.middleware %}
+          - name: {{ mw.name }}
+            params: {{ mw.params | tojson }}
+{% endfor %}
+{% endif %}
+{% if cap_config.config %}
+        config: {{ cap_config.config | tojson }}
+{% endif %}
+{% endfor %}
+{% endif %}
+{% if plugin.config %}
+    config: {{ plugin.config | tojson }}
+{% endif %}
+{% endfor %}
+{% else %} []
+  # Example plugin configuration with overrides:
+  # - package: "agentup-systools"
+  #   enabled: true
+  #   middleware:
+  #     - name: "cached"
+  #       params:
+  #         default_ttl: 60
+  #   capabilities:
+  #     file_operations:
+  #       enabled: true
+  #       required_scopes: ["files:write", "files:read"]
+  #       middleware:
+  #         - name: "rate_limited"
+  #           params:
+  #             requests_per_minute: 30
+{% endif %}
 
 # Security Configuration
 security:
@@ -38,10 +102,10 @@ security:
       keys:
         # Note, the following key is randomly generated during AgentUp project creation
         - key: "{{ generate_api_key() }}"
-          scopes: ["api:read"{% if has_mcp %}, "files:read", "files:write"{% endif %}]
+          scopes: ["api:admin"{% if has_mcp %}, "files:read", "files:write"{% endif %}]
 {% if generate_multiple_keys %}
         - key: "{{ generate_api_key() }}"
-          scopes: ["api:read"{% if has_mcp %}, "files:read"{% endif %}]
+          scopes: ["api:admin"{% if has_mcp %}, "files:read"{% endif %}]
 {% endif %}
 {% elif auth_type == 'jwt' %}
     bearer:
@@ -105,29 +169,18 @@ security:
 {% endif %}
   # Scope hierarchy for fine-grained authorization
   scope_hierarchy:
-{% if auth_type == 'oauth2' or auth_type == 'jwt' %}
+    # Admin scopes inherit all capabilities
     api:admin: ["api:write", "api:read"]
     api:write: ["api:read"]
-    api:read: []
-    files:admin: ["files:write", "files:read", "files:sensitive"]
+    # File operations hierarchy
+    files:admin: ["files:write", "files:read"]
     files:write: ["files:read"]
-    files:sensitive: ["files:read"]
-    files:read: []
+    # System operations hierarchy
     system:admin: ["system:write", "system:read"]
     system:write: ["system:read"]
-    system:read: []
-    weather:admin: ["weather:read", "alerts:read"]
-{% else %}
-    api:write: ["api:read"]
-    api:read: []
-    files:write: ["files:read"]
-    files:read: []
-    system:read: []
-    weather:admin: ["weather:read", "alerts:read"]
 {% endif %}
-{% endif -%}
-{%- if ai_provider_config %}
 
+{%- if ai_provider_config %}
 
 # AI Provider configuration
 ai_provider:
@@ -169,12 +222,9 @@ ai:
 {% endif %}
 {% endif %}
 
-
 {%- if has_mcp %}
 
-
 # Model Context Protocol
-# MCP tools are automatically exposed as skills in your AgentCard for multi-agent discovery
 mcp:
   enabled: true
   client_enabled: {{ mcp_client_enabled | default(true) }}
@@ -194,8 +244,7 @@ mcp:
         "stdio:get_forecast": ["weather:read"]
 {% endif %}
 
-
-# Middleware configuration
+# Middleware configuration (global defaults - can be overridden per plugin)
 middleware:
   enabled: {{ has_middleware | default(true) }}
 {% if has_middleware and 'rate_limit' in feature_config.get('middleware', []) %}
@@ -243,7 +292,6 @@ middleware:
     max_delay: 60.0
 {% endif %}
 
-
 # Push notifications configuration
 push_notifications:
   enabled: {{ push_enabled | default(true) }}
@@ -278,16 +326,7 @@ state_management:
   config:
     storage_dir: "{{ state_storage_dir | default('./conversation_states') }}"
 {% endif %}
-{% if state_plugin_overrides %}
-  plugin_overrides:
-{% for plugin_id, override in state_plugin_overrides.items() %}
-    {{ plugin_id }}:
-      enabled: {{ override.enabled | default(true) }}
-      ttl: {{ override.ttl }}
-{% endfor %}
 {% endif %}
-{% endif %}
-
 
 # Logging configuration
 logging:

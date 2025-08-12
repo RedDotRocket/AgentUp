@@ -2,7 +2,7 @@ repos:
   - repo: local
     hooks:
       - id: make-checks
-        name: Run make format-check, lint, security, test-unit
+        name: Run make format-check, lint, security, test-unit-fast
         entry: bash -c "make format-check && make lint && make security && make test-unit"
         language: system
         pass_filenames: false

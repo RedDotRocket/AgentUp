@@ -64,6 +64,23 @@ uv run agentup run                     # Start development server
 uv run agentup validate                # Validate agent configuration
 ```
 
+### Plugin Management
+```bash
+# Install plugins
+uv add agentup-plugin-name             # Install plugin package
+uv run agentup plugin add plugin-name  # Add to configuration
+
+# Manage configuration
+uv run agentup plugin sync             # Auto-sync installed plugins to config
+uv run agentup plugin list             # List configured plugins
+uv run agentup plugin remove plugin-name  # Remove from configuration
+uv remove plugin-name                  # Uninstall plugin package
+
+# Development
+uv run agentup plugin reload plugin-name  # Reload plugin at runtime
+uv run agentup plugin validate         # Validate plugin configuration
+```
+
 ### Makefile Shortcuts
 ```bash
 make install-dev      # Complete development setup
@@ -97,13 +114,16 @@ src/agent/
 
 **Plugin System**: Uses pluggy for hook-based architecture where plugins register capabilities with automatic middleware inheritance and scope-based permissions.
 
-**Security Layer**: Unified authentication supporting multiple types (API key, JWT, OAuth2) with hierarchical scope-based authorization and comprehensive audit logging.
+**Security Layer**: Unified authentication supporting multiple types (API key, JWT, OAuth2) with hierarchical scope-based authorization, comprehensive audit logging, and fail-secure design that denies access when security configuration is missing or invalid.
 
 **Configuration-Driven**: Agent behavior defined through YAML files with Pydantic validation and environment variable overrides.
 
 **Capability Registration**: AI functions are automatically discovered and registered with optional middleware (rate limiting, caching, retry logic) and state management.
 
 **Pydantic v2**: Utilizes Pydantic v2 features like `@field_validator` and `@model_validator` for data validation, with a focus on modern typing conventions and use of Pydantic Models for configuration.
+
+**Plugin Package Management**: UV-based plugin workflow with uv add/remove commands for dependency management, automatic plugin discovery and sync via `agentup plugin sync`, and fail-secure plugin loading with comprehensive security validation.
+
 
 ## Code Style and Conventions
 
@@ -127,6 +147,14 @@ src/agent/
 
 - **Pydantic Handling**:
   - ALWAYS USE PYDANTIC MODELS over .get style dict
+
+## Security Guidelines
+
+- **Fail-Secure Design**: All security decisions must fail closed (deny access) when configuration is missing or invalid
+- **Scope Validation**: Always validate user scopes before granting tool access; use the ScopeService for hierarchical validation
+- **Authentication**: Never bypass authentication checks; use UnifiedAuthenticationManager for consistent auth handling
+- **Plugin Security**: Plugins must declare required scopes; use allowlist-based validation for plugin loading
+- **Audit Logging**: Log all security events (authentication, authorization, access denials) with appropriate risk levels
 
 ## Task Completion Workflow
 
@@ -223,12 +251,21 @@ security:
       header_name: "X-API-Key"
       keys:
         - key: "admin-key-123"
-          scopes: ["system:read"]
-  scope_hierarchy:             # Permission inheritance
+          scopes: ["system:read", "api:read"]  # Must include required function scopes
+        - key: "readonly-key"
+          scopes: ["api:read"]                 # Limited access key
+  scope_hierarchy:             # Permission inheritance (fail-secure design)
     admin: ["*"]               # Universal access
+    system:admin: ["system:write", "system:read"]
+    system:write: ["system:read"]
+    system:read: ["system_info"] # Include specific function scopes
     files:admin: ["files:write", "files:read"]
     files:write: ["files:read"]
+    api:admin: ["api:write", "api:read"]
+    api:write: ["api:read"]
 ```
+
+**Important**: Each function requires specific scopes. If a user's API key doesn't have the required scope (either directly or through hierarchy inheritance), access will be denied with a 403 error.
 
 #### API Server
 ```yaml

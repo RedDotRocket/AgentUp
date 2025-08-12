@@ -11,7 +11,6 @@ from .models import (
     PluginDefinition,
     PluginValidationResult,
 )
-from .security import PluginSecurityManager
 
 __all__ = [
     "Plugin",
@@ -23,7 +22,6 @@ __all__ = [
     "PluginRegistry",
     "get_plugin_registry",
     "enable_plugin_system",
-    "PluginSecurityManager",
     "CapabilityContext",
     "CapabilityDefinition",
     "CapabilityResult",

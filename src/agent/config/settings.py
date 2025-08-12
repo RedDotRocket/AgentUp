@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Annotated, Any
 
 from dotenv import load_dotenv
-from pydantic import Field, HttpUrl
+from pydantic import Field, HttpUrl, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from ..types import ConfigDict as ConfigDictType
@@ -94,6 +94,86 @@ class Settings(BaseSettings):
     # Development settings
     development: dict[str, Any] = Field(default_factory=dict)
 
+    @field_validator("plugins", mode="before")
+    @classmethod
+    def validate_plugins(cls, v):
+        """Handle both old plugin format (dicts) and new format (strings)."""
+        from pydantic import ValidationError
+
+        if v is None:
+            return []
+
+        # Handle new dict format: plugins: {package_name: {config...}}
+        if isinstance(v, dict):
+            list_format = []
+            for package_name, plugin_config in v.items():
+                if isinstance(plugin_config, str):
+                    # Simple string value - convert to package name
+                    list_format.append(package_name)
+                elif isinstance(plugin_config, dict):
+                    # Dict config - ensure it has required fields for PluginConfig
+                    config_dict = plugin_config.copy()
+
+                    # Ensure package field exists
+                    if "package" not in config_dict:
+                        config_dict["package"] = package_name
+
+                    # Ensure plugin_id field exists (required by PluginConfig)
+                    if "plugin_id" not in config_dict:
+                        # Convert package name to plugin_id format
+                        config_dict["plugin_id"] = package_name.replace("-", "_").replace(".", "_")
+
+                    # Convert new capability format to old format if needed
+                    if "capabilities" in config_dict:
+                        if isinstance(config_dict["capabilities"], dict):
+                            # Convert dict capabilities back to list format for old Settings
+                            cap_list = []
+                            for cap_id, cap_config in config_dict["capabilities"].items():
+                                cap_dict = {"capability_id": cap_id}
+                                if isinstance(cap_config, dict):
+                                    cap_dict.update(cap_config)
+                                cap_list.append(cap_dict)
+                            config_dict["capabilities"] = cap_list
+                        # If capabilities are already a list, keep them as-is
+
+                    list_format.append(config_dict)
+                else:
+                    # Convert other types to string package names
+                    list_format.append(str(package_name))
+            v = list_format
+
+        if not isinstance(v, list):
+            return []
+
+        validated_plugins = []
+        for item in v:
+            if isinstance(item, str):
+                # New intent-based format: convert string to minimal PluginConfig
+                # Get correct plugin ID from entry point
+                try:
+                    from ..plugins.metadata import get_plugin_id_from_package
+
+                    plugin_id = get_plugin_id_from_package(item)
+                except Exception:
+                    # Fallback to simple conversion if metadata lookup fails
+                    plugin_id = item.replace("-", "_").replace(".", "_")
+
+                plugin_config = PluginConfig(plugin_id=plugin_id, package=item, enabled=True)
+                validated_plugins.append(plugin_config)
+            elif isinstance(item, dict):
+                # Old format: validate as PluginConfig
+                try:
+                    plugin_config = PluginConfig(**item)
+                    validated_plugins.append(plugin_config)
+                except ValidationError:
+                    # Skip invalid plugin configs
+                    continue
+            elif hasattr(item, "plugin_id"):
+                # Already a PluginConfig object
+                validated_plugins.append(item)
+
+        return validated_plugins
+
     def __init__(self, **kwargs):
         # Load .env file if it exists
         env_file = Path.cwd() / ".env"
@@ -111,6 +191,9 @@ class Settings(BaseSettings):
         # Configure logging immediately after settings are loaded
         self._configure_logging()
 
+        # Initialize plugin configuration resolver
+        self._initialize_plugin_resolver()
+
     def _configure_logging(self) -> None:
         try:
             # Use the logging configuration
@@ -121,6 +204,27 @@ class Settings(BaseSettings):
             import logging
 
             logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+
+    def _initialize_plugin_resolver(self) -> None:
+        """Initialize the plugin configuration resolver with intent configuration."""
+        try:
+            import os
+
+            from .intent import load_intent_config
+            from .plugin_resolver import initialize_plugin_resolver
+
+            # Load intent configuration from the same file path as regular config
+            config_path = os.getenv("AGENT_CONFIG_PATH", "agentup.yml")
+            intent_config = load_intent_config(config_path)
+
+            # Initialize the global plugin resolver
+            initialize_plugin_resolver(intent_config)
+
+        except Exception as e:
+            # Don't fail startup if plugin resolver can't be initialized
+            import logging
+
+            logging.getLogger(__name__).warning(f"Failed to initialize plugin configuration resolver: {e}")
 
     @classmethod
     def settings_customise_sources(
