@@ -1,3 +1,5 @@
+[![MSeeP.ai Security Assessment Badge](https://mseep.net/pr/reddotrocket-agentup-badge.png)](https://mseep.ai/app/reddotrocket-agentup)
+
 <div align="center">
   <img src="https://raw.githubusercontent.com/RedDotRocket/AgentUp/main/assets/logo.png" alt="AgentUp Logo" width="400"/>
   <h3>The Operating System for AI Agents</h3>
