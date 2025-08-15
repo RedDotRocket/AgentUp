@@ -41,58 +41,11 @@ It's important to understand the distinction between **cache** and **state** in 
 - **Scalability**: Single instance only
 - **Use case**: Development and testing
 
-## Configuration
-
-### Memory Cache Configuration
-
-For development and testing:
-
-```yaml
-cache:
-  type: memory
-  config:
-    max_size: 1000           # Maximum number of cached items
-    default_ttl: 300         # Default TTL: 5 minutes
-```
-
-### Valkey Cache Configuration
-
-For production environments:
-
-```yaml
-cache:
-  type: valkey
-  config:
-    url: "${VALKEY_URL:valkey://localhost:6379}"
-    db: 1                    # Use DB 1 for cache (DB 0 for state)
-    max_connections: 10      # Connection pool size
-    default_ttl: 300         # Default TTL: 5 minutes
-```
-
-!!! note "Redis / Valkey"
-    As of time of writing, Redis and Valkey are interchangable, e.g. if you have redis, just use
-    the value `valkey` and it will be the same. 
-
 ## TTL Configuration
 
-AgentUp supports hierarchical TTL configuration with the following priority order (each overwritten
-in sequence)
+AgentUp supports hierarchical TTL configuration with the following priority order (each overwritten in sequence):
 
-### 1. Cache-Level Default TTL (Global)
-
-Set default TTL for all cached items in the cache configuration:
-
-```yaml
-cache:
-  type: memory
-  config:
-    max_size: 1
-    default_ttl: 300
-```
-
-### 2. Middleware TTL Override (Per-Handler)
-
-Override cache default TTL for specific middleware:
+### 1. Middleware TTL Override (Per-Handler)
 
 ```yaml
 middleware:
@@ -101,9 +54,7 @@ middleware:
       ttl: 350
 ```
 
-### 3. Plugin-Level TTL Override (Per-Plugin)
-
-Override both cache and middleware TTL for specific plugins:
+### 2. Plugin-Level TTL Override (Per-Plugin)
 
 ```yaml
 plugins:
@@ -128,66 +79,31 @@ Examples:
 ### Different TTLs per Plugin
 
 ```yaml
-# Global cac`he configuration
-cache:
-  type: memory
-  config:
-    max_size: 1000
-    default_ttl: 300  # 5 minutes default
-
-middleware:
-  caching:
-    enabled: true
-    backend: memory
-    default_ttl: 300
-    max_size: 1000
-
 plugins:
-  # Fast-changing data - short cache
   - plugin_id: stock_prices
     middleware_override:
       - name: cached
         params:
-          ttl: 30  # 30 seconds
-          # Creates backend: memory:agentup:30:1000
+          ttl: 30
 
-  # Slow-changing data - long cache  
   - plugin_id: weather
     middleware_override:  
       - name: cached
         params:
-          ttl: 1800  # 30 minutes
-          # Creates backend: memory:agentup:1800:1000
+          ttl: 1800
 ```
 
 ### Different Backend Types per Plugin
 
 ```yaml
-# Global cache configuration
-cache:
-  type: memory
-  config:
-    max_size: 1000
-    default_ttl: 300
-
-middleware:
-  caching:
-    enabled: true
-    backend: memory
-    default_ttl: 300
-    max_size: 1000
-
 plugins:
-  # Local data - fast memory cache
   - plugin_id: calculations
     middleware_override:
       - name: cached
         params:
           backend_type: memory
           ttl: 300
-          # Creates backend: memory:agentup:300:1000
           
-  # Shared data - persistent Valkey cache
   - plugin_id: user_preferences  
     middleware_override:
       - name: cached
@@ -196,7 +112,6 @@ plugins:
           ttl: 3600
           valkey_url: "redis://localhost:6379"
           valkey_db: 2
-          # Creates backend: valkey:agentup:3600:1000
 ```
 
 ## Complete Configuration Examples
@@ -204,14 +119,6 @@ plugins:
 ### Development Setup (Memory Cache)
 
 ```yaml
-# Cache configuration
-cache:
-  type: memory
-  config:
-    max_size: 1000
-    default_ttl: 300  # 5 minutes
-
-# Enable caching middleware
 middleware:
   caching:
     enabled: true
@@ -219,49 +126,34 @@ middleware:
     default_ttl: 300
     max_size: 1000
 
-# Override for specific plugin
 plugins:
   - plugin_id: weather
     middleware_override:
       - name: cached
         params:
-          ttl: 600  # Weather data cached for 10 minutes
+          ttl: 600
 ```
 
 ### Production Setup (Valkey Cache)
 
 ```yaml
-# Cache configuration
-cache:
-  type: valkey
-  config:
-    url: "${VALKEY_URL:valkey://localhost:6379}"
-    db: 1
-    max_connections: 20
-    default_ttl: 300  # 5 minutes default
-
-# Global middleware with custom TTL
 middleware:
   - name: cached
     params:
-      ttl: 1800  # 30 minutes for most operations
+      ttl: 1800
 
-# Per-plugin overrides
-
-# Slow to change
 plugins:
   - plugin_id: todays_date
     middleware_override:
       - name: cached
         params:
-          ttl: 86400  # cached for 1 day
+          ttl: 86400
 
-# Fast to change
   - plugin_id: bitcoin
     middleware_override:
       - name: cached
         params:
-          ttl: 10  # Bitcoin data cached for 10 seconds
+          ttl: 10
 ```
 
 ## Cache Management
@@ -271,7 +163,7 @@ plugins:
 ```yaml
 plugins:
   - plugin_id: real_time_data
-    middleware_override: []  # Disable all middleware including caching
+    middleware_override: []
 ```
 
 Or disable only caching while keeping other middleware:
@@ -282,97 +174,58 @@ plugins:
     middleware_override:
       - name: timed
       - name: rate_limited
-      # Notice: no 'cached' middleware = caching disabled
-```
-
-### Environment Variables
-
-Use environment variables for dynamic configuration:
-
-```yaml
-cache:
-  type: valkey
-  config:
-    url: "${VALKEY_URL:valkey://localhost:6379}"
-    default_ttl: "${CACHE_TTL:300}"
 ```
 
 ## What Gets Cached vs What Doesn't
 
 ### ✓ What AgentUp Caches
 
-- **Handler/Plugin responses** - Results from plugin execution (e.g., weather data, calculations)
-- **External API responses** - Third-party API calls (weather, stock prices, etc.)
-- **Expensive computations** - Complex calculations, data processing
-- **Database queries** - User preferences, configuration data
-- **Static content** - Documentation, file contents, reference data
+- **Handler/Plugin responses**
+- **External API responses**
+- **Expensive computations**
+- **Database queries**
+- **Static content**
 
 ### ✗ What AgentUp Does NOT Cache
 
-**Task Objects with Dynamic Data** - AgentUp automatically excludes certain dynamic data from cache keys:
+- **Task UUIDs**  
+- **Context objects**  
+- **Timestamp data**  
+- **LLM Calls** (non-deterministic, context-dependent, time-sensitive)
 
-- **Task UUIDs** - Each task has a unique ID that is filtered out of cache key generation
-- **Context objects** - User-specific context with unique identifiers is excluded  
-- **Timestamp data** - Dynamic timestamps and session-specific data
+Example of why LLM caching would be problematic:
 
-**LLM Calls** - AgentUp deliberately does **not** cache LLM API calls or AI routing decisions because:
-
-- **Non-deterministic responses** - Same input produces different outputs due to temperature, sampling
-- **Context sensitivity** - Previous conversation affects current responses
-- **Time-dependent queries** - "What time is it?" should never return cached results
-- **User-specific context** - Same question needs different answers for different users
-- **Dynamic routing** - Plugin selection depends on conversation context and user state
-
-**Example of why LLM caching would be problematic:**
 ```yaml
-# Bad - this would be wrong
 User: "What's the weather like?"
 Cached LLM Response: "It's sunny and 75°F" (from yesterday)
 Reality: "It's stormy and 45°F" (today)
 ```
 
-**Request for LLM Caching:**
-If you have a specific use case where LLM response caching would be beneficial, please [open an issue](https://github.com/anthropics/agentup/issues) with your requirements. We can discuss implementing configurable LLM caching with appropriate safeguards.
+If you have a specific use case for LLM caching, please [open an issue](https://github.com/anthropics/agentup/issues).
 
 ## Best Practices
 
 ### TTL Guidelines
 
-- **API responses**: 1-10 minutes depending on data freshness requirements
-- **Expensive calculations**: 10-60 minutes
-- **Static data**: 1-24 hours
-- **Real-time data**: Disable caching or use very short TTL (< 1 minute)
+- **API responses**: 1–10 minutes
+- **Expensive calculations**: 10–60 minutes
+- **Static data**: 1–24 hours
+- **Real-time data**: Disable or very short TTL (< 1 min)
 
 ### Database Separation
 
-When using Valkey, separate cache and state databases:
-
 ```yaml
-# Cache configuration
-cache:
-  type: valkey
-  config:
-    db: 1  # Use DB 1 for cache
-
-# State configuration
 state_management:
   backend: valkey
   config:
-    db: 0  # Use DB 0 for state
+    db: 0
 ```
 
 ### Monitoring
 
-Monitor cache performance:
-
 ```bash
-# Check cache hit rates
 redis-cli -n 1 INFO stats
-
-# Monitor cache keys
 redis-cli -n 1 KEYS "*" | wc -l
-
-# Check memory usage
 redis-cli -n 1 INFO memory
 ```
 
@@ -383,11 +236,9 @@ redis-cli -n 1 INFO memory
 1. **Cache not working**: Verify middleware configuration includes `cached`
 2. **TTL not applied**: Check TTL priority order (plugin > middleware > cache)
 3. **Valkey connection errors**: Verify URL and ensure Valkey is running
-4. **Memory cache full**: Increase `max_size` or use Valkey for larger datasets
+4. **Memory cache full**: Increase `max_size` or use Valkey
 
 ### Debug Cache Behavior
-
-Enable debug logging to see cache hits/misses:
 
 ```yaml
 logging:
