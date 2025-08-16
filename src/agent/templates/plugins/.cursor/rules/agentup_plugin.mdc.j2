@@ -191,9 +191,9 @@ async def _handle_function(self, param1: str, config: dict[str, Any] | None = No
 
 ### Local Development
 1. Install in development mode: `pip install -e .`
-2. Create test agent: `agentup agent create test-agent --template minimal`
+2. Create test agent: `agentup init test-agent --template minimal`
 3. Configure plugin in agent's `agentup.yml`
-4. Test with: `agentup agent serve`
+4. Test with: `agentup run`
 
 ### Testing
 ```bash

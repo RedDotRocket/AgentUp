@@ -120,7 +120,7 @@ async def use_agentup_directly():
 
 1. **Create an AgentUp agent**:
    ```bash
-   agentup agent create my-specialist-agent
+   agentup init my-specialist-agent
    cd my-specialist-agent
    ```
 
@@ -152,7 +152,7 @@ async def use_agentup_directly():
 3. **Start the AgentUp agent**:
 
 ```bash
-agentup agent serve
+agentup run
 ```
 
 
@@ -584,7 +584,7 @@ tail -f logs/agent.log
 
 # Or increase logging level
 export LOG_LEVEL=DEBUG
-agentup agent serve
+agentup run
 ```
 
 ### Performance Optimization

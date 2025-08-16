@@ -3,12 +3,12 @@
 !!! warning
     Development is moving fast, and this document may not reflect the latest changes. Once updated, we will remove this warning.
 
-This document explains how to customize the `agentup agent create` CLI command, including adding new options, modifying existing features,
+This document explains how to customize the `agentup init` CLI command, including adding new options, modifying existing features,
 and working with the Jinja2 template system.
 
 ## Overview
 
-The `agentup agent create` command uses a multi-layered system:
+The `agentup init` command uses a multi-layered system:
 
 1. **CLI Interface** - Handles user interaction and input collection
 2. **Feature Configuration** - Maps user selections to configuration options
@@ -19,7 +19,7 @@ The `agentup agent create` command uses a multi-layered system:
 
 ```mermaid
 graph TD
-    A[User runs agentup agent create] --> B[CLI collects inputs]
+    A[User runs agentup init] --> B[CLI collects inputs]
     B --> C[Feature selection & configuration]
     C --> D[ProjectGenerator processes config]
     D --> E[Jinja2 template rendering]
@@ -461,7 +461,7 @@ def test_configure_custom_feature():
 ```bash
 # Test your changes manually
 cd ~/dev/agentup-workspace/agents/
-agentup agent create test-custom --template standard
+agentup init test-custom --template standard
 
 # Follow the prompts and verify the generated configuration
 cat test-custom/agentup.yml
@@ -619,4 +619,4 @@ state_management:
 {% endif %}
 ```
 
-This guide should help you customize and extend the `agentup agent create` CLI command. Remember to test your changes thoroughly and maintain backward compatibility with existing configurations.
+This guide should help you customize and extend the `agentup init` CLI command. Remember to test your changes thoroughly and maintain backward compatibility with existing configurations.

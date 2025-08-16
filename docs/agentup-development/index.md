@@ -55,7 +55,7 @@ uv --directory /path/to/AgentUp pip install -e .
 
 # Test with AgentUp development server
 cd /path/to/AgentUp
-uv run agentup agent serve
+uv run agentup run
 ```
 
 #### Option 2: AgentUp Plugin Development Mode
@@ -69,7 +69,7 @@ mkdir -p local-plugins
 uv run agentup plugin create local-plugins/test-plugin
 
 # Plugin auto-discovered from AGENTUP_PLUGIN_PATHS
-uv run agentup agent serve
+uv run agentup run
 ```
 
 ### Testing Framework Changes
@@ -80,10 +80,10 @@ uv run pytest
 
 # Test with example agent
 cd examples/basic-agent
-uv run --directory ../.. agentup agent serve
+uv run --directory ../.. agentup run
 
 # Test CLI commands
-uv run agentup agent create test-agent --template minimal
+uv run agentup init test-agent --template minimal
 ```
 
 ### Key Considerations
@@ -118,7 +118,7 @@ pip install -e .
 
 # Create test agent
 mkdir -p ~/test-agents && cd ~/test-agents
-agentup agent create weather-test --template standard
+agentup init weather-test --template standard
 
 # Configure agent to use your plugin
 echo "
@@ -129,7 +129,7 @@ skills:
 
 # Test your plugin
 cd weather-test
-agentup agent serve
+agentup run
 ```
 
 ### Scenario 2: Using AgentUp Source
@@ -151,7 +151,7 @@ uv --directory /path/to/AgentUp pip install -e .
 
 # Test with AgentUp source
 cd /path/to/AgentUp
-uv run agentup agent serve
+uv run agentup run
 ```
 
 ### Plugin Development Workflow
@@ -168,7 +168,7 @@ pip install -e .
 
 # Test changes
 cd ~/test-agents/weather-test
-agentup agent serve --reload  # Auto-reloads on file changes
+agentup run --reload  # Auto-reloads on file changes
 ```
 
 ### Environment Variables for Plugin Development
@@ -205,13 +205,13 @@ Agent development should be project-isolated:
 ```bash
 # Create agent project
 mkdir -p ~/my-agents && cd ~/my-agents
-agentup agent create customer-service --template standard
+agentup init customer-service --template standard
 cd customer-service
 
 # All commands run from agent directory
-agentup agent serve           # Start development server
-agentup agent validate        # Validate configuration
-agentup agent deploy --type docker  # Generate deployment files
+agentup run                     # Start development server
+agentup validate                # Validate configuration
+agentup deploy --type docker    # Generate deployment files
 ```
 
 ### Installing Plugins in Agent Projects
@@ -241,12 +241,12 @@ source ~/shared-agent-env/bin/activate
 pip install agentup weather-plugin time-plugin custom-plugin
 
 # Create agents using shared environment
-agentup agent create agent1
-agentup agent create agent2
+agentup init agent1
+agentup init agent2
 
 # Each agent can use the same plugins
-cd agent1 && agentup agent serve --port 8001
-cd agent2 && agentup agent serve --port 8002
+cd agent1 && agentup run --port 8001
+cd agent2 && agentup run --port 8002
 ```
 
 ### Path Management for Agents
@@ -331,7 +331,7 @@ for ep in skills:
 agentup plugin list
 
 # Enable debug logging
-AGENTUP_LOG_LEVEL=DEBUG agentup agent serve
+AGENTUP_LOG_LEVEL=DEBUG agentup run
 ```
 
 #### Import Errors in Plugins
@@ -359,10 +359,10 @@ grep -r "from agentup" src/
 
 ```bash
 # ✗ Wrong - broken relative paths
-cd ~ && agentup agent serve --config /path/to/agent/agentup.yml
+cd ~ && agentup run --config /path/to/agent/agentup.yml
 
 # ✓ Correct - relative paths work
-cd /path/to/agent && agentup agent serve
+cd /path/to/agent && agentup run
 ```
 
 #### Virtual Environment Confusion
@@ -433,7 +433,7 @@ cd ~/code/AgentUp
 uv sync  # Creates .venv automatically
 
 # Use uv run for all commands
-uv run agentup agent serve
+uv run agentup run
 ```
 
 **Plugin Development:**
@@ -450,7 +450,7 @@ pip install -e .
 ```bash
 # Keep agents in project directories
 mkdir -p ~/projects/customer-ai && cd ~/projects/customer-ai
-agentup agent create .  # Create agent in current directory
+agentup init .  # Create agent in current directory
 ```
 
 ### 2. Path Management
@@ -513,7 +513,7 @@ vim src/my_plugin/plugin.py
 pip install -e .
 
 # 3. Test immediately
-agentup agent serve --reload
+agentup run --reload
 
 # 4. Run tests
 pytest tests/
@@ -528,13 +528,13 @@ agentup plugin validate my_plugin
 vim agentup.yml
 
 # 2. Validate changes
-agentup agent validate
+agentup validate
 
 # 3. Test locally
-agentup agent serve --reload
+agentup run --reload
 
 # 4. Generate deployment
-agentup agent deploy --type docker
+agentup deploy --type docker
 ```
 
 ### 5. Testing Strategies
@@ -542,7 +542,7 @@ agentup agent deploy --type docker
 **Local Plugin Testing:**
 ```bash
 # Create minimal test agent
-agentup agent create test-minimal --template minimal
+agentup init test-minimal --template minimal
 cd test-minimal
 
 # Add your plugin
@@ -558,7 +558,7 @@ curl -X POST http://localhost:8000/ \
 ```bash
 # Test plugin across different agent templates
 for template in minimal standard full; do
-  agentup agent create test-$template --template $template
+  agentup init test-$template --template $template
   cd test-$template
   # Add plugin configuration
   # Test scenarios

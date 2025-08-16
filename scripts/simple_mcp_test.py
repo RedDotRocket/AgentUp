@@ -102,7 +102,7 @@ async def test_mcp_streamable_http():
         print("✗ Server is not responding. Please check:")
         print("   1. Is the AgentUp server running?")
         print("   2. Is it running on port 8001?")
-        print("   3. Try: agentup agent serve --port 8001")
+        print("   3. Try: agentup run --port 8001")
         return
 
     mcp_ok = await check_mcp_endpoint(server_url)

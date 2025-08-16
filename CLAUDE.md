@@ -59,8 +59,8 @@ uv run bandit -r src/ -ll              # Security scanning
 
 ### Agent Development
 ```bash
-uv run agentup agent create            # Create new agent project
-uv run agentup agent serve             # Start development server
+uv run agentup init                    # Create new agent project
+uv run agentup run                     # Start development server
 uv run agentup validate                # Validate agent configuration
 ```
 
@@ -70,7 +70,7 @@ make install-dev      # Complete development setup
 make test-unit        # Fast unit tests
 make lint-fix         # Fix linting and formatting
 make validate-all     # Run all quality checks
-make clean           # Clean temporary files
+make clean            # Clean temporary files
 ```
 
 ## Code Architecture

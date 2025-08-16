@@ -109,7 +109,7 @@ The AgentUp Security Framework now protects all endpoints:
 
 ```bash
 # Start your agent
-agentup agent serve --port 8000
+agentup run --port 8000
 
 # Test JSON-RPC endpoint
 curl -H "X-API-Key: sk-8K2mNx9P7qR4sV5yA3bC6dE9fH2jK5lM8nP1qS4t" \

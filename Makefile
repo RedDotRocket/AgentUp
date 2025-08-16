@@ -10,7 +10,7 @@
 .PHONY: validate-code validate-ci validate-all
 .PHONY: template-test-syntax
 .PHONY: pre-commit
-.PHONY: agent-create agent-create-minimal agent-create-advanced agent-test
+.PHONY: agent-init agent-init-minimal agent-init-advanced agent-test
 .PHONY: dev-server dev-server-test
 .PHONY: docs-serve
 .PHONY: build build-check
@@ -130,20 +130,20 @@ pre-commit: ## Run pre-commit hooks
 	uv run pre-commit run --all-files
 
 # Agent creation and testing
-agent-create: ## Create a test agent (interactive)
-	uv run agentup agent create --no-git
+agent-init: ## Create a test agent (interactive)
+	uv run agentup init --no-git
 
-agent-create-minimal: ## Create minimal test agent
+agent-init-minimal: ## Create minimal test agent
 	@echo "Creating minimal test agent..."
-	uv run agentup agent create \
+	uv run agentup init \
 		--quick test-minimal \
 		--no-git \
 		--output-dir ./test-agents/minimal
 	@echo "Minimal agent created in ./test-agents/minimal"
 
-agent-create-advanced: ## Create advanced test agent
+agent-init-advanced: ## Create advanced test agent
 	@echo "Creating advanced test agent..."
-	uv run agentup agent create \
+	uv run agentup init \
 		--quick test-advanced \
 		--no-git \
 		--output-dir ./test-agents/advanced
@@ -156,7 +156,7 @@ agent-test: ## Test a generated agent
 		uv run python -m pytest tests/ -v 2>/dev/null || echo "Tests not available"; \
 		echo "Agent test completed"; \
 	else \
-		echo "✗ No test agent found. Run 'make agent-create-minimal' first"; \
+		echo "✗ No test agent found. Run 'make agent-init-minimal' first"; \
 	fi
 
 # Development server
@@ -169,7 +169,7 @@ dev-server-test: ## Start test agent server
 		cd ./test-agents/minimal && \
 		uv run uvicorn agentup.api.app:app --reload --port 8001; \
 	else \
-		echo "✗ No test agent found. Run 'make agent-create-minimal' first"; \
+		echo "✗ No test agent found. Run 'make agent-init-minimal' first"; \
 	fi
 
 # Docs
@@ -235,6 +235,6 @@ dev-full: ## Full development validation
 	make clean
 	make dev-setup
 	make validate-all
-	make agent-create-minimal
+	make agent-init-minimal
 	make agent-test
 	@echo "Full development validation completed!"

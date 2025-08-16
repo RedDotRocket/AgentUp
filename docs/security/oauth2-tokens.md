@@ -180,7 +180,7 @@ Test all endpoint types to verify comprehensive protection:
 
 1. **Start your agent**:
    ```bash
-   agentup agent serve --port 8000
+   agentup run --port 8000
    ```
 
 2. **Get an access token** from your OAuth2 provider with appropriate scopes

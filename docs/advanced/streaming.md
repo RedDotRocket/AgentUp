@@ -409,7 +409,7 @@ Add streaming tests to your CI pipeline:
 - name: Test Streaming Endpoints
   run: |
     # Start agent in background
-    agentup agent serve &
+    agentup run &
     sleep 10
     
     # Run streaming tests

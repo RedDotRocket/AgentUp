@@ -202,7 +202,7 @@ print(results)  # Shows which files were updated
 When creating new agents, templates automatically use the current AgentUp version:
 
 ```bash
-agentup agent create my-agent
+agentup init my-agent
 # Generated pyproject.toml will have: agentup>=0.5.1
 ```
 

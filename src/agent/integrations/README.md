@@ -121,7 +121,7 @@ Requires running AgentUp agents:
 
 ```bash
 # Start AgentUp agent
-agentup agent serve
+agentup run
 
 # Run integration tests
 pytest src/agent/integrations/tests/ --run-integration -v
@@ -173,7 +173,7 @@ When adding new integrations:
 
 2. **Connection Refused**: AgentUp agent not running
    ```bash
-   agentup agent serve
+   agentup run
    ```
 
 3. **Authentication Errors**: Check API keys and scopes

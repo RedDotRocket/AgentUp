@@ -169,7 +169,7 @@ Let's now restart our agent to load the new configuration:
 Perform `ctrl + c` to stop the agent, then run:
 
 ```bash
-agentup agent serve
+agentup run
 ```
 
 We should now seee the plugin being loaded:

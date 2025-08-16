@@ -159,7 +159,7 @@ main() {
     echo -e "${BLUE}Step 1: Check if AgentUp is running${NC}"
     if ! curl -s "$AGENT_URL/" &> /dev/null; then
         echo -e "${RED}ERROR: AgentUp is not running at $AGENT_URL${NC}"
-        echo "Please start your agent with: agentup agent serve"
+        echo "Please start your agent with: agentup run"
         exit 1
     fi
     echo -e "${GREEN}✓ AgentUp is running${NC}"

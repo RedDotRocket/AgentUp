@@ -13,7 +13,7 @@ This directory contains a complete example of setting up GitHub OAuth2 authentic
 3. **Start the agent:**
    ```bash
    cd examples/oauth2_github_agent
-   agentup agent serve
+   agentup run
    ```
 4. **Run the test script:**
    ```bash

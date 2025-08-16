@@ -89,7 +89,7 @@ pip install agentup
 使用交互式配置生成新的代理项目：
 
 ```bash
-agentup agent create
+agentup init
 ```
 
 从可用选项中选择，并通过交互式提示配置您的代理的功能、身份验证和 AI 提供商设置。
@@ -99,7 +99,7 @@ agentup agent create
 启动开发服务器并开始构建：
 
 ```bash
-agentup agent serve
+agentup run
 ```
 
 您的代理现在运行在 `http://localhost:8000`，具有完整的 A2A 兼容 JSON RPC API、安全中间件和所有配置的功能。

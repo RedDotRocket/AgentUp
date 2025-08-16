@@ -92,7 +92,7 @@ export GITHUB_CLIENT_SECRET="your_actual_client_secret"
 ### 3.1 Start the Agent Server
 ```bash
 cd /path/to/your/agent
-agentup agent serve
+agentup run
 ```
 
 You should see output similar to:

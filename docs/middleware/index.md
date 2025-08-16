@@ -193,10 +193,10 @@ plugins:
 
 ## Validation
 
-Use `agentup agent validate` to check middleware configuration:
+Use `agentup validate` to check middleware configuration:
 
 ```bash
-$ agentup agent validate
+$ agentup validate
 ✓ Middleware configuration validated (5 middleware items)
 ```
 
@@ -205,7 +205,7 @@ $ agentup agent validate
 ### Middleware Not Applied
 
 1. **Check configuration** - Ensure `middleware` section exists in `agentup.yml`
-2. **Validate syntax** - Use `agentup agent validate`
+2. **Validate syntax** - Use `agentup validate`
 
 ### Performance Issues
 

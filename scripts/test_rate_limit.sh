@@ -24,7 +24,7 @@ check_server_running() {
     if ! curl -s --max-time 5 "$SERVER_URL/health" > /dev/null 2>&1; then
         echo -e "${RED}✗ Server is not running at $SERVER_URL${NC}"
         echo "Please start your agent server first:"
-        echo "  agentup agent serve --port 8000"
+        echo "  agentup run --port 8000"
         echo "  OR"
         echo "  uvicorn src.agent.api.app:app --reload --port 8000"
         exit 1

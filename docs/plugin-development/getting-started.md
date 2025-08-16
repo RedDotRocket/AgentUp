@@ -291,7 +291,7 @@ Create a simple test agent or use an existing one:
 
 ```bash
 # Create a test agent
-agentup agent create time-agent
+agentup init time-agent
 
 cd time-agent
 ```
@@ -324,7 +324,7 @@ plugins:
 Start the agent:
 
 ```bash
-agentup agent serve
+agentup run
 ```
 
 Now test your plugin by sending requests:
@@ -415,7 +415,7 @@ With an AI-enabled agent, your functions are automatically available:
 
 ```bash
 # Create an AI-enabled agent
-agentup agent create ai-test-agent
+agentup init ai-test-agent
 
 cd ai-test-agent
 
@@ -441,7 +441,7 @@ plugins:
 Start the agent:
 
 ```bash
-agentup agent serve
+agentup run
 ```
 
 Test AI function calling:

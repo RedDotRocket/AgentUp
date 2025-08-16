@@ -209,13 +209,13 @@ authentication:
 
 ```bash
 # Validate configuration file
-agentup agent validate
+agentup validate
 
 # Validate with verbose output
-agentup agent validate --verbose
+agentup validate --verbose
 
 # Validate specific file
-agentup agent validate --config custom_config.yaml
+agentup validate --config custom_config.yaml
 ```
 
 ### Common Validation Errors
@@ -367,13 +367,13 @@ production:
 
 ```bash
 # Show resolved configuration
-agentup agent config show
+agentup config show
 
 # Show configuration with environment variables resolved
-agentup agent config show --resolve-env
+agentup config show --resolve-env
 
 # Validate configuration step by step
-agentup agent validate --debug
+agentup validate --debug
 ```
 
 ### Common Issues
