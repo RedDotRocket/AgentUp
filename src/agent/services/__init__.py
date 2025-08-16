@@ -32,10 +32,8 @@ from .middleware import MiddlewareManager
 from .multimodal import MultiModalProcessor
 from .push import PushNotificationService
 from .registry import (
-    CacheService,
     ServiceError,
     ServiceRegistry,
-    WebAPIService,
     get_services,
 )
 from .security import SecurityService
@@ -59,8 +57,6 @@ __all__ = [
     "initialize_services_from_config",
     "ServiceError",
     "ServiceRegistry",
-    "CacheService",
-    "WebAPIService",
     "MultiModalProcessor",
     "Config",
 ]
