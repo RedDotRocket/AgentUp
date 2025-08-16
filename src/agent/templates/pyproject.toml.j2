@@ -1,9 +1,12 @@
 [project]
 name = "{{ project_name_snake }}"
-version = "{{ project_version | default('1.0.0') }}"
+version = "{{ version | default('v0.0.1') }}"
 description = "{{ description }}"
 readme = "README.md"
 requires-python = ">=3.11"
+authors = [
+    { name = "{{ author_info.name | default("Your name") }}", email = "{{ author_info.email | default("email") }}" },
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -15,5 +18,3 @@ classifiers = [
 dependencies = [
     "agentup>={{ agentup_version }}",  # AgentUp framework - provides all core functionality
 ]
-
-

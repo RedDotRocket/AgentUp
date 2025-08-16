@@ -1,4 +1,3 @@
-import subprocess  # nosec
 from pathlib import Path
 from typing import Any
 
@@ -8,33 +7,7 @@ from questionary import Style
 
 from agent.generator import ProjectGenerator
 from agent.templates import get_feature_choices
-
-
-def initialize_git_repo(project_path: Path) -> bool:
-    """
-    Initialize a git repository in the project directory.
-
-    Returns:
-        bool: True if git initialization was successful, False otherwise.
-
-    Bandit:
-        This function uses subprocess to run git commands, which is generally safe
-        as long as the entry point is the CLI command and the project_path is controlled.
-    """
-    try:
-        subprocess.run(["git", "--version"], check=True, capture_output=True)  # nosec
-
-        subprocess.run(["git", "init"], cwd=project_path, check=True, capture_output=True)  # nosec
-
-        subprocess.run(["git", "add", "."], cwd=project_path, check=True, capture_output=True)  # nosec
-
-        subprocess.run(["git", "commit", "-m", "Initial commit"], cwd=project_path, check=True, capture_output=True)  # nosec
-
-        return True
-
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return False
-
+from agent.utils.git_utils import get_git_author_info, initialize_git_repo
 
 custom_style = Style(
     [
@@ -53,12 +26,14 @@ custom_style = Style(
 
 @click.command()
 @click.argument("name", required=False)
+@click.argument("version", required=False)
 @click.option("--quick", "-q", is_flag=True, help="Quick setup with minimal features (basic handlers only)")
 @click.option("--output-dir", "-o", type=click.Path(), help="Output directory")
 @click.option("--config", "-c", type=click.Path(exists=True), help="Use existing agentup.yml as template")
 @click.option("--no-git", is_flag=True, help="Skip git repository initialization")
 def init_agent(
     name: str | None,
+    version: str | None,
     quick: bool,
     output_dir: str | None,
     config: str | None,
@@ -103,6 +78,7 @@ def init_agent(
 
     if quick:
         project_config["description"] = f"AI Agent {name} Project."
+        project_config["version"] = version or "v0.0.1"
         # Include default checked features in quick mode
         default_features = [choice.value for choice in get_feature_choices() if choice.checked]
         project_config["features"] = default_features
@@ -112,6 +88,14 @@ def init_agent(
         project_config["description"] = description
 
         project_config["features"] = []
+
+        if not version:
+            version = questionary.text("Version:", default="v0.0.1", style=custom_style).ask()
+
+        project_config["version"] = version
+
+        if not no_git:
+            project_config["author_info"] = get_git_author_info()
 
         if questionary.confirm("Would you like to customize the features?", default=False, style=custom_style).ask():
             # Get all available feature choices

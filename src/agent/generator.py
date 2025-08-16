@@ -1,4 +1,3 @@
-import importlib.metadata
 import re
 import secrets
 import string
@@ -9,7 +8,7 @@ import structlog
 from jinja2 import Environment, FileSystemLoader
 
 from .config.model import AgentConfig, MiddlewareConfig
-from .utils.version import get_version
+from .utils.version import get_version, to_version_case
 
 logger = structlog.get_logger(__name__)
 
@@ -194,8 +193,9 @@ class ProjectGenerator:
             "project_name_snake": self._to_snake_case(self.project_name),
             "project_name_title": self._to_title_case(self.project_name),
             "description": self.config.get("description", ""),
-            "version": self._get_package_version(),
+            "version": to_version_case(self.config.get("version", "")),
             "agentup_version": get_version(),  # Current AgentUp version for templates
+            "author_info": self.config.get("author_info", {}),
             "features": self.features,
             "feature_config": self.config.get("feature_config", {}),
             "has_env_file": True,  # Most agents will have .env file
@@ -283,17 +283,6 @@ class ProjectGenerator:
     # ============================================================================
     # UTILITY METHODS
     # ============================================================================
-
-    def _get_package_version(self) -> str:
-        """Get the version of the agentup package from metadata."""
-        try:
-            return importlib.metadata.version("agentup")
-        except importlib.metadata.PackageNotFoundError:
-            logger.warning("Package 'agentup' not found in metadata")
-            return "0.0.0"
-        except Exception as e:
-            logger.warning(f"Failed to get version for package 'agentup': {e}")
-            return "0.0.0"
 
     def _replace_template_vars(self, content: str) -> str:
         replacements = {

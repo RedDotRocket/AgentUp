@@ -72,6 +72,7 @@ class TestCreateAgentCommand:
         mock_questionary.text.return_value.ask.side_effect = [
             "my-interactive-agent",  # Agent name
             "My awesome interactive agent",  # Description
+            "v0.0.1", # Version
         ]
         # No template selection needed
         mock_questionary.confirm.return_value.ask.side_effect = [
@@ -93,6 +94,7 @@ class TestCreateAgentCommand:
         config = call_args[1]
         assert config["name"] == "my-interactive-agent"
         assert config["description"] == "My awesome interactive agent"
+        assert config["version"] == "v0.0.1"
 
     def test_init_agent_quick_mode(self, runner, mock_generator, temp_dir, mock_feature_choices):
         with (
@@ -253,7 +255,7 @@ class TestServiceSelection:
         self, runner, mock_generator, mock_questionary, temp_dir, mock_feature_choices
     ):
         # Mock questionary responses
-        mock_questionary.text.return_value.ask.side_effect = ["ollama-service-test", "Test Ollama service selection"]
+        mock_questionary.text.return_value.ask.side_effect = ["ollama-service-test", "Test Ollama service selection", "v0.0.1"]
         # Enable feature customization and select services feature
         mock_questionary.confirm.return_value.ask.return_value = True  # Yes, customize features
 
@@ -280,6 +282,7 @@ class TestServiceSelection:
         mock_questionary.text.return_value.ask.side_effect = [
             "custom-service-test",
             "Test Custom service selection",
+            "v0.0.1",
         ]
         # Enable feature customization and select services feature
         mock_questionary.confirm.return_value.ask.return_value = True  # Yes, customize features
@@ -302,7 +305,7 @@ class TestServiceSelection:
     def test_service_selection_multiple_services(
         self, runner, mock_generator, mock_questionary, temp_dir, mock_feature_choices
     ):
-        mock_questionary.text.return_value.ask.side_effect = ["multi-service-test", "Test multiple services"]
+        mock_questionary.text.return_value.ask.side_effect = ["multi-service-test", "Test multiple services", "v0.0.1"]
         # Enable feature customization and select services feature
         mock_questionary.confirm.return_value.ask.return_value = True  # Yes, customize features
 
@@ -324,7 +327,7 @@ class TestServiceSelection:
     def test_service_selection_no_services(
         self, runner, mock_generator, mock_questionary, temp_dir, mock_feature_choices
     ):
-        mock_questionary.text.return_value.ask.side_effect = ["no-service-test", "Test no services"]
+        mock_questionary.text.return_value.ask.side_effect = ["no-service-test", "Test no services", "v0.0.1"]
         # Enable feature customization and select services feature
         mock_questionary.confirm.return_value.ask.return_value = True  # Yes, customize features
 
@@ -349,6 +352,7 @@ class TestServiceSelection:
         mock_questionary.text.return_value.ask.side_effect = [
             "no-services-feature-test",
             "Test no services feature",
+            "v0.0.1",
         ]
 
         # User says NO to customizing features (so services feature is not selected)
@@ -406,7 +410,7 @@ class TestFeatureCustomization:
                 Choice("State Management", value="state_management", checked=False),
             ]
 
-            mock_questionary.text.return_value.ask.side_effect = ["custom-features-test", "Test custom features"]
+            mock_questionary.text.return_value.ask.side_effect = ["custom-features-test", "Test custom features", "v0.0.1"]
             # No template selection needed
             mock_questionary.confirm.return_value.ask.side_effect = [
                 True,  # Yes, customize features

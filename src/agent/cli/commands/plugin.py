@@ -12,7 +12,9 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from ...utils.version import get_version
+from agent.utils.git_utils import get_git_author_info, initialize_git_repo
+
+from ...utils.version import get_version, to_version_case
 
 # Standard library modules that should not be used as plugin names
 _STDLIB_MODULES = {
@@ -664,10 +666,11 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, agentup_cfg: bo
 
 @plugin.command()
 @click.argument("plugin_name", required=False)
+@click.argument("plugin_version", required=False)
 @click.option("--template", "-t", type=click.Choice(["direct", "ai"]), default="direct", help="Plugin template")
 @click.option("--output-dir", "-o", type=click.Path(), help="Output directory for the plugin")
 @click.option("--no-git", is_flag=True, help="Skip git initialization")
-def create(plugin_name: str | None, template: str, output_dir: str | None, no_git: bool):
+def create(plugin_name: str | None, plugin_version: str | None, template: str, output_dir: str | None, no_git: bool):
     click.secho("[bold cyan]AgentUp Plugin Creator[/bold cyan]")
     click.secho("Let's create a new plugin!\n")
 
@@ -702,7 +705,8 @@ def create(plugin_name: str | None, template: str, output_dir: str | None, no_gi
 
     description = questionary.text("Description:", default=f"A plugin that provides {display_name} functionality").ask()
 
-    author = questionary.text("Author name:").ask()
+    if not plugin_version:
+        plugin_version = questionary.text("Version:", default="v0.0.1").ask()
 
     def validate_email(email: str) -> bool | str:
         """Validator for questionary that returns True or error message."""
@@ -725,10 +729,17 @@ def create(plugin_name: str | None, template: str, output_dir: str | None, no_gi
 
         return True
 
-    email = questionary.text(
-        "Author email (optional - press enter to skip):",
-        validate=validate_email,
-    ).ask()
+    if no_git:
+        author = questionary.text("Author name:").ask()
+
+        email = questionary.text(
+            "Author email (optional - press enter to skip):",
+            validate=validate_email,
+        ).ask()
+    else:
+        author_info = get_git_author_info()
+        author = author_info["name"]
+        email = author_info["email"]
 
     capability_id = questionary.text(
         "Primary capability ID:", default=plugin_name.replace("-", "_"), validate=lambda x: x.replace("_", "").isalnum()
@@ -765,6 +776,7 @@ def create(plugin_name: str | None, template: str, output_dir: str | None, no_gi
 
         # Prepare template context
         plugin_name_snake = _to_snake_case(plugin_name)
+        plugin_version_case = to_version_case(plugin_version)
         # Generate class name, avoiding double "Plugin" suffix
         base_class_name = "".join(word.capitalize() for word in plugin_name.replace("-", "_").split("_"))
         if base_class_name.endswith("Plugin"):
@@ -778,6 +790,7 @@ def create(plugin_name: str | None, template: str, output_dir: str | None, no_gi
             "class_name": class_name,
             "display_name": display_name,
             "description": description,
+            "version": plugin_version_case,
             "author": author,
             "email": email.strip() if email and email.strip() else None,
             "capability_id": capability_id,
@@ -1013,14 +1026,8 @@ updates:
             (github_dir / "dependabot.yml").write_text(dependabot_content, encoding="utf-8")
 
         # Initialize git repo
-        # Bandit: Add nosec to ignore command injection risk
-        # This is safe as we control the output_dir input and it comes from trusted source (the code itself)
         if not no_git:
-            subprocess.run(["git", "init"], cwd=output_dir, capture_output=True)  # nosec
-            subprocess.run(["git", "add", "."], cwd=output_dir, capture_output=True)  # nosec
-            subprocess.run(
-                ["git", "commit", "-m", f"Initial commit for {plugin_name} plugin"], cwd=output_dir, capture_output=True
-            )  # nosec
+            initialize_git_repo(output_dir)
 
         # Success message
         click.secho("\n✓ Plugin created successfully!", fg="green")
