@@ -99,7 +99,7 @@ First we have our basic agent configuration:
 
 ```yaml
 name: "basic-agent"
-description: AI Agent Lukes Agent Project.
+description: AI Agent Project.
 version: 0.5.7
 url: http://localhost:8000
 provider_organization: AgentUp

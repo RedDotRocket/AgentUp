@@ -155,7 +155,8 @@ def register_plugin_capability(plugin_config: dict[str, Any]) -> None:
                     capability_info = plugin_adapter.get_capability_info(capability_id)
                     if capability_info and "plugin_name" in capability_info:
                         plugin_name = capability_info["plugin_name"]
-                except Exception:
+                except (KeyError, AttributeError, TypeError, ImportError):
+                    # Plugin adapter or capability info not available - use fallback
                     pass
 
                 # Get effective scopes from the resolver

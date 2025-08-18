@@ -2,6 +2,7 @@ from pathlib import Path
 
 import click
 import structlog
+import yaml
 
 from agent.config.intent import load_intent_config, save_intent_config
 
@@ -12,7 +13,8 @@ logger = structlog.get_logger(__name__)
 
 @click.command()
 @click.option("--dry-run", is_flag=True, help="Show what would be changed without making changes")
-def sync(dry_run: bool):
+@click.pass_context
+def sync(ctx, dry_run: bool):
     """Sync agentup.yml with installed AgentUp plugins."""
 
     project_root = Path.cwd()
@@ -28,9 +30,9 @@ def sync(dry_run: bool):
         intent_config = load_intent_config(str(intent_config_path))
         current_plugins = set(intent_config.plugins.keys()) if intent_config.plugins else set()
         click.secho(f"Current agentup.yml has {len(current_plugins)} configured plugins", fg="green")
-    except Exception as e:
+    except (FileNotFoundError, yaml.YAMLError, KeyError, ValueError) as e:
         click.secho(f"Failed to load agentup.yml: {e}", fg="red")
-        return
+        ctx.exit(1)
 
     # Discover installed AgentUp plugins with capabilities (bypass allowlist)
     try:
@@ -77,7 +79,7 @@ def sync(dry_run: bool):
                                 )
                         break
 
-            except Exception as e:
+            except (ImportError, AttributeError, TypeError, ValueError) as e:
                 # If we can't load the plugin, still include it without capabilities
                 click.secho(f"  Warning: Could not discover capabilities for {plugin_id}: {e}", fg="yellow")
 
@@ -89,9 +91,9 @@ def sync(dry_run: bool):
 
         click.secho(f"Found {len(installed_plugins)} installed AgentUp plugins", fg="green")
 
-    except Exception as e:
+    except (ImportError, AttributeError, KeyError, ValueError) as e:
         click.secho(f"Failed to discover installed plugins: {e}", fg="red")
-        return
+        ctx.exit(1)
 
     # Calculate changes needed - use package names for consistent comparison
     installed_package_names = {info["package_name"] for info in installed_plugins.values()}
@@ -178,7 +180,7 @@ def sync(dry_run: bool):
                 )
 
             changes_made = True
-        except Exception as e:
+        except (KeyError, AttributeError, ValueError, TypeError) as e:
             click.secho(f"  ✗ Failed to add {package_name}: {e}", fg="red")
 
     # Remove plugins no longer installed
@@ -188,7 +190,7 @@ def sync(dry_run: bool):
                 del intent_config.plugins[package_name]
                 click.secho(f"  ✓ Removed {package_name}", fg="green")
                 changes_made = True
-        except Exception as e:
+        except (KeyError, AttributeError) as e:
             click.secho(f"  ✗ Failed to remove {package_name}: {e}", fg="red")
 
     # Save updated configuration
@@ -199,7 +201,7 @@ def sync(dry_run: bool):
                 f"\n✓ Updated agentup.yml with {len(plugins_to_add)} additions and {len(packages_to_remove_list)} removals",
                 fg="green",
             )
-        except Exception as e:
+        except (FileNotFoundError, yaml.YAMLError, PermissionError, OSError) as e:
             click.secho(f"\n✗ Failed to save agentup.yml: {e}", fg="red")
     else:
         click.secho("\nNo changes were made", fg="yellow")
@@ -207,7 +209,8 @@ def sync(dry_run: bool):
 
 @click.command()
 @click.argument("plugin_name")
-def add(plugin_name: str):
+@click.pass_context
+def add(ctx, plugin_name: str):
     """Add a specific installed plugin to agentup.yml configuration."""
 
     project_root = Path.cwd()
@@ -218,9 +221,9 @@ def add(plugin_name: str):
     # Load current intent configuration
     try:
         intent_config = load_intent_config(str(intent_config_path))
-    except Exception as e:
+    except (FileNotFoundError, yaml.YAMLError, KeyError, ValueError) as e:
         click.secho(f"Failed to load agentup.yml: {e}", fg="red")
-        return
+        ctx.exit(1)
 
     # Check if plugin is already configured
     if intent_config.plugins and plugin_name in intent_config.plugins:
@@ -264,7 +267,7 @@ def add(plugin_name: str):
                 if plugin_found:
                     break
 
-            except Exception:
+            except (AttributeError, KeyError, TypeError, ValueError):
                 continue
 
         if not plugin_found:
@@ -274,9 +277,9 @@ def add(plugin_name: str):
 
         click.secho(f"Found plugin '{actual_plugin_id}' from package {package_name} v{version}", fg="green")
 
-    except Exception as e:
+    except (ImportError, AttributeError, KeyError, TypeError) as e:
         click.secho(f"Failed to verify plugin installation: {e}", fg="red")
-        return
+        ctx.exit(1)
 
     # Add plugin to configuration with proper plugin ID and package mapping
     try:
@@ -289,13 +292,23 @@ def add(plugin_name: str):
         save_intent_config(intent_config, str(intent_config_path))
         click.secho(f"✓ Added {package_name} (plugin_id: {actual_plugin_id}) to agentup.yml", fg="green")
 
-    except Exception as e:
+    except (
+        KeyError,
+        AttributeError,
+        ValueError,
+        TypeError,
+        FileNotFoundError,
+        yaml.YAMLError,
+        PermissionError,
+        OSError,
+    ) as e:
         click.secho(f"Failed to add plugin to configuration: {e}", fg="red")
 
 
 @click.command()
 @click.argument("plugin_name")
-def remove(plugin_name: str):
+@click.pass_context
+def remove(ctx, plugin_name: str):
     """Remove a plugin from agentup.yml configuration (does not uninstall the package)."""
 
     project_root = Path.cwd()
@@ -306,9 +319,9 @@ def remove(plugin_name: str):
     # Load current intent configuration
     try:
         intent_config = load_intent_config(str(intent_config_path))
-    except Exception as e:
+    except (FileNotFoundError, yaml.YAMLError, KeyError, ValueError) as e:
         click.secho(f"Failed to load agentup.yml: {e}", fg="red")
-        return
+        ctx.exit(1)
 
     # Check if plugin is configured
     if not intent_config.plugins or plugin_name not in intent_config.plugins:
@@ -324,7 +337,7 @@ def remove(plugin_name: str):
         click.secho(f"✓ Removed {plugin_name} from agentup.yml", fg="green")
         click.secho(f"Note: To uninstall the package completely, run: uv remove {plugin_name}", fg="cyan")
 
-    except Exception as e:
+    except (KeyError, AttributeError, FileNotFoundError, yaml.YAMLError, PermissionError, OSError) as e:
         click.secho(f"Failed to remove plugin from configuration: {e}", fg="red")
 
 
@@ -351,5 +364,5 @@ def reload(plugin_name: str):
 
     except ImportError:
         click.secho("Plugin system not available.", fg="red")
-    except Exception as e:
+    except (AttributeError, KeyError, RuntimeError) as e:
         click.secho(f"Error reloading plugin: {e}", fg="red")

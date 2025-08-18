@@ -62,9 +62,7 @@ def setup_cli_logging():
         # Suppress specific noisy loggers in fallback mode
         # Suppress specific noisy loggers (but allow them in debug mode)
         resolver_log_level = logging.INFO if is_debug else logging.CRITICAL
-        cache_log_level = (
-            logging.WARNING if is_debug else logging.CRITICAL
-        )  # Suppress cache debug logs
+        cache_log_level = logging.WARNING if is_debug else logging.CRITICAL  # Suppress cache debug logs
 
         logging.getLogger("agent.plugins").setLevel(logging.WARNING)
         logging.getLogger("agent.plugins.manager").setLevel(logging.WARNING)
@@ -74,9 +72,7 @@ def setup_cli_logging():
         logging.getLogger("agent.resolver.error_handler").setLevel(resolver_log_level)
         logging.getLogger("agent.resolver.reporters").setLevel(resolver_log_level)
         logging.getLogger("agent.resolver.providers").setLevel(resolver_log_level)
-        logging.getLogger("agent.resolver.cache").setLevel(
-            cache_log_level
-        )  # Suppress cache debug logs
+        logging.getLogger("agent.resolver.cache").setLevel(cache_log_level)  # Suppress cache debug logs
         logging.getLogger("agent.resolver.installer").setLevel(resolver_log_level)
         logging.getLogger("agent.resolver.lock_manager").setLevel(resolver_log_level)
         logging.getLogger("pluggy").setLevel(logging.WARNING)

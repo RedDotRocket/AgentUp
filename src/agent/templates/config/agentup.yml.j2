@@ -168,6 +168,7 @@ security:
 {% endif %}
 {% endif %}
   # Scope hierarchy for fine-grained authorization
+  # These should and can be removed
   scope_hierarchy:
     # Admin scopes inherit all capabilities
     api:admin: ["api:write", "api:read"]
@@ -178,6 +179,8 @@ security:
     # System operations hierarchy
     system:admin: ["system:write", "system:read"]
     system:write: ["system:read"]
+{% if has_mcp %}
+    weather:admin: ["alerts:read", "weather:read"]
 {% endif %}
 
 {%- if ai_provider_config %}
@@ -211,13 +214,13 @@ ai:
 {% else %}
   system_prompt: |
     You are {{ project_name }}, an AI agent created with AgentUp.
-
+    
     Your role:
     - Understand user requests naturally and conversationally
     - Use the appropriate functions when needed to help users
     - Provide helpful, accurate, and friendly responses
     - Maintain context across conversations
-
+    
     Always be helpful, accurate, and maintain a friendly tone.
 {% endif %}
 {% endif %}

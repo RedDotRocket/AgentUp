@@ -220,9 +220,7 @@ class AgentBootstrapper:
             if len(capabilities_registered) == 0:
                 self.logger.debug("No capabilities registered from plugins")
             else:
-                self.logger.info(
-                    f"Registered {len(capabilities_registered)} capabilities from plugins"
-                )
+                self.logger.info(f"Registered {len(capabilities_registered)} capabilities from plugins")
 
         except Exception as e:
             self.logger.error(f"Plugin integration failed: {e}")

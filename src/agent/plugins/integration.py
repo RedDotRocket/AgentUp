@@ -154,9 +154,7 @@ def integrate_plugins_with_capabilities(
     for capability_id, required_scopes in capabilities_to_register.items():
         # Skip if capability executor already exists (don't override existing executors)
         if capability_id in _capabilities:
-            logger.debug(
-                f"Capability '{capability_id}' already registered as executor, skipping plugin"
-            )
+            logger.debug(f"Capability '{capability_id}' already registered as executor, skipping plugin")
             continue
 
         try:

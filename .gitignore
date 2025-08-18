@@ -90,7 +90,4 @@ site/
 .foam/
 
 # agentup stuff
-agentup.lock
-.agentup_install_cache
-agentup.lock
 agentup.yml
