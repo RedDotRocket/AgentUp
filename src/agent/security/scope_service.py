@@ -242,7 +242,9 @@ class ScopeService:
 
         return {
             "total_scopes": len(self._hierarchy.hierarchy),
-            "wildcard_scopes_count": len(self._wildcard_scopes) if hasattr(self._hierarchy, "_wildcard_scopes") else 0,
+            "wildcard_scopes_count": len(self._hierarchy._wildcard_scopes)
+            if hasattr(self._hierarchy, "_wildcard_scopes")
+            else 0,
         }
 
 

@@ -168,7 +168,6 @@ security:
 {% endif %}
 {% endif %}
   # Scope hierarchy for fine-grained authorization
-  # These should and can be removed
   scope_hierarchy:
     # Admin scopes inherit all capabilities
     api:admin: ["api:write", "api:read"]
@@ -181,6 +180,7 @@ security:
     system:write: ["system:read"]
 {% if has_mcp %}
     weather:admin: ["alerts:read", "weather:read"]
+{% endif %}
 {% endif %}
 
 {%- if ai_provider_config %}
