@@ -159,10 +159,10 @@ class PluginAdapter:
             if function_name:
                 # Try to find which plugin provides this function
                 for plugin_config in configured_plugins:
-                    plugin_id = plugin_config.plugin_id
-                    if plugin_id:
+                    plugin_name = plugin_config.name
+                    if plugin_name:
                         # Check if this plugin provides the function being called
-                        plugin_functions = self._get_plugin_function_names(plugin_id)
+                        plugin_functions = self._get_plugin_function_names(plugin_name)
                         if function_name in plugin_functions:
                             return plugin_config.config or {}
 
@@ -175,20 +175,20 @@ class PluginAdapter:
             logger.error(f"Could not load plugin config for task: {e}")
             raise
 
-    def _get_plugin_function_names(self, plugin_id: str) -> list[str]:
+    def _get_plugin_function_names(self, plugin_name: str) -> list[str]:
         try:
             # Get all capabilities provided by this plugin
             function_names = []
             for capability_id, _capability_info in self.plugin_registry.capabilities.items():
                 # Check if this capability belongs to the plugin
-                if self.plugin_registry.capability_to_plugin.get(capability_id) == plugin_id:
+                if self.plugin_registry.capability_to_plugin.get(capability_id) == plugin_name:
                     # Get AI functions for this capability
                     ai_functions = self.plugin_registry.get_ai_functions(capability_id)
                     function_names.extend([func.name for func in ai_functions])
             return function_names
         except Exception as e:
-            logger.error(f"Failed to get function names for plugin '{plugin_id}': {e}")
-            raise RuntimeError(f"Failed to retrieve function names for plugin '{plugin_id}': {e}") from e
+            logger.error(f"Failed to get function names for plugin '{plugin_name}': {e}")
+            raise RuntimeError(f"Failed to retrieve function names for plugin '{plugin_name}': {e}") from e
 
     def _create_capability_context_for_capability(self, task: Task, capability_id: str) -> CapabilityContext:
         # Extract metadata
@@ -217,12 +217,12 @@ class PluginAdapter:
             configured_plugins = self._config.plugins
 
             # Find which plugin provides this capability
-            plugin_id = self.plugin_registry.capability_to_plugin.get(capability_id)
+            plugin_name = self.plugin_registry.capability_to_plugin.get(capability_id)
 
-            if plugin_id:
+            if plugin_name:
                 # Find the plugin configuration
                 for plugin_config in configured_plugins:
-                    if plugin_config.plugin_id == plugin_id:
+                    if plugin_config.name == plugin_name:
                         return plugin_config.config or {}
 
             # No plugin found for this capability

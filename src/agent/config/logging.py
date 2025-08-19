@@ -84,7 +84,7 @@ def add_plugin_context(_logger, _method_name, event_dict: EventDict) -> EventDic
     context_vars = structlog.contextvars.get_contextvars()
 
     # Add plugin identification fields if available
-    for key in ("plugin_id", "plugin_name", "plugin_version"):
+    for key in ("plugin_name", "plugin_version"):
         if key in context_vars:
             event_dict[key] = context_vars[key]
 
@@ -200,7 +200,7 @@ def _get_module_logger():
     return logger
 
 
-def get_plugin_logger(plugin_id: str, plugin_name: str | None = None, plugin_version: str | None = None):
+def get_plugin_logger(plugin_name: str, plugin_version: str | None = None):
     """
     Create a logger with plugin context bound automatically.
 
@@ -208,20 +208,17 @@ def get_plugin_logger(plugin_id: str, plugin_name: str | None = None, plugin_ver
     plugin identification in all log entries.
 
     Args:
-        plugin_id: Unique identifier for the plugin
-        plugin_name: Human-readable name of the plugin (optional)
+        plugin_name: Name/identifier for the plugin
         plugin_version: Version of the plugin (optional)
 
     Returns:
         A structlog logger with plugin context bound
     """
     # Create base logger for the plugin
-    base_logger = structlog.get_logger(f"agent.plugins.{plugin_id}")
+    base_logger = structlog.get_logger(f"agent.plugins.{plugin_name}")
 
     # Prepare context to bind
-    plugin_context = {"plugin_id": plugin_id}
-    if plugin_name:
-        plugin_context["plugin_name"] = plugin_name
+    plugin_context = {"plugin_name": plugin_name}
     if plugin_version:
         plugin_context["plugin_version"] = plugin_version
 

@@ -57,8 +57,8 @@ class TestStateConfigResolution:
     def test_get_skill_config_found(self):
         mock_config = {
             "plugins": [
-                {"plugin_id": "test_skill", "name": "Test Skill", "state_override": {"backend": "memory"}},
-                {"plugin_id": "other_skill", "name": "Other Skill"},
+                {"name": "test_skill", "name": "Test Skill", "state_override": {"backend": "memory"}},
+                {"name": "other_skill", "name": "Other Skill"},
             ]
         }
 
@@ -66,12 +66,12 @@ class TestStateConfigResolution:
             result = _get_plugin_config("test_skill")
 
             assert result is not None
-            assert result["plugin_id"] == "test_skill"
+            assert result["name"] == "test_skill"
             assert result["name"] == "Test Skill"
             assert "state_override" in result
 
     def test_get_plugin_config_not_found(self):
-        mock_config = {"plugins": [{"plugin_id": "other_skill", "name": "Other Skill"}]}
+        mock_config = {"plugins": [{"name": "other_skill", "name": "Other Skill"}]}
 
         with patch("src.agent.handlers.handlers.load_config", return_value=mock_config):
             result = _get_plugin_config("nonexistent_skill")
@@ -80,7 +80,7 @@ class TestStateConfigResolution:
 
     def test_resolve_state_config_global(self):
         global_config = {"enabled": True, "backend": "memory"}
-        skill_config = {"plugin_id": "test_skill", "name": "Test Skill"}
+        skill_config = {"name": "test_skill", "name": "Test Skill"}
 
         with patch("src.agent.handlers.handlers._load_state_config", return_value=global_config):
             with patch("src.agent.handlers.handlers._get_plugin_config", return_value=skill_config):
@@ -91,7 +91,7 @@ class TestStateConfigResolution:
     def test_resolve_state_config_skill_override(self):
         global_config = {"enabled": True, "backend": "memory"}
         skill_config = {
-            "plugin_id": "test_skill",
+            "name": "test_skill",
             "name": "Test Skill",
             "state_override": {"enabled": True, "backend": "file", "config": {"storage_dir": "/tmp"}},
         }
@@ -262,7 +262,7 @@ class TestGlobalStateApplication:
         with patch("src.agent.handlers.handlers._load_state_config", return_value=state_config):
             with patch("src.agent.handlers.handlers._apply_state_to_handler") as mock_apply_state:
                 # Mock apply_state to return a "wrapped" version
-                def mock_apply(handler, plugin_id):
+                def mock_apply(handler, plugin_name):
                     wrapped = AsyncMock()
                     wrapped._agentup_state_applied = True
                     return wrapped
@@ -343,7 +343,7 @@ class TestGlobalStateApplication:
         with patch("src.agent.handlers.handlers._load_state_config", return_value=state_config):
             with patch("src.agent.handlers.handlers._apply_state_to_handler") as mock_apply_state:
                 # Mock apply_state to return a "wrapped" version
-                def mock_apply(handler, plugin_id):
+                def mock_apply(handler, plugin_name):
                     wrapped = AsyncMock()
                     wrapped._agentup_state_applied = True
                     return wrapped
@@ -419,13 +419,13 @@ class TestIntegrationWithRealScenarios:
         agent_config = {
             "plugins": [
                 {
-                    "plugin_id": "ai_assistant",
+                    "name": "ai_assistant",
                     "name": "AI Assistant",
                     "description": "AI-powered assistant",
                     "tags": ["ai", "assistant"],
                 },
                 {
-                    "plugin_id": "stateful_echo",
+                    "name": "stateful_echo",
                     "name": "Stateful Echo",
                     "description": "Echo with state",
                     "tags": ["echo", "stateful"],

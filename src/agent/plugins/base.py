@@ -44,7 +44,6 @@ class Plugin:
 
         # Create plugin-aware logger
         self.logger = get_plugin_logger(
-            plugin_id=self.plugin_id,
             plugin_name=getattr(self, "name", None) or self.__class__.__name__,
             plugin_version=getattr(self, "version", None),
         )
@@ -53,8 +52,8 @@ class Plugin:
         self._discover_capabilities()
 
     @property
-    def plugin_id(self) -> str:
-        """Get plugin ID from class name"""
+    def plugin_name(self) -> str:
+        """Get plugin name from class name"""
         return self.__class__.__name__.lower().replace("plugin", "")
 
     def _discover_capabilities(self):
@@ -134,7 +133,7 @@ class Plugin:
                 required_scopes=cap_meta.scopes,
                 tags=cap_meta.tags,
                 config_schema=cap_meta.config_schema,
-                plugin_name=self.plugin_id,
+                plugin_name=self.plugin_name,
             )
             definitions.append(definition)
 

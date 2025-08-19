@@ -28,7 +28,7 @@ class PluginConfigWrapper:
     """Wrapper to make dict-based plugin config compatible with attribute access"""
 
     def __init__(self, data: dict):
-        self.plugin_id = data["plugin_id"]
+        self.name = data["name"]
         self.package = data.get("package", "")
         self.enabled = data.get("enabled", True)
         self.config = data.get("config", {})
@@ -87,7 +87,7 @@ def integrate_plugins_with_capabilities(
     )
 
     # Get the set of plugins that are configured from settings
-    _configured_plugin_ids = set()
+    _configured_plugin_names = set()
 
     # Get configured capabilities from settings (regardless of enabled state)
     configured_capabilities = set()
@@ -101,27 +101,27 @@ def integrate_plugins_with_capabilities(
         configured_capabilities = set()
 
     # Process all discovered plugins - register those that are configured or have no lock file
-    for plugin_id, plugin_instance in plugin_registry.plugins.items():
-        logger.debug(f"Processing discovered plugin: {plugin_id}")
+    for plugin_name, plugin_instance in plugin_registry.plugins.items():
+        logger.debug(f"Processing discovered plugin: {plugin_name}")
 
         # Process all discovered plugins (no lock file filtering)
 
         # Configure the plugin with default/empty config
         try:
             plugin_instance.configure({})
-            logger.debug(f"Configured plugin '{plugin_id}' with empty config")
+            logger.debug(f"Configured plugin '{plugin_name}' with empty config")
         except Exception as e:
-            logger.warning(f"Failed to configure plugin '{plugin_id}': {e}")
+            logger.warning(f"Failed to configure plugin '{plugin_name}': {e}")
             continue
 
         # Get the plugin's capabilities (defined via @capability decorators)
         try:
             plugin_capabilities = plugin_instance.get_capability_definitions()
             logger.debug(
-                f"Plugin '{plugin_id}' provides {len(plugin_capabilities)} capabilities: {[cap.id for cap in plugin_capabilities]}"
+                f"Plugin '{plugin_name}' provides {len(plugin_capabilities)} capabilities: {[cap.id for cap in plugin_capabilities]}"
             )
         except Exception as e:
-            logger.warning(f"Failed to get capabilities for plugin '{plugin_id}': {e}")
+            logger.warning(f"Failed to get capabilities for plugin '{plugin_name}': {e}")
             continue
 
         # Only register capabilities that are both provided by plugin AND configured in settings
@@ -306,8 +306,8 @@ def integrate_with_function_registry(
             continue
 
         # Get AI functions from the capability
-        plugin_id = plugin_registry.capability_to_plugin[capability_id]
-        plugin = plugin_registry.plugins[plugin_id]
+        plugin_name = plugin_registry.capability_to_plugin[capability_id]
+        plugin = plugin_registry.plugins[plugin_name]
         ai_functions = plugin.get_ai_functions(capability_id)
 
         for ai_func in ai_functions:
@@ -325,7 +325,7 @@ def integrate_with_function_registry(
             registry.register_function(ai_func.name, handler, schema)
             ai_function_count += 1
 
-            logger.debug(f"Registered AI function '{ai_func.name}' from plugin '{plugin_id}'")
+            logger.debug(f"Registered AI function '{ai_func.name}' from plugin '{plugin_name}'")
 
     logger.info(f"Registered {ai_function_count} AI functions from plugins")
 

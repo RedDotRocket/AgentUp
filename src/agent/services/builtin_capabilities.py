@@ -11,13 +11,13 @@ class CapabilityMetadata:
     def __init__(
         self,
         capability_id: str,
-        plugin_id: str | None = None,
+        plugin_name: str | None = None,
         required_scopes: list[str] | None = None,
         description: str | None = None,
         tags: list[str] | None = None,
     ):
         self.capability_id = capability_id
-        self.plugin_id = plugin_id
+        self.plugin_name = plugin_name
         self.required_scopes = required_scopes or []
         self.description = description
         self.tags = tags or []
@@ -152,7 +152,7 @@ class BuiltinCapabilityRegistry(Service):
         # Add capabilities from this registry with metadata
         for cap_id, metadata in self._metadata.items():
             result[cap_id] = {
-                "plugin_id": metadata.plugin_id,
+                "plugin_name": metadata.plugin_name,
                 "required_scopes": metadata.required_scopes,
                 "description": metadata.description,
                 "tags": metadata.tags,
@@ -302,8 +302,8 @@ class BuiltinCapabilityRegistry(Service):
     def _get_middleware_config(self, capability_id: str) -> list[dict[str, Any]]:
         # Check for capability-specific override first
         plugin_config = self._get_plugin_config_for_capability(capability_id)
-        if plugin_config and "middleware_override" in plugin_config:
-            return plugin_config["middleware_override"]
+        if plugin_config and "plugin_override" in plugin_config:
+            return plugin_config["plugin_override"]
 
         # Use global middleware configuration
         middleware_config = self.config.get("middleware", {})
@@ -375,16 +375,31 @@ class BuiltinCapabilityRegistry(Service):
     def _get_plugin_config_for_capability(self, capability_id: str) -> dict[str, Any] | None:
         # Try to find the plugin that provides this capability
         metadata = self._metadata.get(capability_id)
-        if metadata and metadata.plugin_id:
-            plugins = self.config.get("plugins", [])
-            for plugin in plugins:
-                if plugin.get("plugin_id") == metadata.plugin_id:
-                    return plugin
+        if metadata and metadata.plugin_name:
+            # Handle new dictionary-based plugin structure
+            plugins = self.config.get("plugins", {})
+            if isinstance(plugins, dict):
+                # New structure: plugins is a dict with package names as keys
+                for package_name, plugin_config in plugins.items():
+                    if package_name == metadata.plugin_name or plugin_config.get("name") == metadata.plugin_name:
+                        return plugin_config
+            else:
+                # Legacy list structure
+                for plugin in plugins:
+                    if plugin.get("name") == metadata.plugin_name:
+                        return plugin
 
-        # Fallback: check if capability_id matches a plugin_id
-        plugins = self.config.get("plugins", [])
-        for plugin in plugins:
-            if plugin.get("plugin_id") == capability_id:
-                return plugin
+        # Fallback: check if capability_id matches a plugin name
+        plugins = self.config.get("plugins", {})
+        if isinstance(plugins, dict):
+            # New structure
+            for package_name, plugin_config in plugins.items():
+                if package_name == capability_id or plugin_config.get("name") == capability_id:
+                    return plugin_config
+        else:
+            # Legacy list structure
+            for plugin in plugins:
+                if plugin.get("name") == capability_id:
+                    return plugin
 
         return None

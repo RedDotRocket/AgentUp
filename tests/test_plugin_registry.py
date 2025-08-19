@@ -454,13 +454,10 @@ class TestPluginAllowlist:
     def test_load_plugin_allowlist_default_mode(self):
         """Test loading allowlist in default mode from plugins config."""
         config = {
-            "plugins": [
-                {"plugin_id": "test_plugin", "package": "custom-package", "verified": True},
-                {
-                    "plugin_id": "auto_plugin"
-                    # No package specified, should auto-generate
-                },
-            ]
+            "plugins": {
+                "custom-package": {"name": "test_plugin", "verified": True},
+                "auto-plugin": {"name": "auto_plugin"},
+            }
         }
 
         registry = PluginRegistry(config)
@@ -469,7 +466,7 @@ class TestPluginAllowlist:
         assert registry.allowed_plugins["test_plugin"]["package"] == "custom-package"
 
         assert "auto_plugin" in registry.allowed_plugins
-        assert registry.allowed_plugins["auto_plugin"]["package"] == "agentup-auto_plugin-plugin"
+        assert registry.allowed_plugins["auto_plugin"]["package"] == "auto-plugin"
 
     @patch("src.agent.plugins.manager.logger")
     def test_load_plugin_allowlist_error_handling(self, mock_logger):

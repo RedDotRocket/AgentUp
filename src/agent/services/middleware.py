@@ -50,22 +50,32 @@ class MiddlewareManager(Service):
     def get_global_config(self) -> list[dict[str, Any]]:
         return self._global_config.copy()
 
-    def get_middleware_for_plugin(self, plugin_id: str) -> list[dict[str, Any]]:
+    def get_middleware_for_plugin(self, plugin_name: str) -> list[dict[str, Any]]:
         """Get middleware configuration for a specific plugin.
 
         Args:
-            plugin_id: Plugin identifier
+            plugin_name: Plugin name/package identifier
 
         Returns:
             List of middleware configurations
         """
         # Check for plugin-specific override
-        plugins = self.config.get("plugins", [])
-        for plugin in plugins:
-            if plugin.get("plugin_id") == plugin_id:
-                if "middleware_override" in plugin:
-                    self.logger.debug(f"Using middleware override for plugin {plugin_id}")
-                    return plugin["middleware_override"]
+        plugins = self.config.get("plugins", {})
+
+        if isinstance(plugins, dict):
+            # New dictionary-based structure
+            for package_name, plugin_config in plugins.items():
+                if package_name == plugin_name or plugin_config.get("name") == plugin_name:
+                    if "plugin_override" in plugin_config:
+                        self.logger.debug(f"Using plugin override for plugin {plugin_name}")
+                        return plugin_config["plugin_override"]
+        else:
+            # Legacy list structure
+            for plugin in plugins:
+                if plugin.get("name") == plugin_name:
+                    if "plugin_override" in plugin:
+                        self.logger.debug(f"Using plugin override for plugin {plugin_name}")
+                        return plugin["plugin_override"]
 
         # Return global config
         return self.get_global_config()

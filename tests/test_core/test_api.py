@@ -64,7 +64,7 @@ class TestAgentCard:
             "agent": {"name": "SkillfulAgent", "description": "Agent with skills", "version": "2.0.0"},
             "plugins": [
                 {
-                    "plugin_id": "chat",
+                    "name": "chat",
                     "name": "Chat",
                     "description": "General chat capabilities",
                     "input_mode": "text",
@@ -86,14 +86,27 @@ class TestAgentCard:
         # With registry-only approach, configured plugins don't appear unless loaded in registry
         assert len(card.skills) == 0
 
+    @patch("agent.plugins.manager.get_plugin_registry")
     @patch("agent.a2a.agentcard.ConfigurationManager")
-    def test_create_agent_card_with_security_enabled(self, mock_config_manager):
+    def test_create_agent_card_with_security_enabled(self, mock_config_manager, mock_get_registry):
         mock_config = {
             "agent": {"name": "SecureAgent"},
             "skills": [],
             "security": {"enabled": True, "type": "api_key"},
         }
         mock_config_manager.return_value.config = mock_config
+        
+        # Mock the pydantic_config to return proper values
+        mock_pydantic_config = Mock()
+        mock_pydantic_config.project_name = "SecureAgent"
+        mock_pydantic_config.description = "Secure Agent Description"
+        mock_config_manager.return_value.pydantic_config = mock_pydantic_config
+
+        # Mock empty plugin registry
+        mock_registry = Mock()
+        mock_registry.capabilities = {}
+        mock_registry.capability_to_plugin = {}
+        mock_get_registry.return_value = mock_registry
 
         card = create_agent_card()
 

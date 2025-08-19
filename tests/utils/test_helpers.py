@@ -29,15 +29,21 @@ def create_test_config(
 
 
 def create_test_agent_config(
-    agent_name: str = "test-agent", llm_service: str = "openai", llm_model: str = "gpt-4o-mini", **kwargs
+    agent_name: str = "test-agent",
+    llm_service: str = "openai",
+    llm_model: str = "gpt-4o-mini",
+    **kwargs,
 ) -> dict[str, Any]:
     config = {
-        "agent": {"name": agent_name, "description": f"Test agent {agent_name}", "version": get_version()},
+        "agent": {
+            "name": agent_name,
+            "description": f"Test agent {agent_name}",
+            "version": get_version(),
+        },
         "routing": {"default_mode": "ai", "fallback_capability": "ai_assistant"},
         "skills": [
             {
-                "plugin_id": "ai_assistant",
-                "name": "AI Assistant",
+                "name": "ai_assistant",
                 "description": "General purpose AI assistant",
                 "input_mode": "text",
                 "output_mode": "text",
@@ -240,20 +246,23 @@ class AgentConfigBuilder:
 
     def with_ollama_service(self, name: str = "ollama", model: str = "qwen3:0.6b"):
         return self.with_service(
-            name, "llm", provider="ollama", base_url="${OLLAMA_BASE_URL:http://localhost:11434}", model=model
+            name,
+            "llm",
+            provider="ollama",
+            base_url="${OLLAMA_BASE_URL:http://localhost:11434}",
+            model=model,
         )
 
     def with_anthropic_service(self, name: str = "anthropic", model: str = "claude-3-haiku-20240307"):
         return self.with_service(name, "llm", provider="anthropic", api_key="${ANTHROPIC_API_KEY}", model=model)
 
-    def with_skill(self, plugin_id: str, name: str = None, **config):
+    def with_skill(self, plugin_name: str, name: str = None, **config):
         if "skills" not in self.config:
             self.config["skills"] = []
 
         skill = {
-            "plugin_id": plugin_id,
-            "name": name or plugin_id.replace("_", " ").title(),
-            "description": f"Test skill {plugin_id}",
+            "name": name or plugin_name.replace("_", " ").title(),
+            "description": f"Test skill {plugin_name}",
             "input_mode": "text",
             "output_mode": "text",
             **config,

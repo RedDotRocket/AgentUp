@@ -2,17 +2,56 @@
 apiVersion: v1
 
 # Agent Information
-name: {{ project_name }}
-description: {{ description }}
-version: {{ version }}
+name: "{{ project_name }}"
+description: "{{ description }}"
+version: "{{ version }}"
 url: http://localhost:8000
 provider_organization: AgentUp
 provider_url: https://agentup.dev
 icon_url: https://raw.githubusercontent.com/RedDotRocket/AgentUp/refs/heads/main/assets/icon.png
 documentation_url: https://docs.agentup.dev
 
-# Global defaults for plugin configuration
-global_defaults:
+# Plugin configurations (use agentup plugin sync / add / remove)
+plugins:{% if initial_plugins %}
+{% for plugin in initial_plugins %}
+  - package: {{ plugin.package }}
+    enabled: {{ plugin.enabled | default(true) }}
+{% if plugin.plugin_override %}
+    plugin_override:
+{% for mw in plugin.plugin_override %}
+      - name: {{ mw.name }}
+        config: {{ mw.config | tojson }}
+{% endfor %}
+{% endif %}
+{% if plugin.capabilities %}
+    capabilities:
+{% for cap_id, cap_config in plugin.capabilities.items() %}
+      {{ cap_id }}:
+        enabled: {{ cap_config.enabled | default(true) }}
+{% if cap_config.required_scopes %}
+        required_scopes: {{ cap_config.required_scopes | tojson }}
+{% endif %}
+{% if cap_config.capability_override %}
+        capability_override:
+{% for mw in cap_config.capability_override %}
+          - name: {{ mw.name }}
+            config: {{ mw.config | tojson }}
+{% endfor %}
+{% endif %}
+{% if cap_config.config %}
+        config: {{ cap_config.config | tojson }}
+{% endif %}
+{% endfor %}
+{% endif %}
+{% if plugin.config %}
+    config: {{ plugin.config | tojson }}
+{% endif %}
+{% endfor %}
+{% else %} {}
+{% endif %}
+
+# Plugin defaults that plugins inherit
+plugin_defaults:
   middleware:
 {% if has_middleware and 'rate_limit' in feature_config.get('middleware', []) %}
     rate_limited:
@@ -36,58 +75,26 @@ global_defaults:
       max_delay: {{ retry_max_delay | default(60.0) }}
 {% endif %}
 
-# Plugin configurations with overrides
-plugins:{% if initial_plugins %}
-{% for plugin in initial_plugins %}
-  - package: {{ plugin.package }}
-    enabled: {{ plugin.enabled | default(true) }}
-{% if plugin.middleware %}
-    middleware:
-{% for mw in plugin.middleware %}
-      - name: {{ mw.name }}
-        params: {{ mw.params | tojson }}
-{% endfor %}
-{% endif %}
-{% if plugin.capabilities %}
-    capabilities:
-{% for cap_id, cap_config in plugin.capabilities.items() %}
-      {{ cap_id }}:
-        enabled: {{ cap_config.enabled | default(true) }}
-{% if cap_config.required_scopes %}
-        required_scopes: {{ cap_config.required_scopes | tojson }}
-{% endif %}
-{% if cap_config.middleware %}
-        middleware:
-{% for mw in cap_config.middleware %}
-          - name: {{ mw.name }}
-            params: {{ mw.params | tojson }}
-{% endfor %}
-{% endif %}
-{% if cap_config.config %}
-        config: {{ cap_config.config | tojson }}
-{% endif %}
-{% endfor %}
-{% endif %}
-{% if plugin.config %}
-    config: {{ plugin.config | tojson }}
-{% endif %}
-{% endfor %}
-{% else %} []
-  # Example plugin configuration with overrides:
-  # - package: "agentup-systools"
-  #   enabled: true
-  #   middleware:
-  #     - name: "cached"
-  #       params:
-  #         default_ttl: 60
-  #   capabilities:
-  #     file_operations:
-  #       enabled: true
-  #       required_scopes: ["files:write", "files:read"]
-  #       middleware:
-  #         - name: "rate_limited"
-  #           params:
-  #             requests_per_minute: 30
+{%- if has_mcp %}
+
+# Model Context Protocol
+mcp:
+  enabled: true
+  client_enabled: {{ mcp_client_enabled | default(true) }}
+  servers:
+    - name: "stdio"
+      enabled: true
+      transport: "stdio"
+      command: "python"
+      args: ["scripts/mcp/weather_server.py", "--transport", "stdio"]
+      timeout: 30
+      # Expose MCP tools as skills in AgentCard for multi-agent discovery
+      expose_as_skills: true
+      # MCP tools require explicit scope mapping using server:tool format
+      # This prevents naming conflicts when multiple servers expose similar tools
+      tool_scopes:
+        "stdio:get_alerts": ["alerts:read"]
+        "stdio:get_forecast": ["weather:read"]
 {% endif %}
 
 # Security Configuration
@@ -204,7 +211,6 @@ ai_provider:
 {% endif -%}
 {%- if ai_enabled %}
 
-
 # AI system prompt and configuration
 ai:
   enabled: {{ ai_enabled | default(true) }}
@@ -214,85 +220,63 @@ ai:
 {% else %}
   system_prompt: |
     You are {{ project_name }}, an AI agent created with AgentUp.
-    
+
     Your role:
     - Understand user requests naturally and conversationally
     - Use the appropriate functions when needed to help users
     - Provide helpful, accurate, and friendly responses
     - Maintain context across conversations
-    
+
     Always be helpful, accurate, and maintain a friendly tone.
 {% endif %}
 {% endif %}
 
-{%- if has_mcp %}
-
-# Model Context Protocol
-mcp:
-  enabled: true
-  client_enabled: {{ mcp_client_enabled | default(true) }}
-  servers:
-    - name: "stdio"
-      enabled: true
-      transport: "stdio"
-      command: "python"
-      args: ["scripts/mcp/weather_server.py", "--transport", "stdio"]
-      timeout: 30
-      # Expose MCP tools as skills in AgentCard for multi-agent discovery
-      expose_as_skills: true
-      # MCP tools require explicit scope mapping using server:tool format
-      # This prevents naming conflicts when multiple servers expose similar tools
-      tool_scopes:
-        "stdio:get_alerts": ["alerts:read"]
-        "stdio:get_forecast": ["weather:read"]
-{% endif %}
-
-# Middleware configuration (global defaults - can be overridden per plugin)
-middleware:
-  enabled: {{ has_middleware | default(true) }}
+# Global system-wide defaults
+global_defaults:
+  middleware:
 {% if has_middleware and 'rate_limit' in feature_config.get('middleware', []) %}
-  rate_limiting:
-    enabled: true
-    requests_per_minute: {{ rate_limit_rpm | default(60) }}
-    burst_size: {{ rate_limit_burst | default(72) }}
+    rate_limiting:
+      enabled: true
+      requests_per_minute: {{ rate_limit_rpm | default(60) }}
+      burst_size: {{ rate_limit_burst | default(72) }}
 {% else %}
-  rate_limiting:
-    enabled: false
-    requests_per_minute: 60
-    burst_size: 72
+    rate_limiting:
+      enabled: false
+      requests_per_minute: 60
+      burst_size: 72
 {% endif %}
 {% if has_middleware and 'cache' in feature_config.get('middleware', []) %}
-  caching:
-    enabled: true
-    backend: {{ cache_backend | default('memory') }}
-    default_ttl: {{ middleware_cache_ttl | default(300) }}
-    max_size: {{ cache_max_size | default(1000) }}
+    caching:
+      enabled: true
+      backend: {{ cache_backend | default('memory') }}
+      default_ttl: {{ middleware_cache_ttl | default(300) }}
+      max_size: {{ cache_max_size | default(1000) }}
 {% if cache_backend == 'valkey' %}
-    # Valkey connection configuration
-    valkey_url: "${VALKEY_URL:valkey://localhost:6379}"
-    valkey_db: 1  # Use DB 1 for cache (DB 0 for state)
-    valkey_max_connections: 10
-    valkey_connection_timeout: 5
+      # Valkey connection configuration
+      valkey_url: "${VALKEY_URL:valkey://localhost:6379}"
+      valkey_db: 1  # Use DB 1 for cache (DB 0 for state)
+      valkey_max_connections: 10
+      valkey_connection_timeout: 5
 {% endif %}
 {% else %}
-  caching:
-    enabled: false
-    backend: memory
-    default_ttl: 300
-    max_size: 1000
+    caching:
+      enabled: false
+      backend: memory
+      default_ttl: 300
+      max_size: 1000
 {% endif %}
 {% if has_middleware and 'retry' in feature_config.get('middleware', []) %}
-  retry:
-    enabled: true
-    max_attempts: {{ retry_max_attempts | default(3) }}
-    initial_delay: {{ retry_initial_delay | default(1.0) }}
-    max_delay: {{ retry_max_delay | default(60.0) }}
+    retry:
+      enabled: true
+      max_attempts: {{ retry_max_attempts | default(3) }}
+      initial_delay: {{ retry_initial_delay | default(1.0) }}
+      max_delay: {{ retry_max_delay | default(60.0) }}
 {% else %}
-  retry:
-    enabled: false
-    max_attempts: 3
-    initial_delay: 1.0
-    max_delay: 60.0
+    retry:
+      enabled: false
+      max_attempts: 3
+      initial_delay: 1.0
+      max_delay: 60.0
 {% endif %}
 
 # Push notifications configuration
@@ -345,26 +329,26 @@ logging:
   # Advanced features
   correlation_id: {{ correlation_id | default(false) }}
   request_logging: {{ request_logging | default(false) }}
-{% if log_modules %}
-  # Module-specific log levels
-  modules:
-{% for module, level in log_modules.items() %}
-    {{ module }}: "{{ level }}"
-{% endfor %}
-{% endif %}
   # Uvicorn integration
   uvicorn:
     access_log: {{ uvicorn_access_log | default(false) }}
     disable_default_handlers: true
     use_colors: {{ uvicorn_colors | default(console_colors | default(true)) }}
-
+  # modules logging
+  modules:
+    "a2a": "ERROR" # Suppress all a2a logs below ERROR level
+    "a2a.utils": "ERROR" # Specifically suppress a2a.utils logs
+    "a2a.utils.telemetry": "ERROR" # Specifically suppress telemetry logs
+    "httpcore.connection": "ERROR"
+    "httpcore.http11": "ERROR"
+    "httpx": "ERROR"
 
 # Development configuration
 # WARNING: These features can be security risks and should NEVER be enabled in production
 development:
   enabled: {{ development_enabled | default(false) }}  # Master switch for ALL development features
 {% if development_enabled %}
-  
+
   # Filesystem plugin loading -
   # This allows loading arbitrary Python code from the filesystem, NEVER enable in production
   filesystem_plugins:

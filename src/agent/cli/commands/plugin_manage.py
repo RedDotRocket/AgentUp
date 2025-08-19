@@ -44,7 +44,7 @@ def sync(ctx, dry_run: bool):
 
         installed_plugins = {}
         for plugin_info in available_plugins_info:
-            plugin_id = plugin_info["name"]
+            plugin_name = plugin_info["name"]
 
             # Try to load the plugin and discover capabilities
             capabilities = []
@@ -59,7 +59,7 @@ def sync(ctx, dry_run: bool):
                     plugin_entries = entry_points.get("agentup.plugins", [])
 
                 for entry_point in plugin_entries:
-                    if entry_point.name == plugin_id:
+                    if entry_point.name == plugin_name:
                         plugin_class = entry_point.load()
                         plugin_instance = plugin_class()
 
@@ -81,10 +81,13 @@ def sync(ctx, dry_run: bool):
 
             except (ImportError, AttributeError, TypeError, ValueError) as e:
                 # If we can't load the plugin, still include it without capabilities
-                click.secho(f"  Warning: Could not discover capabilities for {plugin_id}: {e}", fg="yellow")
+                click.secho(
+                    f"  Warning: Could not discover capabilities for {plugin_name}: {e}",
+                    fg="yellow",
+                )
 
-            installed_plugins[plugin_id] = {
-                "package_name": plugin_info["package"],
+            installed_plugins[plugin_info["package"]] = {
+                "plugin_name": plugin_name,
                 "version": plugin_info["version"],
                 "capabilities": capabilities,
             }
@@ -96,7 +99,7 @@ def sync(ctx, dry_run: bool):
         ctx.exit(1)
 
     # Calculate changes needed - use package names for consistent comparison
-    installed_package_names = {info["package_name"] for info in installed_plugins.values()}
+    installed_package_names = set(installed_plugins.keys())
 
     # Plugins to add (installed but not in config)
     packages_to_add = installed_package_names - current_plugins
@@ -104,11 +107,11 @@ def sync(ctx, dry_run: bool):
     # Plugins to remove (in config but not installed)
     packages_to_remove = current_plugins - installed_package_names
 
-    # Convert package names to plugin IDs for processing additions
+    # Get packages to add (package names that need to be added)
     plugins_to_add = []
-    for plugin_id, info in installed_plugins.items():
-        if info["package_name"] in packages_to_add:
-            plugins_to_add.append((plugin_id, info["package_name"]))
+    for package_name, info in installed_plugins.items():
+        if package_name in packages_to_add:
+            plugins_to_add.append((info["plugin_name"], package_name))
 
     # Keep package names for removals since that's how they're stored in config
     packages_to_remove_list = list(packages_to_remove)
@@ -116,10 +119,10 @@ def sync(ctx, dry_run: bool):
     # Show summary of changes
     if plugins_to_add:
         click.secho(f"\nPlugins to add ({len(plugins_to_add)}):", fg="green")
-        for plugin_id, package_name in sorted(plugins_to_add):
-            package_info = installed_plugins[plugin_id]
+        for plugin_name, package_name in sorted(plugins_to_add):
+            package_info = installed_plugins[package_name]
             click.secho(
-                f"  + {package_name} (plugin_id: {plugin_id}, v{package_info['version']})",
+                f"  + {package_name} (plugin: {plugin_name}, v{package_info['version']})",
                 fg="green",
             )
 
@@ -144,9 +147,9 @@ def sync(ctx, dry_run: bool):
     changes_made = False
 
     # Add new plugins with discovered capabilities
-    for plugin_id, package_name in plugins_to_add:
+    for _plugin_name, package_name in plugins_to_add:
         try:
-            plugin_info = installed_plugins[plugin_id]
+            plugin_info = installed_plugins[package_name]
 
             # Create plugin override with package name and capabilities
             from agent.config.intent import CapabilityOverride, PluginOverride
@@ -158,11 +161,9 @@ def sync(ctx, dry_run: bool):
                         enabled=cap["enabled"], required_scopes=cap["required_scopes"]
                     )
 
-            # Create plugin override with proper package mapping for security
+            # Create plugin override (package name is the key)
             plugin_override = PluginOverride(
                 enabled=True,
-                plugin_id=plugin_id,  # Store the actual plugin ID
-                package=package_name,  # Package name for security validation
                 capabilities=capability_overrides,
             )
             # Use package name as key for intuitive user experience
@@ -170,12 +171,12 @@ def sync(ctx, dry_run: bool):
 
             if plugin_info["capabilities"]:
                 click.secho(
-                    f"  ✓ Added {package_name} (plugin_id: {plugin_id}) with {len(plugin_info['capabilities'])} capabilities",
+                    f"  ✓ Added {package_name} with {len(plugin_info['capabilities'])} capabilities",
                     fg="green",
                 )
             else:
                 click.secho(
-                    f"  ✓ Added {package_name} (plugin_id: {plugin_id}) with no capabilities",
+                    f"  ✓ Added {package_name} with no capabilities",
                     fg="green",
                 )
 
@@ -236,7 +237,7 @@ def add(ctx, plugin_name: str):
 
         plugin_found = False
         package_name = None
-        actual_plugin_id = None
+        actual_plugin_name = None
 
         for dist in metadata.distributions():
             try:
@@ -249,17 +250,17 @@ def add(ctx, plugin_name: str):
                 # Check if this distribution provides the requested plugin
                 # Try both plugin_name as plugin ID and as package name
                 for entry_point in plugin_entries:
-                    # Match by plugin ID (entry point name)
+                    # Match by plugin name (entry point name)
                     if entry_point.name == plugin_name:
                         plugin_found = True
-                        actual_plugin_id = entry_point.name
+                        actual_plugin_name = entry_point.name
                         package_name = dist.metadata["Name"]
                         version = dist.version
                         break
                     # Match by package name (what user typed in uv add)
                     elif dist.metadata["Name"] == plugin_name:
                         plugin_found = True
-                        actual_plugin_id = entry_point.name
+                        actual_plugin_name = entry_point.name
                         package_name = dist.metadata["Name"]
                         version = dist.version
                         break
@@ -275,22 +276,25 @@ def add(ctx, plugin_name: str):
             click.secho(f"Install it first with: uv add {plugin_name}", fg="cyan")
             return
 
-        click.secho(f"Found plugin '{actual_plugin_id}' from package {package_name} v{version}", fg="green")
+        click.secho(
+            f"Found plugin '{actual_plugin_name}' from package {package_name} v{version}",
+            fg="green",
+        )
 
     except (ImportError, AttributeError, KeyError, TypeError) as e:
         click.secho(f"Failed to verify plugin installation: {e}", fg="red")
         ctx.exit(1)
 
-    # Add plugin to configuration with proper plugin ID and package mapping
+    # Add plugin to configuration (package name is used as the key)
     try:
         from agent.config.intent import PluginOverride
 
-        plugin_override = PluginOverride(enabled=True, plugin_id=actual_plugin_id, package=package_name)
+        plugin_override = PluginOverride(enabled=True)
 
         # Use package name as key for consistent user experience
         intent_config.add_plugin(package_name, plugin_override)
         save_intent_config(intent_config, str(intent_config_path))
-        click.secho(f"✓ Added {package_name} (plugin_id: {actual_plugin_id}) to agentup.yml", fg="green")
+        click.secho(f"✓ Added {package_name} to agentup.yml", fg="green")
 
     except (
         KeyError,
@@ -337,7 +341,14 @@ def remove(ctx, plugin_name: str):
         click.secho(f"✓ Removed {plugin_name} from agentup.yml", fg="green")
         click.secho(f"Note: To uninstall the package completely, run: uv remove {plugin_name}", fg="cyan")
 
-    except (KeyError, AttributeError, FileNotFoundError, yaml.YAMLError, PermissionError, OSError) as e:
+    except (
+        KeyError,
+        AttributeError,
+        FileNotFoundError,
+        yaml.YAMLError,
+        PermissionError,
+        OSError,
+    ) as e:
         click.secho(f"Failed to remove plugin from configuration: {e}", fg="red")
 
 

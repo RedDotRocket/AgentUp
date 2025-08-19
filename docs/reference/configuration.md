@@ -119,7 +119,7 @@ plugins:
     priority: 100                    # Priority for conflict resolution (default: 100)
 
     # Middleware override (optional)
-    middleware_override:
+    plugin_override:
       - name: "cached"
         params:
           ttl: 600
@@ -289,20 +289,20 @@ if direct_matches:
 
 ### Middleware Configuration
 
-#### middleware_override
+#### plugin_override
 
-Override global middleware configuration for this specific plugin. Each plugin can have its own middleware stack.
+Override plugin-level middleware configuration for this specific plugin. Each plugin can have its own middleware stack.
 
 **Type:** `array[object]`
-**Default:** Uses global middleware configuration
+**Default:** Uses plugin defaults from plugin_defaults.middleware
 **Structure:**
 ```yaml
-middleware_override:
+plugin_override:
   - name: "cached"        # Middleware name
-    params:               # Parameters for middleware
+    config:               # Configuration for middleware
       ttl: 600
   - name: "rate_limited"
-    params:
+    config:
       requests_per_minute: 120
 ```
 
@@ -323,9 +323,9 @@ def get_middleware_for_plugin(self, plugin_id: str) -> list[dict[str, Any]]:
     plugins = self.config.get("plugins", [])
     for plugin in plugins:
         if plugin.get("plugin_id") == plugin_id:
-            if "middleware_override" in plugin:
-                self.logger.debug(f"Using middleware override for plugin {plugin_id}")
-                return plugin["middleware_override"]
+            if "plugin_override" in plugin:
+                self.logger.debug(f"Using plugin override for plugin {plugin_id}")
+                return plugin["plugin_override"]
 
     # Return global config
     return self.get_global_config()
@@ -495,7 +495,7 @@ plugins:
     priority: 150
 
     # Override global middleware
-    middleware_override:
+    plugin_override:
       - name: "cached"
         params:
           ttl: 300
@@ -542,7 +542,7 @@ plugins:
  **keywords** - Keywords for direct routing (defaults to [])
  **patterns** - Regex patterns for direct routing (defaults to [])
  **priority** - Conflict resolution priority (defaults to 100)
- **middleware_override** - Plugin-specific middleware stack
+ **plugin_override** - Plugin-specific middleware stack
  **capabilities** - Array of plugin capabilities with scopes
  **config** - Free-form plugin-specific configuration
 

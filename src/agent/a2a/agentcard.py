@@ -34,7 +34,9 @@ def create_agent_card(extended: bool = False) -> AgentCard:
 
     # Get configuration from the cached ConfigurationManager
     config_manager = ConfigurationManager()
-    config = config_manager.config
+    # Use the Pydantic config directly instead of model_dump()
+    pydantic_config = config_manager.pydantic_config
+    config = config_manager.config  # Keep for backward compatibility where needed
 
     # Create a hash of the configuration to detect changes
     config_str = str(sorted(config.items()))
@@ -69,17 +71,41 @@ def create_agent_card(extended: bool = False) -> AgentCard:
 
     registry = get_plugin_registry()
     if registry and registry.capabilities:
-        # Create a lookup for plugin configurations by their ID for efficient access
-        plugins_by_id = {p.get("plugin_id"): p for p in plugins if p.get("plugin_id")}
+        # Create a lookup for plugin configurations by package name
+        plugins_by_package = {}
+        if isinstance(plugins, dict):
+            # New dictionary structure: package name is the key
+            plugins_by_package = plugins
+        else:
+            # Legacy list structure: extract package names
+            for plugin in plugins:
+                if isinstance(plugin, dict) and "package" in plugin:
+                    plugins_by_package[plugin["package"]] = plugin
 
         # Iterate over all registered capabilities instead of plugins
         for capability_id, capability_metadata in registry.capabilities.items():
             # Find the plugin that owns this capability
-            plugin_id = registry.capability_to_plugin.get(capability_id)
-            plugin_config = plugins_by_id.get(plugin_id) if plugin_id else None
+            plugin_name = registry.capability_to_plugin.get(capability_id)
+            # Try to find plugin config by package name (need to map plugin_name to package)
+            plugin_config = None
+            if plugin_name:
+                # In new structure, we need to find the package that contains this plugin
+                for package_name, config in plugins_by_package.items():
+                    # For now, assume package name matches plugin name or contains it
+                    if package_name == plugin_name or plugin_name in package_name:
+                        plugin_config = config
+                        break
 
             # Determine visibility - default to public if no plugin config
-            plugin_visibility = plugin_config.get("visibility", "public") if plugin_config else "public"
+            if plugin_config:
+                if hasattr(plugin_config, "visibility"):
+                    plugin_visibility = plugin_config.visibility
+                elif isinstance(plugin_config, dict):
+                    plugin_visibility = plugin_config.get("visibility", "public")
+                else:
+                    plugin_visibility = "public"
+            else:
+                plugin_visibility = "public"
 
             # Track if any extended plugins exist
             if plugin_visibility == "extended":
@@ -192,25 +218,18 @@ def create_agent_card(extended: bool = False) -> AgentCard:
 
     agent_card = AgentCard(
         protocol_version=protocol_version,
-        name=agent_info.get("name", config.get("project_name", "Agent")),
-        description=agent_info.get("description", config.get("description", "AI Agent")),
-        url=agent_info.get("url", config.get("url", "http://localhost:8000")),
+        name=agent_info.get("name") or pydantic_config.project_name,
+        description=agent_info.get("description") or pydantic_config.description,
+        url=agent_info.get("url") or "http://localhost:8000",
         preferred_transport="JSONRPC",
         provider=AgentProvider(
             organization=agent_info.get("provider_organization", "AgentUp"),
             url=agent_info.get("provider_url", "http://localhost:8000"),
         ),
-        icon_url=agent_info.get(
-            "icon_url",
-            config.get(
-                "icon_url", "https://raw.githubusercontent.com/RedDotRocket/AgentUp/refs/heads/main/assets/icon.png"
-            ),
-        ),
+        icon_url=agent_info.get("icon_url")
+        or "https://raw.githubusercontent.com/RedDotRocket/AgentUp/refs/heads/main/assets/icon.png",
         version=agent_info.get("version", package_version),
-        documentationUrl=agent_info.get(
-            "documentation_url",
-            config.get("documentation_url", "https://docs.agentup.dev"),
-        ),
+        documentationUrl=agent_info.get("documentation_url") or "https://docs.agentup.dev",
         capabilities=capabilities,
         security=security_requirements if security_requirements else None,
         defaultInputModes=["text"],

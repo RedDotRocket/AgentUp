@@ -155,7 +155,6 @@ class TestPluginListCommand:
         output = yaml.safe_load(result.output)
         assert "plugins" in output
         assert len(output["plugins"]) == 2
-        assert output["plugins"][0]["plugin_id"] == "test_plugin"
         assert output["plugins"][0]["package"] == "test-plugin-package"
 
     def test_list_plugins_with_capabilities_flag(self, runner, mock_plugin_with_capabilities):
@@ -177,9 +176,8 @@ class TestPluginListCommand:
         assert len(output["plugins"]) == 1
 
         plugin = output["plugins"][0]
-        assert plugin["plugin_id"] == "test_plugin"
-        assert plugin["package"] == "test-plugin-package"
         assert plugin["name"] == "Test Plugin"
+        assert plugin["package"] == "test-plugin-package"
         assert "capabilities" in plugin
         assert len(plugin["capabilities"]) == 2
 

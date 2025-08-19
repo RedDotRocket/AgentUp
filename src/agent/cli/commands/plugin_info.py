@@ -102,7 +102,7 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, agentup_cfg: bo
             output = {
                 "plugins": [
                     {
-                        "plugin_id": plugin_info["name"],
+                        "plugin_name": plugin_info["name"],
                         "version": plugin_info["version"],
                         "package": plugin_info["package"],
                         "status": plugin_info["status"],
@@ -163,7 +163,6 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, agentup_cfg: bo
                 # Use OrderedDict to maintain field order
                 plugin_config = OrderedDict(
                     [
-                        ("plugin_id", plugin_name),
                         ("package", package_name),
                         ("name", display_name),
                         (
@@ -630,7 +629,23 @@ def validate():
         click.secho("Validating plugins...", fg="cyan")
 
         # Get capability configurations
-        capability_configs = {plugin.plugin_id: plugin.config or {} for plugin in Config.plugins}
+        try:
+            if hasattr(Config, "plugins") and isinstance(Config.plugins, dict):
+                # New dictionary structure
+                capability_configs = {
+                    package_name: plugin_config.config or {}
+                    for package_name, plugin_config in Config.plugins.items()
+                    if hasattr(plugin_config, "config")
+                }
+            else:
+                # Legacy list structure
+                capability_configs = {
+                    getattr(plugin, "name", "unknown"): getattr(plugin, "config", {}) or {}
+                    for plugin in getattr(Config, "plugins", [])
+                }
+        except Exception as e:
+            logger.warning(f"Error loading plugin configurations: {e}")
+            capability_configs = {}
 
         all_valid = True
         results = []

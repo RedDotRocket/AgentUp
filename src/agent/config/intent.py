@@ -11,7 +11,7 @@ class MiddlewareOverride(BaseModel):
     """Model for middleware override configuration."""
 
     name: str = Field(..., description="Middleware name")
-    params: ConfigDictType = Field(default_factory=dict, description="Middleware parameters")
+    config: ConfigDictType = Field(default_factory=dict, description="Middleware configuration")
 
     @field_validator("name")
     @classmethod
@@ -27,7 +27,9 @@ class CapabilityOverride(BaseModel):
 
     enabled: bool = Field(True, description="Whether capability is enabled")
     required_scopes: list[str] = Field(default_factory=list, description="Override required scopes")
-    middleware: list[MiddlewareOverride] = Field(default_factory=list, description="Capability-specific middleware")
+    capability_override: list[MiddlewareOverride] = Field(
+        default_factory=list, description="Capability-specific middleware overrides"
+    )
     config: ConfigDictType = Field(default_factory=dict, description="Capability-specific configuration")
 
     @field_validator("required_scopes")
@@ -44,12 +46,12 @@ class PluginOverride(BaseModel):
     """Model for plugin-level overrides."""
 
     enabled: bool = Field(True, description="Whether plugin is enabled")
-    plugin_id: str | None = Field(None, description="Plugin ID (entry point name)")
-    package: str | None = Field(None, description="Package name for security validation")
     capabilities: dict[str, CapabilityOverride] = Field(
         default_factory=dict, description="Capability-specific overrides"
     )
-    middleware: list[MiddlewareOverride] = Field(default_factory=list, description="Plugin-level middleware")
+    plugin_override: list[MiddlewareOverride] = Field(
+        default_factory=list, description="Plugin-level middleware overrides"
+    )
     config: ConfigDictType = Field(default_factory=dict, description="Plugin-specific configuration")
 
     @field_validator("capabilities")
@@ -71,11 +73,26 @@ class PluginOverride(BaseModel):
 PluginConfig = str | PluginOverride
 
 
-class GlobalDefaults(BaseModel):
-    """Model for global default configurations."""
+class PluginDefaults(BaseModel):
+    """Model for plugin default configurations that plugins inherit."""
 
-    middleware: dict[str, ConfigDictType] = Field(default_factory=dict, description="Global middleware defaults")
-    security: ConfigDictType = Field(default_factory=dict, description="Global security defaults")
+    middleware: dict[str, ConfigDictType] = Field(default_factory=dict, description="Plugin middleware defaults")
+
+    @field_validator("middleware", mode="before")
+    @classmethod
+    def validate_middleware_none(cls, v):
+        """Handle None values for middleware."""
+        if v is None:
+            return {}
+        return v
+
+
+class GlobalDefaults(BaseModel):
+    """Model for global system-wide configurations."""
+
+    middleware: dict[str, ConfigDictType] = Field(
+        default_factory=dict, description="System-wide middleware configuration"
+    )
 
     @field_validator("middleware")
     @classmethod
@@ -111,25 +128,18 @@ class IntentConfig(BaseModel):
     @field_validator("plugins", mode="before")
     @classmethod
     def validate_plugins(cls, v):
-        """Handle None values and convert list format to dict format."""
+        """Handle None values."""
         if v is None:
             return {}
-        if isinstance(v, list):
-            # Convert old list format to new dict format
-            result = {}
-            for item in v:
-                if isinstance(item, str):
-                    # Simple package name
-                    result[item] = item
-                elif isinstance(item, dict) and "package" in item:
-                    # Complex plugin config
-                    package = item["package"]
-                    result[package] = item
-            return result
         return v
 
-    # Global defaults applied to all plugins
-    global_defaults: GlobalDefaults = Field(default_factory=GlobalDefaults, description="Global default configurations")
+    # Plugin defaults applied to all plugins
+    plugin_defaults: PluginDefaults = Field(default_factory=PluginDefaults, description="Plugin default configurations")
+
+    # Global system-wide defaults
+    global_defaults: GlobalDefaults = Field(
+        default_factory=GlobalDefaults, description="Global system-wide configurations"
+    )
 
     # All other existing configuration sections remain unchanged
     # These are passed through as-is to maintain compatibility
@@ -157,9 +167,9 @@ class IntentConfig(BaseModel):
     @field_validator("plugins")
     @classmethod
     def validate_plugins_detailed(cls, v: dict) -> dict:
-        """Validate plugin configuration after conversion to dict format."""
+        """Validate plugin configuration."""
         if not isinstance(v, dict):
-            raise ValueError("Plugins must be a dictionary at this stage")
+            raise ValueError("Plugins must be a dictionary")
 
         validated = {}
         for package_name, config in v.items():
@@ -167,11 +177,8 @@ class IntentConfig(BaseModel):
             if not package_name.replace("-", "").replace("_", "").replace(".", "").replace(":", "").isalnum():
                 raise ValueError(f"Invalid plugin package name: {package_name}")
 
-            # Validate and normalize configuration
-            if isinstance(config, str):
-                # Handle string values from the before validator
-                validated[package_name] = PluginOverride()
-            elif isinstance(config, dict):
+            # Validate configuration
+            if isinstance(config, dict):
                 validated[package_name] = PluginOverride(**config)
             elif isinstance(config, PluginOverride):
                 validated[package_name] = config
@@ -188,6 +195,12 @@ class IntentConfig(BaseModel):
             # This is OK - empty plugin list is valid
             pass
 
+        # Validate that plugin defaults are reasonable
+        if self.plugin_defaults.middleware:
+            for name, config in self.plugin_defaults.middleware.items():
+                if not isinstance(config, dict):
+                    raise ValueError(f"Plugin middleware config for {name} must be a dictionary")
+
         # Validate that global defaults are reasonable
         if self.global_defaults.middleware:
             for name, config in self.global_defaults.middleware.items():
@@ -198,10 +211,7 @@ class IntentConfig(BaseModel):
 
     def get_plugin_config(self, package_name: str) -> PluginOverride:
         """Get configuration for a specific plugin."""
-        config = self.plugins.get(package_name)
-        if isinstance(config, str):
-            return PluginOverride()  # Return default if simple string format
-        return config or PluginOverride()
+        return self.plugins.get(package_name, PluginOverride())
 
     def set_plugin_config(self, package_name: str, config: PluginOverride | dict) -> None:
         """Set configuration for a specific plugin."""
@@ -241,19 +251,16 @@ class IntentConfig(BaseModel):
         plugins_dict = {}
         if self.plugins:
             for package_name, config in self.plugins.items():
-                if isinstance(config, str):
-                    # This shouldn't happen with new model, but handle it
-                    plugins_dict[package_name] = {"enabled": True}
-                else:
-                    # Convert PluginOverride to dict, excluding defaults
-                    config_data = config.model_dump(exclude_unset=True, exclude_defaults=True)
-                    if config_data:
-                        plugins_dict[package_name] = config_data
-                    else:
-                        # If no overrides, just show enabled: true
-                        plugins_dict[package_name] = {"enabled": True}
+                # Convert PluginOverride to dict, excluding defaults
+                config_data = config.model_dump(exclude_unset=True, exclude_defaults=True)
+                plugins_dict[package_name] = config_data
 
         result["plugins"] = plugins_dict
+
+        # Plugin defaults (only include if not empty)
+        plugin_defaults_data = self.plugin_defaults.model_dump(exclude_unset=True, exclude_defaults=True)
+        if plugin_defaults_data:
+            result["plugin_defaults"] = plugin_defaults_data
 
         # Global defaults (only include if not empty)
         global_defaults_data = self.global_defaults.model_dump(exclude_unset=True, exclude_defaults=True)
@@ -298,159 +305,11 @@ def load_intent_config(file_path: str) -> IntentConfig:
     with open(path) as f:
         data = yaml.safe_load(f) or {}
 
-    # Handle migration from old plugin format
-    data = _migrate_from_old_format(data)
-
-    return IntentConfig(**data)
-
-
-def _migrate_from_old_format(data: dict) -> dict:
-    """
-    Migrate configuration from old plugin formats to new unified format.
-
-    Handles multiple migration scenarios:
-    1. Old complex format: plugins: [{'plugin_id': 'foo', 'package': 'bar', ...}]
-    2. Simple list format: plugins: ['package1', 'package2']
-    3. New dict format: plugins: {'package': {...}}
-    """
     # Add API version if missing
     if "apiVersion" not in data:
         data["apiVersion"] = "v1"
 
-    if "plugins" in data and data["plugins"]:
-        old_plugins = data["plugins"]
-
-        # Case 1: Old complex format with dicts containing plugin_id/package
-        if isinstance(old_plugins, list) and old_plugins and isinstance(old_plugins[0], dict):
-            new_plugins = {}
-            for plugin_config in old_plugins:
-                package_name = None
-                config_overrides = {}
-
-                if "package" in plugin_config:
-                    package_name = plugin_config["package"]
-                elif "plugin_id" in plugin_config:
-                    # Fallback: convert plugin_id to package name format
-                    package_name = plugin_config["plugin_id"].replace("_", "-")
-
-                if package_name:
-                    # Extract any configuration that can be migrated
-                    if "enabled" in plugin_config:
-                        config_overrides["enabled"] = plugin_config["enabled"]
-
-                    # Migrate middleware_override to new format
-                    if "middleware_override" in plugin_config:
-                        middleware_list = []
-                        for mw in plugin_config["middleware_override"]:
-                            if isinstance(mw, dict) and "name" in mw:
-                                middleware_obj = {"name": mw["name"]}
-                                if "params" in mw:
-                                    middleware_obj["params"] = mw["params"]
-                                middleware_list.append(middleware_obj)
-                        if middleware_list:
-                            config_overrides["middleware"] = middleware_list
-
-                    # Migrate capability-specific configurations
-                    if "capabilities" in plugin_config:
-                        cap_overrides = {}
-                        for cap in plugin_config["capabilities"]:
-                            if isinstance(cap, dict) and "capability_id" in cap:
-                                cap_id = cap["capability_id"]
-                                cap_config = {}
-
-                                if "enabled" in cap:
-                                    cap_config["enabled"] = cap["enabled"]
-                                if "required_scopes" in cap:
-                                    cap_config["required_scopes"] = cap["required_scopes"]
-                                if "middleware_override" in cap:
-                                    cap_middleware = []
-                                    for mw in cap["middleware_override"]:
-                                        if isinstance(mw, dict) and "name" in mw:
-                                            cap_mw = {"name": mw["name"]}
-                                            if "params" in mw:
-                                                cap_mw["params"] = mw["params"]
-                                            cap_middleware.append(cap_mw)
-                                    if cap_middleware:
-                                        cap_config["middleware"] = cap_middleware
-
-                                if cap_config:
-                                    cap_overrides[cap_id] = cap_config
-
-                        if cap_overrides:
-                            config_overrides["capabilities"] = cap_overrides
-
-                    new_plugins[package_name] = config_overrides if config_overrides else {"enabled": True}
-
-            data["plugins"] = new_plugins
-
-        # Case 2: Simple list format - convert to dict format
-        elif isinstance(old_plugins, list) and old_plugins and isinstance(old_plugins[0], str):
-            new_plugins = {}
-            for package_name in old_plugins:
-                new_plugins[package_name] = {"enabled": True}
-            data["plugins"] = new_plugins
-
-        # Case 3: Dict format but may need capability migration
-        elif isinstance(old_plugins, dict):
-            new_plugins = {}
-            for package_name, plugin_config in old_plugins.items():
-                if isinstance(plugin_config, dict):
-                    config_overrides = plugin_config.copy()
-
-                    # Migrate capabilities from list to dict format if needed
-                    if "capabilities" in config_overrides and isinstance(config_overrides["capabilities"], list):
-                        cap_overrides = {}
-                        for cap in config_overrides["capabilities"]:
-                            if isinstance(cap, dict) and "capability_id" in cap:
-                                cap_id = cap["capability_id"]
-                                cap_config = {}
-
-                                if "enabled" in cap:
-                                    cap_config["enabled"] = cap["enabled"]
-                                if "required_scopes" in cap:
-                                    cap_config["required_scopes"] = cap["required_scopes"]
-                                if "middleware_override" in cap:
-                                    cap_middleware = []
-                                    for mw in cap["middleware_override"]:
-                                        if isinstance(mw, dict) and "name" in mw:
-                                            cap_mw = {"name": mw["name"]}
-                                            if "params" in mw:
-                                                cap_mw["params"] = mw["params"]
-                                            cap_middleware.append(cap_mw)
-                                    if cap_middleware:
-                                        cap_config["middleware"] = cap_middleware
-
-                                if cap_config:
-                                    cap_overrides[cap_id] = cap_config
-
-                        config_overrides["capabilities"] = cap_overrides
-
-                    new_plugins[package_name] = config_overrides
-                else:
-                    # Handle string values (shouldn't happen but be safe)
-                    new_plugins[package_name] = {"enabled": True}
-
-            data["plugins"] = new_plugins
-
-    # Migrate global middleware configuration if it exists
-    if "middleware" in data and isinstance(data["middleware"], dict):
-        # Move global middleware to global_defaults
-        if "global_defaults" not in data:
-            data["global_defaults"] = {}
-
-        # Extract middleware defaults from global middleware config
-        middleware_config = data["middleware"]
-        middleware_defaults = {}
-
-        # Common middleware configurations to extract as defaults
-        for mw_type in ["cache", "rate_limiting", "retry", "audit"]:
-            if mw_type in middleware_config and isinstance(middleware_config[mw_type], dict):
-                middleware_defaults[mw_type] = middleware_config[mw_type]
-
-        if middleware_defaults:
-            data["global_defaults"]["middleware"] = middleware_defaults
-
-    return data
+    return IntentConfig(**data)
 
 
 def save_intent_config(config: IntentConfig, file_path: str) -> None:

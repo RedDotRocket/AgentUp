@@ -444,25 +444,35 @@ def _load_state_config() -> dict[str, Any]:
         return _state_config
 
 
-def _get_plugin_config(plugin_id: str) -> dict | None:
+def _get_plugin_config(plugin_name: str) -> dict | None:
     try:
         from agent.config import Config
 
-        for plugin in Config.plugins:
-            if plugin.plugin_id == plugin_id:
-                return plugin.model_dump() if hasattr(plugin, "model_dump") else dict(plugin)
+        # Handle new dictionary-based plugin structure
+        if hasattr(Config, "plugins") and isinstance(Config.plugins, dict):
+            # New structure: plugins is a dict with package names as keys
+            plugin_config = Config.plugins.get(plugin_name)
+            if plugin_config:
+                return plugin_config.model_dump() if hasattr(plugin_config, "model_dump") else dict(plugin_config)
+        else:
+            # Fallback: old list structure with name or package fields
+            for plugin in getattr(Config, "plugins", []):
+                # Try to match by name or package field
+                plugin_dict = plugin.model_dump() if hasattr(plugin, "model_dump") else dict(plugin)
+                if plugin_dict.get("name") == plugin_name or plugin_dict.get("package") == plugin_name:
+                    return plugin_dict
         return None
     except Exception as e:
-        logger.debug(f"Could not load plugin config for '{plugin_id}': {e}")
+        logger.debug(f"Could not load plugin config for '{plugin_name}': {e}")
         return None
 
 
-def _resolve_state_config(plugin_id: str) -> dict:
+def _resolve_state_config(plugin_name: str) -> dict:
     global_state_config = _load_state_config()
-    plugin_config = _get_plugin_config(plugin_id)
+    plugin_config = _get_plugin_config(plugin_name)
 
     if plugin_config and "state_override" in plugin_config:
-        logger.info(f"Using plugin-specific state override for '{plugin_id}'")
+        logger.info(f"Using plugin-specific state override for '{plugin_name}'")
         return plugin_config["state_override"]
 
     return global_state_config
@@ -566,8 +576,12 @@ def _resolve_middleware_config(capability_id: str) -> list[dict[str, Any]]:
     plugin_config = _get_plugin_config(plugin_name)
 
     # Check for plugin-specific middleware override
-    if plugin_config and "middleware_override" in plugin_config:
+    if plugin_config and "plugin_override" in plugin_config:
         logger.info(f"Using plugin-specific middleware override for '{capability_id}'")
+        return plugin_config["plugin_override"]
+    elif plugin_config and "middleware_override" in plugin_config:
+        # Legacy fallback for old field name
+        logger.info(f"Using legacy middleware override for '{capability_id}'")
         return plugin_config["middleware_override"]
 
     # Use global middleware configuration

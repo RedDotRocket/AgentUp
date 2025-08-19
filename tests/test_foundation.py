@@ -50,7 +50,7 @@ class TestTestFoundation:
         assert "plugins" in minimal_agent_config, "Should have plugins section"
         assert minimal_agent_config["agent"]["name"] == "minimal-test"
         assert len(minimal_agent_config["plugins"]) == 1
-        assert minimal_agent_config["plugins"][0]["plugin_id"] == "echo"
+        assert minimal_agent_config["plugins"][0]["name"] == "echo"
 
     def test_provider_specific_configs(
         self, ollama_agent_config: dict[str, Any], anthropic_agent_config: dict[str, Any]
@@ -108,7 +108,7 @@ class TestTestHelpers:
         assert "openai" in config["services"]
         assert config["services"]["openai"]["settings"]["model"] == "gpt-4"
         assert len(config["skills"]) == 1
-        assert config["skills"][0]["plugin_id"] == "test_skill"
+        assert config["skills"][0]["name"] == "Test Skill"
 
     def test_build_predefined_configs(self):
         minimal = build_minimal_config()
@@ -117,7 +117,7 @@ class TestTestHelpers:
         # Test minimal
         assert minimal["agent"]["name"] == "minimal-test"
         assert len(minimal["skills"]) == 1
-        assert minimal["skills"][0]["plugin_id"] == "echo"
+        assert minimal["skills"][0]["name"] == "Echo"
 
         # Test standard
         assert standard["agent"]["name"] == "standard-test"

@@ -51,19 +51,36 @@ class AgentUpExecutor(AgentExecutor):
 
         # Parse plugins for direct routing based on keywords/patterns
         self.plugins = {}
-        for plugin_data in Config.plugins:
-            if plugin_data.enabled:
-                plugin_id = plugin_data.plugin_id
-                keywords = plugin_data.keywords or []
-                patterns = plugin_data.patterns or []
+        # Handle new dictionary-based plugin structure
+        if hasattr(Config, "plugins") and isinstance(Config.plugins, dict):
+            for package_name, plugin_data in Config.plugins.items():
+                if plugin_data.get("enabled", True):
+                    plugin_name = plugin_data.get("name", package_name)
+                    keywords = plugin_data.get("keywords", [])
+                    patterns = plugin_data.get("patterns", [])
 
-                self.plugins[plugin_id] = {
-                    "keywords": keywords,
-                    "patterns": patterns,
-                    "name": plugin_data.name or plugin_id,
-                    "description": plugin_data.description or "",
-                    "priority": plugin_data.priority or 100,
-                }
+                    self.plugins[plugin_name] = {
+                        "keywords": keywords,
+                        "patterns": patterns,
+                        "name": plugin_name,
+                        "description": plugin_data.get("description", ""),
+                        "priority": plugin_data.get("priority", 100),
+                    }
+        else:
+            # Fallback: old list-based structure (deprecated)
+            for plugin_data in getattr(Config, "plugins", []):
+                if getattr(plugin_data, "enabled", True):
+                    plugin_name = getattr(plugin_data, "name", "unknown")
+                    keywords = getattr(plugin_data, "keywords", [])
+                    patterns = getattr(plugin_data, "patterns", [])
+
+                    self.plugins[plugin_name] = {
+                        "keywords": keywords,
+                        "patterns": patterns,
+                        "name": plugin_name,
+                        "description": getattr(plugin_data, "description", ""),
+                        "priority": getattr(plugin_data, "priority", 100),
+                    }
 
         # Initialize Function Dispatcher for AI routing (fallback)
         from .dispatcher import get_function_dispatcher
@@ -193,44 +210,44 @@ class AgentUpExecutor(AgentExecutor):
         # Sort plugins by priority (lower number = higher priority)
         sorted_plugins = sorted(self.plugins.items(), key=lambda x: x[1].get("priority", 100))
 
-        for plugin_id, plugin_info in sorted_plugins:
+        for plugin_name, plugin_info in sorted_plugins:
             # Check keywords
             keywords = plugin_info.get("keywords", [])
             for keyword in keywords:
                 if keyword.lower() in user_input_lower:
-                    logger.debug(f"Keyword '{keyword}' matched for plugin '{plugin_id}'")
-                    return plugin_id
+                    logger.debug(f"Keyword '{keyword}' matched for plugin '{plugin_name}'")
+                    return plugin_name
 
             # Check patterns
             patterns = plugin_info.get("patterns", [])
             for pattern in patterns:
                 try:
                     if re.search(pattern, user_input, re.IGNORECASE):
-                        logger.debug(f"Pattern '{pattern}' matched for plugin '{plugin_id}'")
-                        return plugin_id
+                        logger.debug(f"Pattern '{pattern}' matched for plugin '{plugin_name}'")
+                        return plugin_name
                 except re.error as e:
-                    logger.warning(f"Invalid regex pattern '{pattern}' in plugin '{plugin_id}': {e}")
+                    logger.warning(f"Invalid regex pattern '{pattern}' in plugin '{plugin_name}': {e}")
 
         return None
 
-    async def _process_direct_routing(self, task: Task, plugin_id: str) -> str:
-        logger.info(f"Direct routing to plugin: {plugin_id}")
+    async def _process_direct_routing(self, task: Task, plugin_name: str) -> str:
+        logger.info(f"Direct routing to plugin: {plugin_name}")
 
         try:
             # Get capability executor for the plugin
             from agent.capabilities import get_capability_executor
 
-            logger.debug(f"Getting capability executor for plugin '{plugin_id}'")
-            executor = get_capability_executor(plugin_id)
+            logger.debug(f"Getting capability executor for plugin '{plugin_name}'")
+            executor = get_capability_executor(plugin_name)
             if not executor:
-                return f"Plugin '{plugin_id}' is not available or not properly configured."
+                return f"Plugin '{plugin_name}' is not available or not properly configured."
 
             # Call the capability directly
             result = await executor(task)
             return result if isinstance(result, str) else str(result)
 
         except Exception as e:
-            logger.error(f"Error in direct routing to plugin '{plugin_id}': {e}")
+            logger.error(f"Error in direct routing to plugin '{plugin_name}': {e}")
             return f"Sorry, I encountered an error while processing your request: {str(e)}"
 
     async def _process_streaming(

@@ -139,21 +139,21 @@ class PluginConfigurationResolver:
 
         plugin_override = self.get_plugin_override(package_name)
 
-        # Start with global defaults
-        global_middleware = self.intent_config.global_defaults.middleware
-        for name, params in global_middleware.items():
-            middleware_config.append({"name": name, "params": params.copy(), "source": "global_default"})
+        # Start with plugin defaults
+        plugin_middleware_defaults = self.intent_config.plugin_defaults.middleware
+        for name, params in plugin_middleware_defaults.items():
+            middleware_config.append({"name": name, "params": params.copy(), "source": "plugin_default"})
 
         # Apply plugin-level overrides
-        for mw_override in plugin_override.middleware:
-            # Check if this middleware already exists from global defaults
+        for mw_override in plugin_override.plugin_override:
+            # Check if this middleware already exists from plugin defaults
             existing_idx = None
             for i, existing_mw in enumerate(middleware_config):
                 if existing_mw["name"] == mw_override.name:
                     existing_idx = i
                     break
 
-            mw_config = {"name": mw_override.name, "params": mw_override.params.copy(), "source": "plugin_override"}
+            mw_config = {"name": mw_override.name, "config": mw_override.config.copy(), "source": "plugin_override"}
 
             if existing_idx is not None:
                 # Replace existing middleware config
@@ -166,7 +166,7 @@ class PluginConfigurationResolver:
         if capability_id:
             capability_override = self.get_capability_override(package_name, capability_id)
 
-            for mw_override in capability_override.middleware:
+            for mw_override in capability_override.capability_override:
                 # Check if this middleware already exists
                 existing_idx = None
                 for i, existing_mw in enumerate(middleware_config):
@@ -176,7 +176,7 @@ class PluginConfigurationResolver:
 
                 mw_config = {
                     "name": mw_override.name,
-                    "params": mw_override.params.copy(),
+                    "config": mw_override.config.copy(),
                     "source": "capability_override",
                 }
 
@@ -188,7 +188,7 @@ class PluginConfigurationResolver:
                     middleware_config.append(mw_config)
 
         # Remove source information for compatibility with existing middleware system
-        final_config = [{"name": mw["name"], "params": mw["params"]} for mw in middleware_config]
+        final_config = [{"name": mw["name"], "config": mw["config"]} for mw in middleware_config]
 
         logger.debug(
             f"Resolved effective middleware for {package_name}:{capability_id or 'plugin'}",

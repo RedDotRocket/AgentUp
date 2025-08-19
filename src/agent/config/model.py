@@ -310,12 +310,15 @@ class PluginCapabilityConfig(BaseModel):
     required_scopes: list[str] = Field(default_factory=list, description="Required scopes")
     enabled: bool = Field(True, description="Whether capability is enabled")
     config: ConfigDictType = Field(default_factory=dict, description="Capability-specific config")
-    middleware_override: list[dict[str, Any]] | None = Field(None, description="Override middleware configuration")
+    capability_override: list[dict[str, Any]] | None = Field(
+        None, description="Capability-specific middleware overrides"
+    )
 
 
 class PluginConfig(BaseModel):
-    plugin_id: str = Field(..., description="Plugin identifier")
-    name: str | None = Field(None, description="Plugin name")
+    """Legacy plugin configuration model - use IntentConfig for new configurations"""
+
+    name: str = Field(..., description="Plugin name/identifier")
     description: str | None = Field(None, description="Plugin description")
     enabled: bool = Field(True, description="Whether plugin is enabled")
     version: Version | None = Field(None, description="Plugin version constraint")
@@ -327,14 +330,14 @@ class PluginConfig(BaseModel):
     priority: int = Field(50, description="Plugin initialization priority (lower = earlier)")
     # Default settings applied to all capabilities
     default_scopes: list[str] = Field(default_factory=list, description="Default scopes")
-    middleware: list[dict[str, Any]] | None = Field(None, description="Middleware configuration")
+    plugin_override: list[dict[str, Any]] | None = Field(None, description="Plugin-level middleware overrides")
     config: ConfigDictType = Field(default_factory=dict, description="Plugin configuration")
 
-    @field_validator("plugin_id")
+    @field_validator("name")
     @classmethod
-    def validate_plugin_id(cls, v: str) -> str:
+    def validate_name(cls, v: str) -> str:
         if not v or not v.replace("_", "").replace("-", "").replace(".", "").isalnum():
-            raise ValueError("Plugin ID must be alphanumeric with hyphens, underscores, and dots")
+            raise ValueError("Plugin name must be alphanumeric with hyphens, underscores, and dots")
         return v
 
     @computed_field  # Modern Pydantic v2 computed property
@@ -350,12 +353,12 @@ class PluginConfig(BaseModel):
     @computed_field
     @property
     def display_name(self) -> str:
-        return self.name or self.plugin_id
+        return self.name
 
     @computed_field
     @property
     def has_middleware(self) -> bool:
-        return self.middleware is not None and len(self.middleware) > 0
+        return self.plugin_override is not None and len(self.plugin_override) > 0
 
     @computed_field
     @property
@@ -375,7 +378,7 @@ class PluginConfig(BaseModel):
 
         # Middleware complexity (0.0 to 0.2)
         if self.has_middleware:
-            score += min(0.2, len(self.middleware) / 5 * 0.2)
+            score += min(0.2, len(self.plugin_override) / 5 * 0.2)
 
         # Scope count (0.0 to 0.2)
         total_scopes = len(self.total_required_scopes)
@@ -400,7 +403,7 @@ class MiddlewareConfig(BaseModel):
 
     # Rate limiting
     rate_limiting: dict[str, Any] = Field(
-        default_factory=lambda: {"enabled": True, "requests_per_minute": 60, "burst_size": 10}
+        default_factory=lambda: {"enabled": True, "requests_per_minute": 60, "burst_size": 72}
     )
 
     # Caching
@@ -476,9 +479,27 @@ class AgentConfig(BaseModel):
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     api: APIConfig = Field(default_factory=APIConfig)
     security: SecurityConfig = Field(default_factory=SecurityConfig)
-    plugins: list[PluginConfig] = Field(default_factory=list, description="Plugin configurations")
+    plugins: dict[str, Any] = Field(default_factory=dict, description="Plugin configurations (dictionary format)")
     middleware: MiddlewareConfig = Field(default_factory=MiddlewareConfig)
     mcp: MCPConfig = Field(default_factory=MCPConfig)
+
+    @field_validator("plugins", mode="before")
+    @classmethod
+    def validate_plugins_format(cls, v):
+        """Convert list format to dict format for backward compatibility."""
+        if isinstance(v, list):
+            # Convert list format to dict format using package names as keys
+            plugin_dict = {}
+            for plugin_config in v:
+                if isinstance(plugin_config, dict) and "name" in plugin_config:
+                    plugin_name = plugin_config["name"]
+                    # Use the plugin name as key, store the rest as config
+                    plugin_dict[plugin_name] = plugin_config
+                else:
+                    # Handle invalid plugin config
+                    continue
+            return plugin_dict
+        return v
 
     # AI configuration
     ai: dict[str, Any] = Field(default_factory=dict, description="AI settings")

@@ -24,9 +24,9 @@ class TestPluginBaseClass:
         assert plugin._services == {}
         assert plugin._config == {}
         assert plugin._state == {}
-        assert hasattr(plugin, "plugin_id")
+        assert hasattr(plugin, "plugin_name")
 
-    def test_plugin_id_generation(self):
+    def test_plugin_name_generation(self):
         """Test plugin ID generation from class name."""
 
         class TestPlugin(Plugin):
@@ -42,9 +42,9 @@ class TestPluginBaseClass:
         weather_plugin = WeatherPlugin()
         data_plugin = DataProcessingPlugin()
 
-        assert test_plugin.plugin_id == "test"
-        assert weather_plugin.plugin_id == "weather"
-        assert data_plugin.plugin_id == "dataprocessing"
+        assert test_plugin.plugin_name == "test"
+        assert weather_plugin.plugin_name == "weather"
+        assert data_plugin.plugin_name == "dataprocessing"
 
     def test_capability_discovery_basic(self):
         """Test basic capability discovery from decorated methods."""
@@ -286,7 +286,7 @@ class TestPluginBaseClass:
         assert definition.description == "A test capability"
         assert definition.required_scopes == ["test:read"]
         assert definition.tags == ["test"]
-        assert definition.plugin_name == plugin.plugin_id
+        assert definition.plugin_name == plugin.plugin_name
 
     def test_get_ai_functions_all(self):
         """Test getting all AI functions from plugin."""

@@ -8,8 +8,6 @@ logger = structlog.get_logger(__name__)
 def _extract_tool_scopes_from_servers(servers_config: list[Any]) -> dict[str, list[str]]:
     """Extract and merge tool_scopes from all server configurations.
 
-    Handles both Pydantic models and dict-like objects.
-
     Args:
         servers_config: List of server configuration objects
 
@@ -18,7 +16,6 @@ def _extract_tool_scopes_from_servers(servers_config: list[Any]) -> dict[str, li
     """
     tool_scopes = {}
     for server_config in servers_config:
-        # Handle Pydantic model (use attribute access, not .get())
         if hasattr(server_config, "tool_scopes"):
             server_tool_scopes = server_config.tool_scopes or {}
         else:
@@ -297,17 +294,20 @@ async def _register_mcp_tools_with_scopes(registry, mcp_client, available_tools,
         # Register each tool with scope enforcement
         for tool in available_tools:
             # Use direct access for fail-fast behavior
-            original_tool_name = tool["name"]
+            tool_name = tool["name"]
             server_name = tool["server"]
 
-            # Get required scopes using prefixed naming
-            required_scopes = _get_required_scopes_for_tool(original_tool_name, server_name, tool_scopes)
+            # Create the prefixed tool name for scope resolution
+            original_tool_name = f"{server_name}:{tool_name}"
 
-            # Convert MCP tool names to valid function names (replace colons with underscores)
-            sanitized_tool_name = original_tool_name.replace(":", "_")
+            # Get required scopes using prefixed naming
+            required_scopes = _get_required_scopes_for_tool(tool_name, server_name, tool_scopes)
+
+            # Convert MCP tool names to valid function names (use clean tool name)
+            sanitized_tool_name = tool_name.replace(":", "_")
 
             # Create scope-enforced wrapper for the MCP tool
-            def create_mcp_tool_wrapper(client, original_name, sanitized_name, scopes):
+            def create_mcp_tool_wrapper(client, clean_tool_name, sanitized_name, scopes):
                 async def scope_enforced_mcp_tool(*args, **kwargs):
                     # Get current authentication context
                     from agent.security.context import create_capability_context, get_current_auth
@@ -327,13 +327,13 @@ async def _register_mcp_tools_with_scopes(registry, mcp_client, available_tools,
                             if not context.has_scope(scope):
                                 raise PermissionError(f"MCP tool {sanitized_name} requires scope: {scope}")
 
-                    # All scopes passed, call the MCP tool with original name
-                    return await client.call_tool(original_name, *args, **kwargs)
+                    # All scopes passed, call the MCP tool with clean tool name
+                    return await client.call_tool(clean_tool_name, *args, **kwargs)
 
                 return scope_enforced_mcp_tool
 
             # Wrap the tool with scope enforcement
-            wrapped_tool = create_mcp_tool_wrapper(mcp_client, original_tool_name, sanitized_tool_name, required_scopes)
+            wrapped_tool = create_mcp_tool_wrapper(mcp_client, tool_name, sanitized_tool_name, required_scopes)
 
             # Update tool schema to use sanitized name
             sanitized_tool = tool.copy()

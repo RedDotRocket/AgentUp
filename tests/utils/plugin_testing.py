@@ -141,11 +141,11 @@ class PluginTestRunner:
         return results
 
 
-def create_test_plugin(plugin_id: str, name: str) -> type:
+def create_test_plugin(plugin_name: str, name: str) -> type:
     class TestPlugin:
         def register_capability(self) -> CapabilityDefinition:
             return CapabilityDefinition(
-                id=plugin_id,
+                id=plugin_name,
                 name=name,
                 version="1.0.0",
                 description=f"Test plugin: {name}",
@@ -162,7 +162,7 @@ def create_test_plugin(plugin_id: str, name: str) -> type:
 
         def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
             return CapabilityResult(
-                content=f"Executed {plugin_id}",
+                content=f"Executed {plugin_name}",
                 success=True,
             )
 

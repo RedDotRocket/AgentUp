@@ -9,7 +9,11 @@ import yaml
 
 @click.command()
 @click.option(
-    "--config", "-c", type=click.Path(exists=True), default="agentup.yml", help="Path to agent configuration file"
+    "--config",
+    "-c",
+    type=click.Path(exists=True),
+    default="agentup.yml",
+    help="Path to agent configuration file",
 )
 @click.option("--check-env", "-e", is_flag=True, help="Check environment variables")
 @click.option("--check-handlers", "-h", is_flag=True, help="Check handler implementations")
@@ -189,15 +193,13 @@ def validate_plugins_section(plugins: list[dict[str, Any]], errors: list[str], w
         errors.append("Plugins must be a list")
         return
 
-    plugin_ids = set()
-
     for i, plugin in enumerate(plugins):
         if not isinstance(plugin, dict):
             errors.append(f"Plugin {i} must be a dictionary")
             continue
 
-        # Required plugin fields
-        required_plugin_fields = ["plugin_id", "name", "description", "package"]
+        # Required plugin fields (legacy format)
+        required_plugin_fields = ["name", "description", "package"]
 
         for field in required_plugin_fields:
             if field not in plugin:
@@ -207,20 +209,6 @@ def validate_plugins_section(plugins: list[dict[str, Any]], errors: list[str], w
                     errors.append(f"Plugin {i} missing required field: '{field}'")
             elif not plugin[field]:
                 errors.append(f"Plugin {i} field '{field}' is empty")
-
-        # Check for duplicate plugin IDs
-        plugin_id = plugin.get("plugin_id")
-        if plugin_id:
-            if plugin_id in plugin_ids:
-                errors.append(f"Duplicate plugin ID: '{plugin_id}'")
-            else:
-                plugin_ids.add(plugin_id)
-
-            # Validate plugin ID format
-            if not re.match(r"^[a-zA-Z][a-zA-Z0-9_]*$", plugin_id):
-                errors.append(
-                    f"Invalid plugin ID '{plugin_id}'. Must start with letter and contain only letters, numbers, and underscores."
-                )
 
         # Validate package name format (PyPI naming conventions)
         package_name = plugin.get("package")
@@ -256,15 +244,16 @@ def validate_plugins_section(plugins: list[dict[str, Any]], errors: list[str], w
             errors.append(f"Plugin {i} has invalid output_mode '{output_mode}'. Must be one of: {valid_modes}")
 
         # Validate middleware if present (deprecated in favor of middleware_override)
+        plugin_name = plugin.get("name", f"plugin_{i}")
         if "middleware" in plugin:
             warnings.append(
-                f"Plugin '{plugin_id}' uses deprecated 'middleware' field. Use 'middleware_override' instead."
+                f"Plugin '{plugin_name}' uses deprecated 'middleware' field. Use 'middleware_override' instead."
             )
-            validate_middleware_config(plugin["middleware"], plugin_id, errors, warnings)
+            validate_middleware_config(plugin["middleware"], plugin_name, errors, warnings)
 
-        # Validate middleware_override if present
-        if "middleware_override" in plugin:
-            validate_middleware_config(plugin["middleware_override"], plugin_id, errors, warnings)
+        # Validate plugin_override if present
+        if "plugin_override" in plugin:
+            validate_middleware_config(plugin["plugin_override"], plugin_name, errors, warnings)
 
     click.echo(f"{click.style('✓', fg='green')} Found {len(plugins)} plugin(s)")
 
@@ -284,52 +273,17 @@ def validate_api_version(config_data: dict[str, Any], errors: list[str], warning
         click.echo(f"{click.style('✓', fg='green')} API version {api_version} is supported")
 
 
-def validate_unified_plugins_section(config_data: dict[str, Any], errors: list[str], warnings: list[str]):
-    """Validate the new unified plugin configuration structure."""
-    plugins = config_data.get("plugins", [])
-    global_defaults = config_data.get("global_defaults", {})
-
-    # Validate global defaults
-    if global_defaults:
-        validate_global_defaults(global_defaults, errors, warnings)
-
-    # Check if using old plugin format
-    if plugins and isinstance(plugins, list) and len(plugins) > 0:
-        first_plugin = plugins[0]
-        if isinstance(first_plugin, dict) and "plugin_id" in first_plugin:
-            warnings.append(
-                "Detected old plugin configuration format. Consider migrating to unified plugin format with 'package' field."
-            )
-            validate_plugins_section(plugins, errors, warnings)  # Use old validation
-            return
-
-    # Validate new unified plugin format
-    if not plugins:
-        warnings.append("No plugins configured. Consider adding plugins to extend functionality.")
-        return
-
-    if not isinstance(plugins, list):
-        errors.append("Plugins must be a list")
-        return
-
+def _validate_dictionary_plugins(plugins: dict[str, Any], errors: list[str], warnings: list[str]):
+    """Validate plugins in new dictionary format."""
     package_names = set()
 
-    for i, plugin in enumerate(plugins):
-        if not isinstance(plugin, dict):
-            errors.append(f"Plugin {i} must be a dictionary")
-            continue
-
-        # Required field: package
-        if "package" not in plugin:
-            errors.append(f"Plugin {i} missing required field: 'package'")
-            continue
-
-        package_name = plugin["package"]
+    for package_name, plugin_config in plugins.items():
+        # Validate package name (dictionary key)
         if not package_name:
-            errors.append(f"Plugin {i} field 'package' is empty")
+            errors.append("Empty package name in plugins dictionary")
             continue
 
-        # Check for duplicate packages
+        # Check for duplicate packages (shouldn't happen in dict, but check anyway)
         if package_name in package_names:
             errors.append(f"Duplicate package: '{package_name}'")
         else:
@@ -337,32 +291,125 @@ def validate_unified_plugins_section(config_data: dict[str, Any], errors: list[s
 
         # Validate package name format (PyPI naming conventions)
         if not re.match(r"^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?$", package_name):
-            errors.append(f"Invalid package name '{package_name}' for plugin {i}. Must follow PyPI naming conventions.")
+            errors.append(f"Invalid package name '{package_name}'. Must follow PyPI naming conventions.")
+
+        # Plugin config should be a dictionary or Pydantic model
+        if not isinstance(plugin_config, dict | object):
+            errors.append(f"Plugin '{package_name}' configuration must be a dictionary")
+            continue
+
+        # Package name serves as the identifier (no separate plugin_id needed)
 
         # Validate enabled field
-        enabled = plugin.get("enabled", True)
+        enabled = True  # default
+        if hasattr(plugin_config, "enabled"):
+            enabled = plugin_config.enabled
+        elif isinstance(plugin_config, dict):
+            enabled = plugin_config.get("enabled", True)
+
         if not isinstance(enabled, bool):
-            errors.append(f"Plugin {i} 'enabled' field must be boolean")
+            errors.append(f"Plugin '{package_name}' 'enabled' field must be boolean")
 
-        # Validate plugin-level middleware overrides
-        if "middleware" in plugin:
-            validate_plugin_middleware_overrides(plugin["middleware"], f"plugin {i}", errors, warnings)
+        # Validate capabilities if present
+        capabilities = None
+        if hasattr(plugin_config, "capabilities"):
+            capabilities = plugin_config.capabilities
+        elif isinstance(plugin_config, dict):
+            capabilities = plugin_config.get("capabilities")
 
-        # Validate capability overrides
-        if "capabilities" in plugin:
-            validate_capability_overrides(plugin["capabilities"], f"plugin {i}", errors, warnings)
+        if capabilities:
+            validate_capability_overrides(capabilities, f"plugin '{package_name}'", errors, warnings)
 
         # Validate plugin-level config
-        if "config" in plugin:
-            config_value = plugin["config"]
-            if not isinstance(config_value, dict):
-                errors.append(f"Plugin {i} 'config' field must be a dictionary")
+        config_value = None
+        if hasattr(plugin_config, "config"):
+            config_value = plugin_config.config
+        elif isinstance(plugin_config, dict):
+            config_value = plugin_config.get("config")
 
-    click.echo(f"{click.style('✓', fg='green')} Found {len(plugins)} plugin(s) in unified format")
+        if config_value and not isinstance(config_value, dict):
+            errors.append(f"Plugin '{package_name}' 'config' field must be a dictionary")
+
+    click.echo(f"{click.style('✓', fg='green')} Found {len(plugins)} plugin(s) in dictionary format")
+
+
+def validate_unified_plugins_section(config_data: dict[str, Any], errors: list[str], warnings: list[str]):
+    """Validate the new unified plugin configuration structure."""
+    plugins = config_data.get("plugins", [])
+    plugin_defaults = config_data.get("plugin_defaults", {})
+    global_defaults = config_data.get("global_defaults", {})
+
+    # Validate plugin defaults
+    if plugin_defaults:
+        validate_plugin_defaults(plugin_defaults, errors, warnings)
+
+    # Validate global defaults
+    if global_defaults:
+        validate_global_defaults(global_defaults, errors, warnings)
+
+    # Handle both old list format and new dictionary format
+    if isinstance(plugins, list):
+        # Old list format - validate using legacy method
+        if plugins and len(plugins) > 0:
+            first_plugin = plugins[0]
+            if isinstance(first_plugin, dict) and "name" in first_plugin:
+                warnings.append(
+                    "Detected old plugin configuration format. Consider migrating to unified plugin format."
+                )
+                validate_plugins_section(plugins, errors, warnings)
+                return
+
+        # Empty list
+        if not plugins:
+            warnings.append("No plugins configured. Consider adding plugins to extend functionality.")
+            return
+
+    elif isinstance(plugins, dict):
+        # New dictionary format - validate keys and values
+        if not plugins:
+            warnings.append("No plugins configured. Consider adding plugins to extend functionality.")
+            return
+
+        # Validate each plugin in dictionary format
+        _validate_dictionary_plugins(plugins, errors, warnings)
+        return
+
+    else:
+        errors.append("Plugins must be a list (legacy format) or dictionary (new format)")
+        return
+
+    # This function should not be reached for new dictionary format
+    # It's handled by _validate_dictionary_plugins now
+    click.echo(f"{click.style('✓', fg='green')} Found {len(plugins)} plugin(s) in legacy format")
+
+
+def validate_plugin_defaults(plugin_defaults: dict[str, Any], errors: list[str], warnings: list[str]):
+    """Validate plugin defaults configuration."""
+    middleware = plugin_defaults.get("middleware", {})
+
+    if middleware and not isinstance(middleware, dict):
+        errors.append("plugin_defaults.middleware must be a dictionary")
+        return
+
+    # Validate middleware configurations
+    for middleware_name, middleware_config in middleware.items():
+        if not isinstance(middleware_config, dict):
+            errors.append(f"plugin_defaults.middleware.{middleware_name} must be a dictionary")
+            continue
+
+        # Validate common middleware types
+        if middleware_name == "rate_limited":
+            validate_rate_limit_config(
+                middleware_config, f"plugin_defaults.middleware.{middleware_name}", errors, warnings
+            )
+        elif middleware_name == "cached":
+            validate_cache_config(middleware_config, f"plugin_defaults.middleware.{middleware_name}", errors, warnings)
+        elif middleware_name == "retryable":
+            validate_retry_config(middleware_config, f"plugin_defaults.middleware.{middleware_name}", errors, warnings)
 
 
 def validate_global_defaults(global_defaults: dict[str, Any], errors: list[str], warnings: list[str]):
-    """Validate global defaults configuration."""
+    """Validate global system-wide defaults configuration."""
     middleware = global_defaults.get("middleware", {})
 
     if middleware and not isinstance(middleware, dict):
@@ -403,12 +450,14 @@ def validate_plugin_middleware_overrides(
             errors.append(f"{context} middleware[{i}] missing required field 'name'")
             continue
 
-        if "params" not in middleware:
-            errors.append(f"{context} middleware[{i}] missing required field 'params'")
+        if "config" not in middleware and "params" not in middleware:
+            errors.append(f"{context} middleware[{i}] missing required field 'config' or 'params'")
             continue
 
-        if not isinstance(middleware["params"], dict):
-            errors.append(f"{context} middleware[{i}] 'params' must be a dictionary")
+        # Check for both new 'config' field and legacy 'params' field
+        params_field = middleware.get("config") or middleware.get("params")
+        if params_field and not isinstance(params_field, dict):
+            errors.append(f"{context} middleware[{i}] 'config'/'params' must be a dictionary")
 
 
 def validate_capability_overrides(capabilities: dict[str, Any], context: str, errors: list[str], warnings: list[str]):
@@ -500,43 +549,43 @@ def validate_retry_config(config: dict[str, Any], context: str, errors: list[str
 
 
 def validate_middleware_config(
-    middleware: list[dict[str, Any]], plugin_id: str, errors: list[str], warnings: list[str]
+    middleware: list[dict[str, Any]], plugin_name: str, errors: list[str], warnings: list[str]
 ):
     if not isinstance(middleware, list):
-        errors.append(f"Plugin '{plugin_id}' middleware must be a list")
+        errors.append(f"Plugin '{plugin_name}' middleware must be a list")
         return
 
     valid_middleware_types = {"rate_limit", "cache", "retry", "logging", "timing", "transform"}
 
     for mw in middleware:
         if not isinstance(mw, dict):
-            errors.append(f"Plugin '{plugin_id}' middleware entry must be a dictionary")
+            errors.append(f"Plugin '{plugin_name}' middleware entry must be a dictionary")
             continue
 
         if "type" not in mw:
-            errors.append(f"Plugin '{plugin_id}' middleware missing 'type' field")
+            errors.append(f"Plugin '{plugin_name}' middleware missing 'type' field")
             continue
 
         mw_type = mw["type"]
         if mw_type not in valid_middleware_types:
-            warnings.append(f"Plugin '{plugin_id}' has unknown middleware type: '{mw_type}'")
+            warnings.append(f"Plugin '{plugin_name}' has unknown middleware type: '{mw_type}'")
 
         # Validate specific middleware configurations
         if mw_type == "rate_limit" and "requests_per_minute" in mw:
             try:
                 rpm = int(mw["requests_per_minute"])
                 if rpm <= 0:
-                    errors.append(f"Plugin '{plugin_id}' rate limit must be positive")
+                    errors.append(f"Plugin '{plugin_name}' rate limit must be positive")
             except (ValueError, TypeError):
-                errors.append(f"Plugin '{plugin_id}' rate limit must be a number")
+                errors.append(f"Plugin '{plugin_name}' rate limit must be a number")
 
         if mw_type == "cache" and "ttl" in mw:
             try:
                 ttl = int(mw["ttl"])
                 if ttl <= 0:
-                    errors.append(f"Plugin '{plugin_id}' cache TTL must be positive")
+                    errors.append(f"Plugin '{plugin_name}' cache TTL must be positive")
             except (ValueError, TypeError):
-                errors.append(f"Plugin '{plugin_id}' cache TTL must be a number")
+                errors.append(f"Plugin '{plugin_name}' cache TTL must be a number")
 
 
 def validate_services_section(services: dict[str, Any], errors: list[str], warnings: list[str]):
@@ -636,7 +685,17 @@ def validate_jwt_auth(jwt_config: dict[str, Any], errors: list[str], warnings: l
         errors.append("JWT auth missing 'secret_key' field")
 
     if "algorithm" in jwt_config:
-        valid_algorithms = {"HS256", "HS384", "HS512", "RS256", "RS384", "RS512", "ES256", "ES384", "ES512"}
+        valid_algorithms = {
+            "HS256",
+            "HS384",
+            "HS512",
+            "RS256",
+            "RS384",
+            "RS512",
+            "ES256",
+            "ES384",
+            "ES512",
+        }
         if jwt_config["algorithm"] not in valid_algorithms:
             warnings.append(f"Unknown JWT algorithm: {jwt_config['algorithm']}")
 
@@ -703,19 +762,19 @@ def check_handler_implementations(plugins: list[dict[str, Any]], errors: list[st
         click.echo(f"\n{click.style('Handler Implementations:', fg='yellow')}")
 
         for plugin in plugins:
-            plugin_id = plugin.get("plugin_id")
-            if not plugin_id:
+            plugin_name = plugin.get("name")
+            if not plugin_name:
                 continue
 
             # Check for handler registration
-            if f'@register_handler("{plugin_id}")' in handlers_content:
-                click.echo(f"{click.style('✓', fg='green')} Handler found for '{plugin_id}'")
+            if f'@register_handler("{plugin_name}")' in handlers_content:
+                click.echo(f"{click.style('✓', fg='green')} Handler found for '{plugin_name}'")
             else:
-                warnings.append(f"No handler implementation found for plugin '{plugin_id}'")
+                warnings.append(f"No handler implementation found for plugin '{plugin_name}'")
 
             # Check for handler function
-            if f"def handle_{plugin_id}" not in handlers_content:
-                warnings.append(f"Handler function 'handle_{plugin_id}' not found")
+            if f"def handle_{plugin_name}" not in handlers_content:
+                warnings.append(f"Handler function 'handle_{plugin_name}' not found")
 
     except Exception as e:
         errors.append(f"Error checking handlers: {str(e)}")
@@ -824,9 +883,13 @@ def validate_middleware_section(
                 continue
 
             # Validate nested objects
-            if section_name in {"rate_limiting", "caching", "cache", "retry", "logging"} and not isinstance(
-                section_config, dict
-            ):
+            if section_name in {
+                "rate_limiting",
+                "caching",
+                "cache",
+                "retry",
+                "logging",
+            } and not isinstance(section_config, dict):
                 errors.append(f"Middleware section '{section_name}' must be an object")
         return
 

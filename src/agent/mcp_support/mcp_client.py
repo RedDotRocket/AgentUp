@@ -327,10 +327,16 @@ class MCPClientService:
 
     async def call_tool(self, tool_name: str, arguments: dict[str, Any]) -> str:
         """Call an MCP tool by creating a fresh session."""
-        if tool_name not in self._available_tools:
+        # Handle prefixed tool names (e.g., "stdio:get_forecast" -> "get_forecast")
+        clean_tool_name = tool_name
+        if ":" in tool_name:
+            # Extract clean tool name from prefixed name
+            clean_tool_name = tool_name.split(":", 1)[1]
+
+        if clean_tool_name not in self._available_tools:
             raise ValueError(f"Tool {tool_name} not found in available MCP tools")
 
-        tool_info = self._available_tools[tool_name]
+        tool_info = self._available_tools[clean_tool_name]
         server_name = tool_info["server"]
         actual_tool_name = tool_info["name"]
 

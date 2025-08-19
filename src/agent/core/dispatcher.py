@@ -179,8 +179,8 @@ class FunctionRegistry:
         if not plugin_registry:
             return tools
 
-        for plugin_id, plugin_instance in plugin_registry.plugins.items():
-            if not plugin_id:
+        for plugin_name, plugin_instance in plugin_registry.plugins.items():
+            if not plugin_name:
                 continue
 
             # Get capabilities from modern decorator-based plugins
@@ -211,7 +211,7 @@ class FunctionRegistry:
                         for ai_function in ai_functions:
                             audit_logger.log_function_access_denied(user_id, ai_function.name, len(required_scopes))
             except Exception as e:
-                logger.warning(f"Failed to get capabilities for plugin '{plugin_id}': {e}")
+                logger.warning(f"Failed to get capabilities for plugin '{plugin_name}': {e}")
                 continue
         return tools
 
@@ -268,13 +268,17 @@ class FunctionRegistry:
                 # Replace colons with underscores: "filesystem:read_file" -> "filesystem_read_file"
                 function_name = original_name.replace(":", "_")
 
-                # Store with the cleaned name but keep original info
-                cleaned_schema = tool_schema.copy()
-                cleaned_schema["name"] = function_name
-                cleaned_schema["original_name"] = original_name  # Keep for MCP calls
+                # Only register if not already registered by register_mcp_tool (which has better scope handling)
+                if function_name not in self._mcp_tools:
+                    # Store with the cleaned name but keep original info
+                    cleaned_schema = tool_schema.copy()
+                    cleaned_schema["name"] = function_name
+                    cleaned_schema["original_name"] = original_name  # Keep for MCP calls
 
-                self._mcp_tools[function_name] = cleaned_schema
-                logger.debug(f"Registered MCP tool in function registry: {original_name} -> {function_name}")
+                    self._mcp_tools[function_name] = cleaned_schema
+                    logger.debug(f"Registered MCP tool in function registry: {original_name} -> {function_name}")
+                else:
+                    logger.debug(f"Skipping MCP tool '{function_name}' - already registered with scope enforcement")
         else:
             logger.warning(
                 f"Cannot register MCP client - client: {mcp_client is not None}, initialized: {mcp_client.is_initialized if mcp_client else False}"

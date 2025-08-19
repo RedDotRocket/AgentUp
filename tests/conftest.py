@@ -30,8 +30,6 @@ def sample_agent_config() -> dict[str, Any]:
         "version": "0.5.1",
         "plugins": [
             {
-                "plugin_id": "ai_assistant",
-                "name": "AI Assistant",
                 "description": "General purpose AI assistant",
                 "enabled": True,
                 "capabilities": [],
@@ -76,8 +74,7 @@ def minimal_agent_config() -> dict[str, Any]:
         "agent": {"name": "minimal-test", "description": "Minimal Test Agent", "version": "0.5.1"},
         "plugins": [
             {
-                "plugin_id": "echo",
-                "name": "Echo",
+                "name": "echo",
                 "description": "Echo back the input text",
                 "tags": ["echo", "basic", "simple"],
                 "input_mode": "text",
@@ -109,7 +106,11 @@ def ollama_agent_config() -> dict[str, Any]:
 @pytest.fixture
 def anthropic_agent_config() -> dict[str, Any]:
     return {
-        "agent": {"name": "anthropic-test", "description": "Anthropic Test Agent", "version": "0.5.1"},
+        "agent": {
+            "name": "anthropic-test",
+            "description": "Anthropic Test Agent",
+            "version": "0.5.1",
+        },
         "ai_provider": {
             "provider": "anthropic",
             "api_key": "${ANTHROPIC_API_KEY}",
@@ -211,7 +212,11 @@ def mock_file_system(temp_dir: Path):
     for filename in ["__init__.py", "main.py", "config.py", "api.py"]:
         (src_dir / filename).write_text(f"# Mock {filename}\npass\n")
 
-    return {"temp_dir": temp_dir, "src_dir": src_dir, "files": ["__init__.py", "main.py", "config.py", "api.py"]}
+    return {
+        "temp_dir": temp_dir,
+        "src_dir": src_dir,
+        "files": ["__init__.py", "main.py", "config.py", "api.py"],
+    }
 
 
 @pytest.fixture

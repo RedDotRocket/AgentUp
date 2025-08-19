@@ -118,10 +118,10 @@ class Settings(BaseSettings):
                     if "package" not in config_dict:
                         config_dict["package"] = package_name
 
-                    # Ensure plugin_id field exists (required by PluginConfig)
-                    if "plugin_id" not in config_dict:
-                        # Convert package name to plugin_id format
-                        config_dict["plugin_id"] = package_name.replace("-", "_").replace(".", "_")
+                    # Ensure name field exists (uses package name as identifier)
+                    if "name" not in config_dict:
+                        # Use package name as plugin name
+                        config_dict["name"] = package_name
 
                     # Convert new capability format to old format if needed
                     if "capabilities" in config_dict:
@@ -149,16 +149,10 @@ class Settings(BaseSettings):
         for item in v:
             if isinstance(item, str):
                 # New intent-based format: convert string to minimal PluginConfig
-                # Get correct plugin ID from entry point
-                try:
-                    from ..plugins.metadata import get_plugin_id_from_package
+                # Use package name as the plugin name
+                plugin_name = item
 
-                    plugin_id = get_plugin_id_from_package(item)
-                except Exception:
-                    # Fallback to simple conversion if metadata lookup fails
-                    plugin_id = item.replace("-", "_").replace(".", "_")
-
-                plugin_config = PluginConfig(plugin_id=plugin_id, package=item, enabled=True)
+                plugin_config = PluginConfig(name=plugin_name, package=item, enabled=True)
                 validated_plugins.append(plugin_config)
             elif isinstance(item, dict):
                 # Old format: validate as PluginConfig
@@ -168,7 +162,7 @@ class Settings(BaseSettings):
                 except ValidationError:
                     # Skip invalid plugin configs
                     continue
-            elif hasattr(item, "plugin_id"):
+            elif hasattr(item, "name"):
                 # Already a PluginConfig object
                 validated_plugins.append(item)
 

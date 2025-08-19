@@ -39,7 +39,7 @@ class TestPluginCapabilityIntegration:
         mock_capability_config.enabled = True
 
         mock_plugin_config = Mock()
-        mock_plugin_config.plugin_id = "test_plugin"
+        mock_plugin_config.plugin_name = "test_plugin"
         mock_plugin_config.capabilities = [mock_capability_config]
         mock_plugin_config.config = {}
 
@@ -113,7 +113,7 @@ class TestPluginCapabilityIntegration:
         mock_capability_config.enabled = True
 
         mock_plugin_config = Mock()
-        mock_plugin_config.plugin_id = "missing_plugin"
+        mock_plugin_config.plugin_name = "missing_plugin"
         mock_plugin_config.capabilities = [mock_capability_config]
 
         mock_config.plugins = [mock_plugin_config]
@@ -140,7 +140,7 @@ class TestPluginCapabilityIntegration:
         mock_capability_config.enabled = True
 
         mock_plugin_config = Mock()
-        mock_plugin_config.plugin_id = "test_plugin"
+        mock_plugin_config.plugin_name = "test_plugin"
         mock_plugin_config.capabilities = [mock_capability_config]
         mock_plugin_config.config = {}
 
@@ -196,7 +196,7 @@ class TestPluginCapabilityIntegration:
         mock_cap3.enabled = True
 
         mock_plugin_config = Mock()
-        mock_plugin_config.plugin_id = "multi_plugin"
+        mock_plugin_config.plugin_name = "multi_plugin"
         mock_plugin_config.capabilities = [mock_cap1, mock_cap2, mock_cap3]
         mock_plugin_config.config = {}
 
@@ -270,7 +270,7 @@ class TestPluginCapabilityIntegration:
         mock_capability_config.enabled = True
 
         mock_plugin_config = Mock()
-        mock_plugin_config.plugin_id = "test_plugin"
+        mock_plugin_config.plugin_name = "test_plugin"
         mock_plugin_config.capabilities = [mock_capability_config]
         mock_plugin_config.config = {}
 
@@ -320,7 +320,7 @@ class TestPluginCapabilityIntegration:
         mock_capability_config.enabled = True
 
         mock_plugin_config = Mock()
-        mock_plugin_config.plugin_id = "test_plugin"
+        mock_plugin_config.plugin_name = "test_plugin"
         mock_plugin_config.capabilities = [mock_capability_config]
         mock_plugin_config.config = {}
 
@@ -826,7 +826,7 @@ class TestConfigurationValidation:
         """Test that plugin with no capabilities is skipped with warning."""
         mock_config = Mock()
         mock_plugin_config = Mock()
-        mock_plugin_config.plugin_id = "empty_plugin"
+        mock_plugin_config.plugin_name = "empty_plugin"
         mock_plugin_config.capabilities = []  # Empty capabilities list
 
         mock_config.plugins = [mock_plugin_config]

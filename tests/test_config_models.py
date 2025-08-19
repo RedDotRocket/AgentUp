@@ -230,33 +230,31 @@ class TestPluginConfig:
 
     def test_plugin_config(self):
         plugin = PluginConfig(
-            plugin_id="my.text.plugin",
-            name="Text Plugin",
+            name="text_plugin",
             description="A plugin for text processing",
             capabilities=[PluginCapabilityConfig(capability_id="process", required_scopes=["text:read"])],
             default_scopes=["basic"],
         )
 
-        assert plugin.plugin_id == "my.text.plugin"
-        assert plugin.name == "Text Plugin"
+        assert plugin.name == "text_plugin"
         assert len(plugin.capabilities) == 1
         assert plugin.capabilities[0].capability_id == "process"
         assert "basic" in plugin.default_scopes
 
-    def test_plugin_id_validation(self):
-        # Valid IDs
-        PluginConfig(plugin_id="simple")
-        PluginConfig(plugin_id="my-plugin")
-        PluginConfig(plugin_id="my_plugin")
-        PluginConfig(plugin_id="my.plugin.name")
-        PluginConfig(plugin_id="plugin123")
+    def test_plugin_name_validation(self):
+        # Valid names
+        PluginConfig(name="simple")
+        PluginConfig(name="my-plugin")
+        PluginConfig(name="my_plugin")
+        PluginConfig(name="my.plugin.name")
+        PluginConfig(name="plugin123")
 
-        # Invalid IDs
+        # Invalid names
         with pytest.raises(ValidationError):
-            PluginConfig(plugin_id="")
+            PluginConfig(name="")
 
         with pytest.raises(ValidationError):
-            PluginConfig(plugin_id="invalid plugin!")
+            PluginConfig(name="invalid plugin!")
 
 
 class TestAgentConfig:
