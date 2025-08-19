@@ -25,179 +25,191 @@ Let's build a calculator plugin with AI functions:
 ### Step 1: Basic Plugin Setup
 
 ```bash
-agentup plugin create calculator-plugin --template ai
+agentup plugin create calculator-plugin  # AI template is now the default
 cd calculator-plugin
 ```
 
-### Step 2: Define AI Functions
+### Step 2: Understanding the Generated AI Plugin
 
-Edit `src/calculator_plugin/plugin.py`:
+The generated `src/calculator_plugin/plugin.py` uses the simplified decorator-based system:
 
 ```python
 import math
-import pluggy
-from agent.plugins import (
-    CapabilityDefinition, CapabilityContext, CapabilityResult, AIFunction, CapabilityType
-)
+from typing import Dict, Any
 
-hookimpl = pluggy.HookimplMarker("agentup")
+from agent.plugins.base import Plugin
+from agent.plugins.decorators import capability
+from agent.plugins.models import CapabilityContext
 
-class Plugin:
-    """Calculator plugin with AI functions."""
 
-    @hookimpl
-    def register_capability(self) -> CapabilityDefinition:
-        """Register the calculator capability."""
-        return CapabilityDefinition(
-            id="calculator",
-            name="Calculator",
-            version="1.0.0",
-            description="Perform mathematical calculations",
-            capabilities=[CapabilityType.TEXT, CapabilityType.AI_FUNCTION],
-            tags=["math", "calculator", "computation"],
-        )
+class CalculatorPlugin(Plugin):
+    """AI-enabled plugin class for Calculator."""
 
-    @hookimpl
-    def get_ai_functions(self) -> list[AIFunction]:
-        """Define AI-callable functions."""
-        return [
-            AIFunction(
-                name="calculate",
-                description="Perform basic mathematical calculations",
-                parameters={
-                    "type": "object",
-                    "properties": {
-                        "expression": {
-                            "type": "string",
-                            "description": "Mathematical expression to evaluate (e.g., '2 + 3 * 4')",
-                        },
-                        "precision": {
-                            "type": "integer",
-                            "description": "Number of decimal places in result",
-                            "default": 2,
-                            "minimum": 0,
-                            "maximum": 10,
-                        }
-                    },
-                    "required": ["expression"],
-                },
-                handler=self._calculate_function,
-            ),
+    def __init__(self):
+        """Initialize the plugin."""
+        super().__init__()
+        self.name = "calculator_plugin"
+        self.version = "1.0.0"
+        self.llm_service = None
 
-            AIFunction(
-                name="convert_units",
-                description="Convert between different units of measurement",
-                parameters={
-                    "type": "object",
-                    "properties": {
-                        "value": {
-                            "type": "number",
-                            "description": "The numeric value to convert",
-                        },
-                        "from_unit": {
-                            "type": "string",
-                            "description": "Source unit (e.g., 'fahrenheit', 'meters', 'pounds')",
-                        },
-                        "to_unit": {
-                            "type": "string",
-                            "description": "Target unit (e.g., 'celsius', 'feet', 'kilograms')",
-                        }
-                    },
-                    "required": ["value", "from_unit", "to_unit"],
-                },
-                handler=self._convert_units_function,
-            ),
+    async def initialize(self, config: Dict[str, Any], services: Dict[str, Any]):
+        """Initialize plugin with configuration and services."""
+        self.config = config
+        # Store LLM service for AI operations
+        self.llm_service = services.get("llm")
 
-            AIFunction(
-                name="solve_equation",
-                description="Solve mathematical equations (quadratic, linear, etc.)",
-                parameters={
-                    "type": "object",
-                    "properties": {
-                        "equation": {
-                            "type": "string",
-                            "description": "Equation to solve (e.g., 'x^2 + 5x + 6 = 0')",
-                        },
-                        "variable": {
-                            "type": "string",
-                            "description": "Variable to solve for",
-                            "default": "x",
-                        }
-                    },
-                    "required": ["equation"],
-                },
-                handler=self._solve_equation_function,
-            ),
+    def _get_parameters(self, context: CapabilityContext) -> dict[str, Any]:
+        """Extract parameters from context."""
+        params = context.metadata.get("parameters", {})
+        if not params and context.task and context.task.metadata:
+            params = context.task.metadata
+        return params
+
+    @capability(
+        id="calculate",
+        name="Calculator",
+        description="Perform mathematical calculations",
+        scopes=["calculator:use", "ai:function"],
+        ai_function=True,
+        ai_parameters={
+            "type": "object",
+            "properties": {
+                "expression": {
+                    "type": "string",
+                    "description": "Mathematical expression to evaluate (e.g., '2 + 3 * 4')"
+                }
+            },
+            "required": ["expression"]
+        },
+        examples=[
+            "Calculate 2 + 3 * 4",
+            "What is the square root of 144?",
+            "Evaluate (10 + 5) / 3"
         ]
+    )
+    async def calculate(self, context: CapabilityContext) -> Dict[str, Any]:
+        """Execute calculator capability."""
+        try:
+            params = self._get_parameters(context)
+            expression = params.get("expression", "")
+            
+            if not expression:
+                expression = self._extract_task_content(context)
+            
+            # Safe evaluation of mathematical expression
+            safe_dict = {
+                '__builtins__': {},
+                'math': math,
+                'abs': abs, 'round': round, 'min': min, 'max': max
+            }
+            
+            # Replace common math notation
+            expression = expression.replace('^', '**')
+            
+            result = eval(expression, safe_dict)
+            
+            return {
+                "success": True,
+                "content": f"{expression} = {result}",
+                "metadata": {
+                    "capability": "calculate",
+                    "expression": expression,
+                    "result": result
+                }
+            }
+            
+        except Exception as e:
+            self.logger.error("Calculation error", error=str(e))
+            return {
+                "success": False,
+                "error": str(e),
+                "content": f"Error calculating '{expression}': {str(e)}"
+            }
 ```
 
-### Step 3: Implement Function Handlers
+### Step 3: Adding More AI Capabilities
+
+You can extend your plugin with additional capabilities:
 
 ```python
-async def _calculate_function(self, task, context: CapabilityContext) -> CapabilityResult:
-    """Handle basic calculations."""
-    params = context.metadata.get("parameters", {})
-    expression = params.get("expression", "")
-    precision = params.get("precision", 2)
-
-    try:
-        # Sanitize expression for safety
-        safe_expression = self._sanitize_expression(expression)
-
-        # Evaluate the expression
-        result = eval(safe_expression, {"__builtins__": {}, "math": math})
-
-        # Format with specified precision
-        if isinstance(result, float):
-            formatted_result = round(result, precision)
-        else:
-            formatted_result = result
-
-        response = f"{expression} = {formatted_result}"
-
-        return CapabilityResult(
-            content=response,
-            success=True,
-            metadata={
-                "function": "calculate",
-                "expression": expression,
-                "result": formatted_result,
+@capability(
+    id="convert_units",
+    name="Unit Converter",
+    description="Convert between different units of measurement",
+    scopes=["calculator:use", "ai:function"],
+    ai_function=True,
+    ai_parameters={
+        "type": "object",
+        "properties": {
+            "value": {
+                "type": "number",
+                "description": "The numeric value to convert"
             },
-        )
-
-    except Exception as e:
-        return CapabilityResult(
-            content=f"Error calculating '{expression}': {str(e)}",
-            success=False,
-            error=str(e),
-        )
-
-def _sanitize_expression(self, expression: str) -> str:
-    """Sanitize mathematical expression for safe evaluation."""
-    import re
-
-    # Remove any non-mathematical characters
-    safe_chars = r'0-9+\-*/().^ \t'
-    expression = re.sub(f'[^{safe_chars}]', '', expression)
-
-    # Replace ^ with ** for Python exponentiation
-    expression = expression.replace('^', '**')
-
-    # Add math. prefix to known functions
-    math_functions = ['sin', 'cos', 'tan', 'log', 'sqrt', 'abs']
-    for func in math_functions:
-        expression = expression.replace(func, f'math.{func}')
-
-    return expression
-
-async def _convert_units_function(self, task, context: CapabilityContext) -> CapabilityResult:
-    """Handle unit conversions."""
-    params = context.metadata.get("parameters", {})
-    value = params.get("value")
-    from_unit = params.get("from_unit", "").lower()
-    to_unit = params.get("to_unit", "").lower()
-
+            "from_unit": {
+                "type": "string",
+                "description": "Source unit (e.g., 'meters', 'fahrenheit')"
+            },
+            "to_unit": {
+                "type": "string",
+                "description": "Target unit (e.g., 'feet', 'celsius')"
+            }
+        },
+        "required": ["value", "from_unit", "to_unit"]
+    },
+    examples=[
+        "Convert 100 meters to feet",
+        "How many celsius is 72 fahrenheit?",
+        "Convert 5 kilograms to pounds"
+    ]
+)
+async def convert_units(self, context: CapabilityContext) -> Dict[str, Any]:
+    """Convert between units."""
     try:
+        params = self._get_parameters(context)
+        value = params.get("value")
+        from_unit = params.get("from_unit", "").lower()
+        to_unit = params.get("to_unit", "").lower()
+        
+        # Simple conversion logic (extend as needed)
+        conversions = {
+            ('meters', 'feet'): 3.28084,
+            ('feet', 'meters'): 0.3048,
+            ('fahrenheit', 'celsius'): lambda f: (f - 32) * 5/9,
+            ('celsius', 'fahrenheit'): lambda c: c * 9/5 + 32,
+            ('kilograms', 'pounds'): 2.20462,
+            ('pounds', 'kilograms'): 0.453592,
+        }
+        
+        key = (from_unit, to_unit)
+        if key in conversions:
+            converter = conversions[key]
+            if callable(converter):
+                result = converter(value)
+            else:
+                result = value * converter
+            
+            return {
+                "success": True,
+                "content": f"{value} {from_unit} = {result:.2f} {to_unit}",
+                "metadata": {
+                    "value": value,
+                    "from_unit": from_unit,
+                    "to_unit": to_unit,
+                    "result": result
+                }
+            }
+        else:
+            return {
+                "success": False,
+                "content": f"Conversion from {from_unit} to {to_unit} not supported"
+            }
+            
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "content": f"Error converting units: {str(e)}"
+        }
         converted_value = self._perform_unit_conversion(value, from_unit, to_unit)
 
         response = f"{value} {from_unit} = {converted_value:.4g} {to_unit}"

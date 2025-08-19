@@ -4,9 +4,7 @@
 {{ description }}
 """
 
-import datetime
 from typing import Dict, Any
-{% if template == "ai" %}import asyncio{% endif %}
 
 from agent.plugins.base import Plugin
 from agent.plugins.decorators import capability
@@ -14,7 +12,7 @@ from agent.plugins.models import CapabilityContext
 
 
 class {{ class_name }}(Plugin):
-    """{% if template == "ai" %}AI-enabled {% else %}Basic {% endif %}plugin class for {{ display_name }}."""
+    """Entry point class for the {{ display_name }} plugin."""
 
     def __init__(self):
         """Initialize the plugin."""
@@ -33,11 +31,18 @@ class {{ class_name }}(Plugin):
         # Store LLM service for AI operations
         self.llm_service = services.get("llm")
 
-        # Setup other services
+        # Setup other services as needed
         if "http_client" in services:
             self.http_client = services["http_client"]
 
     {% endif %}
+    def _get_parameters(self, context: CapabilityContext) -> dict[str, Any]:
+        """Extract parameters from context, checking multiple locations for compatibility."""
+        params = context.metadata.get("parameters", {})
+        if not params and context.task and context.task.metadata:
+            params = context.task.metadata
+        return params
+
     @capability(
         id="{{ capability_id }}",
         name="{{ display_name }}",
@@ -50,102 +55,99 @@ class {{ class_name }}(Plugin):
                 "input": {
                     "type": "string",
                     "description": "The input to process with {{ display_name }}"
-                },
-                {% if template == "ai" %}"mode": {
-                    "type": "string",
-                    "enum": ["fast", "accurate", "balanced"],
-                    "description": "Processing mode",
-                    "default": "balanced"
-                },
-                "format": {
-                    "type": "string",
-                    "enum": ["text", "json", "markdown"],
-                    "description": "Output format",
-                    "default": "text"
-                }{% endif %}
+                }
             },
             "required": ["input"]
-        }{% endif %}
+        },
+        # A2A AgentSkill metadata (optional - add examples for better AI understanding)
+        examples=[
+            # Add examples of how to use this capability
+            # e.g., "Process the data from the file",
+            # "Analyze the provided text",
+        ]
+        {% endif %}
     )
     async def {{ capability_method_name }}(self, context: CapabilityContext) -> Dict[str, Any]:
         """Execute the {{ display_name.lower() }} capability."""
         try:
-            # Extract input from context using base class method
-            input_text = self._extract_task_content(context)
-            
-            # Log the start of processing (demonstrates structured logging)
-            self.logger.info("Starting capability execution", capability_id="{{ capability_id }}", input_length=len(input_text))
-
             {% if template == "ai" %}
             # Extract parameters for AI functions
-            params = context.metadata.get("parameters", {})
-            mode = params.get("mode", "balanced")
-            format = params.get("format", "text")
-            input_text = params.get("input", input_text)
+            params = self._get_parameters(context)
+            input_text = params.get("input", "")
 
-            # AI-powered processing
-            if not self.llm_service:
-                self.logger.error("LLM service not available for AI processing")
-                return {
-                    "success": False,
-                    "error": "LLM service not available",
-                    "content": "AI functionality requires LLM service configuration"
-                }
-
-            # Process based on mode
-            if mode == "fast":
-                result = await self._fast_processing(input_text)
-            elif mode == "accurate":
-                result = await self._accurate_processing(input_text)
-            else:  # balanced
-                result = await self._balanced_processing(input_text)
-
-            # Format output
-            formatted_result = self._format_output(result, format)
-            
-            # Log successful completion
-            self.logger.info("Capability execution completed", 
-                           capability_id="{{ capability_id }}", 
-                           mode=mode, 
-                           format=format, 
-                           result_length=len(formatted_result))
-
-            return {
-                "success": True,
-                "content": formatted_result,
-                "metadata": {
-                    "capability": "{{ capability_id }}",
-                    "mode": mode,
-                    "format": format,
-                    "processed_at": datetime.datetime.now().isoformat()
-                }
-            }
+            # If no input in parameters, try to extract from context
+            if not input_text:
+                input_text = self._extract_task_content(context)
             {% else %}
-            # Basic processing
-            processed_result = f"{{ display_name }} processed: {input_text}"
-            
+            # Extract input from context using base class method
+            input_text = self._extract_task_content(context)
+            {% endif %}
+
+            # Log the start of processing
+            self.logger.info("Starting capability execution",
+                           capability_id="{{ capability_id }}",
+                           input_length=len(input_text) if input_text else 0)
+
+            {% if template == "ai" %}
+            # AI-powered processing
+            if self.llm_service and input_text:
+                # Example: Use LLM to process the input
+                # Adapt this to your specific use case
+                prompt = f"""Process the following input for {{ display_name }}:
+{input_text}
+Provide a helpful response."""
+
+                try:
+                    # Call LLM service - adapt to your LLM service interface
+                    if hasattr(self.llm_service, 'generate'):
+                        response = await self.llm_service.generate(prompt, max_tokens=200)
+                    elif hasattr(self.llm_service, 'chat'):
+                        response = await self.llm_service.chat(
+                            [{"role": "user", "content": prompt}],
+                            max_tokens=200
+                        )
+                    else:
+                        # Fallback if LLM service interface is unknown
+                        response = f"Processed: {input_text}"
+
+                    result = response.strip() if hasattr(response, 'strip') else str(response)
+                except Exception as llm_error:
+                    self.logger.warning("LLM processing failed, using fallback", error=str(llm_error))
+                    result = f"{{ display_name }} processed (fallback): {input_text}"
+            else:
+                # Fallback when no LLM service or no input
+                result = "{{ display_name }} ready. No input provided or LLM service unavailable."
+            {% else %}
+            # Basic processing - implement your logic here
+            result = f"{{ display_name }} processed: {input_text}"
+
+            # TODO: Add your actual processing logic here
+            # For example:
+            # result = await self.process_data(input_text)
+            {% endif %}
+
             # Log successful completion
-            self.logger.info("Capability execution completed", 
-                           capability_id="{{ capability_id }}", 
-                           input_length=len(input_text),
-                           result_length=len(processed_result))
+            self.logger.info("Capability execution completed",
+                           capability_id="{{ capability_id }}",
+                           result_length=len(result) if result else 0)
 
             return {
                 "success": True,
-                "content": processed_result,
+                "content": result,
                 "metadata": {
                     "capability": "{{ capability_id }}",
-                    "processed_at": datetime.datetime.now().isoformat(),
-                    "input_length": len(input_text)
+                    {% if template == "ai" %}
+                    "ai_powered": bool(self.llm_service),
+                    {% endif %}
+                    "input_length": len(input_text) if input_text else 0
                 }
             }
-            {% endif %}
 
         except Exception as e:
             # Log the error with structured data
-            self.logger.error("Error in capability execution", 
-                            capability_id="{{ capability_id }}", 
-                            error=str(e), 
+            self.logger.error("Error in capability execution",
+                            capability_id="{{ capability_id }}",
+                            error=str(e),
                             exc_info=True)
             return {
                 "success": False,
@@ -153,133 +155,8 @@ class {{ class_name }}(Plugin):
                 "content": f"Error in {{ display_name }}: {str(e)}"
             }
 
-    {% if template == "ai" %}
-    async def _fast_processing(self, input: str) -> str:
-        """Fast processing mode using LLM."""
-        # Quick processing with minimal LLM interaction
-        prompt = f"Quickly process this input: {input[:100]}..."
-        
-        self.logger.debug("Starting fast processing", input_length=len(input), prompt_length=len(prompt))
-
-        try:
-            # Adapt to different LLM service interfaces
-            if hasattr(self.llm_service, 'generate'):
-                response = await self.llm_service.generate(prompt, max_tokens=50)
-            elif hasattr(self.llm_service, 'chat'):
-                response = await self.llm_service.chat([{"role": "user", "content": prompt}], max_tokens=50)
-            else:
-                # Fallback for basic processing
-                return f"Fast processing of: {input[:50]}..."
-
-            result = response.strip() if hasattr(response, 'strip') else str(response)
-            self.logger.debug("Fast processing completed successfully", result_length=len(result))
-            return result
-        except Exception as e:
-            self.logger.warning("Fast processing fallback due to LLM error", error=str(e))
-            return f"Fast processing completed (LLM unavailable): {input[:50]}..."
-
-    async def _accurate_processing(self, input: str) -> str:
-        """Accurate processing mode with detailed LLM analysis."""
-        prompt = f"""
-        Perform a detailed analysis of the following input:
-
-        Input: {input}
-
-        Please provide a comprehensive response with:
-        1. Analysis of the content
-        2. Key insights
-        3. Recommendations
-        """
-
-        try:
-            if hasattr(self.llm_service, 'generate'):
-                response = await self.llm_service.generate(prompt, max_tokens=500)
-            elif hasattr(self.llm_service, 'chat'):
-                response = await self.llm_service.chat([{"role": "user", "content": prompt}], max_tokens=500)
-            else:
-                return f"Detailed analysis of: {input}"
-
-            return response.strip() if hasattr(response, 'strip') else str(response)
-        except Exception as e:
-            return f"Accurate processing completed (LLM unavailable): Analysis of {len(input)} characters"
-
-    async def _balanced_processing(self, input: str) -> str:
-        """Balanced processing mode."""
-        prompt = f"""
-        Process this input with balanced detail and efficiency:
-
-        {input}
-
-        Provide a helpful response that balances thoroughness with conciseness.
-        """
-
-        try:
-            if hasattr(self.llm_service, 'generate'):
-                response = await self.llm_service.generate(prompt, max_tokens=200)
-            elif hasattr(self.llm_service, 'chat'):
-                response = await self.llm_service.chat([{"role": "user", "content": prompt}], max_tokens=200)
-            else:
-                return f"Balanced processing of: {input}"
-
-            return response.strip() if hasattr(response, 'strip') else str(response)
-        except Exception as e:
-            return f"Balanced processing completed (LLM unavailable): {input[:100]}..."
-
-    def _format_output(self, result: str, format: str) -> str:
-        """Format the result according to the specified format."""
-        if format == "json":
-            import json
-            return json.dumps({
-                "result": result,
-                "plugin": "{{ plugin_name }}",
-                "timestamp": datetime.datetime.now().isoformat()
-            }, indent=2)
-        elif format == "markdown":
-            return f"## {{ display_name }} Result\n\n{result}\n\n*Processed by {{ plugin_name }}*"
-        else:  # text
-            return result
-
-    {% endif %}
-    {% if template == "ai" %}
     def get_config_schema(self) -> Dict[str, Any]:
-        """Define configuration schema for AI plugin."""
-        return {
-            "type": "object",
-            "properties": {
-                "llm_model": {
-                    "type": "string",
-                    "description": "LLM model to use",
-                    "default": "gpt-4o-mini"
-                },
-                "max_tokens": {
-                    "type": "integer",
-                    "minimum": 10,
-                    "maximum": 4000,
-                    "default": 200,
-                    "description": "Maximum tokens for LLM responses"
-                },
-                "temperature": {
-                    "type": "number",
-                    "minimum": 0.0,
-                    "maximum": 2.0,
-                    "default": 0.7,
-                    "description": "LLM temperature setting"
-                }
-            },
-            "additionalProperties": False
-        }
-
-    def validate_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Validate AI plugin configuration."""
-        return {
-            "valid": True,
-            "errors": [],
-            "warnings": []
-        }
-
-    {% else %}
-    def get_config_schema(self) -> Dict[str, Any]:
-        """Define configuration schema for basic plugin."""
+        """Define configuration schema for the plugin."""
         return {
             "type": "object",
             "properties": {
@@ -292,20 +169,33 @@ class {{ class_name }}(Plugin):
                     "type": "boolean",
                     "default": False,
                     "description": "Enable debug logging"
+                }{% if template == "ai" %},
+                "max_retries": {
+                    "type": "integer",
+                    "default": 3,
+                    "description": "Maximum number of retries for AI operations"
                 }
+                {% endif %}
             },
             "additionalProperties": False
         }
 
     def validate_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Validate basic plugin configuration."""
+        """Validate plugin configuration."""
+        errors = []
+        warnings = []
+
+        # Add your custom validation logic here
+        # Example:
+        # if config.get("some_required_field") is None:
+        #     errors.append("some_required_field is required")
+
         return {
-            "valid": True,
-            "errors": [],
-            "warnings": []
+            "valid": len(errors) == 0,
+            "errors": errors,
+            "warnings": warnings
         }
 
-    {% endif %}
     async def cleanup(self):
         """Cleanup resources when plugin is destroyed."""
         {% if template == "ai" %}
@@ -316,6 +206,6 @@ class {{ class_name }}(Plugin):
         if hasattr(self, 'http_client') and hasattr(self.http_client, 'close'):
             await self.http_client.close()
         {% else %}
-        # Basic cleanup
+        # Add any cleanup logic here
         pass
         {% endif %}

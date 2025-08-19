@@ -43,6 +43,7 @@ Let's create a plugin that provides time and date information:
 ```bash
 # Run this from any directory where you want to create the plugin
 agentup plugin create time-plugin
+# Note: By default, this creates an AI-enabled plugin. Use --template direct for a basic plugin
 ```
 
 This creates a new directory with everything you need to get started:
@@ -66,138 +67,171 @@ The `pyproject.toml` now includes trusted publishing configuration for secure di
 
 ## Step 2: Examine the Generated Code
 
-Open `src/time_plugin/plugin.py` to see the new decorator-based plugin structure:
+Open `src/time_plugin/plugin.py` to see the simplified plugin structure:
 
 ```python
 """
-Time Plugin for AgentUp.
+Time Plugin plugin for AgentUp with AI capabilities.
 
-A plugin that provides time and date information using the modern decorator system.
+A plugin that provides Time Plugin functionality
 """
 
-import datetime
 from typing import Dict, Any
 
 from agent.plugins.base import Plugin
 from agent.plugins.decorators import capability
+from agent.plugins.models import CapabilityContext
 
 
-class TimePlugin(Plugin):
-    """Time and date information plugin."""
+class TimePluginPlugin(Plugin):
+    """AI-enabled plugin class for Time Plugin."""
 
     def __init__(self):
-        """Initialize the time plugin."""
+        """Initialize the plugin."""
         super().__init__()
-        self.name = "time-plugin"
+        self.name = "time_plugin"
         self.version = "1.0.0"
+        self.llm_service = None
+
+    async def initialize(self, config: Dict[str, Any], services: Dict[str, Any]):
+        """Initialize plugin with configuration and services."""
+        self.config = config
+
+        # Store LLM service for AI operations
+        self.llm_service = services.get("llm")
+
+        # Setup other services as needed
+        if "http_client" in services:
+            self.http_client = services["http_client"]
+
+    def _get_parameters(self, context: CapabilityContext) -> dict[str, Any]:
+        """Extract parameters from context, checking multiple locations for compatibility."""
+        params = context.metadata.get("parameters", {})
+        if not params and context.task and context.task.metadata:
+            params = context.task.metadata
+        return params
 
     @capability(
-        id="get_time",
-        name="Get Current Time",
-        description="Get the current time in various formats",
-        scopes=["time:read"],
+        id="time_plugin",
+        name="Time Plugin",
+        description="A plugin that provides Time Plugin functionality",
+        scopes=["time-plugin:use", "ai:function"],
         ai_function=True,
         ai_parameters={
             "type": "object",
             "properties": {
-                "format": {
+                "input": {
                     "type": "string",
-                    "enum": ["12hour", "24hour"],
-                    "description": "Time format preference",
-                    "default": "12hour"
+                    "description": "The input to process with Time Plugin"
                 }
-            }
-        }
+            },
+            "required": ["input"]
+        },
+        # A2A AgentSkill metadata (optional - add examples for better AI understanding)
+        examples=[
+            # Add examples of how to use this capability
+            # e.g., "Get the current time",
+            # "What's today's date?",
+        ]
     )
-    async def get_current_time(self, format: str = "12hour", **kwargs) -> Dict[str, Any]:
-        """Get the current time."""
+    async def time_plugin(self, context: CapabilityContext) -> Dict[str, Any]:
+        """Execute the time plugin capability."""
         try:
-            now = datetime.datetime.now()
+            # Extract parameters for AI functions
+            params = self._get_parameters(context)
+            input_text = params.get("input", "")
+            
+            # If no input in parameters, try to extract from context
+            if not input_text:
+                input_text = self._extract_task_content(context)
+            
+            # Log the start of processing
+            self.logger.info("Starting capability execution", 
+                           capability_id="time_plugin", 
+                           input_length=len(input_text) if input_text else 0)
 
-            if format == "24hour":
-                time_str = now.strftime("%H:%M")
+            # AI-powered processing
+            if self.llm_service and input_text:
+                # Example: Use LLM to process time-related queries
+                prompt = f"""Process the following time/date related query:
+
+{input_text}
+
+Provide the current time and date information as requested."""
+                
+                try:
+                    # Call LLM service - adapt to your LLM service interface
+                    if hasattr(self.llm_service, 'generate'):
+                        response = await self.llm_service.generate(prompt, max_tokens=200)
+                    elif hasattr(self.llm_service, 'chat'):
+                        response = await self.llm_service.chat(
+                            [{"role": "user", "content": prompt}], 
+                            max_tokens=200
+                        )
+                    else:
+                        # Fallback if LLM service interface is unknown
+                        import datetime
+                        now = datetime.datetime.now()
+                        response = f"Current time: {now.strftime('%I:%M %p')}, Date: {now.strftime('%A, %B %d, %Y')}"
+                    
+                    result = response.strip() if hasattr(response, 'strip') else str(response)
+                except Exception as llm_error:
+                    self.logger.warning("LLM processing failed, using fallback", error=str(llm_error))
+                    import datetime
+                    now = datetime.datetime.now()
+                    result = f"Current time: {now.strftime('%I:%M %p')}, Date: {now.strftime('%A, %B %d, %Y')}"
             else:
-                time_str = now.strftime("%I:%M %p")
+                # Fallback when no LLM service or no input
+                import datetime
+                now = datetime.datetime.now()
+                result = f"Current time: {now.strftime('%I:%M %p')}, Date: {now.strftime('%A, %B %d, %Y')}"
+            
+            # Log successful completion
+            self.logger.info("Capability execution completed", 
+                           capability_id="time_plugin",
+                           result_length=len(result) if result else 0)
 
             return {
                 "success": True,
-                "content": f"Current time: {time_str}",
+                "content": result,
                 "metadata": {
-                    "timestamp": now.isoformat(),
-                    "format": format
+                    "capability": "time_plugin",
+                    "ai_powered": bool(self.llm_service),
+                    "input_length": len(input_text) if input_text else 0
                 }
             }
+
         except Exception as e:
+            # Log the error with structured data
+            self.logger.error("Error in capability execution", 
+                            capability_id="time_plugin", 
+                            error=str(e), 
+                            exc_info=True)
             return {
                 "success": False,
                 "error": str(e),
-                "content": f"Error getting time: {e}"
-            }
-
-    @capability(
-        id="get_date",
-        name="Get Current Date",
-        description="Get the current date in various formats",
-        scopes=["time:read"],
-        ai_function=True,
-        ai_parameters={
-            "type": "object",
-            "properties": {
-                "format": {
-                    "type": "string",
-                    "enum": ["short", "long", "iso"],
-                    "description": "Date format preference",
-                    "default": "long"
-                }
-            }
-        }
-    )
-    async def get_current_date(self, format: str = "long", **kwargs) -> Dict[str, Any]:
-        """Get the current date."""
-        try:
-            now = datetime.datetime.now()
-
-            if format == "short":
-                date_str = now.strftime("%m/%d/%Y")
-            elif format == "iso":
-                date_str = now.strftime("%Y-%m-%d")
-            else:  # long
-                date_str = now.strftime("%A, %B %d, %Y")
-
-            return {
-                "success": True,
-                "content": f"Current date: {date_str}",
-                "metadata": {
-                    "timestamp": now.isoformat(),
-                    "format": format
-                }
-            }
-        except Exception as e:
-            return {
-                "success": False,
-                "error": str(e),
-                "content": f"Error getting date: {e}"
+                "content": f"Error in Time Plugin: {str(e)}"
             }
 ```
 
-Let's break down the key aspects:
+Let's break down the key aspects of the simplified template:
 
-- **@capability decorator**: Defines capabilities with metadata, scopes, and AI function parameters
-- **Direct method calls**: Each capability is a simple async method
-- **Automatic discovery**: The plugin automatically discovers decorated methods
-- **Type safety**: Full typing support with proper return types
-- **AI integration**: Built-in support for LLM function calling
-- **Security scopes**: Fine-grained permission control per capability
+- **Single @capability decorator**: One main capability that can handle various inputs
+- **_get_parameters() helper**: Extracts parameters from context reliably (pattern from production plugins)
+- **Simplified AI integration**: Direct LLM service usage with fallback logic
+- **Clean structure**: Essential methods only - no complex processing modes
+- **Flexible input handling**: Works with both AI function parameters and direct context
+- **Production patterns**: Based on real working plugins like agentup-systools
 
-## Step 3: Add More Capabilities
+## Step 3: Extending Your Plugin
 
-Let's add a combined datetime capability to demonstrate multiple capabilities in one plugin:
+To add more capabilities to your plugin, simply add more @capability decorated methods:
 
 ```python
 @capability(
-    id="get_datetime",
-    name="Get Date and Time",
-    description="Get both current date and time together",
+    id="get_timezone_info",
+    name="Get Timezone Information",
+    description="Get timezone information for a location",
     scopes=["time:read"],
     ai_function=True,
     ai_parameters={

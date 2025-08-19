@@ -7,6 +7,7 @@ import questionary
 import structlog
 from jinja2 import Environment, FileSystemLoader
 
+from agent.cli.style import custom_style, print_error, print_header, print_success_footer
 from agent.utils.version import get_version
 
 logger = structlog.get_logger(__name__)
@@ -225,11 +226,17 @@ def _render_plugin_template(template_name: str, context: dict) -> str:
     # For YAML files, disable block trimming to preserve proper formatting
     if template_name.endswith(".yml.j2") or template_name.endswith(".yaml.j2"):
         jinja_env = Environment(
-            loader=FileSystemLoader(templates_dir), autoescape=True, trim_blocks=False, lstrip_blocks=False
+            loader=FileSystemLoader(templates_dir),
+            autoescape=True,
+            trim_blocks=False,
+            lstrip_blocks=False,
         )
     else:
         jinja_env = Environment(
-            loader=FileSystemLoader(templates_dir), autoescape=True, trim_blocks=True, lstrip_blocks=True
+            loader=FileSystemLoader(templates_dir),
+            autoescape=True,
+            trim_blocks=True,
+            lstrip_blocks=True,
         )
 
     template = jinja_env.get_template(template_name)
@@ -287,13 +294,19 @@ def _validate_plugin_name(name: str) -> tuple[bool, str]:
 
 @click.command()
 @click.argument("plugin_name", required=False)
-@click.option("--template", "-t", type=click.Choice(["direct", "ai"]), default="direct", help="Plugin template")
+@click.argument("version", required=False)
+@click.option("--template", "-t", type=click.Choice(["direct", "ai"]), default="ai", help="Plugin template")
 @click.option("--output-dir", "-o", type=click.Path(), help="Output directory for the plugin")
 @click.option("--no-git", is_flag=True, help="Skip git initialization")
-def create(plugin_name: str | None, template: str, output_dir: str | None, no_git: bool):
+def create(
+    plugin_name: str | None,
+    version: str | None,
+    template: str,
+    output_dir: str | None,
+    no_git: bool,
+):
     """Create a new AgentUp plugin with scaffolding."""
-    click.secho("[bold cyan]AgentUp Plugin Creator[/bold cyan]")
-    click.secho("Let's create a new plugin!\n")
+    print_header("AgentUp Plugin Creator", "Let's create a new plugin!")
 
     # Interactive prompts if not provided
     if not plugin_name:
@@ -318,13 +331,16 @@ def create(plugin_name: str | None, template: str, output_dir: str | None, no_gi
     # Validate the name even if provided via CLI
     is_valid, error_msg = _validate_plugin_name(plugin_name)
     if not is_valid:
-        click.secho(f"Error: {error_msg}", fg="red")
+        print_error(error_msg)
         return
 
     # Get plugin details
     display_name = questionary.text("Display name:", default=plugin_name.replace("-", " ").title()).ask()
 
     description = questionary.text("Description:", default=f"A plugin that provides {display_name} functionality").ask()
+
+    if not version:
+        version = questionary.text("Version:", default="0.0.1", style=custom_style).ask()
 
     author = questionary.text("Author name:").ask()
 
@@ -355,7 +371,9 @@ def create(plugin_name: str | None, template: str, output_dir: str | None, no_gi
     ).ask()
 
     capability_id = questionary.text(
-        "Primary capability ID:", default=plugin_name.replace("-", "_"), validate=lambda x: x.replace("_", "").isalnum()
+        "Primary capability ID:",
+        default=plugin_name.replace("-", "_"),
+        validate=lambda x: x.replace("_", "").isalnum(),
     ).ask()
 
     # Ask about coding agent memory
@@ -402,6 +420,7 @@ def create(plugin_name: str | None, template: str, output_dir: str | None, no_gi
             "class_name": class_name,
             "display_name": display_name,
             "description": description,
+            "version": version,
             "author": author,
             "email": email.strip() if email and email.strip() else None,
             "capability_id": capability_id,
@@ -643,19 +662,19 @@ updates:
             subprocess.run(["git", "init"], cwd=output_dir, capture_output=True)  # nosec
             subprocess.run(["git", "add", "."], cwd=output_dir, capture_output=True)  # nosec
             subprocess.run(
-                ["git", "commit", "-m", f"Initial commit for {plugin_name} plugin"], cwd=output_dir, capture_output=True
+                ["git", "commit", "-m", f"Initial commit for {plugin_name} plugin"],
+                cwd=output_dir,
+                capture_output=True,
             )  # nosec
 
         # Success message
-        click.secho("\n✓ Plugin created successfully!", fg="green")
-        click.secho(f"\nLocation: {output_dir}", fg="cyan")
-        click.secho("\nNext steps:", fg="yellow")
-        click.secho(f"1. cd {output_dir}")
-        click.secho("2. pip install -e .")
-        click.secho(f"3. Edit src/{plugin_name_snake}/plugin.py")
-        click.secho("4. Test with your AgentUp agent")
+        print_success_footer(
+            "✓ Plugin created successfully!",
+            location=str(output_dir),
+            docs_url="https://docs.agentup.dev/plugin-development/",
+        )
 
     except Exception as e:
-        click.secho(f"[red]Error creating plugin: {e}[/red]")
+        print_error(f"creating plugin: {e}")
         if output_dir.exists():
             shutil.rmtree(output_dir)
