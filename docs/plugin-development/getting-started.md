@@ -67,7 +67,7 @@ The `pyproject.toml` now includes trusted publishing configuration for secure di
 
 ## Step 2: Examine the Generated Code
 
-Open `src/time_plugin/plugin.py` to see the simplified plugin structure:
+Open `src/time_plugin/plugin.py`:
 
 ```python
 """
@@ -140,14 +140,14 @@ class TimePluginPlugin(Plugin):
             # Extract parameters for AI functions
             params = self._get_parameters(context)
             input_text = params.get("input", "")
-            
+
             # If no input in parameters, try to extract from context
             if not input_text:
                 input_text = self._extract_task_content(context)
-            
+
             # Log the start of processing
-            self.logger.info("Starting capability execution", 
-                           capability_id="time_plugin", 
+            self.logger.info("Starting capability execution",
+                           capability_id="time_plugin",
                            input_length=len(input_text) if input_text else 0)
 
             # AI-powered processing
@@ -158,14 +158,14 @@ class TimePluginPlugin(Plugin):
 {input_text}
 
 Provide the current time and date information as requested."""
-                
+
                 try:
                     # Call LLM service - adapt to your LLM service interface
                     if hasattr(self.llm_service, 'generate'):
                         response = await self.llm_service.generate(prompt, max_tokens=200)
                     elif hasattr(self.llm_service, 'chat'):
                         response = await self.llm_service.chat(
-                            [{"role": "user", "content": prompt}], 
+                            [{"role": "user", "content": prompt}],
                             max_tokens=200
                         )
                     else:
@@ -173,7 +173,7 @@ Provide the current time and date information as requested."""
                         import datetime
                         now = datetime.datetime.now()
                         response = f"Current time: {now.strftime('%I:%M %p')}, Date: {now.strftime('%A, %B %d, %Y')}"
-                    
+
                     result = response.strip() if hasattr(response, 'strip') else str(response)
                 except Exception as llm_error:
                     self.logger.warning("LLM processing failed, using fallback", error=str(llm_error))
@@ -185,9 +185,9 @@ Provide the current time and date information as requested."""
                 import datetime
                 now = datetime.datetime.now()
                 result = f"Current time: {now.strftime('%I:%M %p')}, Date: {now.strftime('%A, %B %d, %Y')}"
-            
+
             # Log successful completion
-            self.logger.info("Capability execution completed", 
+            self.logger.info("Capability execution completed",
                            capability_id="time_plugin",
                            result_length=len(result) if result else 0)
 
@@ -203,9 +203,9 @@ Provide the current time and date information as requested."""
 
         except Exception as e:
             # Log the error with structured data
-            self.logger.error("Error in capability execution", 
-                            capability_id="time_plugin", 
-                            error=str(e), 
+            self.logger.error("Error in capability execution",
+                            capability_id="time_plugin",
+                            error=str(e),
                             exc_info=True)
             return {
                 "success": False,

@@ -25,13 +25,13 @@ Let's build a calculator plugin with AI functions:
 ### Step 1: Basic Plugin Setup
 
 ```bash
-agentup plugin create calculator-plugin  # AI template is now the default
+agentup plugin create calculator-plugin
 cd calculator-plugin
 ```
 
 ### Step 2: Understanding the Generated AI Plugin
 
-The generated `src/calculator_plugin/plugin.py` uses the simplified decorator-based system:
+Edit `src/calculator_plugin/plugin.py`:
 
 ```python
 import math
@@ -92,22 +92,22 @@ class CalculatorPlugin(Plugin):
         try:
             params = self._get_parameters(context)
             expression = params.get("expression", "")
-            
+
             if not expression:
                 expression = self._extract_task_content(context)
-            
+
             # Safe evaluation of mathematical expression
             safe_dict = {
                 '__builtins__': {},
                 'math': math,
                 'abs': abs, 'round': round, 'min': min, 'max': max
             }
-            
+
             # Replace common math notation
             expression = expression.replace('^', '**')
-            
+
             result = eval(expression, safe_dict)
-            
+
             return {
                 "success": True,
                 "content": f"{expression} = {result}",
@@ -117,7 +117,7 @@ class CalculatorPlugin(Plugin):
                     "result": result
                 }
             }
-            
+
         except Exception as e:
             self.logger.error("Calculation error", error=str(e))
             return {
@@ -169,7 +169,7 @@ async def convert_units(self, context: CapabilityContext) -> Dict[str, Any]:
         value = params.get("value")
         from_unit = params.get("from_unit", "").lower()
         to_unit = params.get("to_unit", "").lower()
-        
+
         # Simple conversion logic (extend as needed)
         conversions = {
             ('meters', 'feet'): 3.28084,
@@ -179,7 +179,7 @@ async def convert_units(self, context: CapabilityContext) -> Dict[str, Any]:
             ('kilograms', 'pounds'): 2.20462,
             ('pounds', 'kilograms'): 0.453592,
         }
-        
+
         key = (from_unit, to_unit)
         if key in conversions:
             converter = conversions[key]
@@ -187,7 +187,7 @@ async def convert_units(self, context: CapabilityContext) -> Dict[str, Any]:
                 result = converter(value)
             else:
                 result = value * converter
-            
+
             return {
                 "success": True,
                 "content": f"{value} {from_unit} = {result:.2f} {to_unit}",
@@ -203,7 +203,7 @@ async def convert_units(self, context: CapabilityContext) -> Dict[str, Any]:
                 "success": False,
                 "content": f"Conversion from {from_unit} to {to_unit} not supported"
             }
-            
+
     except Exception as e:
         return {
             "success": False,
