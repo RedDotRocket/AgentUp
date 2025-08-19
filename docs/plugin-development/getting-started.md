@@ -83,7 +83,7 @@ from agent.plugins.decorators import capability
 from agent.plugins.models import CapabilityContext
 
 
-class TimePluginPlugin(Plugin):
+class TimePlugin(Plugin):
     """AI-enabled plugin class for Time Plugin."""
 
     def __init__(self):

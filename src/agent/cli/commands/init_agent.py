@@ -13,13 +13,9 @@ from agent.utils.git_utils import get_git_author_info, initialize_git_repo
 @click.command()
 @click.argument("name", required=False)
 @click.argument("version", required=False)
-@click.option(
-    "--quick", "-q", is_flag=True, help="Quick setup with minimal features (basic handlers only)"
-)
+@click.option("--quick", "-q", is_flag=True, help="Quick setup with minimal features (basic handlers only)")
 @click.option("--output-dir", "-o", type=click.Path(), help="Output directory")
-@click.option(
-    "--config", "-c", type=click.Path(exists=True), help="Use existing agentup.yml as template"
-)
+@click.option("--config", "-c", type=click.Path(exists=True), help="Use existing agentup.yml as template")
 @click.option("--no-git", is_flag=True, help="Skip git repository initialization")
 def init_agent(
     name: str | None,
@@ -39,9 +35,7 @@ def init_agent(
     project_config = {}
 
     if not name:
-        name = questionary.text(
-            "Agent name:", style=custom_style, validate=lambda x: len(x.strip()) > 0
-        ).ask()
+        name = questionary.text("Agent name:", style=custom_style, validate=lambda x: len(x.strip()) > 0).ask()
         if not name:
             click.echo("Cancelled.")
             return
@@ -76,9 +70,7 @@ def init_agent(
         project_config["features"] = default_features
         project_config["feature_config"] = {}
     else:
-        description = questionary.text(
-            "Description:", default=f"AI Agent {name} Project.", style=custom_style
-        ).ask()
+        description = questionary.text("Description:", default=f"AI Agent {name} Project.", style=custom_style).ask()
         project_config["description"] = description
 
         project_config["features"] = []
@@ -91,9 +83,7 @@ def init_agent(
         if not no_git:
             project_config["author_info"] = get_git_author_info()
 
-        if questionary.confirm(
-            "Would you like to customize the features?", default=False, style=custom_style
-        ).ask():
+        if questionary.confirm("Would you like to customize the features?", default=False, style=custom_style).ask():
             # Get all available feature choices
             feature_choices = get_feature_choices()
 
@@ -167,9 +157,7 @@ def init_agent(
             if success:
                 click.echo(f"{click.style('Git repository initialized', fg='green')}")
             else:
-                click.echo(
-                    f"{click.style(f'  Warning: Could not initialize git repository: {error}', fg='yellow')}"
-                )
+                click.echo(f"{click.style(f'  Warning: Could not initialize git repository: {error}', fg='yellow')}")
 
         print_success_footer(
             "✓ Project created successfully!",
@@ -322,9 +310,7 @@ def configure_features(features: list) -> dict[str, Any]:
         config["docker_enabled"] = docker_enabled
 
         if docker_enabled:
-            docker_registry = questionary.text(
-                "Docker registry (optional):", default="", style=custom_style
-            ).ask()
+            docker_registry = questionary.text("Docker registry (optional):", default="", style=custom_style).ask()
 
             config["docker_registry"] = docker_registry if docker_registry else None
 

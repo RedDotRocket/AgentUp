@@ -659,13 +659,28 @@ updates:
         # Bandit: Add nosec to ignore command injection risk
         # This is safe as we control the output_dir input and it comes from trusted source (the code itself)
         if not no_git:
-            subprocess.run(["git", "init"], cwd=output_dir, capture_output=True)  # nosec
-            subprocess.run(["git", "add", "."], cwd=output_dir, capture_output=True)  # nosec
-            subprocess.run(
-                ["git", "commit", "-m", f"Initial commit for {plugin_name} plugin"],
-                cwd=output_dir,
-                capture_output=True,
-            )  # nosec
+            # Initialize git repository
+            init_result = subprocess.run(["git", "init"], cwd=output_dir, capture_output=True, text=True)  # nosec
+            if init_result.returncode != 0:
+                click.secho(f"Warning: Could not initialize git repository: {init_result.stderr.strip()}", fg="yellow")
+            else:
+                # Add files to git
+                add_result = subprocess.run(["git", "add", "."], cwd=output_dir, capture_output=True, text=True)  # nosec
+                if add_result.returncode != 0:
+                    click.secho(f"Warning: Could not add files to git: {add_result.stderr.strip()}", fg="yellow")
+                else:
+                    # Create initial commit
+                    commit_result = subprocess.run(
+                        ["git", "commit", "-m", f"Initial commit for {plugin_name} plugin"],
+                        cwd=output_dir,
+                        capture_output=True,
+                        text=True,
+                    )  # nosec
+                    if commit_result.returncode != 0:
+                        # Don't fail the whole process, just warn the user
+                        click.secho(
+                            f"Warning: Could not create initial git commit: {commit_result.stderr.strip()}", fg="yellow"
+                        )
 
         # Success message
         print_success_footer(

@@ -96,17 +96,63 @@ class CalculatorPlugin(Plugin):
             if not expression:
                 expression = self._extract_task_content(context)
 
-            # Safe evaluation of mathematical expression
-            safe_dict = {
-                '__builtins__': {},
-                'math': math,
-                'abs': abs, 'round': round, 'min': min, 'max': max
+            # Safe evaluation of mathematical expression using ast
+            import ast
+            import operator
+            
+            # Supported operations for safe evaluation
+            ops = {
+                ast.Add: operator.add,
+                ast.Sub: operator.sub,
+                ast.Mult: operator.mul,
+                ast.Div: operator.truediv,
+                ast.Pow: operator.pow,
+                ast.USub: operator.neg,
+                ast.UAdd: operator.pos,
+                ast.Mod: operator.mod,
+            }
+            
+            # Supported math functions
+            funcs = {
+                'sin': math.sin, 'cos': math.cos, 'tan': math.tan,
+                'sqrt': math.sqrt, 'log': math.log, 'log10': math.log10,
+                'exp': math.exp, 'abs': abs, 'round': round,
+                'min': min, 'max': max, 'pi': math.pi, 'e': math.e
             }
 
-            # Replace common math notation
-            expression = expression.replace('^', '**')
+            def safe_eval_node(node):
+                if isinstance(node, ast.Constant):  # Numbers
+                    return node.value
+                elif isinstance(node, ast.Name):  # Variables (like pi, e)
+                    if node.id in funcs:
+                        return funcs[node.id]
+                    else:
+                        raise ValueError(f"Undefined variable: {node.id}")
+                elif isinstance(node, ast.BinOp):  # Binary operations
+                    if type(node.op) not in ops:
+                        raise ValueError(f"Unsupported operation: {type(node.op).__name__}")
+                    return ops[type(node.op)](safe_eval_node(node.left), safe_eval_node(node.right))
+                elif isinstance(node, ast.UnaryOp):  # Unary operations
+                    if type(node.op) not in ops:
+                        raise ValueError(f"Unsupported unary operation: {type(node.op).__name__}")
+                    return ops[type(node.op)](safe_eval_node(node.operand))
+                elif isinstance(node, ast.Call):  # Function calls
+                    if isinstance(node.func, ast.Name) and node.func.id in funcs:
+                        args = [safe_eval_node(arg) for arg in node.args]
+                        return funcs[node.func.id](*args)
+                    else:
+                        raise ValueError(f"Unsupported function call")
+                else:
+                    raise ValueError(f"Unsupported node type: {type(node).__name__}")
 
-            result = eval(expression, safe_dict)
+            # Replace common math notation and parse safely
+            expression = expression.replace('^', '**')
+            
+            try:
+                tree = ast.parse(expression, mode='eval')
+                result = safe_eval_node(tree.body)
+            except (ValueError, SyntaxError, TypeError) as e:
+                raise ValueError(f"Invalid mathematical expression: {str(e)}")
 
             return {
                 "success": True,
@@ -170,6 +216,21 @@ async def convert_units(self, context: CapabilityContext) -> Dict[str, Any]:
         from_unit = params.get("from_unit", "").lower()
         to_unit = params.get("to_unit", "").lower()
 
+        # Validate required parameters
+        if not isinstance(value, (int, float)):
+            return {
+                "success": False,
+                "error": "Invalid or missing 'value' parameter",
+                "content": "Error: A numeric 'value' parameter is required for unit conversion."
+            }
+        
+        if not from_unit or not to_unit:
+            return {
+                "success": False,
+                "error": "Missing unit parameters",
+                "content": "Error: Both 'from_unit' and 'to_unit' parameters are required."
+            }
+
         # Simple conversion logic (extend as needed)
         conversions = {
             ('meters', 'feet'): 3.28084,
@@ -210,28 +271,6 @@ async def convert_units(self, context: CapabilityContext) -> Dict[str, Any]:
             "error": str(e),
             "content": f"Error converting units: {str(e)}"
         }
-        converted_value = self._perform_unit_conversion(value, from_unit, to_unit)
-
-        response = f"{value} {from_unit} = {converted_value:.4g} {to_unit}"
-
-        return CapabilityResult(
-            content=response,
-            success=True,
-            metadata={
-                "function": "convert_units",
-                "original_value": value,
-                "converted_value": converted_value,
-                "from_unit": from_unit,
-                "to_unit": to_unit,
-            },
-        )
-
-    except Exception as e:
-        return CapabilityResult(
-            content=f"Error converting {value} {from_unit} to {to_unit}: {str(e)}",
-            success=False,
-            error=str(e),
-        )
 
 def _perform_unit_conversion(self, value: float, from_unit: str, to_unit: str) -> float:
     """Perform the actual unit conversion."""
@@ -919,9 +958,54 @@ async def _multi_calculation_function(self, task, context: CapabilityContext) ->
     )
 
 async def _calculate_single_expression(self, expression: str) -> float:
-    """Calculate a single expression."""
-    safe_expr = self._sanitize_expression(expression)
-    return eval(safe_expr, {"__builtins__": {}, "math": math})
+    """Calculate a single expression safely using AST."""
+    import ast
+    import operator
+    
+    # Use the same safe evaluation approach as shown above
+    ops = {
+        ast.Add: operator.add, ast.Sub: operator.sub, ast.Mult: operator.mul,
+        ast.Div: operator.truediv, ast.Pow: operator.pow, ast.USub: operator.neg,
+        ast.UAdd: operator.pos, ast.Mod: operator.mod,
+    }
+    
+    funcs = {
+        'sin': math.sin, 'cos': math.cos, 'tan': math.tan, 'sqrt': math.sqrt,
+        'log': math.log, 'exp': math.exp, 'abs': abs, 'round': round,
+        'pi': math.pi, 'e': math.e
+    }
+    
+    def safe_eval_node(node):
+        if isinstance(node, ast.Constant):
+            return node.value
+        elif isinstance(node, ast.Name):
+            if node.id in funcs:
+                return funcs[node.id]
+            else:
+                raise ValueError(f"Undefined variable: {node.id}")
+        elif isinstance(node, ast.BinOp):
+            if type(node.op) not in ops:
+                raise ValueError(f"Unsupported operation: {type(node.op).__name__}")
+            return ops[type(node.op)](safe_eval_node(node.left), safe_eval_node(node.right))
+        elif isinstance(node, ast.UnaryOp):
+            if type(node.op) not in ops:
+                raise ValueError(f"Unsupported unary operation: {type(node.op).__name__}")
+            return ops[type(node.op)](safe_eval_node(node.operand))
+        elif isinstance(node, ast.Call):
+            if isinstance(node.func, ast.Name) and node.func.id in funcs:
+                args = [safe_eval_node(arg) for arg in node.args]
+                return funcs[node.func.id](*args)
+            else:
+                raise ValueError(f"Unsupported function call")
+        else:
+            raise ValueError(f"Unsupported node type: {type(node).__name__}")
+    
+    try:
+        expression = expression.replace('^', '**')
+        tree = ast.parse(expression, mode='eval')
+        return safe_eval_node(tree.body)
+    except (ValueError, SyntaxError, TypeError) as e:
+        raise ValueError(f"Invalid mathematical expression: {str(e)}")
 ```
 
 ## Advanced Function Features
