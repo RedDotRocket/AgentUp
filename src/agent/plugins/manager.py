@@ -66,7 +66,9 @@ class PluginRegistry:
                 self._config = Config.model_dump()
             except ImportError as e:
                 logger.error("Failed to load configuration module")
-                raise ImportError("Configuration module not found. Ensure 'agent.config' is available") from e
+                raise ImportError(
+                    "Configuration module not found. Ensure 'agent.config' is available"
+                ) from e
         return self._config
 
     def _load_plugin_security_config(self):
@@ -85,11 +87,15 @@ class PluginRegistry:
             if self.security_mode == "allowlist":
                 # Explicit allowlist mode - only specified plugins allowed
                 self.allowed_plugins = security_config.get("allowed_plugins", {})
-                logger.info(f"Security mode: allowlist with {len(self.allowed_plugins)} allowed plugins")
+                logger.info(
+                    f"Security mode: allowlist with {len(self.allowed_plugins)} allowed plugins"
+                )
             elif self.security_mode == "permissive":
                 # Permissive mode - all plugins allowed except blocked
                 self.allowed_plugins = None
-                logger.info(f"Security mode: permissive with {len(self.blocked_plugins)} blocked plugins")
+                logger.info(
+                    f"Security mode: permissive with {len(self.blocked_plugins)} blocked plugins"
+                )
             else:
                 # Configured mode (default) - allow explicitly configured plugins
                 configured_plugins = config.get("plugins", {})
@@ -100,7 +106,9 @@ class PluginRegistry:
 
                 # Validate plugin configuration format
                 if not isinstance(configured_plugins, dict | list):
-                    raise ValueError(f"Plugin configuration must be a dict or list, got {type(configured_plugins)}")
+                    raise ValueError(
+                        f"Plugin configuration must be a dict or list, got {type(configured_plugins)}"
+                    )
 
                 # Handle both dictionary and list formats for backward compatibility
                 if isinstance(configured_plugins, dict):
@@ -126,15 +134,16 @@ class PluginRegistry:
                             if plugin_name != package_name:
                                 allowed_plugins_temp[plugin_name] = plugin_info
 
-                            # Also add entry with common name transformations to handle mismatches
-                            # between package names (agentup-systools) and plugin names (agentup_systools)
-
                             # Try to discover actual plugin name from entry points
                             discovered_plugin_name = None
                             try:
-                                discovered_plugin_name = self._discover_plugin_name_for_package(package_name)
+                                discovered_plugin_name = self._discover_plugin_name_for_package(
+                                    package_name
+                                )
                             except Exception as e:
-                                logger.debug(f"Could not discover plugin name for package {package_name}: {e}")
+                                logger.debug(
+                                    f"Could not discover plugin name for package {package_name}: {e}"
+                                )
 
                             # Add discovered name if found
                             if discovered_plugin_name and discovered_plugin_name != package_name:
@@ -143,30 +152,26 @@ class PluginRegistry:
                                 )
                                 allowed_plugins_temp[discovered_plugin_name] = plugin_info
 
-                            # Special case mappings for known packages
-                            special_mappings = {
-                                "agentup-brave": "brave_search",
-                                "agentup-systools": "agentup_systools",
-                            }
-
-                            # Always try common transformations as fallback
+                            # Try common transformations as fallback if entry point discovery didn't work
                             possible_names = [
-                                package_name.replace("-", "_"),  # agentup-systools -> agentup_systools
+                                package_name.replace(
+                                    "-", "_"
+                                ),  # agentup-systools -> agentup_systools
                                 package_name.replace("agentup-", ""),  # agentup-brave -> brave
                                 package_name.replace("agentup-", "").replace(
                                     "-", "_"
                                 ),  # agentup-some-plugin -> some_plugin
                             ]
 
-                            # Add special mapping if it exists
-                            if package_name in special_mappings:
-                                possible_names.append(special_mappings[package_name])
-
-                            logger.debug(f"Processing package '{package_name}' with possible names: {possible_names}")
+                            logger.debug(
+                                f"Processing package '{package_name}' with transformed names: {possible_names}"
+                            )
 
                             # Add all possible names to the allowlist
                             for possible_name in possible_names:
-                                if possible_name != package_name and possible_name:  # Avoid empty strings
+                                if (
+                                    possible_name != package_name and possible_name
+                                ):  # Avoid empty strings
                                     logger.debug(
                                         f"Adding transformed plugin name '{possible_name}' for package '{package_name}'"
                                     )
@@ -194,9 +199,13 @@ class PluginRegistry:
                             # Try to discover actual plugin name from entry points
                             discovered_plugin_name = None
                             try:
-                                discovered_plugin_name = self._discover_plugin_name_for_package(package_name)
+                                discovered_plugin_name = self._discover_plugin_name_for_package(
+                                    package_name
+                                )
                             except Exception as e:
-                                logger.debug(f"Could not discover plugin name for package {package_name}: {e}")
+                                logger.debug(
+                                    f"Could not discover plugin name for package {package_name}: {e}"
+                                )
 
                             # Add discovered name if found
                             if discovered_plugin_name and discovered_plugin_name != package_name:
@@ -205,30 +214,26 @@ class PluginRegistry:
                                 )
                                 allowed_plugins_temp[discovered_plugin_name] = plugin_info
 
-                            # Special case mappings for known packages
-                            special_mappings = {
-                                "agentup-brave": "brave_search",
-                                "agentup-systools": "agentup_systools",
-                            }
-
-                            # Always try common transformations as fallback
+                            # Try common transformations as fallback if entry point discovery didn't work
                             possible_names = [
-                                package_name.replace("-", "_"),  # agentup-systools -> agentup_systools
+                                package_name.replace(
+                                    "-", "_"
+                                ),  # agentup-systools -> agentup_systools
                                 package_name.replace("agentup-", ""),  # agentup-brave -> brave
                                 package_name.replace("agentup-", "").replace(
                                     "-", "_"
                                 ),  # agentup-some-plugin -> some_plugin
                             ]
 
-                            # Add special mapping if it exists
-                            if package_name in special_mappings:
-                                possible_names.append(special_mappings[package_name])
-
-                            logger.debug(f"Processing package '{package_name}' with possible names: {possible_names}")
+                            logger.debug(
+                                f"Processing package '{package_name}' with transformed names: {possible_names}"
+                            )
 
                             # Add all possible names to the allowlist
                             for possible_name in possible_names:
-                                if possible_name != package_name and possible_name:  # Avoid empty strings
+                                if (
+                                    possible_name != package_name and possible_name
+                                ):  # Avoid empty strings
                                     logger.debug(
                                         f"Adding transformed plugin name '{possible_name}' for package '{package_name}'"
                                     )
@@ -236,7 +241,9 @@ class PluginRegistry:
 
                 # Successfully processed all plugins, assign to actual field
                 self.allowed_plugins = allowed_plugins_temp
-                logger.info(f"Security mode: configured with {len(self.allowed_plugins)} allowed plugins")
+                logger.info(
+                    f"Security mode: configured with {len(self.allowed_plugins)} allowed plugins"
+                )
                 logger.debug(f"Allowed plugin keys: {list(self.allowed_plugins.keys())}")
                 logger.debug(f"Complete allowlist contents: {self.allowed_plugins}")
 
@@ -297,7 +304,9 @@ class PluginRegistry:
 
                     # Validate it's a Plugin subclass
                     if not issubclass(plugin_class, Plugin):
-                        logger.error(f"Plugin {entry_point.name} does not inherit from Plugin base class")
+                        logger.error(
+                            f"Plugin {entry_point.name} does not inherit from Plugin base class"
+                        )
                         continue
 
                     # Instantiate plugin
@@ -393,7 +402,9 @@ class PluginRegistry:
 
         # Instantiate and register
         plugin_instance = plugin_class()
-        self._register_plugin(plugin_name, plugin_instance, None, source="filesystem", path=str(plugin_dir))
+        self._register_plugin(
+            plugin_name, plugin_instance, None, source="filesystem", path=str(plugin_dir)
+        )
 
         logger.info(f"Loaded filesystem plugin '{plugin_name}' from {plugin_dir}")
 
@@ -401,7 +412,9 @@ class PluginRegistry:
         """Enhanced plugin security check with multiple modes and validation"""
         # Fail-secure: deny if security config failed to load
         if self.allowlist_load_failed:
-            logger.warning(f"Plugin security config loading failed, denying plugin '{package_name}'")
+            logger.warning(
+                f"Plugin security config loading failed, denying plugin '{package_name}'"
+            )
             return False
 
         # Check blocked list first (applies to all modes)
@@ -447,11 +460,15 @@ class PluginRegistry:
             max_version = allowed_config.get("max_version")
 
             if min_version and not self._version_satisfies(version, f">={min_version}"):
-                logger.warning(f"Plugin {package_name} version {version} below minimum {min_version}")
+                logger.warning(
+                    f"Plugin {package_name} version {version} below minimum {min_version}"
+                )
                 return False
 
             if max_version and not self._version_satisfies(version, f"<={max_version}"):
-                logger.warning(f"Plugin {package_name} version {version} above maximum {max_version}")
+                logger.warning(
+                    f"Plugin {package_name} version {version} above maximum {max_version}"
+                )
                 return False
 
         return True
@@ -525,7 +542,9 @@ class PluginRegistry:
 
             self.plugin_definitions[plugin_name] = plugin_def
 
-            logger.info(f"Registered plugin '{plugin_name}' with {len(capability_definitions)} capabilities")
+            logger.info(
+                f"Registered plugin '{plugin_name}' with {len(capability_definitions)} capabilities"
+            )
 
         except Exception as e:
             logger.error(f"Failed to register plugin {plugin_name}: {e}")
@@ -541,7 +560,9 @@ class PluginRegistry:
 
     # === Plugin Execution Interface ===
 
-    async def execute_capability(self, capability_id: str, context: CapabilityContext) -> CapabilityResult:
+    async def execute_capability(
+        self, capability_id: str, context: CapabilityContext
+    ) -> CapabilityResult:
         """Execute a capability by ID"""
         if capability_id not in self.capabilities:
             return CapabilityResult(
@@ -557,7 +578,9 @@ class PluginRegistry:
             return await plugin.execute_capability(capability_id, context)
         except Exception as e:
             logger.error(f"Failed to execute capability {capability_id}: {e}", exc_info=True)
-            return CapabilityResult(content=f"Capability execution failed: {str(e)}", success=False, error=str(e))
+            return CapabilityResult(
+                content=f"Capability execution failed: {str(e)}", success=False, error=str(e)
+            )
 
     def can_handle_task(self, capability_id: str, context: CapabilityContext) -> bool | float:
         """Check if a capability can handle a task"""
@@ -595,7 +618,9 @@ class PluginRegistry:
     def validate_config(self, capability_id: str, config: dict) -> PluginValidationResult:
         """Validate configuration for a capability"""
         if capability_id not in self.capabilities:
-            return PluginValidationResult(valid=False, errors=[f"Capability '{capability_id}' not found"])
+            return PluginValidationResult(
+                valid=False, errors=[f"Capability '{capability_id}' not found"]
+            )
 
         capability_meta = self.capabilities[capability_id]
 
@@ -608,7 +633,9 @@ class PluginRegistry:
                 return PluginValidationResult(valid=True)
             except ImportError:
                 logger.warning("jsonschema not available for config validation")
-                return PluginValidationResult(valid=True, warnings=["JSON schema validation unavailable"])
+                return PluginValidationResult(
+                    valid=True, warnings=["JSON schema validation unavailable"]
+                )
             except jsonschema.ValidationError as e:
                 return PluginValidationResult(valid=False, errors=[str(e)])
 
@@ -706,7 +733,9 @@ class PluginRegistry:
                         "version": entry_point.dist.version if entry_point.dist else "unknown",
                         "package": entry_point.dist.name if entry_point.dist else "unknown",
                         "module": entry_point.value.split(":")[0],
-                        "class": entry_point.value.split(":")[1] if ":" in entry_point.value else "unknown",
+                        "class": entry_point.value.split(":")[1]
+                        if ":" in entry_point.value
+                        else "unknown",
                         "entry_point": str(entry_point),
                         "status": "available",
                         "loaded": entry_point.name in self.plugins,
@@ -771,7 +800,9 @@ class PluginRegistry:
         for capability in capabilities:
             scopes = set(capability.get("required_scopes", []))
             if dangerous_scopes.intersection(scopes):
-                issues.append(f"Capability '{capability.get('capability_id')}' requires dangerous scopes: {scopes}")
+                issues.append(
+                    f"Capability '{capability.get('capability_id')}' requires dangerous scopes: {scopes}"
+                )
 
         # Check for suspicious configurations
         suspicious_patterns = ["eval", "exec", "system", "subprocess", "__import__"]

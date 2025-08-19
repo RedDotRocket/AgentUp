@@ -271,7 +271,7 @@ AgentUp implements a **dual-layer approach** to AI capabilities that distinguish
 - AI receives function schemas only for tools the user can access
 - Enhanced functionality with plugin-specific features
 
-#### LLM Native Fallback (Secondary Path)  
+#### LLM Native Fallback (Secondary Path)
 - When plugin tools are denied, AI falls back to **native LLM capabilities**
 - OpenAI's vision API, text processing, etc. continue to work
 - No plugin functions are called - pure LLM processing
@@ -301,11 +301,11 @@ security:
   auth:
     api_key:
       keys:
-        - key: "basic-key"  
+        - key: "basic-key"
           scopes: ["files:read"]  # No image scope
 ```
 ```
-Request: "Analyze this image"  
+Request: "Analyze this image"
 ❌ AI gets no image plugin functions (filtered by security)
 ✅ AI falls back to OpenAI's native vision capabilities
 ✅ Result: Basic image analysis without plugin features
@@ -315,9 +315,9 @@ Request: "Analyze this image"
 
 **Plugin tool denied (expected):**
 ```
-WARNING: Security event: function_access_denied 
+WARNING: Security event: function_access_denied
 - resource: analyze_image
-- user_scopes: ["files:read"] 
+- user_scopes: ["files:read"]
 - required_scopes: ["image:read"]
 ```
 
@@ -333,7 +333,7 @@ INFO: Using direct LLM response (no tools available)
 This dual-layer approach provides:
 
 1. **Graceful User Experience**: Requests don't fail completely - users get basic LLM functionality
-2. **Clear Security Boundaries**: Plugin tools are properly secured, native LLM remains available  
+2. **Clear Security Boundaries**: Plugin tools are properly secured, native LLM remains available
 3. **Audit Transparency**: Logs clearly distinguish plugin denials from LLM fallback usage
 4. **Flexible Deployment**: Organizations can choose between enhanced plugin features vs basic LLM access
 
@@ -535,5 +535,5 @@ plugins:
 
 ```bash
 # Check agent configuration
-agentup agent validate
+agentup validate
 ```

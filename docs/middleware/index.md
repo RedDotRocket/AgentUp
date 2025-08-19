@@ -11,15 +11,15 @@ A root level middleware key is defined in your `agentup.yml`:
 ```yaml
 middleware:
   - name: timed
-    params: {}
+    config: {}
   - name: cached
-    params:
+    config:
       ttl: 300
   - name: rate_limited
-    params:
+    config:
       requests_per_minute: 60
   - name: retryable
-    params:
+    config:
       max_retries: 3
       backoff_factor: 2
 ```
@@ -65,13 +65,13 @@ Let's assume we have the following global middleware configuration:
 # Global middleware for all handlers
 middleware:
   - name: timed
-    params: {}
+    config: {}
   - name: cached
-    params: {ttl: 300}  # 5 minutes default
+    config: {ttl: 300}  # 5 minutes default
   - name: rate_limited
-    params: {requests_per_minute: 60}
+    config: {requests_per_minute: 60}
   - name: retryable
-    params: {max_retries: 3, backoff_factor: 2}
+    config: {max_retries: 3, backoff_factor: 2}
 ```
 
 For a specific plugin, you can override this behavior, for example, to disable caching and change the rate limit:
@@ -83,9 +83,9 @@ plugins:
     description: A resource-intensive operation
     plugin_override:
       - name: cached
-        params: {ttl: 3600}  # 1 hour for this specific plugin
+        config: {ttl: 3600}  # 1 hour for this specific plugin
       - name: rate_limited
-        params:
+        config:
           requests_per_minute: 120  # higher rate limit for this plugin
 ```
 
@@ -141,16 +141,16 @@ plugins:
   - plugin_id: no_cache_plugin
     plugin_override:
       - name: timed
-        params: {}
+        config: {}
       - name: rate_limited
-        params: {requests_per_minute: 60}
+        config: {requests_per_minute: 60}
       # Note: No caching middleware listed
 
   # This plugin gets ONLY logging
   - plugin_id: minimal_plugin
     plugin_override:
       - name: timed
-        params: {}
+        config: {}
 
   # This plugin gets NO middleware at all
   - plugin_id: bare_metal_plugin
@@ -164,27 +164,27 @@ middleware by simply not including them:
 # Global middleware
 middleware:
   - name: timed
-    params: {}
+    config: {}
   - name: cached
-    params: {ttl: 300}
+    config: {ttl: 300}
   - name: rate_limited
-    params: {requests_per_minute: 60}
+    config: {requests_per_minute: 60}
 
 plugins:
   # This skill gets everything EXCEPT caching
   - plugin_id: no_cache_skill
     plugin_override:
       - name: timed
-        params: {}
+        config: {}
       - name: rate_limited
-        params: {requests_per_minute: 60}
+        config: {requests_per_minute: 60}
       # Note: No caching middleware listed
 
   # This skill gets ONLY logging
   - plugin_id: minimal_skill
     plugin_override:
       - name: timed
-        params: {}
+        config: {}
 
   # This skill gets NO middleware at all
   - plugin_id: bare_metal_skill

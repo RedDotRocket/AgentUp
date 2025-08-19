@@ -87,7 +87,7 @@ The plugin is registered via entry point in `pyproject.toml`:
   # ✅ CORRECT - Modern imports
   from typing import Union, Literal, Any, TypeVar, Generic
   from pydantic import BaseModel, Field, field_validator, model_validator
-  
+
   # ❌ AVOID - Don't import these from typing
   from typing import Dict, List, Optional, Tuple, Set
   ```
@@ -122,10 +122,10 @@ async def handle_request(self, context: CapabilityContext) -> str:
     try:
         # Extract input from context
         user_input = self._extract_task_content(context)
-        
+
         # Your capability logic here
         response = self._process_request(user_input)
-        
+
         return response
     except Exception as e:
         return f"Error: {str(e)}"
@@ -161,7 +161,7 @@ async def ai_function(self, context: CapabilityContext) -> str:
     params = context.metadata.get("parameters", {})
     query = params.get("query", "")
     options = params.get("options", {})
-    
+
     # Process the AI function call
     result = await self._process_ai_request(query, options)
     return result
@@ -179,7 +179,7 @@ class {{ class_name }}(Plugin):
     async def process_text(self, context: CapabilityContext) -> str:
         # Text processing logic
         return "Processed text"
-    
+
     @capability(
         id="{{ capability_id }}_analyze",
         name="Data Analysis",
@@ -226,7 +226,7 @@ plugins:
         required_scopes:
           - domain:value
 ```
-4. Test with: `agentup agent serve`
+4. Test with: `agentup run`
 
 ### Testing
 ```bash

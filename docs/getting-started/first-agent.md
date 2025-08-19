@@ -251,7 +251,7 @@ Right, let's start the agent and see if everything is working as expected!
 agentup run
 
 !!! tip "Under the hood"
-    AgentUp uses FastAPI under the hood, so you don't have to use `agentup agent serve` to start your agent, you can also use `uvicorn` directly if you prefer, for example you may want to use the `--reload` option or `--workers` option to run multiple instances of your agent for load balancing.
+    AgentUp uses FastAPI under the hood, so you don't have to use `agentup run` to start your agent, you can also use `uvicorn` directly if you prefer, for example you may want to use the `--reload` option or `--workers` option to run multiple instances of your agent for load balancing.
 
 We  Agent start up , load the configuration, and register the plugins and activities various services. You should see output similar to this:
 
@@ -290,7 +290,7 @@ Open a new terminal and test the agent:
 
 ### Check Agent Status
 ```bash
-curl http://localhost:8000/health | jq 
+curl http://localhost:8000/health | jq
 ```
 
 Expected response:
@@ -490,4 +490,3 @@ curl -s http://localhost:8000/.well-known/agent.json |jq
 
 The key points to note in the agent card, are how are plugin 'hello' is listed under `skills`, and the security scheme is defined under `securitySchemes`. This card provides a machine-readable description of your agent's capabilities and how to interact with it.
 ```bash
-

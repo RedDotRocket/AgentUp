@@ -142,7 +142,7 @@ class PluginConfigurationResolver:
         # Start with plugin defaults
         plugin_middleware_defaults = self.intent_config.plugin_defaults.middleware
         for name, params in plugin_middleware_defaults.items():
-            middleware_config.append({"name": name, "params": params.copy(), "source": "plugin_default"})
+            middleware_config.append({"name": name, "config": params.copy(), "source": "plugin_default"})
 
         # Apply plugin-level overrides
         for mw_override in plugin_override.plugin_override:

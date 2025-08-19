@@ -121,7 +121,7 @@ plugins:
     # Middleware override (optional)
     plugin_override:
       - name: "cached"
-        params:
+        config:
           ttl: 600
 
     # Plugin capabilities
@@ -497,13 +497,13 @@ plugins:
     # Override global middleware
     plugin_override:
       - name: "cached"
-        params:
+        config:
           ttl: 300
       - name: "rate_limited"
-        params:
+        config:
           requests_per_minute: 100
       - name: "timed"
-        params: {}
+        config: {}
 
     # Plugin capabilities with security scopes
     capabilities:

@@ -101,7 +101,7 @@ class AgentUpServerManager:
 
         # Start AgentUp server
         self.process = subprocess.Popen(
-            ["uv", "run", "agentup", "agent", "serve", "--config", self.config_path, "--port", str(self.port)],
+            ["uv", "run", "agentup", "run", "--config", self.config_path, "--port", str(self.port)],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
