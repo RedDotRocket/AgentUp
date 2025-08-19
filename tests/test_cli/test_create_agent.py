@@ -543,7 +543,7 @@ class TestCliOutput:
             result = runner.invoke(init_agent, ["output-test", "--quick", "--no-git"])
 
         # Check for expected output elements
-        assert "Create your AI agent:" in result.output
+        assert "Create your AI agent" in result.output
         assert "Creating project..." in result.output
         assert "Project created successfully!" in result.output
         assert "Next steps:" in result.output
