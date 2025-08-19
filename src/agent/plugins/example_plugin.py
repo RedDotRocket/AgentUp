@@ -138,7 +138,7 @@ class ExamplePlugin(Plugin):
     def get_middleware_config(self) -> list[dict[str, Any]]:
         """Get middleware configuration for this plugin."""
         return [
-            {"type": "rate_limit", "config": {"requests_per_minute": 60, "burst_size": 10}},
+            {"type": "rate_limit", "config": {"requests_per_minute": 60, "burst_size": 72}},
             {"type": "logging", "config": {"log_level": "INFO"}},
         ]
 

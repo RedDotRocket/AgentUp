@@ -82,7 +82,7 @@ middleware:
   - name: rate_limiting
     config:
       requests_per_minute: 60
-      burst_limit: 10
+      burst_limit: 72
 
   # Authentication
   - name: authentication
