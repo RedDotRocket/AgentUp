@@ -25,7 +25,7 @@ logger = structlog.get_logger(__name__)
 
 
 class OpenAIProvider(BaseLLMService):
-    def __init__(self, name: str, config: dict[str, Any]):
+    def __init__(self, name: str, config: dict[str, Any] | Any):
         super().__init__(name, config)
         self.client: httpx.AsyncClient | None = None
         self.api_key = config.get("api_key", "")
@@ -40,10 +40,16 @@ class OpenAIProvider(BaseLLMService):
         self.default_max_tokens = config.get("max_tokens", 1000)
         self.default_top_p = config.get("top_p", 1.0)
 
+        # Streaming configuration
+        self.stream = config.get("stream", False)
+        self.chunk_size = config.get("chunk_size", 50)
+
     async def initialize(self) -> None:
         if not self.api_key:
             logger.error(
-                f"OpenAI service '{self.name}' initialization failed: API key not found. Check that 'api_key' is set in configuration and OPENAI_API_KEY environment variable is available. Service will be unavailable."
+                f"OpenAI service '{self.name}' initialization failed: API key not found. "
+                f"Check that 'api_key' is set in configuration and OPENAI_API_KEY "
+                f"environment variable is available. Service will be unavailable."
             )
             self._available = False
             return
@@ -295,6 +301,82 @@ class OpenAIProvider(BaseLLMService):
                             delta = choice.get("delta", {})
                             if "content" in delta:
                                 yield delta["content"]
+                        except json.JSONDecodeError:
+                            continue  # Skip invalid JSON lines
+
+        except httpx.HTTPError as e:
+            raise LLMProviderAPIError(f"OpenAI streaming API request failed: {e}") from e
+
+    async def stream_chat_complete_with_functions(
+        self, messages: list[ChatMessage], functions: list[dict[str, Any]], **kwargs
+    ):
+        """Stream chat completion with function calling support."""
+        if not self._initialized:
+            await self.initialize()
+
+        # Prepare payload with functions and streaming
+        payload = {
+            "model": self.model,
+            "messages": [self._chat_message_to_dict(msg) for msg in messages],
+            "functions": functions,
+            "function_call": kwargs.get("function_call", "auto"),
+            "stream": True,
+            "temperature": kwargs.get("temperature", self.default_temperature),
+            "max_tokens": kwargs.get("max_tokens", self.default_max_tokens),
+        }
+
+        try:
+            async with self.client.stream("POST", "/chat/completions", json=payload) as response:
+                if response.status_code != 200:
+                    error_detail = await response.aread()
+                    raise LLMProviderAPIError(f"OpenAI streaming API error: {response.status_code} - {error_detail}")
+
+                content_chunks = []
+                function_call_data = {"name": "", "arguments": ""}
+
+                async for line in response.aiter_lines():
+                    if line.startswith("data: "):
+                        data_str = line[6:]  # Remove 'data: ' prefix
+                        if data_str.strip() == "[DONE]":
+                            break
+                        try:
+                            data = json.loads(data_str)
+                            choice = data["choices"][0]
+                            delta = choice.get("delta", {})
+
+                            # Handle content streaming
+                            if "content" in delta and delta["content"]:
+                                content_chunks.append(delta["content"])
+                                yield {"type": "content", "data": delta["content"]}
+
+                            # Handle function call streaming
+                            if "function_call" in delta:
+                                func_call = delta["function_call"]
+                                if "name" in func_call:
+                                    function_call_data["name"] = func_call["name"]
+                                if "arguments" in func_call:
+                                    function_call_data["arguments"] += func_call["arguments"]
+
+                            # Check if we're done
+                            if choice.get("finish_reason"):
+                                # If we have a function call, yield it
+                                if function_call_data["name"]:
+                                    try:
+                                        args = (
+                                            json.loads(function_call_data["arguments"])
+                                            if function_call_data["arguments"]
+                                            else {}
+                                        )
+                                        yield {
+                                            "type": "function_call",
+                                            "data": {"name": function_call_data["name"], "arguments": args},
+                                        }
+                                    except json.JSONDecodeError:
+                                        logger.warning(f"Invalid function arguments: {function_call_data['arguments']}")
+
+                                yield {"type": "done", "data": {"finish_reason": choice["finish_reason"]}}
+                                break
+
                         except json.JSONDecodeError:
                             continue  # Skip invalid JSON lines
 

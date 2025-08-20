@@ -398,6 +398,18 @@ class PluginsConfig(BaseModel):
     plugins: list[PluginConfig] = Field(default_factory=list, description="Plugin configurations")
 
 
+class AIProviderConfig(BaseModel):
+    provider: str = Field(..., description="AI provider name (e.g., openai, anthropic)")
+    api_key: str | None = Field(None, description="API key for the AI provider")
+    model: str = Field(..., description="AI model to use")
+    stream: bool = Field(False, description="Enable streaming responses")
+    chunk_size: int = Field(50, description="Chunk size for non-streaming fallback")
+    stream_timeout: int = Field(30, description="Timeout for streaming responses")
+    temperature: float = Field(0.7, description="Sampling temperature")
+    max_tokens: int = Field(1000, description="Maximum number of tokens to generate")
+    top_p: float = Field(1.0, description="Top-p sampling")
+
+
 class MiddlewareConfig(BaseModel):
     enabled: bool = Field(True, description="Enable middleware system")
 

@@ -61,7 +61,11 @@ class TestAgentCard:
     @patch("agent.a2a.agentcard.ConfigurationManager")
     def test_create_agent_card_with_skills(self, mock_config_manager, mock_get_registry):
         mock_config = {
-            "agent": {"name": "SkillfulAgent", "description": "Agent with skills", "version": "2.0.0"},
+            "agent": {
+                "name": "SkillfulAgent",
+                "description": "Agent with skills",
+                "version": "2.0.0",
+            },
             "plugins": [
                 {
                     "name": "chat",
@@ -95,7 +99,7 @@ class TestAgentCard:
             "security": {"enabled": True, "type": "api_key"},
         }
         mock_config_manager.return_value.config = mock_config
-        
+
         # Mock the pydantic_config to return proper values
         mock_pydantic_config = Mock()
         mock_pydantic_config.project_name = "SecureAgent"
@@ -251,7 +255,9 @@ class TestJSONRPCEndpoint:
 
     @patch("agent.api.protected")
     @patch("agent.api.routes.get_auth_result")
-    def test_jsonrpc_method_not_found(self, mock_get_auth_result, mock_protected, client, mock_handler):
+    def test_jsonrpc_method_not_found(
+        self, mock_get_auth_result, mock_protected, client, mock_handler
+    ):
         mock_protected.return_value = lambda func: func
         mock_get_auth_result.return_value = None
 

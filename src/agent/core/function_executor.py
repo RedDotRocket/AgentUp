@@ -77,6 +77,9 @@ class FunctionExecutor:
             if self.function_registry.is_mcp_tool(function_name):
                 try:
                     result = await self.function_registry.call_mcp_tool(function_name, arguments)
+                    logger.info(
+                        f"MCP tool '{function_name}' executed successfully, result: {str(result)[:200]}{'...' if len(str(result)) > 200 else ''}"
+                    )
                     return str(result)
                 except PermissionError as e:
                     # Generic error message to prevent scope information leakage
@@ -105,6 +108,9 @@ class FunctionExecutor:
 
             # Apply state management if handler accepts context parameters
             result = await self._execute_with_state_management(handler, task_with_params, function_name)
+            logger.info(
+                f"Function '{function_name}' executed successfully, result type: {type(result).__name__}, result: {str(result)[:200]}{'...' if len(str(result)) > 200 else ''}"
+            )
             return str(result)
 
         except PermissionError as e:

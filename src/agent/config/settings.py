@@ -11,6 +11,7 @@ from ..types import ConfigDict as ConfigDictType
 from ..types import ModulePath, ServiceName, Version
 from .logging import configure_logging_from_config
 from .model import (
+    AIProviderConfig,
     APIConfig,
     LoggingConfig,
     MCPConfig,
@@ -77,7 +78,7 @@ class Settings(BaseSettings):
 
     # AI configuration
     ai: dict[str, Any] = Field(default_factory=dict)
-    ai_provider: dict[str, Any] = Field(default_factory=dict)
+    ai_provider: AIProviderConfig = Field(default_factory=AIProviderConfig)
 
     # Services configuration
     services: dict[ServiceName, ServiceConfig] = Field(default_factory=dict)

@@ -1,20 +1,67 @@
 # Create Your First AI Agent
 
-Now we should be able to make our agent AI capable by adding an AI provider (openAI) and a plugin that can provide more complex interactions. In this section, we will create a basic agent that can respond to simple greetings using a plugin.
+In this section, we will create an agent that can tell us information about a system using an AI model.
+
+Let's create a new agent project.
+
+```{.bash }
+agentup init
+```
+
+We want to grab some extra options this time.
+
+```{.text hl_lines="10 12 13 14"}
+> agentup init
+──────────────────────────────────────────────────
+AgentUp Agent Creator
+──────────────────────────────────────────────────
+Create your AI agent
+
+? Agent name: Tools
+? Description: AI Agent Tools Project.
+? Version: 0.0.1
+? Would you like to customize the features? Yes
+? Select features to include: done (2 selections)
+? Select authentication method: API Key (simple, but less secure)
+? Please select an AI Provider: OpenAI
+? Enable streaming responses? Yes
+```
+
+**Note:** In the above example, we use `OpenAI` as the AI provider, but you can choose any other supported provider that fits your needs.
+  For example, you could use `Anthropic` or `Ollama` for local models (*shout out to the **[/r/LocalLLaMA](https://www.reddit.com/r/LocalLLaMA/)** community*).
+
+Change into our agent directory:
+
+```{.bash }
+cd tools && uv sync
+```
+
+??? "Package Managers"
+    We reference **uv** a lot in AgentUp, as its what the developers of the project use, but you can use any package manager you prefer, such as pip or poetry.
+
 
 ### System Tools Plugin
 
-The `sys_tools` plugin provides access to operating system tools to work with files, directories, and system information. It allows your agent to perform tasks like listing directories, getting system info, and calculating file hashes.
+The [agentup-systools](https://agentup.dev/packages/agentup-systools) plugin provides access to operating system tools to work with files, directories, and system information. 
+
+It allows your agent to perform tasks such as listing directories, getting system info, and working with files.
 
 To enable this plugin, we will need to perform two steps:
+
 1. Download the plugin from the AgentUp plugin repository.
 2. Register the plugin with our agent's configuration file.
 
 ### Step 1: Download the Plugin
 
-AgentUp provides a centralized plugin repository `registry.agentup.dev` where you can discover and use various plugins to extend your agent's capabilities. The **sys_tools** plugin, is one such plugin that is available through the AgentUp registry.
+AgentUp provides a plugin [repository](https://agentup.dev) where you can discover and use various plugins to extend your
+agent's capabilities or contribute your own plugins. You are also welcome to use any PyPi compliant registry. The advantages
+to using the AgentUp registry include:
 
-!!! info "Plugin Management"
+- **Curated Plugins**: Access to a curated list of plugins specifically designed for AgentUp.
+- **Security**: Enhanced security, including malware scanning and secure coding checks of plugins
+- **Quarantine Mechanism**: Unverified plugins are quarantined for safety.
+
+??? info "Plugin Management"
     AgentUp leverages Python's native **entrypoint** system for plugin installation and management.
 
     **Benefits of the Entrypoint System**
@@ -28,124 +75,150 @@ AgentUp provides a centralized plugin repository `registry.agentup.dev` where yo
 
 To install the `sys_tools` plugin, you can use pip, uv or poetry, whichever you prefer for managing Python packages.
 
-The only difference is that we need to set a value for the tool to use our registry.
-
-??? note "Offical PyPi registry"
-    The existing PyPi registry can also be used for hosting plugins! The reason
-    we elected to create our own registry was two fold:
-    1. We prefer not to flood the PyPi registry with plugins and have maintainance
-    fall on that awesome community.
-    2. We wanted to build in some extra security features, such as secure coding checks,
-    malware and vulnerability scanning + a quarantine mechanism for unverified plugins.
-
-**Configure pip**
-
-Add AgentUp Registry to your pip configuration:
-
-```plaintext
-[global]
-extra-index-url = https://registry.agentup.dev/simple
-```
-
-**requirements.txt**
-
-```plaintext
---extra-index-url https://registry.agentup.dev/simple
---trusted-host agentup.dev
-
-agentup-plugin==1.0.0
-```
-
-**Pass in the argument**
-
-```
-pip install sys-tools --index-url https://registry.agentup.dev/simple
+```{.bash .copy}
+uv add agentup-systools
 ```
 
 ### Step 2: Agentup Plugin Command
 
 Once installed, the plugin will be be shown as available for use:
 
-```bash
+```{.bash .copy}
 agentup plugin list
 ```
 
-```bash
-    Loaded Plugins
-╭──────────────┬──────────────────┬─────────┬────────╮
-│ Plugin  │ Name   │ Version │    |  Status │
-├──────────────┼──────────────────┼─────────┼────────┤
-│ sys_tools    │ File Read   │  0.2.2  │ loaded      │
-╰──────────────┴──────────────────┴─────────┴────────╯
+??? success "Expected Output"
+    ```{.text .no-copy}
+                          Available Plugins                      
+    ╭──────────────────┬──────────────────┬─────────┬───────────╮
+    │ Plugin           │ Package          │ Version │  Status   │
+    ├──────────────────┼──────────────────┼─────────┼───────────┤
+    │ agentup_systools │ agentup-systools │  0.5.0  │ available │
+    ╰──────────────────┴──────────────────┴─────────┴───────────╯
+    ```
+
+You will note `available` as a status, this means the plugin is there to be used,
+but not yet activated in our agent. To activate the plugin, we need to register it in our agent's configuration file.
+
+AgentUp makes plugin management easy and intuitive, with the `plugin` command.
+
+Let's add our `agentup_systools` plugin.
+
+```{.bash .copy}
+agentup plugin sync
 ```
 
-### Step 3: Register the Plugin
+??? success "Expected output"
+    ```{.bash .no.copy}
+    > agentup plugin sync
+      Synchronizing agentup.yml with installed plugins...
+      Current agentup.yml has 0 configured plugins
+      Found 1 installed AgentUp plugins
 
-To register the `sys_tools` plugin, we will modify our agent's configuration file (`agentup.yml`) to include the plugin and its capabilities.
+      Plugins to add (1):
+        + agentup-systools (plugin: agentup_systools, v0.5.0)
+        ✓ Added agentup-systools with 11 capabilities
 
+      ✓ Updated agentup.yml with 1 additions and 0 removals
+    ```
 
-```yaml
+That's all, the `sync` command will always syncronise your agent's configuration with the installed plugins.
+
+If however you prefer more granular control, there is also the `agentup plugin add` command, which allows you to add plugins individually.
+
+Likewise, the `agentup plugin remove` command allows you to remove plugins from your agent's configuration.
+
+### Step 3: Plugin configuration
+
+Let's now look at our `agentup.yml` and how the `sys_tools` plugin is configured.
+
+```{.yaml}
 plugins:
-  - plugin_id: sys_tools
-    name: System Tools
-    description: Plugin to check scopes for API access
-    input_mode: text
-    output_mode: text
+  agentup-systools:
     capabilities:
- - capability_id: list_directory
-   required_scopes: ["files:read"]
-   enabled: true
- - capability_id: system_info
-   enabled: true 
-   required_scopes: ["system:read"]
- - capability_id: file_hash
-   required_scopes: ["files:read"]
-   enabled: true 
+      create_directory:
+        required_scopes:
+          - files:write
+      delete_file:
+        required_scopes:
+          - files:admin
+      execute_command:
+        required_scopes:
+          - system:admin
+      file_exists:
+        required_scopes:
+          - files:read
+      file_hash:
+        required_scopes:
+          - files:read
+      file_info:
+        required_scopes:
+          - files:read
+      file_read:
+        required_scopes:
+          - files:read
+      file_write:
+        required_scopes:
+          - files:write
+      list_directory:
+        required_scopes:
+          - files:read
+      system_info:
+        required_scopes:
+          - system:read
+      working_directory:
+        required_scopes:
+          - system:read
 ```
 
-??? question "AgentUp Routing Logic"
-    AgentUp uses an **implicit routing system**, where routing is determined by the presence (or absence) of keywords and patterns in the user input. This allows
-    deterministic routing, using keywords and patterns to decide which plugin to invoke.
+OK , a log going on, but it's pretty simple. 
 
-    **Keywords:**
+| Component | Description |
+|-----------|-------------|
+| **plugins** | This section lists all the plugins used by the agent. |
+| **capabilities** | This section lists all the capabilities provided by the plugin, along with their required scopes. |
+| **required_scopes** | This section lists all the scopes required to use the capabilities. |
 
-    Array of keywords that trigger direct routing to this plugin when found in user input.
+So in our instance we have the `agentup-systools` plugin, which provides capabilities for file and system operations.
 
-    *Example:* `["file", "directory", "ls", "cat"]`
+??? tip "Discover capabilities"
+    You can explore the capabilities of a plugin by using the `--capabilities` or `-c` flag with `agentup plugin list`.
+    ```{.text .no-copy}
+    agentup plugin list --capabilities
+                              Available Plugins                      
+    ╭──────────────────┬──────────────────┬─────────┬───────────╮
+    │ Plugin           │ Package          │ Version │  Status   │
+    ├──────────────────┼──────────────────┼─────────┼───────────┤
+    │ agentup_systools │ agentup-systools │  0.5.0  │ available │
+    ╰──────────────────┴──────────────────┴─────────┴───────────╯
 
-    **Patterns:**
+                            Available Capabilities                         
+    ╭───────────────────┬──────────────────┬─────────────┬─────────────────╮
+    │ Capability        │ Plugin           │ AI Function │ Required Scopes │
+    ├───────────────────┼──────────────────┼─────────────┼─────────────────┤
+    │ create_directory  │ agentup_systools │      ✓      │ files:write     │
+    │ delete_file       │ agentup_systools │      ✓      │ files:admin     │
+    │ execute_command   │ agentup_systools │      ✓      │ system:admin    │
+    │ file_exists       │ agentup_systools │      ✓      │ files:read      │
+    │ file_hash         │ agentup_systools │      ✓      │ files:read      │
+    │ file_info         │ agentup_systools │      ✓      │ files:read      │
+    │ file_read         │ agentup_systools │      ✓      │ files:read      │
+    │ file_write        │ agentup_systools │      ✓      │ files:write     │
+    │ list_directory    │ agentup_systools │      ✓      │ files:read      │
+    │ system_info       │ agentup_systools │      ✓      │ system:read     │
+    │ working_directory │ agentup_systools │      ✓      │ system:read     │
+    ╰───────────────────┴──────────────────┴─────────────┴─────────────────╯
+    ```
 
-    Array of regex patterns that trigger direct routing to this plugin when matched against user input.
+### What are scopes?
 
-    *Example:* `["^create file .*", "^delete .*"]`
+Scopes are a way to define the permissions required to use certain capabilities within a plugin. They help ensure that only
+authorized users or processes can access specific functionalities. This is what makes AgentUp unique,
+other frameworks often lack this level of granularity in permission management and control, which exposes
+the agent to many nasty security vulnerabilities. 
 
-    If keywords or patterns are matched, the plugin is invoked directly. If no keywords or patterns match, the request is pickedup by the LLM who will then decide which plugin to use based on the natural language used in the request.
+We cover scopes in more detail in the [Security](../security/scope-based-authorization.md) section.
 
-
-### Create an AI Provider
-
-To create an AI provider, we will modify our agent's configuration file (`agentup.yml`) to include the AI provider and its capabilities.
-
-```yaml
-ai_provider:
-    provider: openai
-    model: gpt-4o-mini
-    api_key: ${OPENAI_API_KEY}
-
-ai:
-  enabled: true
-  system_prompt: |
-    You are a helpful AI assistant
-
-    Your role:
-    - Understand user requests naturally
-    - Provide helpful, accurate responses
-    - Maintain a friendly and professional tone
-    - Use available functions when appropriate
-    - Keep responses concise and relevant
-
-    Always be helpful, accurate, and maintain context in conversations.
-```
 
 A few things to note here:
 
@@ -156,95 +229,172 @@ A few things to note here:
 
 ### Export the API Key
 
-Before we can use the AI provider, we need to export the OpenAI API key as an environment variable. You can do this by running the following command in your terminal:
+If you set 'OpenAI' or 'Anthropic' as your AI provider, you'll need to export the corresponding API key as an environment variable. 
 
-```bash
+You can do this by running the following command in your terminal:
+
+```{.bash}
 export OPENAI_API_KEY="your_openai_api_key"
+```
+
+```{.bash}
+export ANTHROPIC_API_KEY="your_anthropic_api_key"
 ```
 
 ### Test the server and plugin loading
 
-Let's now restart our agent to load the new configuration:
-
-Perform `ctrl + c` to stop the agent, then run:
+Let's now start our agent:
 
 ```bash
 agentup run
 ```
 
-We should now seee the plugin being loaded:
+??? success "Expected Output"
 
-```bash
-[INFO] Discovered plugin 'sys_tools' with 11 capabilities
-[INFO] Registered plugin capability with scope enforcement: list_directory (scopes: ['files:read'])
-[INFO] Registered plugin capability with scope enforcement: system_info (scopes: ['system:read'])
-[INFO] Registered plugin capability with scope enforcement: file_hash (scopes: ['files:read'])
-[INFO] Configuration loaded 3 plugin capabilities (out of 11 discovered)
-[INFO] Registered AI function 'list_directory' from capability 'list_directory'
-[INFO] Registered AI function 'system_info' from capability 'system_info'
-[INFO] Registered AI function 'file_hash' from capability 'file_hash'
-[INFO] Plugin adapter integrated with function registry for AI function calling
-```
-
-All good! Now we have the `sys_tools` plugin loaded and ready to use. But first, we need to create an AI provider that can use this plugin.
+    ```{.bash}
+    2025-08-21T10:36:39 [INFO] Configuration loaded successfully [agent.services.config]
+    2025-08-21T10:36:39 [INFO] Security mode: configured with 3 allowed plugins [agent.plugins.manager]
+    2025-08-21T10:36:39 [INFO] Registered plugin 'agentup_systools' with 11 capabilities [agent.plugins.manager]
+    2025-08-21T10:36:39 [INFO] Registered plugin 'agentup_systools' with 11 capabilities [agent.plugins.manager]
+    2025-08-21T10:36:39 [INFO] Started server process [25455] [uvicorn.error]
+    2025-08-21T10:36:39 [INFO] Waiting for application startup. [uvicorn.error]
+    2025-08-21T10:36:39 [INFO] Starting service initialization [agent.services.bootstrap]
+    2025-08-21T10:36:39 [INFO] Integrating plugins with capabilities system [agent.services.bootstrap]
+    2025-08-21T10:36:39 [INFO] Starting plugin integration with capabilities system [agent.plugins.integration]
+    2025-08-21T10:36:39 [INFO] Registered plugin 'agentup_systools' with 11 capabilities [agent.plugins.manager]
+    2025-08-21T10:36:39 [INFO] Registered plugin 'agentup_systools' with 11 capabilities [agent.plugins.manager]
+    2025-08-21T10:36:39 [INFO] Capability Registered: 'create_directory' with scopes: ['files:write'] [agent.plugins.integration]
+    2025-08-21T10:36:39 [INFO] Capability Registered: 'delete_file' with scopes: ['files:admin'] [agent.plugins.integration]
+    2025-08-21T10:36:39 [INFO] Capability Registered: 'execute_command' with scopes: ['system:admin'] [agent.plugins.integration]
+    2025-08-21T10:36:39 [INFO] Capability Registered: 'file_exists' with scopes: ['files:read'] [agent.plugins.integration]
+    2025-08-21T10:36:39 [INFO] Capability Registered: 'file_hash' with scopes: ['files:read'] [agent.plugins.integration]
+    2025-08-21T10:36:39 [INFO] Capability Registered: 'file_info' with scopes: ['files:read'] [agent.plugins.integration]
+    2025-08-21T10:36:39 [INFO] Capability Registered: 'file_read' with scopes: ['files:read'] [agent.plugins.integration]
+    2025-08-21T10:36:39 [INFO] Capability Registered: 'file_write' with scopes: ['files:write'] [agent.plugins.integration]
+    2025-08-21T10:36:39 [INFO] Capability Registered: 'list_directory' with scopes: ['files:read'] [agent.plugins.integration]
+    2025-08-21T10:36:39 [INFO] Capability Registered: 'system_info' with scopes: ['system:read'] [agent.plugins.integration]
+    2025-08-21T10:36:39 [INFO] Capability Registered: 'working_directory' with scopes: ['system:read'] [agent.plugins.integration]
+    2025-08-21T10:36:39 [INFO] Registered 11 capabilities from plugins [agent.services.bootstrap]
+    2025-08-21T10:36:39 [INFO] Initializing security service [SecurityService]
+    2025-08-21T10:36:39 [INFO] Security authentication manager initialized [agent.security.unified_auth] enabled=True providers=['api_key']
+    2025-08-21T10:36:39 [INFO] Security manager initialized - enabled: True, primary auth: api_key [agent.security.manager]
+    2025-08-21T10:36:39 [INFO] Security enabled with api_key authentication [SecurityService]
+    2025-08-21T10:36:39 [INFO] ✓ Initialized SecurityService [agent.services.bootstrap]
+    2025-08-21T10:36:39 [INFO] Initializing middleware manager [MiddlewareManager]
+    2025-08-21T10:36:39 [INFO] Middleware manager initialized with 4 global middleware [MiddlewareManager]
+    2025-08-21T10:36:39 [INFO] ✓ Initialized MiddlewareManager [agent.services.bootstrap]
+    2025-08-21T10:36:39 [INFO] Capability registry initialized with 3 capabilities [BuiltinCapabilityRegistry]
+    2025-08-21T10:36:39 [INFO] ✓ Initialized BuiltinCapabilityRegistry [agent.services.bootstrap]
+    2025-08-21T10:36:39 [INFO] Initializing push notification service [PushNotificationService]
+    2025-08-21T10:36:39 [INFO] Push notification service initialized with memory backend [PushNotificationService]
+    2025-08-21T10:36:39 [INFO] ✓ Initialized PushNotificationService [agent.services.bootstrap]
+    2025-08-21T10:36:39 [INFO] ================================================== [agent.services.bootstrap]
+    2025-08-21T10:36:39 [INFO] Agent v0.5.1 initialized  [agent.services.bootstrap]
+    2025-08-21T10:36:39 [INFO] AgentUp Agent   [agent.services.bootstrap]
+    2025-08-21T10:36:39 [INFO] ================================================== [agent.services.bootstrap]
+    2025-08-21T10:36:39 [INFO] Active Services (4): [agent.services.bootstrap]
+    2025-08-21T10:36:39 [INFO]   ✓ SecurityService  [agent.services.bootstrap]
+    2025-08-21T10:36:39 [INFO]   ✓ MiddlewareManager[agent.services.bootstrap]
+    2025-08-21T10:36:39 [INFO]   ✓ BuiltinCapabilityRegistry [agent.services.bootstrap]
+    2025-08-21T10:36:39 [INFO]   ✓ PushNotificationService [agent.services.bootstrap]
+    2025-08-21T10:36:39 [INFO] Enabled Features:    [agent.services.bootstrap]
+    2025-08-21T10:36:39 [INFO]   ✓ Security (api_key)    [agent.services.bootstrap]
+    2025-08-21T10:36:39 [INFO] ==================== [agent.services.bootstrap]
+    2025-08-21T10:36:39 [INFO] Registered 11 AI functions from plugins [agent.core.dispatcher]
+    2025-08-21T10:36:39 [INFO] Application startup complete. [uvicorn.error]
+    ```
 
 ### Test the AI Agent
+
+We now can engage with LLM enabled agent and ask for some information about the agents system,
+but before we do, we need to get the API key
+
+From within your `agentup.yml`, retrieve the API key:
+
+```yaml
+security:
+  enabled: true
+  auth:
+    api_key:
+      header_name: X-API-Key
+      location: header
+      keys:
+        - key: your_key
+```
+
+And lets send a message to the Agent:
 
 ```bash
 curl -s -X POST http://localhost:8000/ \
  -H "Content-Type: application/json" \
- -H "X-API-Key: 24vgyiyNuzvPdtRG5R80YR4_eKXC9dk0" \
+ -H "X-API-Key: your_key" \
  -d '{
    "jsonrpc": "2.0",
    "method": "message/send",
    "params": {
-"message": {
-  "role": "user",
-  "parts": [{"kind": "text", "text": "provide the system information"}],
-  "messageId": "msg-001",,
-  "kind": "message"
-}
-   },
-   "id": "req-001"
- }' | jq -r '.result.artifacts[].parts[].text' | jq
+      "message": {
+        "role": "user",
+        "parts": [{"kind": "text", "text": "provide the system information"}],
+        "messageId": "msg-001",
+        "kind": "message"
+      }
+        },
+        "id": "req-001"
+  }' | jq -r '.result.artifacts[].parts[]' | jq
 ```
 
-??? success "Response"
-
+!!! failure "Woops!"
     ```json
     {
-      "success": true,
-      "data": {
-        "platform": "Darwin",
-        "platform_release": "24.5.0",
-        "platform_version": "Darwin Kernel Version 24.5.0: Tue Apr 22 19:54:25 PDT 2025; root:xnu-11417.121.6~2/RELEASE_ARM64_T6020",
-        "architecture": "arm64",
-        "processor": "arm",
-        "hostname": "lhinds-mbp",
-        "python_version": "3.11.11",
-        "working_directory": "/Users/lhinds/basic_agent",
-        "user": "lhinds"
-      },
-      "operation": "system_info"
+      "kind": "text",
+      "metadata": null,
+      "text": "I'm unable to access system information directly. However, if you let me know what specific information you're looking for, I can guide you on how to find it or help you with related questions!"
     }
     ```
 
-Let's also check the logs in the server console to see the scope enforcement and
-the AI function call:
+Something went wrong, let's check the server logs. We were hoping that the Agent would use the `system_info` capability, but it seems that the request was not properly authorized.
 
-```bash hl_lines="2 4 9 11"
-[INFO] SCOPE CHECK: Checking capability 'system_info' with required scopes: ['system:read']
-[INFO] Checking if user has scope 'system:read'
-[INFO] Expanding scopes: initial=['system:admin'], hierarchy_size=9, hierarchy={'admin': ['*'], 'manager': ['files:admin', 'system:read', 'web:search', 'image:read'], 'developer': ['files:write', 'system:read', 'web:search'], 'analyst': ['files:read', 'web:search', 'image:read'], 'readonly': ['files:read'], 'files:admin': ['files:write', 'files:read'], 'files:write': ['files:read'], 'system:admin': ['system:write', 'system:read'], 'system:write': ['system:read']}
-[INFO] GRANTED built-in function 'system_info' (required: ['system:read'])
-[INFO] AI tool filtering completed: 1 tools available for user with scopes ['system:admin']
-[INFO] Tools granted to user: ['system_info']
-[INFO] Using scope-filtered tools for user with scopes: ['system:admin']
-[INFO] Available function schemas for AI: 1 functions
-[INFO] Available functions for AI: ['system_info']
-[INFO] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK" 
-[INFO] LLM selected function(s): system_info
+```{.bash .wrap}
+2025-08-21T10:47:18 [WARNING] Security event [security.audit] action=execute details={'required_scopes_count': 1} event_type=function_access_denied resource=system_info risk_level=low success=False user_id=user_1318
 ```
+
+So here we have the `system_info` capability was denied!
+
+Let's check what we need:
+
+```{.bash .no-copy hl_lines="2"}
+uv run agentup plugin list -c | grep system_info
+│ system_info       │ agentup_systools │      ✓      │ system:read     │
+```
+
+We need to assign that scope to our key! Let's head back over to `agentup.yml` and make the change by adding a scope entry grant `system:read` to our API key.
+
+```{.yaml .no-copy hl_lines="11"}
+security:
+  enabled: true
+  auth:
+    api_key:
+      header_name: X-API-Key
+      location: header
+      keys:
+        - key: your-key
+          scopes:
+            - files:read
+            - system:read
+```
+
+Restart your server, and try again. You should now see your system information instead:
+
+??? sucesss "Expected Output"
+
+    ```{.json}
+     "parts": [
+    {
+      "kind": "text",
+      "metadata": null,
+      "text": "Here's the system information:\n\n- **Platform:** Darwin\n- **Platform Release:** 24.5.0\n- **Platform Version:** Darwin Kernel Version 24.5.0 (Tue Apr 22 19:54:25 PDT 2025; root:xnu-11417.121.6~2/RELEASE_ARM64_T6020)\n- **Architecture:** arm64\n- **Processor:** arm\n- **Hostname:** lhinds-mbp\n- **Python Version:** 3.13.2\n- **Working Directory:** /Users/lhinds/dev/agentup-ws/rubbish/tools\n- **User:** lhinds\n\nIf you need any more details or have further questions, feel free to ask!"
+    }
+    ```
 
 It's a wrap! You just built your first AI agent that can respond to system information requests using
 the `sys_tools` plugin. You can now extend this agent further by adding more plugins and

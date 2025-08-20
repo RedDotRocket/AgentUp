@@ -291,42 +291,58 @@ if direct_matches:
 
 #### plugin_override
 
-Override plugin-level middleware configuration for this specific plugin. Each plugin can have its own middleware stack.
+Override plugin-level middleware configuration for this specific plugin. Each plugin can have its own middleware stack that completely replaces the global middleware configuration.
 
-**Type:** `array[object]`
-**Default:** Uses plugin defaults from plugin_defaults.middleware
+**Type:** `array[MiddlewareOverride]`
+**Default:** Uses global middleware configuration if not specified
 **Structure:**
 ```yaml
 plugin_override:
-  - name: "cached"        # Middleware name
-    config:               # Configuration for middleware
+  - name: "cached"        # Required: Middleware name (alphanumeric with hyphens/underscores)
+    config:               # Optional: Configuration dictionary for middleware
       ttl: 600
+      backend_type: memory
   - name: "rate_limited"
     config:
       requests_per_minute: 120
+      burst_size: 144
+  - name: "retryable"
+    config:
+      max_attempts: 5
+      initial_delay: 2.0
+      max_delay: 120.0
+  - name: "timed"
+    config: {}            # No configuration required for timed middleware
 ```
 
-**Supported Middleware Types:**
-- `cached` - Response caching
-- `rate_limited` - Rate limiting
-- `retryable` - Retry logic
-- `timed` - Execution timing
+**Available Middleware Types:**
+- **`timed`** - Execution timing (no configuration required)
+- **`cached`** - Response caching (uses `CacheConfig` model)
+- **`rate_limited`** - Request rate limiting (uses `RateLimitConfig` model)  
+- **`retryable`** - Retry logic on failures (uses `RetryConfig` model)
+
+**Override Behavior:**
+- **Complete Replacement:** The `plugin_override` completely replaces global middleware for that plugin
+- **Selective Exclusion:** Only include middleware you want; exclude others by omitting them
+- **Disable All:** Use empty array `plugin_override: []` to disable all middleware
+- **Validation:** Middleware names must be alphanumeric with hyphens and underscores only
 
 **Implementation Reference:**
-- **File:** `/Users/lhinds/dev/agentup-workspace/AgentUp/src/agent/services/middleware.py`
-- **Lines:** 65-74
+- **Model Definition:** `src/agent/config/intent.py:9-21` (`MiddlewareOverride` class)
+- **Plugin Processing:** `src/agent/config/intent.py:44-68` (`PluginOverride` class)  
+- **Middleware Manager:** `src/agent/services/middleware.py:65-74`
 - **Code:**
 ```python
-def get_middleware_for_plugin(self, plugin_id: str) -> list[dict[str, Any]]:
+class MiddlewareOverride(BaseModel):
+    """Model for middleware override configuration."""
+    name: str = Field(..., description="Middleware name")
+    config: ConfigDictType = Field(default_factory=dict, description="Middleware configuration")
+
+def get_middleware_for_plugin(self, plugin_name: str) -> list[dict[str, Any]]:
     """Get middleware configuration for a specific plugin."""
     # Check for plugin-specific override
-    plugins = self.config.get("plugins", [])
-    for plugin in plugins:
-        if plugin.get("plugin_id") == plugin_id:
-            if "plugin_override" in plugin:
-                self.logger.debug(f"Using plugin override for plugin {plugin_id}")
-                return plugin["plugin_override"]
-
+    if "plugin_override" in plugin_config:
+        return plugin_config["plugin_override"]
     # Return global config
     return self.get_global_config()
 ```

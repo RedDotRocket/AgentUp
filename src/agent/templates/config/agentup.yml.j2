@@ -11,6 +11,15 @@ provider_url: https://agentup.dev
 icon_url: https://raw.githubusercontent.com/RedDotRocket/AgentUp/refs/heads/main/assets/icon.png
 documentation_url: https://docs.agentup.dev
 
+# CORS Configuration
+cors:
+  enabled: {{ cors_enabled | default(true) }}
+  origins: {{ cors_origins | default(['http://localhost:3000', 'http://localhost:3001', 'http://localhost:8080']) | tojson }}
+  methods: {{ cors_methods | default(['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD']) | tojson }}
+  headers: {{ cors_headers | default(['Content-Type', 'X-API-Key', 'Authorization']) | tojson }}
+  allow_credentials: {{ cors_allow_credentials | default(false) }}
+  max_age: {{ cors_max_age | default(600) }}
+
 # Plugin configurations (use agentup plugin sync / add / remove)
 plugins:{% if initial_plugins %}
 {% for plugin in initial_plugins %}
@@ -205,6 +214,7 @@ ai_provider:
   model: {{ ai_provider_config.model | default('llama3') }}
   base_url: ${OLLAMA_BASE_URL:http://localhost:11434}
 {% endif %}
+  stream: {{ ai_provider_config.stream | default(true) | tojson }}
   temperature: {{ ai_temperature | default(0.7) }}
   max_tokens: {{ ai_max_tokens | default(1000) }}
   top_p: {{ ai_top_p | default(1.0) }}

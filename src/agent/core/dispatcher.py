@@ -319,11 +319,12 @@ class FunctionDispatcher:
 
         self.streaming_handler = StreamingHandler(function_registry, self.conversation_manager)
 
-    async def process_task(self, task: Task) -> str:
+    async def process_task(self, task: Task, auth_result=None) -> str:
         """Process A2A task using LLM intelligence.
 
         Args:
             task: A2A Task object
+            auth_result: Optional authentication result (will use current context if not provided)
 
         Returns:
             str: Response content for A2A message
@@ -391,10 +392,12 @@ class FunctionDispatcher:
 
             # Get available functions filtered by user scopes
             try:
-                # Try to get user scopes from authentication context
-                from agent.security.context import get_current_auth
+                # Use provided auth_result or try to get from authentication context
+                if auth_result is None:
+                    from agent.security.context import get_current_auth
 
-                auth_result = get_current_auth()
+                    auth_result = get_current_auth()
+
                 logger.debug(f"Authentication context: {auth_result is not None}")
                 if auth_result:
                     logger.debug(f"User scopes: {auth_result.scopes}")
@@ -519,25 +522,18 @@ class FunctionDispatcher:
             conversation_count += 1
             await context.set_variable(context_id, "ai_conversation_count", conversation_count)
 
-            # Store user preferences if mentioned in input
-            if "favorite" in user_input.lower() or "prefer" in user_input.lower():
-                preferences = await context.get_variable(context_id, "ai_preferences", {})
-                # Simple preference extraction
-                if "color" in user_input.lower():
-                    colors = ["red", "blue", "green", "yellow", "purple", "orange", "pink", "black", "white"]
-                    for color in colors:
-                        if color in user_input.lower():
-                            preferences["favorite_color"] = color
-                            break
-                await context.set_variable(context_id, "ai_preferences", preferences)
-                logger.info(f"AI processing: Updated preferences for {context_id}: {preferences}")
-
             # Add to conversation history
             await context.add_to_history(
-                context_id, "user", user_input, {"processing": "ai_direct", "count": conversation_count}
+                context_id,
+                "user",
+                user_input,
+                {"processing": "ai_direct", "count": conversation_count},
             )
             await context.add_to_history(
-                context_id, "assistant", response, {"processing": "ai_direct", "count": conversation_count}
+                context_id,
+                "assistant",
+                response,
+                {"processing": "ai_direct", "count": conversation_count},
             )
 
             logger.info(f"AI processing: Stored state - Context: {context_id}, Count: {conversation_count}")
@@ -583,11 +579,22 @@ class FunctionDispatcher:
 
         return ""
 
-    async def process_task_streaming(self, task: Task) -> AsyncIterator[str | dict[str, Any]]:
-        async for chunk in self.streaming_handler.process_task_streaming(
-            task, LLMManager, self._extract_user_message, self._fallback_response
-        ):
-            yield chunk
+    async def process_task_streaming(self, task: Task, auth_result=None) -> AsyncIterator[str | dict[str, Any]]:
+        """Process task and stream the response in real-time chunks."""
+        # Get the complete response using normal execution
+        complete_response = await self.process_task(task, auth_result)
+
+        if complete_response:
+            # Stream the response character by character for real-time feel
+            import asyncio
+
+            for char in complete_response:
+                if char:
+                    yield char
+                    # Small delay to simulate real-time token streaming
+                    await asyncio.sleep(0.02)
+        else:
+            yield "Task completed."
 
     async def cancel_task(self, task_id: str) -> None:
         """Cancel a running task if possible.
@@ -595,7 +602,7 @@ class FunctionDispatcher:
         Args:
             task_id: ID of the task to cancel
         """
-        # This would need to be implemented based on your LLM provider's capabilities
+        # This would need to be implemented based on the LLM provider's capabilities
         # Some providers support cancelling ongoing requests
         logger.info(f"Cancelling task: {task_id}")
 
@@ -624,7 +631,11 @@ def ai_function(description: str, parameters: dict[str, Any] | None = None):
         }
 
         if parameters:
-            schema["parameters"] = {"type": "object", "properties": parameters, "required": list(parameters.keys())}
+            schema["parameters"] = {
+                "type": "object",
+                "properties": parameters,
+                "required": list(parameters.keys()),
+            }
 
         # Store schema on function for later registration
         func._ai_function_schema = schema

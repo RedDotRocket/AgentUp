@@ -158,7 +158,12 @@ def _prompt_for_features(project_config: dict[str, Any], quick: bool, no_git: bo
             style=custom_style,
         ).ask()
         if ai_provider_choice:
-            project_config["ai_provider_config"] = {"provider": ai_provider_choice}
+                ai_provider_config = {"provider": ai_provider_choice}
+                streaming_enabled = questionary.confirm(
+                    "Enable streaming responses?", default=True, style=custom_style
+                ).ask()
+                ai_provider_config["stream"] = streaming_enabled
+            project_config["ai_provider_config"] = ai_provider_config
 
             if ai_provider_choice == "ollama":
                 ollama_models = asyncio.run(get_ollama_models())

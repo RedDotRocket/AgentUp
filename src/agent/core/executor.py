@@ -1,4 +1,5 @@
 import re
+import threading
 from typing import Any
 
 import structlog
@@ -19,7 +20,6 @@ from a2a.types import (
 from a2a.utils import (
     new_agent_text_message,
     new_artifact,
-    new_data_artifact,
     new_task,
 )
 from a2a.utils.errors import ServerError
@@ -27,6 +27,19 @@ from a2a.utils.errors import ServerError
 from agent.config.model import BaseAgent
 
 logger = structlog.get_logger(__name__)
+
+# Thread-local storage for auth context
+_thread_local = threading.local()
+
+
+def set_current_auth_for_executor(auth_result):
+    """Store auth result in thread-local storage for executor access."""
+    _thread_local.auth_result = auth_result
+
+
+def get_current_auth_for_executor():
+    """Retrieve auth result from thread-local storage."""
+    return getattr(_thread_local, "auth_result", None)
 
 
 class AgentUpExecutor(AgentExecutor):
@@ -38,7 +51,14 @@ class AgentUpExecutor(AgentExecutor):
 
     def __init__(self, agent: BaseAgent | AgentCard):
         self.agent = agent
-        self.supports_streaming = getattr(agent, "supports_streaming", False)
+        # Check streaming support from agent configuration
+        if hasattr(agent, "supports_streaming"):
+            self.supports_streaming = agent.supports_streaming
+        elif hasattr(agent, "capabilities") and agent.capabilities:
+            # Check A2A AgentCard capabilities
+            self.supports_streaming = getattr(agent.capabilities, "streaming", False)
+        else:
+            self.supports_streaming = False
 
         # Handle both BaseAgent and AgentCard
         if isinstance(agent, AgentCard):
@@ -141,14 +161,10 @@ class AgentUpExecutor(AgentExecutor):
                 await self._create_response_artifact(result, task, updater)
             else:
                 logger.info(f"Processing task {task.id} with AI routing (no direct match)")
-                # Process with dispatcher - AI routing
-                if self.supports_streaming:
-                    # Stream responses incrementally
-                    await self._process_streaming(task, updater, event_queue)
-                else:
-                    # Process synchronously - dispatcher handles routing internally
-                    result = await self.dispatcher.process_task(task)
-                    await self._create_response_artifact(result, task, updater)
+                # Always execute normally - streaming is handled at response layer
+                auth_result = get_current_auth_for_executor()
+                result = await self.dispatcher.process_task(task, auth_result)
+                await self._create_response_artifact(result, task, updater)
 
         except ValueError as e:
             # Handle unsupported operations gracefully (UnsupportedOperationError is a data model, not exception)
@@ -250,6 +266,50 @@ class AgentUpExecutor(AgentExecutor):
             logger.error(f"Error in direct routing to plugin '{plugin_name}': {e}")
             return f"Sorry, I encountered an error while processing your request: {str(e)}"
 
+    async def execute_streaming(
+        self,
+        context: RequestContext,
+        event_queue: EventQueue,
+    ) -> None:
+        """Execute task with streaming for message/stream endpoint."""
+        logger.info(f"Executing agent {self.agent_name} with streaming")
+        error = self._validate_request(context)
+        if error:
+            raise ServerError(error=InvalidParamsError(data={"reason": error}))
+
+        task = context.task
+        updater = context.updater
+
+        try:
+            # Set thread-local auth for executor access
+            set_current_auth_for_executor(context.auth_result)
+
+            # Start with working status
+            await updater.update_status(
+                TaskState.working,
+                new_agent_text_message(
+                    f"Processing streaming request for task {task.id} using {self.agent_name}.",
+                    task.context_id,
+                    task.id,
+                ),
+                final=False,
+            )
+
+            # Always use streaming for message/stream endpoint
+            await self._process_streaming(task, updater, event_queue)
+
+        except Exception as e:
+            logger.error(f"Error in streaming execution: {e}")
+            await updater.update_status(
+                TaskState.failed,
+                new_agent_text_message(
+                    f"I encountered an error processing your streaming request: {str(e)}",
+                    task.context_id,
+                    task.id,
+                ),
+                final=True,
+            )
+
     async def _process_streaming(
         self,
         task: Task,
@@ -257,13 +317,15 @@ class AgentUpExecutor(AgentExecutor):
         event_queue: EventQueue,
     ) -> None:
         try:
-            # Start streaming
-            stream = await self.dispatcher.process_task_streaming(task)
+            # Get current auth context from thread-local storage
+            auth_result = get_current_auth_for_executor()
 
+            # Start streaming with auth context
             artifact_parts: list[Part] = []
             chunk_count = 0
 
-            async for chunk in stream:
+            # Collect all streaming chunks without sending individual events
+            async for chunk in self.dispatcher.process_task_streaming(task, auth_result):
                 chunk_count += 1
 
                 if isinstance(chunk, str):
@@ -271,29 +333,19 @@ class AgentUpExecutor(AgentExecutor):
                     part = Part(root=TextPart(text=chunk))
                     artifact_parts.append(part)
 
-                    # Send incremental update
-                    artifact = new_artifact(
-                        [part], name=f"{self.agent_name}-stream-{chunk_count}", description="Streaming response"
-                    )
-
-                    update_event = TaskArtifactUpdateEvent(
-                        taskId=task.id,
-                        context_id=task.context_id,
-                        artifact=artifact,
-                        append=True,
-                        lastChunk=False,
-                        kind="artifact-update",
-                    )
-                    await event_queue.enqueue_event(update_event)
-
                 elif isinstance(chunk, dict):
                     # Data chunk - A2A SDK structure
                     part = Part(root=DataPart(data=chunk))
                     artifact_parts.append(part)
 
-                    artifact = new_data_artifact(
-                        chunk,
-                        name=f"{self.agent_name}-data-{chunk_count}",
+                # Send periodic updates every 10 chunks to maintain streaming feel
+                if chunk_count % 10 == 0:
+                    # Send the last 10 chunks as a batch
+                    batch_parts = artifact_parts[-10:]
+                    artifact = new_artifact(
+                        batch_parts,
+                        name=f"{self.agent_name}-stream-batch-{chunk_count // 10}",
+                        description="Streaming response batch",
                     )
 
                     update_event = TaskArtifactUpdateEvent(
@@ -306,13 +358,24 @@ class AgentUpExecutor(AgentExecutor):
                     )
                     await event_queue.enqueue_event(update_event)
 
-            # Final update
-            if artifact_parts:
-                final_artifact = new_artifact(
-                    artifact_parts, name=f"{self.agent_name}-complete", description="Complete response"
+            # Send any remaining chunks at the end
+            remaining_chunks = chunk_count % 10
+            if remaining_chunks > 0:
+                batch_parts = artifact_parts[-remaining_chunks:]
+                artifact = new_artifact(
+                    batch_parts, name=f"{self.agent_name}-stream-final", description="Final streaming batch"
                 )
-                await updater.add_artifact(artifact_parts, name=final_artifact.name)
+                update_event = TaskArtifactUpdateEvent(
+                    taskId=task.id,
+                    context_id=task.context_id,
+                    artifact=artifact,
+                    append=True,
+                    lastChunk=False,
+                    kind="artifact-update",
+                )
+                await event_queue.enqueue_event(update_event)
 
+            # Streaming complete - no need for final artifact since we already sent all chunks
             await updater.complete()
 
         except Exception:

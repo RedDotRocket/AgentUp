@@ -17,7 +17,7 @@ class LLMManager:
                 logger.warning("ai_provider not configured in agentup.yml")
                 return None
 
-            provider = ai_provider_config.get("provider")
+            provider = ai_provider_config.provider
             if not provider:
                 logger.warning("ai_provider.provider not configured")
                 return None
@@ -25,7 +25,10 @@ class LLMManager:
             # Create LLM service directly from ai_provider config
             from agent.llm_providers import create_llm_provider
 
-            llm = create_llm_provider(provider, f"ai_provider_{provider}", ai_provider_config)
+            ai_provider_dict = (
+                ai_provider_config.model_dump() if hasattr(ai_provider_config, "model_dump") else ai_provider_config
+            )
+            llm = create_llm_provider(provider, f"ai_provider_{provider}", ai_provider_dict)
 
             if llm:
                 # Initialize the provider if not already initialized
@@ -51,7 +54,10 @@ class LLMManager:
 
     @staticmethod
     async def llm_with_functions(
-        llm, messages: list[dict[str, str]], function_schemas: list[dict[str, Any]], function_executor
+        llm,
+        messages: list[dict[str, str]],
+        function_schemas: list[dict[str, Any]],
+        function_executor,
     ) -> str:
         try:
             from agent.llm_providers.base import ChatMessage  # type: ignore[import-untyped]
@@ -81,6 +87,9 @@ class LLMManager:
                 try:
                     logger.debug(f"Executing function: {func_call.name} with arguments: {func_call.arguments}")
                     result = await function_executor.execute_function_call(func_call.name, func_call.arguments)
+                    logger.info(
+                        f"Function '{func_call.name}' returned result: {result[:200]}{'...' if len(str(result)) > 200 else ''}"
+                    )
                     function_results.append(result)
                 except Exception as e:
                     logger.error(f"Function call failed: {func_call.name}, error: {e}")
@@ -100,12 +109,35 @@ class LLMManager:
                 # Add function results to the conversation
                 for func_call, result in zip(response.function_calls, function_results, strict=True):
                     chat_messages.append(ChatMessage(role="function", content=str(result), name=func_call.name))
+                    logger.debug(
+                        f"Added function result to conversation: {func_call.name} -> {str(result)[:100]}{'...' if len(str(result)) > 100 else ''}"
+                    )
+
+                # Log the conversation state before final LLM call
+                logger.debug(f"Conversation before final LLM call has {len(chat_messages)} messages")
+                for i, msg in enumerate(chat_messages):
+                    logger.debug(
+                        f"Message {i}: role={msg.role}, has_content={bool(msg.content)}, has_function_calls={bool(getattr(msg, 'function_calls', None))}"
+                    )
 
                 # Get final response from LLM with function results
                 logger.debug("Sending function results back to LLM for final response")
-                final_response = await llm.chat_complete(chat_messages)
-                return final_response.content
+                try:
+                    final_response = await llm.chat_complete(chat_messages)
+                    logger.info(
+                        f"Final LLM response after function execution: {final_response.content[:200]}{'...' if len(str(final_response.content)) > 200 else ''}"
+                    )
+                    return final_response.content
+                except Exception as e:
+                    logger.error(f"Failed to get final response from LLM after function execution: {e}")
+                    # Return function results directly as fallback
+                    return f"Function executed successfully: {'; '.join(str(result) for result in function_results)}"
+            else:
+                logger.warning("Function calls were made but no results were returned")
 
+        logger.debug(
+            f"No function calls in LLM response, returning direct content: {response.content[:100]}{'...' if response.content and len(response.content) > 100 else ''}"
+        )
         return response.content
 
     @staticmethod
@@ -287,3 +319,99 @@ class LLMManager:
     @staticmethod
     def _format_file_notice(file_name: str, mime_type: str) -> str:
         return f"\n\n--- File attached: {file_name} ({mime_type}) ---\n[Binary file content not displayed]\n"
+
+    @staticmethod
+    async def llm_with_functions_streaming(
+        llm,
+        messages: list[dict[str, str]],
+        function_schemas: list[dict[str, Any]],
+        function_executor,
+    ):
+        """Streaming version of LLM function calling."""
+        try:
+            from agent.llm_providers.base import ChatMessage
+        except ImportError:
+            logger.warning("LLM provider modules not available, using fallback")
+            # Fallback to chunked streaming
+            response = await LLMManager.llm_direct_response(llm, messages)
+            chunk_size = getattr(llm, "chunk_size", 50)
+            for i in range(0, len(response), chunk_size):
+                yield response[i : i + chunk_size]
+            return
+
+        # Convert dict messages to ChatMessage objects
+        chat_messages = []
+        for msg in messages:
+            content = LLMManager._extract_message_content(msg)
+            chat_messages.append(ChatMessage(role=msg.get("role", "user"), content=content))
+
+        # Check if LLM supports streaming and is configured for it
+        if hasattr(llm, "stream") and llm.stream and hasattr(llm, "stream_chat_complete_with_functions"):
+            # Use native streaming
+            logger.debug("Using native LLM streaming with functions")
+
+            content_parts = []
+            function_call_pending = None
+
+            async for chunk in llm.stream_chat_complete_with_functions(chat_messages, function_schemas):
+                if chunk["type"] == "content":
+                    # Stream content tokens as they arrive
+                    content_parts.append(chunk["data"])
+                    yield chunk["data"]
+
+                elif chunk["type"] == "function_call":
+                    # Execute function call
+                    func_data = chunk["data"]
+                    function_call_pending = func_data
+                    logger.info(f"LLM selected function: {func_data['name']}")
+
+                    try:
+                        logger.debug(
+                            f"Executing function: {func_data['name']} with arguments: {func_data['arguments']}"
+                        )
+                        result = await function_executor.execute_function_call(
+                            func_data["name"], func_data["arguments"]
+                        )
+
+                        # Add function call and result to conversation
+                        from agent.llm_providers.base import FunctionCall
+
+                        chat_messages.append(
+                            ChatMessage(
+                                role="assistant",
+                                content="".join(content_parts),
+                                function_calls=[FunctionCall(name=func_data["name"], arguments=func_data["arguments"])],
+                            )
+                        )
+                        chat_messages.append(ChatMessage(role="function", content=str(result), name=func_data["name"]))
+
+                        # Get final streaming response with function results
+                        logger.debug("Sending function results back to LLM for streaming response")
+                        if hasattr(llm, "stream_chat_complete"):
+                            async for final_chunk in llm.stream_chat_complete(chat_messages):
+                                yield final_chunk
+                        else:
+                            # Fallback to non-streaming final response
+                            final_response = await llm.chat_complete(chat_messages)
+                            chunk_size = getattr(llm, "chunk_size", 50)
+                            for i in range(0, len(final_response.content), chunk_size):
+                                yield final_response.content[i : i + chunk_size]
+                        return
+
+                    except Exception as e:
+                        logger.error(f"Function call failed: {func_data['name']}, error: {e}")
+                        yield f"Error: {str(e)}"
+                        return
+
+                elif chunk["type"] == "done":
+                    # Stream completed without function calls
+                    if not function_call_pending:
+                        logger.debug("Streaming completed without function calls")
+                    break
+        else:
+            # Fallback to non-streaming then chunked
+            logger.debug("Using non-streaming with chunking fallback")
+            response = await LLMManager.llm_with_functions(llm, messages, function_schemas, function_executor)
+            chunk_size = getattr(llm, "chunk_size", 50)
+            for i in range(0, len(response), chunk_size):
+                yield response[i : i + chunk_size]

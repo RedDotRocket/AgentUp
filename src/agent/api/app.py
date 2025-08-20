@@ -109,6 +109,20 @@ def create_app() -> FastAPI:
 def _configure_middleware(app: FastAPI) -> None:
     config = ConfigurationManager()
 
+    # CORS middleware
+    cors_config = config.get("cors", {})
+    if cors_config.get("enabled", True):
+        from fastapi.middleware.cors import CORSMiddleware
+
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=cors_config.get("origins", ["http://localhost:3000"]),
+            allow_methods=cors_config.get("methods", ["POST", "OPTIONS"]),
+            allow_headers=cors_config.get("headers", ["Content-Type", "X-API-Key"]),
+            allow_credentials=cors_config.get("allow_credentials", False),
+            max_age=cors_config.get("max_age", 600),
+        )
+
     # Network rate limiting middleware (applied to FastAPI Middleware)
     rate_limit_config = config.get("rate_limiting", {})
     if rate_limit_config.get("enabled", True):

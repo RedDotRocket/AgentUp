@@ -14,7 +14,6 @@ from a2a.types import (
     JSONRPCError,
     JSONRPCErrorResponse,
     SendMessageRequest,
-    SendStreamingMessageRequest,
     SetTaskPushNotificationConfigRequest,
     TaskResubscriptionRequest,
 )
@@ -178,7 +177,11 @@ async def jsonrpc_endpoint(
         if not method:
             return JSONResponse(
                 status_code=200,
-                content={"jsonrpc": "2.0", "error": {"code": -32600, "message": "Invalid Request"}, "id": request_id},
+                content={
+                    "jsonrpc": "2.0",
+                    "error": {"code": -32600, "message": "Invalid Request"},
+                    "id": request_id,
+                },
             )
 
         # Get authentication result from request state (set by @protected decorator)
@@ -192,24 +195,36 @@ async def jsonrpc_endpoint(
         if method == "message/send":
             # Non-streaming method
             rpc_request = SendMessageRequest(jsonrpc="2.0", id=request_id, method=method, params=params)
+            # Set thread-local auth for executor access
+            from agent.core.executor import set_current_auth_for_executor
+
+            set_current_auth_for_executor(auth_result)
+
             with AuthContext(auth_result):
                 response = await jsonrpc_handler.on_message_send(rpc_request)
             return JSONResponse(status_code=200, content=response.model_dump(by_alias=True))
 
         elif method == "message/stream":
-            # Streaming method - return SSE
-            rpc_request = SendStreamingMessageRequest(jsonrpc="2.0", id=request_id, method=method, params=params)
+            # Direct streaming implementation using StreamingHandler
+            from agent.api.streaming import StreamingHandler
+            from agent.core.executor import set_current_auth_for_executor
+
+            # Set thread-local auth for executor access
+            set_current_auth_for_executor(auth_result)
+
+            # Create streaming handler
+            streaming_handler = StreamingHandler(None, None)  # These aren't used in the new method
+
             with AuthContext(auth_result):
-                response_stream = jsonrpc_handler.on_message_send_stream(rpc_request)
-            return StreamingResponse(
-                sse_generator(response_stream),
-                media_type="text/event-stream",
-                headers={
-                    "Cache-Control": "no-cache",
-                    "Connection": "keep-alive",
-                    "X-Accel-Buffering": "no",
-                },
-            )
+                return StreamingResponse(
+                    streaming_handler.create_streaming_response(params, request_id, auth_result),
+                    media_type="text/event-stream",
+                    headers={
+                        "Cache-Control": "no-cache",
+                        "Connection": "keep-alive",
+                        "X-Accel-Buffering": "no",
+                    },
+                )
 
         elif method == "tasks/get":
             # Non-streaming method
@@ -303,7 +318,11 @@ async def jsonrpc_endpoint(
                 status_code=200,
                 content={
                     "jsonrpc": "2.0",
-                    "error": {"code": -32601, "message": "Method not found", "data": f"Unknown method: {method}"},
+                    "error": {
+                        "code": -32601,
+                        "message": "Method not found",
+                        "data": f"Unknown method: {method}",
+                    },
                     "id": request_id,
                 },
             )

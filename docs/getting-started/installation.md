@@ -15,10 +15,10 @@ Get AgentUp installed and configured on your system.
 
 ### Installation Methods
 
-=== "pip install"
+=== "pipx install"
 
     ```bash
-    pip install agentup
+    pipx install agentup
     ```
 === "git clone (uv)"
 
@@ -27,10 +27,10 @@ Get AgentUp installed and configured on your system.
     cd AgentUp
 
     # Create virtual environment
-    uv sync --active
+    uv sync
 
     # Install in development mode (omit `e` for fixed install)
-    pip install -e .
+    uv add --editable /path/to/AgentUp
     ```
 
 ### Verify Installation

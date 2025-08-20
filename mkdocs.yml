@@ -17,7 +17,7 @@ theme:
     - content.action.edit
     - content.action.view
     - content.code.annotate
-    - content.code.copy
+    # - content.code.copy
     - content.tabs.link
     - content.code.select
     # # # Nav
@@ -74,8 +74,8 @@ markdown_extensions:
         - name: mermaid
           class: mermaid
           format: !!python/name:pymdownx.superfences.fence_code_format
-  # - pymdownx.tabbed:
-  #     alternate_style: true
+  - pymdownx.tabbed:
+      alternate_style: true
   - admonition
   - pymdownx.details
 copyright: Copyright &copy; 2025 Red Dot Rocket

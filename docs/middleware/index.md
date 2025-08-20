@@ -49,13 +49,40 @@ When the agent starts:
 
 Each Middleware feature can be overridden for specific plugins using the `plugin_override` field.
 
-This allows you to customize middleware behavior for individual plugins, dependig on their specific needs.
+This allows you to customize middleware behavior for individual plugins, depending on their specific needs.
 
-This can be achieved in two ways:
+### Plugin Middleware Override Structure
 
-1. **Complete Replacement**: Define a new set of middleware that replaces the global configuration for that plugin.
+The exact structure for plugin middleware override is:
+
+```yaml
+plugins:
+  - plugin_id: your_plugin_id
+    # ... other plugin configuration
+    plugin_override:  # List of MiddlewareOverride objects
+      - name: middleware_name        # Required: alphanumeric with hyphens/underscores
+        config:                      # Optional: middleware-specific configuration dict
+          key: value
+      - name: another_middleware
+        config: {}
+```
+
+### Available Middleware Types
+
+The system supports these middleware types (from `src/agent/services/middleware.py`):
+
+- **`timed`** - Execution timing (no configuration required)
+- **`cached`** - Response caching (uses `CacheConfig` model)
+- **`rate_limited`** - Request rate limiting (uses `RateLimitConfig` model)  
+- **`retryable`** - Retry logic on failures (uses `RetryConfig` model)
+
+### Override Behavior
+
+Plugin middleware overrides work through **complete replacement**:
+
+1. **Complete Replacement**: Define a new set of middleware that replaces the global configuration for that plugin
 2. **Selective Exclusion**: Specify only the middleware you want to apply, excluding others
-3. **Empty Override**: Use an empty `plugin_override` to disable all middleware for that plugin.
+3. **Empty Override**: Use an empty `plugin_override: []` to disable all middleware for that plugin
 
 ### Example Configurations
 
@@ -91,11 +118,16 @@ plugins:
 
 ### How Per-Plugin Overrides Work
 
+The `MiddlewareManager.get_middleware_for_plugin()` method handles plugin-specific overrides:
+
 1. **Global middleware** is defined in the top-level `middleware` section
-2. **Per-plugin overrides** completely replace global middleware for that plugin
-3. **Order matters** - middleware in the override is applied in the specified order
-4. **Complete replacement** - if you use `plugin_override`, only those middleware are applied
-5. **Disable all middleware** - use an empty `plugin_override: []` to disable all middleware for a plugin
+2. **Plugin override detection** - checks for `plugin_override` in plugin configuration
+3. **Complete replacement** - if `plugin_override` exists, it replaces the global configuration entirely
+4. **Fallback behavior** - if no override exists, uses global middleware configuration
+5. **Order matters** - middleware in the override is applied in the specified order
+6. **Validation** - middleware names must be alphanumeric with hyphens/underscores only
+
+**Implementation Reference:** `src/agent/services/middleware.py:65-74`
 
 ### Use Cases for Per-Plugin Overrides
 
