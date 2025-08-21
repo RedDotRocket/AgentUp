@@ -48,7 +48,7 @@ Read the documentation to get started:
 https://docs.agentup.dev/getting-started/first-agent/
 
 Next steps:
-  1. cd docs-check
+  1. cd basic_agent
   2. uv sync                # Install dependencies
   3. uv add <plugin_name>   # Add AgentUp plugins
   4. agentup plugin sync    # Sync plugins with config
@@ -109,7 +109,7 @@ agentup run
 
 ??? success "Expected Output"
     ```
-    INFO:     Will watch for changes in these directories: ['/Users/lhinds/docs-check']
+    INFO:     Will watch for changes in these directories: ['/Users/lhinds/basic_agent']
     INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
     INFO:     Started reloader process [61915] using StatReload
     2025-08-21 08:38:59 [debug    ] Loading configuration for the first time
@@ -239,10 +239,10 @@ curl -s http://localhost:8000/.well-known/agent-card.json |jq
       "defaultOutputModes": [
         "text"
       ],
-      "description": "AI Agent docs-check Project.",
+      "description": "AI Agent Basic Agent Project.",
       "documentationUrl": "https://docs.agentup.dev",
       "iconUrl": "https://raw.githubusercontent.com/RedDotRocket/AgentUp/refs/heads/main/assets/icon.png",
-      "name": "docs-check",
+      "name": "basic-agent",
       "preferredTransport": "JSONRPC",
       "protocolVersion": "0.3.2",
       "provider": {

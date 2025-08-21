@@ -248,7 +248,7 @@ class StreamingHandler:
             batch_parts = []
             full_response = ""  # Track complete response for conversation history
 
-            async for chunk in dispatcher.process_task_streaming(task, auth_result):
+            async for chunk in self.process_task_streaming(task, None, None, None, auth_result):
                 chunk_count += 1
                 full_response += chunk  # Build complete response
                 batch_parts.append({"kind": "text", "metadata": None, "text": chunk})
