@@ -121,6 +121,11 @@ class IntentConfig(BaseModel):
     name: str = Field(..., description="Agent name")
     description: str = Field("", description="Agent description")
     version: str | None = Field(None, description="Agent version")
+    url: str | None = Field(None, description="Agent URL")
+    provider_organization: str | None = Field(None, description="Provider organization")
+    provider_url: str | None = Field(None, description="Provider URL")
+    icon_url: str | None = Field(None, description="Icon URL")
+    documentation_url: str | None = Field(None, description="Documentation URL")
 
     # Plugin configuration - supports both simple strings and complex objects
     plugins: dict[str, PluginConfig] = Field(default_factory=dict, description="Plugin configurations")
@@ -146,6 +151,7 @@ class IntentConfig(BaseModel):
     environment: str | None = Field(None, description="Environment setting")
     logging: dict[str, Any] | None = Field(None, description="Logging configuration")
     api: dict[str, Any] | None = Field(None, description="API configuration")
+    cors: dict[str, Any] | None = Field(None, description="CORS configuration")
     security: dict[str, Any] | None = Field(None, description="Security configuration")
     middleware: dict[str, Any] | None = Field(None, description="Middleware configuration")
     mcp: dict[str, Any] | None = Field(None, description="MCP configuration")
@@ -154,6 +160,7 @@ class IntentConfig(BaseModel):
     services: dict[str, Any] | None = Field(None, description="Services configuration")
     push_notifications: dict[str, Any] | None = Field(None, description="Push notifications configuration")
     state_management: dict[str, Any] | None = Field(None, description="State management configuration")
+    development: dict[str, Any] | None = Field(None, description="Development configuration")
     custom: dict[str, Any] | None = Field(None, description="Custom configuration")
 
     @field_validator("apiVersion")
@@ -246,6 +253,16 @@ class IntentConfig(BaseModel):
             result["description"] = self.description
         if self.version:
             result["version"] = self.version
+        if self.url:
+            result["url"] = self.url
+        if self.provider_organization:
+            result["provider_organization"] = self.provider_organization
+        if self.provider_url:
+            result["provider_url"] = self.provider_url
+        if self.icon_url:
+            result["icon_url"] = self.icon_url
+        if self.documentation_url:
+            result["documentation_url"] = self.documentation_url
 
         # Plugin configurations
         plugins_dict = {}
@@ -272,6 +289,7 @@ class IntentConfig(BaseModel):
             "environment",
             "logging",
             "api",
+            "cors",
             "security",
             "middleware",
             "mcp",
@@ -280,6 +298,7 @@ class IntentConfig(BaseModel):
             "services",
             "push_notifications",
             "state_management",
+            "development",
             "custom",
         ]
 
@@ -347,21 +366,25 @@ def save_intent_config(config: IntentConfig, file_path: str) -> None:
         allow_unicode=True,
     )
 
-    # Post-process to add blank lines around sections
+    # Post-process to add blank lines around major sections only
     section_keys = [
-        "apiVersion:",
-        "name:",
-        "description:",
-        "version:",
         "plugins:",
+        "plugin_defaults:",
         "global_defaults:",
+        "environment:",
         "logging:",
         "api:",
+        "cors:",
         "security:",
         "middleware:",
         "mcp:",
+        "ai:",
+        "ai_provider:",
+        "services:",
         "push_notifications:",
         "state_management:",
+        "development:",
+        "custom:",
     ]
 
     lines = yaml_content.split("\n")
