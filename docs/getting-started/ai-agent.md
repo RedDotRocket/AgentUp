@@ -340,7 +340,7 @@ curl -s -X POST http://localhost:8000/ \
       }
         },
         "id": "req-001"
-  }' | jq -r '.result.artifacts[].parts[]' | jq
+  }' | jq '.result.artifacts[].parts[]'
 ```
 
 !!! failure "Woops!"
