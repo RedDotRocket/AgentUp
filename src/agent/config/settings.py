@@ -78,7 +78,7 @@ class Settings(BaseSettings):
 
     # AI configuration
     ai: dict[str, Any] = Field(default_factory=dict)
-    ai_provider: AIProviderConfig = Field(default_factory=AIProviderConfig)
+    ai_provider: AIProviderConfig | None = Field(None, description="AI provider configuration")
 
     # Services configuration
     services: dict[ServiceName, ServiceConfig] = Field(default_factory=dict)

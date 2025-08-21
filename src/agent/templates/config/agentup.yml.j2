@@ -121,7 +121,7 @@ security:
           scopes: ["api:admin"{% if has_mcp %}, "files:read", "files:write"{% endif %}]
 {% if generate_multiple_keys %}
         - key: "{{ generate_api_key() }}"
-          scopes: ["api:admin"{% if has_mcp %}, "files:read"{% endif %}]
+          scopes: ["files:read", "files:write"{% if has_mcp %}, "alerts:read", "weather:read"{% endif %}]
 {% endif %}
 {% elif auth_type == 'jwt' %}
     bearer:
