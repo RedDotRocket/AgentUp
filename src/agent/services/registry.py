@@ -172,6 +172,9 @@ class ServiceRegistry(BaseModel):
         raw = Config.model_dump() if config is None else config.model_dump()
         # Filter out orchestrator field which only exists in Settings, not AgentConfig
         raw.pop("orchestrator", None)
+        # Handle ai_provider conversion from Settings (which can be None) to AgentConfig (which expects dict)
+        if raw.get("ai_provider") is None:
+            raw["ai_provider"] = {}
         agent_config = AgentConfig.model_validate(raw)
 
         # Initialize Pydantic fields
