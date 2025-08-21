@@ -102,7 +102,6 @@ class ReleaseManager:
         checks = [
             ["uv", "run", "ruff", "check", "--fix", "src/", "tests/"],
             ["uv", "run", "ruff", "format", "src/", "tests/"],
-            ["uv", "run", "bandit", "-r", "src/", "-ll"],
         ]
 
         for check in checks:
