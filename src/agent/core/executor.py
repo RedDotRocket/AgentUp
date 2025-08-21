@@ -325,7 +325,7 @@ class AgentUpExecutor(AgentExecutor):
             chunk_count = 0
 
             # Collect all streaming chunks without sending individual events
-            async for chunk in self.dispatcher.process_task_streaming(task, auth_result):
+            async for chunk in self.dispatcher.streaming_handler.process_task_streaming(task, auth_result):
                 chunk_count += 1
 
                 if isinstance(chunk, str):

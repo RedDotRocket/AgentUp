@@ -15,9 +15,7 @@ class StreamingHandler:
         self.function_registry = function_registry
         self.conversation_manager = conversation_manager
 
-    async def process_task_streaming(
-        self, task: Task, llm_manager, extract_user_message, fallback_response, auth_result
-    ) -> AsyncIterator[str | dict[str, Any]]:
+    async def process_task_streaming(self, task: Task, auth_result) -> AsyncIterator[str | dict[str, Any]]:
         """Process A2A task with streaming support."""
         try:
             from agent.core.dispatcher import get_function_dispatcher
@@ -28,22 +26,16 @@ class StreamingHandler:
             # Check if we should use native streaming
             llm = await LLMManager.get_llm_service()
             if llm and hasattr(llm, "stream") and llm.stream:
-                # Use streaming version with native LLM streaming
+                # Use native streaming - real tokens as generated
                 async for chunk in self._process_task_streaming_native(task, dispatcher, auth_result):
                     yield chunk
             else:
-                # Fallback to old behavior (get complete response then chunk)
+                # Graceful fallback - complete response at once
                 response = await dispatcher.process_task(task, auth_result)
-
-                if not response:
+                if response:
+                    yield response  # Single complete chunk
+                else:
                     yield "Task completed."
-                    return
-
-                # Stream response in chunks
-                chunk_size = getattr(llm, "chunk_size", 50) if llm else 50
-                for i in range(0, len(response), chunk_size):
-                    chunk = response[i : i + chunk_size]
-                    yield chunk
 
         except Exception as e:
             logger.error(f"Streaming error: {e}", exc_info=True)
@@ -118,11 +110,9 @@ class StreamingHandler:
                     user_input = dispatcher._extract_user_message(task)
                     dispatcher.conversation_manager.update_conversation_history(context_id, user_input, full_response)
                 else:
-                    # Fallback to chunked streaming
+                    # Graceful fallback - complete response at once
                     response = await LLMManager.llm_direct_response(llm, messages)
-                    chunk_size = getattr(llm, "chunk_size", 50)
-                    for i in range(0, len(response), chunk_size):
-                        yield response[i : i + chunk_size]
+                    yield response
 
                     # Update conversation history
                     user_input = dispatcher._extract_user_message(task)
@@ -248,7 +238,7 @@ class StreamingHandler:
             batch_parts = []
             full_response = ""  # Track complete response for conversation history
 
-            async for chunk in self.process_task_streaming(task, None, None, None, auth_result):
+            async for chunk in self.process_task_streaming(task, auth_result):
                 chunk_count += 1
                 full_response += chunk  # Build complete response
                 batch_parts.append({"kind": "text", "metadata": None, "text": chunk})

@@ -332,11 +332,9 @@ class LLMManager:
             from agent.llm_providers.base import ChatMessage
         except ImportError:
             logger.warning("LLM provider modules not available, using fallback")
-            # Fallback to chunked streaming
+            # Graceful fallback - complete response at once
             response = await LLMManager.llm_direct_response(llm, messages)
-            chunk_size = getattr(llm, "chunk_size", 50)
-            for i in range(0, len(response), chunk_size):
-                yield response[i : i + chunk_size]
+            yield response
             return
 
         # Convert dict messages to ChatMessage objects
@@ -391,11 +389,9 @@ class LLMManager:
                             async for final_chunk in llm.stream_chat_complete(chat_messages):
                                 yield final_chunk
                         else:
-                            # Fallback to non-streaming final response
+                            # Graceful fallback - complete response at once
                             final_response = await llm.chat_complete(chat_messages)
-                            chunk_size = getattr(llm, "chunk_size", 50)
-                            for i in range(0, len(final_response.content), chunk_size):
-                                yield final_response.content[i : i + chunk_size]
+                            yield final_response.content
                         return
 
                     except Exception as e:
@@ -409,9 +405,7 @@ class LLMManager:
                         logger.debug("Streaming completed without function calls")
                     break
         else:
-            # Fallback to non-streaming then chunked
-            logger.debug("Using non-streaming with chunking fallback")
+            # Graceful fallback - complete response at once
+            logger.debug("Using non-streaming fallback")
             response = await LLMManager.llm_with_functions(llm, messages, function_schemas, function_executor)
-            chunk_size = getattr(llm, "chunk_size", 50)
-            for i in range(0, len(response), chunk_size):
-                yield response[i : i + chunk_size]
+            yield response

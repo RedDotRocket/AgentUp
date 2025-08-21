@@ -1,4 +1,4 @@
-from collections.abc import AsyncIterator, Callable
+from collections.abc import Callable
 from typing import Any
 
 import structlog
@@ -578,23 +578,6 @@ class FunctionDispatcher:
             return {"role": "user", "content": user_text}
 
         return ""
-
-    async def process_task_streaming(self, task: Task, auth_result=None) -> AsyncIterator[str | dict[str, Any]]:
-        """Process task and stream the response in real-time chunks."""
-        # Get the complete response using normal execution
-        complete_response = await self.process_task(task, auth_result)
-
-        if complete_response:
-            # Stream the response character by character for real-time feel
-            import asyncio
-
-            for char in complete_response:
-                if char:
-                    yield char
-                    # Small delay to simulate real-time token streaming
-                    await asyncio.sleep(0.02)
-        else:
-            yield "Task completed."
 
     async def cancel_task(self, task_id: str) -> None:
         """Cancel a running task if possible.
