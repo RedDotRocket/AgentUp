@@ -146,39 +146,9 @@ def _prompt_for_features(project_config: dict[str, Any], quick: bool, no_git: bo
             project_config["feature_config"] = feature_config
 
     # Configure AI provider
-    if "ai_provider" in project_config.get("features", []):
-        print_header("AI Provider Configuration")
-        ai_provider_choice = questionary.select(
-            "Please select an AI Provider:",
-            choices=[
-                questionary.Choice("OpenAI", value="openai"),
-                questionary.Choice("Anthropic", value="anthropic"),
-                questionary.Choice("Ollama", value="ollama"),
-            ],
-            style=custom_style,
-        ).ask()
-        if ai_provider_choice:
-                ai_provider_config = {"provider": ai_provider_choice}
-                streaming_enabled = questionary.confirm(
-                    "Enable streaming responses?", default=True, style=custom_style
-                ).ask()
-                ai_provider_config["stream"] = streaming_enabled
-            project_config["ai_provider_config"] = ai_provider_config
-
-            if ai_provider_choice == "ollama":
-                ollama_models = asyncio.run(get_ollama_models())
-                if not ollama_models:
-                    click.echo("No models found locally. Defaulting to 'llama3:latest'.", err=True)
-                    model_choice = "llama3"
-                else:
-                    model_choice = questionary.select(
-                        "Please select an Ollama model:",
-                        choices=ollama_models,
-                        style=custom_style,
-                    ).ask()
-
-                if model_choice:
-                    project_config["ai_provider_config"]["model"] = model_choice
+    ai_config = get_ai_provider_config(custom_style)
+    if ai_config:
+        project_config["ai_provider_config"] = ai_config
 
     # Configure external services
     if "services" in project_config.get("features", []):
@@ -189,6 +159,54 @@ def _prompt_for_features(project_config: dict[str, Any], quick: bool, no_git: bo
         ]
         selected = questionary.checkbox("Select external services:", choices=service_choices, style=custom_style).ask()
         project_config["services"] = selected if selected else []
+
+
+def get_ai_provider_config(custom_style) -> dict[str, Any] | None:
+    """Configure AI provider settings interactively."""
+
+    PROVIDER_CHOICES = [
+        questionary.Choice("OpenAI", value="openai"),
+        questionary.Choice("Anthropic", value="anthropic"),
+        questionary.Choice("Ollama", value="ollama"),
+    ]
+
+    ai_provider = questionary.select(
+        "Please select an AI Provider:",
+        choices=PROVIDER_CHOICES,
+        style=custom_style,
+    ).ask()
+
+    if not ai_provider:
+        return None
+
+    config = {"provider": ai_provider}
+
+    # Handle Ollama model selection first
+    if ai_provider == "ollama":
+        model = _select_ollama_model(custom_style)
+        if not model:
+            return None
+        config["model"] = model
+
+    # Ask about streaming for all providers
+    config["stream"] = questionary.confirm("Enable streaming responses?", default=True, style=custom_style).ask()
+
+    return config
+
+
+def _select_ollama_model(custom_style) -> str | None:
+    """Get Ollama model selection from user."""
+    models = asyncio.run(get_ollama_models())
+
+    if not models:
+        click.echo("No models found locally. Defaulting to 'llama3:latest'.", err=True)
+        return "llama3"
+
+    return questionary.select(
+        "Please select an Ollama model:",
+        choices=models,
+        style=custom_style,
+    ).ask()
 
 
 def _handle_git_initialization(output_dir: Path, no_git: bool):
