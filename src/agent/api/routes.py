@@ -102,8 +102,7 @@ async def services_health() -> JSONResponse:
         health_results = {"error": "Services module not available"}
 
     all_healthy = all(
-        result.get("status") == "healthy" if isinstance(result, dict) else False
-        for result in health_results.values()
+        result.get("status") == "healthy" if isinstance(result, dict) else False for result in health_results.values()
     )
 
     return JSONResponse(
@@ -196,9 +195,7 @@ async def jsonrpc_endpoint(
         # Route to appropriate handler based on method - wrapped with auth context
         if method == "message/send":
             # Non-streaming method
-            rpc_request = SendMessageRequest(
-                jsonrpc="2.0", id=request_id or "", method=method, params=params
-            )
+            rpc_request = SendMessageRequest(jsonrpc="2.0", id=request_id or "", method=method, params=params)
             # Set thread-local auth for executor access
             from agent.core.executor import set_current_auth_for_executor
 
@@ -234,26 +231,20 @@ async def jsonrpc_endpoint(
 
         elif method == "tasks/get":
             # Non-streaming method
-            rpc_request = GetTaskRequest(
-                jsonrpc="2.0", id=request_id or "", method=method, params=params
-            )
+            rpc_request = GetTaskRequest(jsonrpc="2.0", id=request_id or "", method=method, params=params)
             with AuthContext(auth_result):
                 response = await jsonrpc_handler.on_get_task(rpc_request)
             return JSONResponse(status_code=200, content=response.model_dump(by_alias=True))
 
         elif method == "tasks/cancel":
             # Non-streaming method
-            rpc_request = CancelTaskRequest(
-                jsonrpc="2.0", id=request_id or "", method=method, params=params
-            )
+            rpc_request = CancelTaskRequest(jsonrpc="2.0", id=request_id or "", method=method, params=params)
             response = await jsonrpc_handler.on_cancel_task(rpc_request)
             return JSONResponse(status_code=200, content=response.model_dump(by_alias=True))
 
         elif method == "tasks/resubscribe":
             # Streaming method - return SSE
-            rpc_request = TaskResubscriptionRequest(
-                jsonrpc="2.0", id=request_id or "", method=method, params=params
-            )
+            rpc_request = TaskResubscriptionRequest(jsonrpc="2.0", id=request_id or "", method=method, params=params)
             response_stream = jsonrpc_handler.on_resubscribe_to_task(rpc_request)
             return StreamingResponse(
                 sse_generator(response_stream),
@@ -283,12 +274,8 @@ async def jsonrpc_endpoint(
                 return JSONResponse(status_code=200, content=response.model_dump(by_alias=True))
             except Exception as e:
                 logger.error(f"Error in get push notification config: {e}")
-                error_response = JSONRPCErrorResponse(
-                    id=request_id, error=InternalError(message=str(e))
-                )
-                return JSONResponse(
-                    status_code=200, content=error_response.model_dump(by_alias=True)
-                )
+                error_response = JSONRPCErrorResponse(id=request_id, error=InternalError(message=str(e)))
+                return JSONResponse(status_code=200, content=error_response.model_dump(by_alias=True))
 
         elif method == "tasks/pushNotificationConfig/list":
             # list push notification configurations for a task
@@ -350,9 +337,7 @@ async def jsonrpc_endpoint(
             content={
                 "jsonrpc": "2.0",
                 "error": {"code": -32603, "message": "Internal error", "data": str(e)},
-                "id": locals().get("body", {}).get("id")
-                if isinstance(locals().get("body"), dict)
-                else None,
+                "id": locals().get("body", {}).get("id") if isinstance(locals().get("body"), dict) else None,
             },
         )
 
@@ -402,9 +387,7 @@ async def handle_get_push_notification_config(request: GetTaskPushNotificationCo
             )
         else:
             return GetTaskPushNotificationConfigResponse(
-                root=GetTaskPushNotificationConfigSuccessResponse(
-                    jsonrpc="2.0", id=request.id, result=config
-                )
+                root=GetTaskPushNotificationConfigSuccessResponse(jsonrpc="2.0", id=request.id, result=config)
             )
 
     except Exception as e:
@@ -465,9 +448,7 @@ async def handle_delete_push_notification_config(
         push_notifier = getattr(handler, "_push_notifier", None)
         if not push_notifier:
             raise ValueError("Push notifier not properly configured")
-        success = await push_notifier.delete_info(
-            request.params.id, request.params.pushNotificationConfigId
-        )
+        success = await push_notifier.delete_info(request.params.id, request.params.pushNotificationConfigId)
 
         if not success:
             # Return JSON-RPC error for not found
