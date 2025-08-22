@@ -4,9 +4,7 @@ version = "0.6.4"
 description = "Create AI agents with all the trappings, out of the box."
 readme = "README.md"
 requires-python = ">=3.11"
-authors = [
-    { name = "Luke Hinds", email = "luke@rdrocket.com" }
-]
+authors = [{ name = "Luke Hinds", email = "luke@rdrocket.com" }]
 dependencies = [
     "click>=8.1.0",
     "questionary>=2.0.1",
@@ -43,13 +41,8 @@ dependencies = [
 agentup = "agent.cli.main:cli"
 
 [project.optional-dependencies]
-agent = [
-    "pytest>=8.0.0",
-    "pytest-asyncio>=0.23.0",
-]
-crewai = [
-    "crewai>=0.157.0",
-]
+agent = ["pytest>=8.0.0", "pytest-asyncio>=0.23.0"]
+crewai = ["crewai>=0.157.0"]
 dev = [
     "ruff>=0.8.0",
     "mypy>=1.13.0",
@@ -87,9 +80,7 @@ python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "--verbose --tb=short"
-filterwarnings = [
-    "ignore::DeprecationWarning"
-]
+filterwarnings = ["ignore::DeprecationWarning"]
 
 [tool.uv]
 package = true
@@ -97,27 +88,20 @@ package = true
 [tool.ruff]
 target-version = "py310"
 line-length = 120
-exclude = [
-    ".git",
-    "__pycache__",
-    "build",
-    "dist",
-    ".venv",
-    "venv",
-]
+exclude = [".git", "__pycache__", "build", "dist", ".venv", "venv"]
 
 [tool.ruff.lint]
 select = [
-    "E",   # pycodestyle errors
-    "W",   # pycodestyle warnings
-    "F",   # pyflakes
-    "I",   # isort
-    "B",   # flake8-bugbear
-    "UP",  # pyupgrade
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "UP", # pyupgrade
 ]
 ignore = [
-    "E501",  # line too long (handled by formatter)
-    "B008",  # do not perform function calls in argument defaults
+    "E501", # line too long (handled by formatter)
+    "B008", # do not perform function calls in argument defaults
 ]
 
 [tool.ruff.format]
@@ -140,21 +124,16 @@ warn_unreachable = true
 strict_equality = true
 
 [[tool.mypy.overrides]]
-module = [
-    "questionary.*",
-    "a2a.*",
-    "fastmcp.*",
-    "authlib.*",
-]
+module = ["questionary.*", "a2a.*", "fastmcp.*", "authlib.*"]
 ignore_missing_imports = true
 
 [tool.bandit]
 exclude_dirs = ["tests", ".venv", "venv", "build", "dist"]
-skips = ["B101"]  # assert_used
+skips = ["B101"]                                           # assert_used
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
 
 [dependency-groups]
-dev = [
-    "coverage>=7.9.1",
-    "mypy-extensions>=1.1.0",
-    "pathspec>=0.12.1",
-]
+dev = ["coverage>=7.9.1", "mypy-extensions>=1.1.0", "pathspec>=0.12.1"]

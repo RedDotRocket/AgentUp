@@ -118,8 +118,8 @@ def create_agent_card(extended: bool = False) -> AgentCard:
                     id=capability_metadata.id,
                     name=capability_metadata.name,
                     description=capability_metadata.description,
-                    inputModes=capability_metadata.input_modes,  # Use A2A field
-                    outputModes=capability_metadata.output_modes,  # Use A2A field
+                    input_modes=capability_metadata.input_modes,  # Use A2A field
+                    output_modes=capability_metadata.output_modes,  # Use A2A field
                     tags=capability_metadata.tags or ["general"],
                     examples=capability_metadata.examples,  # A2A field
                     security=capability_metadata.security,  # A2A field
@@ -193,7 +193,7 @@ def create_agent_card(extended: bool = False) -> AgentCard:
                 scheme="bearer",
                 description="OAuth2 Bearer token for authentication",
                 type="http",
-                bearerFormat="JWT",  # Indicate JWT format for OAuth2
+                bearer_format="JWT",  # Indicate JWT format for OAuth2
             )
             security_schemes["OAuth2"] = oauth2_scheme.model_dump(by_alias=True)
             security_requirements.append({"OAuth2": required_scopes})
@@ -228,15 +228,15 @@ def create_agent_card(extended: bool = False) -> AgentCard:
         icon_url=agent_info.get("icon_url")
         or "https://raw.githubusercontent.com/RedDotRocket/AgentUp/refs/heads/main/assets/icon.png",
         version=agent_info.get("version", package_version),
-        documentationUrl=agent_info.get("documentation_url") or "https://docs.agentup.dev",
+        documentation_url=agent_info.get("documentation_url") or "https://docs.agentup.dev",
         capabilities=capabilities,
         security=security_requirements if security_requirements else None,
-        defaultInputModes=["text"],
-        defaultOutputModes=["text"],
+        default_input_modes=["text"],
+        default_output_modes=["text"],
         skills=agent_skills,
-        securitySchemes=security_schemes if security_schemes else None,
-        signatures=signatures,
-        supportsAuthenticatedExtendedCard=has_extended_plugins,
+        security_schemes=security_schemes if security_schemes else None,
+        signatures=[signatures] if signatures else None,
+        supports_authenticated_extended_card=has_extended_plugins,
     )
 
     # Update cache
