@@ -147,9 +147,7 @@ def create_agent_card(extended: bool = False) -> AgentCard:
     pushNotifications = config.get("push_notifications", {})
     state_management = config.get("state_management", {})
     capabilities = AgentCapabilities(
-        streaming=bool(
-            pydantic_config.ai_provider.stream if pydantic_config.ai_provider else False
-        ),
+        streaming=bool(pydantic_config.ai_provider.stream if pydantic_config.ai_provider else False),
         push_notifications=pushNotifications.get("enabled", False),
         state_transition_history=state_management.get("enabled", False),
         extensions=extensions if extensions else None,
@@ -307,9 +305,7 @@ def _get_mcp_skills_for_agent_card() -> list[AgentSkill]:
                     description=capability_info.description,
                     input_modes=["text"],
                     output_modes=["text"],
-                    tags=["mcp", capability_info.server_name]
-                    if capability_info.server_name
-                    else ["mcp"],
+                    tags=["mcp", capability_info.server_name] if capability_info.server_name else ["mcp"],
                 )
                 mcp_skills.append(skill)
             else:
