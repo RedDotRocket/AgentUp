@@ -770,7 +770,11 @@ def register_ai_functions_from_capabilities():
                     # Get enabled plugins from intent config
                     enabled_plugins = {}
                     for package_name, plugin_config in resolver.intent_config.plugins.items():
-                        if hasattr(plugin_config, "enabled") and plugin_config.enabled:
+                        # Handle both string and object plugin configs
+                        if isinstance(plugin_config, str):
+                            # If it's just a string, assume it's enabled
+                            enabled_plugins[package_name] = plugin_config
+                        elif hasattr(plugin_config, "enabled") and plugin_config.enabled:
                             enabled_plugins[package_name] = plugin_config
                     configured_plugins = set(enabled_plugins.keys())
                 else:

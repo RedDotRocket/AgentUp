@@ -240,7 +240,7 @@ class LLMManager:
 
     @staticmethod
     def _process_file_part(file_info: Any, content_parts: list[dict[str, Any]], text_parts: list[str]) -> None:
-        mime_type = getattr(file_info, "mimeType", None)
+        mime_type = getattr(file_info, "mimeType", None) or "application/octet-stream"
         file_name = getattr(file_info, "name", "file")
 
         if mime_type and mime_type.startswith("image/"):
@@ -273,7 +273,7 @@ class LLMManager:
     def _process_file_info(
         file_info: dict[str, Any], content_parts: list[dict[str, Any]], text_parts: list[str]
     ) -> None:
-        mime_type = file_info.get("mimeType", "")
+        mime_type = file_info.get("mimeType", "application/octet-stream")
         file_name = file_info.get("name", "file")
 
         if mime_type and mime_type.startswith("image/"):
