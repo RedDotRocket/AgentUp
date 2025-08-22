@@ -175,9 +175,9 @@ class RateLimiter:
     def __init__(self, config: RateLimitConfig | None = None):
         self.config = config or RateLimitConfig(
             enabled=False,
-            requests_per_minute=120,  # More generous
-            burst_limit=20,  # Higher burst tolerance
-            window_size_seconds=15,  # Slightly longer window
+            requests_per_minute=60,  # 1 per second average
+            burst_limit=120,  # Allow 2-minute burst capacity
+            window_size_seconds=10,  # 10-second detection window
             key_strategy="function_name",
             enforcement_mode="strict",
         )
