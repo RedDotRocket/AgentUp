@@ -17,7 +17,7 @@ class TestA2AClient:
         """Create a mock response."""
         return {
             "jsonrpc": "2.0",
-            "result": {"message": {"role": "assistant", "parts": [{"kind": "text", "text": "Test response"}]}},
+            "result": {"message": {"role": "agent", "parts": [{"kind": "text", "text": "Test response"}]}},
             "id": "test-request-id",
         }
 
@@ -145,7 +145,11 @@ class TestA2AClient:
     @pytest.mark.asyncio
     async def test_get_task_status(self, client):
         """Test getting task status."""
-        task_status = {"id": "task-123", "status": "completed", "result": "Task completed successfully"}
+        task_status = {
+            "id": "task-123",
+            "status": "completed",
+            "result": "Task completed successfully",
+        }
 
         def mock_handler(request):
             assert request.url == "http://test:8000/task/task-123/status"
@@ -162,7 +166,7 @@ class TestA2AClient:
         """Test text extraction from message format response."""
         response = {
             "message": {
-                "role": "assistant",
+                "role": "agent",
                 "parts": [
                     {"kind": "text", "text": "Hello "},
                     {"kind": "text", "text": "world!"},

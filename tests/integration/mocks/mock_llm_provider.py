@@ -16,7 +16,10 @@ class MockLLMProvider:
         self.conversation_history: list[dict[str, Any]] = []
 
     def generate_response(
-        self, messages: list[dict[str, Any]], available_tools: list[dict[str, Any]] | None = None, **kwargs
+        self,
+        messages: list[dict[str, Any]],
+        available_tools: list[dict[str, Any]] | None = None,
+        **kwargs,
     ) -> dict[str, Any]:
         """Generate a mock response based on the user's message.
 
@@ -155,9 +158,12 @@ class MockLLMProvider:
             "choices": [
                 {
                     "message": {
-                        "role": "assistant",
+                        "role": "agent",
                         "content": None,
-                        "function_call": {"name": tool_call["name"], "arguments": json.dumps(tool_call["arguments"])},
+                        "function_call": {
+                            "name": tool_call["name"],
+                            "arguments": json.dumps(tool_call["arguments"]),
+                        },
                     },
                     "finish_reason": "function_call",
                 }
@@ -175,7 +181,7 @@ class MockLLMProvider:
             Text response
         """
         return {
-            "choices": [{"message": {"role": "assistant", "content": content}, "finish_reason": "stop"}],
+            "choices": [{"message": {"role": "agent", "content": content}, "finish_reason": "stop"}],
             "usage": {"prompt_tokens": 50, "completion_tokens": 25, "total_tokens": 75},
         }
 
@@ -218,13 +224,21 @@ TEST_CASES = [
         "expected_tool": "get_forecast",
         "expected_args": {"latitude": 47.6062, "longitude": -122.3321},
     },
-    {"input": "Get weather alerts for CA", "expected_tool": "get_alerts", "expected_args": {"state": "CA"}},
+    {
+        "input": "Get weather alerts for CA",
+        "expected_tool": "get_alerts",
+        "expected_args": {"state": "CA"},
+    },
     {
         "input": "Show me the forecast for New York",
         "expected_tool": "get_forecast",
         "expected_args": {"latitude": 40.7128, "longitude": -74.0060},
     },
-    {"input": "Any storm warnings in TX?", "expected_tool": "get_alerts", "expected_args": {"state": "TX"}},
+    {
+        "input": "Any storm warnings in TX?",
+        "expected_tool": "get_alerts",
+        "expected_args": {"state": "TX"},
+    },
     {
         "input": "Weather forecast for coordinates 40.7, -74.0",
         "expected_tool": "get_forecast",

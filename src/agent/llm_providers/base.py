@@ -26,7 +26,7 @@ class LLMResponse:
 
 @dataclass
 class ChatMessage:
-    role: str  # system, user, assistant, function
+    role: str  # system, user, agent, function
     content: str | list[dict[str, Any]]  # Support both text and structured content (for vision)
     function_call: FunctionCall | None = None
     function_calls: list[FunctionCall] | None = None  # For parallel function calling
@@ -170,12 +170,12 @@ After function calls, provide a natural response based on the results."""
                 prompt_parts.append(f"System: {content}")
             elif role == "user":
                 prompt_parts.append(f"User: {content}")
-            elif role == "assistant":
-                prompt_parts.append(f"Assistant: {content}")
+            elif role == "agent":
+                prompt_parts.append(f"Agent: {content}")
             elif role == "function":
                 prompt_parts.append(f"Function {msg.name}: {content}")
 
-        prompt_parts.append("Assistant:")
+        prompt_parts.append("Agent:")
         return "\n\n".join(prompt_parts)
 
     def _chat_message_to_dict(self, message: ChatMessage) -> dict[str, Any]:

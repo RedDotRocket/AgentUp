@@ -80,7 +80,7 @@ class StateVariable(BaseModel, Generic[T]):
 
 class ConversationRole(str, Enum):
     USER = "user"
-    ASSISTANT = "assistant"
+    AGENT = "agent"
     SYSTEM = "system"
     FUNCTION = "function"
     TOOL = "tool"
@@ -123,7 +123,7 @@ class ConversationMessage(BaseModel):
 class ConversationSummary(BaseModel):
     total_messages: int = Field(..., description="Total number of messages")
     user_messages: int = Field(..., description="Number of user messages")
-    assistant_messages: int = Field(..., description="Number of assistant messages")
+    agent_messages: int = Field(..., description="Number of agent messages")
     total_tokens: int | None = Field(None, description="Total token count")
     first_message_at: Timestamp | None = Field(None, description="First message timestamp")
     last_message_at: Timestamp | None = Field(None, description="Last message timestamp")
@@ -242,7 +242,7 @@ class ConversationState(BaseModel):
 
     def get_summary_stats(self) -> ConversationSummary:
         user_msgs = sum(1 for msg in self.history if msg.role == ConversationRole.USER)
-        assistant_msgs = sum(1 for msg in self.history if msg.role == ConversationRole.ASSISTANT)
+        agent_msgs = sum(1 for msg in self.history if msg.role == ConversationRole.AGENT)
         total_tokens = sum(msg.tokens or 0 for msg in self.history if msg.tokens)
 
         first_msg = self.history[0] if self.history else None
@@ -251,7 +251,7 @@ class ConversationState(BaseModel):
         return ConversationSummary(
             total_messages=len(self.history) + self.archived_messages,
             user_messages=user_msgs,
-            assistant_messages=assistant_msgs,
+            agent_messages=agent_msgs,
             total_tokens=total_tokens if total_tokens > 0 else None,
             first_message_at=first_msg.timestamp if first_msg else None,
             last_message_at=last_msg.timestamp if last_msg else None,
@@ -286,12 +286,12 @@ class ConversationState(BaseModel):
 
         # Update summary
         if not self.summary:
-            self.summary = ConversationSummary(total_messages=0, user_messages=0, assistant_messages=0)
+            self.summary = ConversationSummary(total_messages=0, user_messages=0, agent_messages=0)
 
         # Update counts
         self.summary.total_messages += len(to_archive)
         self.summary.user_messages += sum(1 for msg in to_archive if msg.role == ConversationRole.USER)
-        self.summary.assistant_messages += sum(1 for msg in to_archive if msg.role == ConversationRole.ASSISTANT)
+        self.summary.agent_messages += sum(1 for msg in to_archive if msg.role == ConversationRole.AGENT)
 
 
 class StateBackendType(str, Enum):
@@ -355,7 +355,11 @@ class StateBackendConfig(BaseModel):
     @computed_field
     @property
     def is_persistent_backend(self) -> bool:
-        return self.type in (StateBackendType.REDIS, StateBackendType.FILE, StateBackendType.DATABASE)
+        return self.type in (
+            StateBackendType.REDIS,
+            StateBackendType.FILE,
+            StateBackendType.DATABASE,
+        )
 
     @computed_field
     @property

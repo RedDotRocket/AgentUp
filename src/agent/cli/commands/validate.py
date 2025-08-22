@@ -844,7 +844,7 @@ def validate_system_prompt_section(ai_config: dict[str, Any], errors: list[str],
             warnings.append(f"System prompt contains potentially risky pattern: '{pattern}'")
 
     # Validate prompt structure
-    if not any(word in prompt_lower for word in ["you are", "your role", "assistant", "help"]):
+    if not any(word in prompt_lower for word in ["you are", "your role", "agent", "help"]):
         warnings.append("System prompt may lack clear role definition")
 
     click.echo(f"{click.style('✓', fg='green')} System prompt validated")

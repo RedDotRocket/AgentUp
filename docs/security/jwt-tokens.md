@@ -198,7 +198,7 @@ plugins:
     plugin_type: "hybrid"
     required_scopes: ["files:write", "api:read"]
 
-  - plugin_id: ai_assistant
+  - plugin_id: ai_agent
     plugin_type: "ai_function"
     required_scopes: ["api:read"]
 
@@ -290,7 +290,7 @@ plugins:
     plugin_type: "network"
     required_scopes: ["network:admin"]
 
-  - plugin_id: ai_assistant
+  - plugin_id: ai_agent
     plugin_type: "ai_function"
     required_scopes: ["ai:execute"]
 

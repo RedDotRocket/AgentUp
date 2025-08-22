@@ -149,7 +149,7 @@ The template uses `security_enabled` but the generator sets `asf_enabled`. This 
 ### Conditional Variables ({% if %}):
 
 #### Working Conditions:
-- `{% if plugin == 'ai_assistant' %}` ✅
+- `{% if plugin == 'ai_agent' %}` ✅
 - `{% if ai_provider_config.provider == 'openai' %}` ✅
 - `{% if has_middleware and 'rate_limit' in feature_config.get('middleware', []) %}` ✅
 - `{% if development_enabled %}` ✅

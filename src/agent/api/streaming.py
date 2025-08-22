@@ -178,7 +178,7 @@ class StreamingHandler:
                 agent_msg = Message(
                     kind="message",
                     role="agent",
-                    parts=[{"kind": "text", "text": turn["assistant"]}],
+                    parts=[{"kind": "text", "text": turn["agent"]}],
                     messageId=str(uuid.uuid4()),
                     contextId=context_id,
                     taskId=task_id,

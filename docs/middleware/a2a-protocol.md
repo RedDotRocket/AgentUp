@@ -523,7 +523,7 @@ AgentUp maps YAML configuration to A2A structures:
 ```yaml
 # agentup.yml
 name: "Enterprise Agent"           # → AgentCard.name
-description: "AI Assistant"       # → AgentCard.description
+description: "AI Agent"       # → AgentCard.description
 version: "1.0.0"                  # → AgentCard.version
 ```
 

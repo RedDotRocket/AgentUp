@@ -30,11 +30,11 @@ class MyPlugin:
     def register_capability(self) -> CapabilityDefinition:
         return CapabilityDefinition(
             id="my_plugin.specialized_skill",
-            name="Specialized Assistant",
+            name="Specialized Agent",
             version="1.0.0",
-            description="A specialized AI assistant for my domain",
+            description="A specialized AI agent for my domain",
             capabilities=[CapabilityType.TEXT, CapabilityType.AI_FUNCTION],
-            system_prompt="""You are a specialized assistant for [your domain].
+            system_prompt="""You are a specialized agent for [your domain].
 
 Your role:
 - Provide expert guidance in [your domain]
@@ -52,7 +52,7 @@ Maintain a [tone/style] while being [characteristics].""")
 
 ### System Prompt Best Practices
 
-1. **Be Specific**: Clearly define the assistant's role and expertise
+1. **Be Specific**: Clearly define the agent's role and expertise
 2. **Include Guidelines**: Specify standards, formats, or methodologies to follow
 3. **Set Expectations**: Describe the type of responses users should expect
 4. **Consider Context**: Include domain-specific considerations and constraints
@@ -64,7 +64,7 @@ Here's a complete plugin demonstrating system prompt customization:
 
 ```python
 """
-Code Assistant Plugin - Demonstrates system prompt customization
+Code Agent Plugin - Demonstrates system prompt customization
 """
 
 import logging
@@ -76,20 +76,20 @@ from agent.plugins.models import CapabilityType, CapabilityContext, CapabilityDe
 logger = logging.getLogger(__name__)
 
 
-class CodeAssistantPlugin:
-    """A specialized coding assistant with custom system prompt."""
+class CodeAgentPlugin:
+    """A specialized coding agent with custom system prompt."""
 
     @hookimpl
     def register_capability(self) -> CapabilityDefinition:
-        """Register the code assistant skill with a custom system prompt."""
+        """Register the code agent skill with a custom system prompt."""
         return CapabilityDefinition(
-            id="code_assistant.python_helper",
-            name="Python Code Assistant",
+            id="code_agent.python_helper",
+            name="Python Code Agent",
             version="1.0.0",
-            description="A specialized Python coding assistant",
+            description="A specialized Python coding agent",
             capabilities=[CapabilityType.TEXT, CapabilityType.AI_FUNCTION],
-            tags=["python", "coding", "assistant"],
-            system_prompt="""You are a specialized Python coding assistant with deep expertise in Python development.
+            tags=["python", "coding", "agent"],
+            system_prompt="""You are a specialized Python coding agent with deep expertise in Python development.
 
 Your role:
 - Provide expert Python programming guidance
@@ -133,9 +133,9 @@ Configure the plugin capability in your agent's `agentup.yml`:
 
 ```yaml
 plugins:
-  - plugin_id: code_assistant.python_helper
+  - plugin_id: code_agent.python_helper
     name: Python Helper
-    description: Specialized Python coding assistant
+    description: Specialized Python coding agent
     enabled: true
     capabilities:
       - capability_id: python_helper
@@ -156,9 +156,9 @@ AgentUp uses the following priority order for system prompts:
 
 ## Examples of Effective System Prompts
 
-### Data Analysis Assistant
+### Data Analysis Agent
 ```python
-system_prompt="""You are a specialized data analysis assistant with expertise in statistical analysis and data visualization.
+system_prompt="""You are a specialized data analysis agent with expertise in statistical analysis and data visualization.
 
 Your role:
 - Analyze datasets and identify patterns, trends, and insights
@@ -177,9 +177,9 @@ When working with data:
 Focus on accuracy, clarity, and practical applicability."""
 ```
 
-### API Integration Assistant
+### API Integration Agent
 ```python
-system_prompt="""You are a specialized API integration assistant with expertise in REST APIs, webhooks, and service integrations.
+system_prompt="""You are a specialized API integration agent with expertise in REST APIs, webhooks, and service integrations.
 
 Your role:
 - Design robust API integration patterns
@@ -253,7 +253,7 @@ The system prompt feature is fully backward compatible:
 
 1. **Be Specific**: Tailor system prompts to your skill's exact domain and requirements
 2. **Include Context**: Provide domain-specific guidelines and constraints
-3. **Set Clear Expectations**: Define the assistant's role and behavior clearly
+3. **Set Clear Expectations**: Define the agent's role and behavior clearly
 4. **Test Thoroughly**: Validate that your system prompt produces the desired behavior
 5. **Keep It Focused**: Avoid overly broad or generic instructions
 6. **Document Well**: Include examples and explanations in your plugin documentation

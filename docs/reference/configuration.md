@@ -22,7 +22,7 @@ AgentUp uses a YAML-based configuration system (`agentup.yml`) that controls all
 ```yaml
 # Agent metadata
 name: "My AI Agent"
-description: "A powerful AI assistant"
+description: "A powerful AI agent"
 version: "1.0.0"
 environment: "development"
 
@@ -318,7 +318,7 @@ plugin_override:
 **Available Middleware Types:**
 - **`timed`** - Execution timing (no configuration required)
 - **`cached`** - Response caching (uses `CacheConfig` model)
-- **`rate_limited`** - Request rate limiting (uses `RateLimitConfig` model)  
+- **`rate_limited`** - Request rate limiting (uses `RateLimitConfig` model)
 - **`retryable`** - Retry logic on failures (uses `RetryConfig` model)
 
 **Override Behavior:**
@@ -329,7 +329,7 @@ plugin_override:
 
 **Implementation Reference:**
 - **Model Definition:** `src/agent/config/intent.py:9-21` (`MiddlewareOverride` class)
-- **Plugin Processing:** `src/agent/config/intent.py:44-68` (`PluginOverride` class)  
+- **Plugin Processing:** `src/agent/config/intent.py:44-68` (`PluginOverride` class)
 - **Middleware Manager:** `src/agent/services/middleware.py:65-74`
 - **Code:**
 ```python
@@ -583,7 +583,7 @@ ai_provider:
   temperature: 0.7             # 0.0-2.0, controls randomness
   max_tokens: 2000             # Maximum response length
   timeout: 30                  # Request timeout in seconds
-  
+
   # Provider-specific settings
   base_url: null               # Override API endpoint (for Ollama or proxies)
   organization: null           # OpenAI organization ID
@@ -613,14 +613,14 @@ security:
           scopes: ["admin"]
         - key: "sk-read-only"
           scopes: ["api:read", "files:read"]
-    
+
     # Bearer Token Authentication
     bearer:
       header_name: "Authorization"
       tokens:
         - token: "bearer-token-123"
           scopes: ["api:read", "api:write"]
-    
+
     # OAuth2 Configuration
     oauth2:
       enabled: true
@@ -629,7 +629,7 @@ security:
       jwt_algorithm: "RS256"
       jwt_issuer: "https://oauth-provider.com"
       jwt_audience: "your-agent-id"
-  
+
   # Scope Hierarchy (inheritance)
   scope_hierarchy:
     admin: ["*"]                    # Admin has all permissions
@@ -656,21 +656,21 @@ state_management:
   enabled: true
   backend: "memory"    # Options: memory, file, valkey
   ttl: 3600           # Time-to-live in seconds
-  
+
   # Backend-specific configuration
   config:
     # For file backend
     directory: "./state"
-    
+
     # For Valkey/Redis backend
     url: "redis://localhost:6379"
     db: 0
     key_prefix: "agentup:state:"
-    
+
   # Conversation settings
   max_history_length: 100
   compress_old_messages: true
-  
+
   # Per-plugin state overrides
   plugin_overrides:
     long_running_tasks:
@@ -687,16 +687,16 @@ Enable MCP support for tool integration and multi-agent discovery:
 ```yaml
 mcp:
   enabled: true
-  
+
   # MCP Client Configuration
   client_enabled: true
   client_timeout: 30
-  
+
   # MCP Server Configuration
   server_enabled: false
   server_host: "localhost"
   server_port: 8080
-  
+
   # MCP Server Connections
   servers:
     - name: "filesystem"
@@ -712,7 +712,7 @@ mcp:
         read_file: ["files:read"]
         write_file: ["files:write"]
         list_directory: ["files:read"]
-    
+
     - name: "github"
       type: "http"
       url: "http://localhost:3000/mcp"
@@ -729,7 +729,7 @@ mcp:
 When MCP servers have `expose_as_skills: true`, their tools are exposed as **skills** in your agent's AgentCard (at `/.well-known/agent-card.json`). This enables:
 
 - **Multi-agent discovery**: Orchestrators can discover and delegate to your MCP capabilities
-- **Ecosystem integration**: Any MCP server becomes available to the entire multi-agent system  
+- **Ecosystem integration**: Any MCP server becomes available to the entire multi-agent system
 - **Standards compliance**: Uses A2A protocol standards for agent communication
 
 **Tool-to-Skill Mapping:**
@@ -748,18 +748,18 @@ push_notifications:
   enabled: true
   backend: "webhook"    # Options: memory, webhook
   validate_urls: true   # Validate webhook URLs for security
-  
+
   config:
     # Webhook settings
     timeout: 10
     max_retries: 3
     retry_delay: 1.0
-    
+
     # Security
     allowed_domains:
       - "*.example.com"
       - "webhook.site"
-    
+
     # Headers to include
     default_headers:
       User-Agent: "AgentUp/1.0"

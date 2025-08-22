@@ -532,7 +532,7 @@ class FunctionDispatcher:
             )
             await context.add_to_history(
                 context_id,
-                "assistant",
+                "agent",
                 response,
                 {"processing": "ai_direct", "count": conversation_count},
             )

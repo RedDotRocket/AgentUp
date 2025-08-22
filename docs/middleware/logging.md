@@ -208,8 +208,8 @@ logging:
 
 ```
 2024-01-15T10:30:45.123456Z [info     ] Request started [agent.api.request_logging] correlation_id=abc12345 method=POST path=/api/message
-2024-01-15T10:30:45.124000Z [info     ] Processing task [agent.handlers.ai_assistant] correlation_id=abc12345 skill=ai_assistant task_id=task_001
-2024-01-15T10:30:45.456789Z [info     ] Task completed [agent.handlers.ai_assistant] correlation_id=abc12345 duration=0.332 result_length=156
+2024-01-15T10:30:45.124000Z [info     ] Processing task [agent.handlers.ai_agent] correlation_id=abc12345 skill=ai_agent task_id=task_001
+2024-01-15T10:30:45.456789Z [info     ] Task completed [agent.handlers.ai_agent] correlation_id=abc12345 duration=0.332 result_length=156
 2024-01-15T10:30:45.457000Z [info     ] Request completed [agent.api.request_logging] correlation_id=abc12345 status_code=200 duration=0.334
 ```
 
@@ -217,8 +217,8 @@ logging:
 
 ```json
 {"timestamp": "2024-01-15T10:30:45.123456Z", "level": "info", "logger": "agent.api.request_logging", "message": "Request started", "correlation_id": "abc12345", "method": "POST", "path": "/api/message"}
-{"timestamp": "2024-01-15T10:30:45.124000Z", "level": "info", "logger": "agent.handlers.ai_assistant", "message": "Processing task", "correlation_id": "abc12345", "skill": "ai_assistant", "task_id": "task_001"}
-{"timestamp": "2024-01-15T10:30:45.456789Z", "level": "info", "logger": "agent.handlers.ai_assistant", "message": "Task completed", "correlation_id": "abc12345", "duration": 0.332, "result_length": 156}
+{"timestamp": "2024-01-15T10:30:45.124000Z", "level": "info", "logger": "agent.handlers.ai_agent", "message": "Processing task", "correlation_id": "abc12345", "skill": "ai_agent", "task_id": "task_001"}
+{"timestamp": "2024-01-15T10:30:45.456789Z", "level": "info", "logger": "agent.handlers.ai_agent", "message": "Task completed", "correlation_id": "abc12345", "duration": 0.332, "result_length": 156}
 {"timestamp": "2024-01-15T10:30:45.457000Z", "level": "info", "logger": "agent.api.request_logging", "message": "Request completed", "correlation_id": "abc12345", "status_code": 200, "duration": 0.334}
 ```
 

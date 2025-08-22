@@ -40,11 +40,11 @@ def create_test_agent_config(
             "description": f"Test agent {agent_name}",
             "version": get_version(),
         },
-        "routing": {"default_mode": "ai", "fallback_capability": "ai_assistant"},
+        "routing": {"default_mode": "ai", "fallback_capability": "ai_agent"},
         "skills": [
             {
-                "name": "ai_assistant",
-                "description": "General purpose AI assistant",
+                "name": "ai_agent",
+                "description": "General purpose AI agent",
                 "input_mode": "text",
                 "output_mode": "text",
             }
@@ -53,7 +53,7 @@ def create_test_agent_config(
             "enabled": True,
             "llm_service": llm_service,
             "model": llm_model,
-            "system_prompt": f"You are {agent_name}, an AI assistant.",
+            "system_prompt": f"You are {agent_name}, an AI agent.",
             "max_context_turns": 10,
             "fallback_to_routing": True,
         },
@@ -229,7 +229,7 @@ class AgentConfigBuilder:
             "enabled": enabled,
             "llm_service": llm_service,
             "model": model,
-            "system_prompt": f"You are {self.config.get('agent', {}).get('name', 'test-agent')}, an AI assistant.",
+            "system_prompt": f"You are {self.config.get('agent', {}).get('name', 'test-agent')}, an AI agent.",
             "max_context_turns": 10,
             "fallback_to_routing": True,
         }
@@ -290,7 +290,7 @@ def build_standard_config() -> dict[str, Any]:
         .with_agent("standard-test", "Standard test agent")
         .with_ai("openai", "gpt-4o-mini")
         .with_openai_service()
-        .with_skill("ai_assistant", "AI Assistant")
+        .with_skill("ai_agent", "AI Agent")
         .build()
     )
 
@@ -301,6 +301,6 @@ def build_ollama_config() -> dict[str, Any]:
         .with_agent("ollama-test", "Ollama test agent")
         .with_ai("ollama", "qwen3:0.6b")
         .with_ollama_service()
-        .with_skill("ai_assistant", "AI Assistant")
+        .with_skill("ai_agent", "AI Agent")
         .build()
     )

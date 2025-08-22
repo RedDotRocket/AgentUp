@@ -30,7 +30,7 @@ def sample_agent_config() -> dict[str, Any]:
         "version": "0.5.1",
         "plugins": [
             {
-                "description": "General purpose AI assistant",
+                "description": "General purpose AI agent",
                 "enabled": True,
                 "capabilities": [],
                 "priority": 100,

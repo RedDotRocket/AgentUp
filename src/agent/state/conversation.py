@@ -42,7 +42,7 @@ Always be helpful, accurate, and maintain a friendly tone.""",
         # Add conversation history (last 10 turns to manage context length)
         for turn in conversation[-10:]:
             messages.append({"role": "user", "content": turn["user"]})
-            messages.append({"role": "assistant", "content": turn["assistant"]})
+            messages.append({"role": "assistant", "content": turn["agent"]})
 
         # Add current user input - support both text string and A2A message dict
         if isinstance(user_input, dict):
@@ -62,7 +62,11 @@ Always be helpful, accurate, and maintain a friendly tone.""",
             self.conversation_history[context_id] = []
 
         self.conversation_history[context_id].append(
-            {"user": user_input, "assistant": response, "timestamp": datetime.now(timezone.utc).isoformat()}
+            {
+                "user": user_input,
+                "agent": response,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
         )
 
         # Keep last 20 turns to manage memory

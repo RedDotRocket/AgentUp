@@ -26,7 +26,7 @@ AgentUp provides comprehensive state management capabilities that enable your ag
 
   # 5. Get recent messages only
   redis-cli get "agentup:state:context-001" | jq '.history[-3:]'
-  
+
 ## Overview
 
 State management in AgentUp allows agents to:
@@ -103,7 +103,7 @@ state:
 
 Three different backends are supported for state management:
 - **Valkey**: For distributed, persistent state storage
-- **File**: For local, file-based state storage  
+- **File**: For local, file-based state storage
 - **Memory**: For in-memory state storage (not persistent)
 
 Each backend has specific configuration requirements detailed below.
@@ -232,23 +232,23 @@ from src.agent.handlers import register_handler
 from a2a.types import Task
 
 # In your plugin code
-async def handle_ai_assistant(task: Task, context=None, context_id=None):
+async def handle_ai_agent(task: Task, context=None, context_id=None):
     """This handler automatically gets state management if enabled in config."""
-    
+
     if context:  # State management is available
         # Get conversation history
         history = await context.get_history(context_id, limit=10)
-        
+
         # Store user preferences
         await context.set_variable(context_id, 'user_preference', 'dark_mode')
-        
+
         # Add to conversation history
         await context.add_to_history(context_id, 'user', "User message")
-        await context.add_to_history(context_id, 'assistant', "Assistant response")
+        await context.add_to_history(context_id, 'agent', "Agent response")
     else:  # State management not available/enabled
         # Handle gracefully without state
         pass
-    
+
     return "Response"
 ```
 
@@ -258,9 +258,9 @@ You can customize state behavior for individual plugins:
 
 ```yaml
 plugins:
-  - plugin_id: ai_assistant
-    name: AI Assistant
-    description: AI-powered assistant
+  - plugin_id: ai_agent
+    name: AI Agent
+    description: AI-powered agent
     # Override global state settings for this plugin
     state_override:
       enabled: true
@@ -282,20 +282,20 @@ from a2a.types import Task
 
 async def my_stateful_handler(task: Task, context: ConversationContext, context_id: str):
     """A plugin handler that uses state management."""
-    
+
     # Get conversation history
     history = await context.get_history(context_id, limit=10)
-    
+
     # Store user preferences
     await context.set_variable(context_id, 'user_preference', 'dark_mode')
-    
+
     # Get stored preferences
     preference = await context.get_variable(context_id, 'user_preference', 'default')
-    
+
     # Add to conversation history
     await context.add_to_history(context_id, 'user', task.input)
-    await context.add_to_history(context_id, 'assistant', response)
-    
+    await context.add_to_history(context_id, 'agent', response)
+
     return response
 ```
 
@@ -315,7 +315,7 @@ The `@stateful` decorator accepts the following parameters:
 # For Valkey backend
 @stateful(storage='valkey', url='valkey://localhost:6379', key_prefix='agentup:state:', ttl=3600)
 
-# For file backend  
+# For file backend
 @stateful(storage='file', storage_dir='./conversation_states')
 
 # For memory backend
@@ -352,7 +352,7 @@ Manage conversation history:
 ```python
 # Add messages to history
 await context.add_to_history(context_id, 'user', 'Hello!')
-await context.add_to_history(context_id, 'assistant', 'Hi there!')
+await context.add_to_history(context_id, 'agent', 'Hi there!')
 
 # Get conversation history
 history = await context.get_history(context_id, limit=10)  # Last 10 messages
@@ -360,7 +360,7 @@ full_history = await context.get_history(context_id)       # All messages
 
 # History format
 for message in history:
-    role = message['role']        # 'user' or 'assistant'
+    role = message['role']        # 'user' or 'agent'
     content = message['content']  # Message content
     timestamp = message['timestamp']  # ISO timestamp
 ```
@@ -402,7 +402,7 @@ When creating skills with the CLI, enable state management:
 agentup skill create
 
 # Interactive prompts:
-# ? Skill name: Conversation Memory Assistant
+# ? Skill name: Conversation Memory Agent
 # ? Enable state management? Yes
 # ? Storage backend: valkey
 ```
@@ -411,7 +411,7 @@ This generates a handler with the `@stateful` decorator already configured.
 
 ### Manual Implementation
 
-Create a stateful AI assistant:
+Create a stateful AI agent:
 
 ```python
 from src.agent.context import stateful
@@ -419,38 +419,38 @@ from src.agent.handlers import register_handler
 from a2a.types import Task
 from datetime import datetime
 
-@register_handler("memory_assistant")
+@register_handler("memory_agent")
 @stateful(storage='valkey', url='valkey://localhost:6379', key_prefix='agentup:state:', ttl=3600)
-async def memory_assistant(task: Task, context, context_id):
-    """AI assistant with conversation memory."""
-    
+async def memory_agent(task: Task, context, context_id):
+    """AI agent with conversation memory."""
+
     # Extract user message
     user_message = extract_user_message(task)
-    
+
     # Get conversation history and user data
     history = await context.get_history(context_id, limit=5)
     interaction_count = await context.get_variable(context_id, 'interaction_count', 0)
     user_preferences = await context.get_variable(context_id, 'preferences', {})
-    
+
     # Update interaction count
     await context.set_variable(context_id, 'interaction_count', interaction_count + 1)
-    
+
     # Add current message to history
     await context.add_to_history(context_id, 'user', user_message)
-    
+
     # Generate context-aware response
     if 'remember' in user_message.lower() and len(history) > 0:
         recent_topics = [msg['content'] for msg in history[-3:] if msg['role'] == 'user']
         response = f"I remember our conversation! Recently you asked about: {', '.join(recent_topics)}"
     else:
         response = f"Hello! This is our interaction #{interaction_count + 1}. How can I help you?"
-    
+
     # Store response in history
-    await context.add_to_history(context_id, 'assistant', response)
-    
+    await context.add_to_history(context_id, 'agent', response)
+
     # Update metadata
     await context.set_metadata(context_id, 'last_interaction', datetime.utcnow().isoformat())
-    
+
     return response
 
 def extract_user_message(task):
@@ -468,27 +468,27 @@ def extract_user_message(task):
 
 ```python
 @stateful(storage='valkey')
-async def learning_assistant(task: Task, context, context_id):
+async def learning_agent(task: Task, context, context_id):
     user_message = extract_user_message(task)
-    
+
     # Get existing preferences
     preferences = await context.get_variable(context_id, 'preferences', {})
-    
+
     # Learn from user input
     if 'python' in user_message.lower():
         preferences['interests'] = preferences.get('interests', [])
         if 'programming' not in preferences['interests']:
             preferences['interests'].append('programming')
-    
+
     # Store updated preferences
     await context.set_variable(context_id, 'preferences', preferences)
-    
+
     # Use preferences in response
     if 'programming' in preferences.get('interests', []):
         response = "I see you're interested in programming! Let me help with that."
     else:
         response = "How can I assist you today?"
-    
+
     return response
 ```
 
@@ -498,10 +498,10 @@ async def learning_assistant(task: Task, context, context_id):
 @stateful(storage='valkey')
 async def task_manager(task: Task, context, context_id):
     user_message = extract_user_message(task)
-    
+
     # Get current task state
     current_task = await context.get_variable(context_id, 'current_task', None)
-    
+
     if user_message.lower().startswith('start task'):
         # Initialize new task
         task_data = {
@@ -513,7 +513,7 @@ async def task_manager(task: Task, context, context_id):
         }
         await context.set_variable(context_id, 'current_task', task_data)
         return f"Started new task: {task_data['id']}"
-    
+
     elif current_task and user_message.lower() == 'next step':
         # Advance task
         current_task['current_step'] += 1
@@ -522,10 +522,10 @@ async def task_manager(task: Task, context, context_id):
             response = "Task completed!"
         else:
             response = f"Advanced to step {current_task['current_step'] + 1}"
-        
+
         await context.set_variable(context_id, 'current_task', current_task)
         return response
-    
+
     else:
         return "Say 'start task' to begin or 'next step' to continue."
 ```
@@ -566,14 +566,14 @@ async def test_conversation_memory():
     # Use in-memory storage for testing
     storage = InMemoryStorage()
     context = ConversationContext(storage)
-    
+
     context_id = "test_context"
-    
+
     # Test basic operations
     await context.set_variable(context_id, "test_key", "test_value")
     value = await context.get_variable(context_id, "test_key")
     assert value == "test_value"
-    
+
     # Test conversation history
     await context.add_to_history(context_id, "user", "Hello")
     history = await context.get_history(context_id)
@@ -589,7 +589,7 @@ Use the provided test scripts:
 # Test memory storage
 python test_memory_storage.py
 
-# Test file storage  
+# Test file storage
 python test_file_storage.py
 
 # Test Valkey storage (requires Valkey server)
@@ -640,12 +640,12 @@ state:
 
 ```python
 # ✗ Default handler - no state management
-async def ai_assistant(task: Task):
+async def ai_agent(task: Task):
     return "I don't remember conversations"
 
 # ✓ Stateful handler - persistent memory
 @stateful(storage='valkey', url='valkey://localhost:6379', key_prefix='agentup:state:', ttl=3600)
-async def ai_assistant(task: Task, context, context_id):
+async def ai_agent(task: Task, context, context_id):
     history = await context.get_history(context_id)
     return f"I remember our {len(history)} previous interactions"
 ```
@@ -719,31 +719,31 @@ import yaml
 def validate_state_config():
     with open('agentup.yml', 'r') as f:
         config = yaml.safe_load(f)
-    
+
     state_cfg = config.get('state', {})
     if not state_cfg:
         print("✗ No state configuration found")
         return False
-    
+
     backend = state_cfg.get('backend')
     print(f"✓ Backend: {backend}")
-    
+
     if backend == 'valkey':
         url = state_cfg.get('url')
         prefix = state_cfg.get('key_prefix')
         ttl = state_cfg.get('ttl')
-        
+
         if not url:
             print("✗ Missing Valkey URL")
             return False
         if not prefix:
             print("✗ Missing key prefix")
             return False
-        
+
         print(f"✓ Valkey URL: {url}")
         print(f"✓ Key prefix: {prefix}")
         print(f"✓ TTL: {ttl}")
-    
+
     return True
 
 if __name__ == "__main__":
@@ -761,10 +761,10 @@ async def test_state():
     import yaml
     with open('agentup.yml', 'r') as f:
         config = yaml.safe_load(f)
-    
+
     state_cfg = config['state']
     backend = state_cfg['backend']
-    
+
     if backend == 'valkey':
         context_manager = get_context_manager(
             'valkey',
@@ -774,12 +774,12 @@ async def test_state():
         )
     else:
         context_manager = get_context_manager(backend)
-    
+
     # Test basic operations
     test_id = "config_test"
     await context_manager.set_variable(test_id, "test", "success")
     value = await context_manager.get_variable(test_id, "test")
-    
+
     print(f"State test: {value}")
     await context_manager.clear_context(test_id)
 

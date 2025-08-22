@@ -97,10 +97,10 @@ class LLMManager:
 
             # Send function results back to LLM for interpretation
             if function_results:
-                # Add the assistant's function call to the conversation
+                # Add the agent's function call to the conversation
                 chat_messages.append(
                     ChatMessage(
-                        role="assistant",
+                        role="agent",
                         content=response.content if response.content else "",
                         function_calls=response.function_calls,
                     )
@@ -175,10 +175,10 @@ class LLMManager:
                 prompt_parts.append(f"System: {content}")
             elif role == "user":
                 prompt_parts.append(f"User: {content}")
-            elif role == "assistant":
-                prompt_parts.append(f"Assistant: {content}")
+            elif role == "agent":
+                prompt_parts.append(f"Agent: {content}")
 
-        prompt_parts.append("Assistant:")
+        prompt_parts.append("Agent:")
         return "\n\n".join(prompt_parts)
 
     @staticmethod
@@ -376,7 +376,7 @@ class LLMManager:
 
                         chat_messages.append(
                             ChatMessage(
-                                role="assistant",
+                                role="agent",
                                 content="".join(content_parts),
                                 function_calls=[FunctionCall(name=func_data["name"], arguments=func_data["arguments"])],
                             )

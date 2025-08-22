@@ -177,13 +177,23 @@ def generate_mcp_config(
         # Security configuration
         "security": {
             "enabled": True,
-            "auth": {"api_key": {"header_name": "X-API-Key", "keys": [{"key": "test-api-key", "scopes": ["admin"]}]}},
+            "auth": {
+                "api_key": {
+                    "header_name": "X-API-Key",
+                    "keys": [{"key": "test-api-key", "scopes": ["admin"]}],
+                }
+            },
             "scope_hierarchy": {"admin": ["*"], "weather:admin": ["weather:read", "alerts:read"]},
         },
         # MCP configuration
         "mcp": {"enabled": True, "client_enabled": True, "servers": []},
         # Logging
-        "logging": {"enabled": True, "level": "DEBUG", "format": "text", "console": {"enabled": True, "colors": False}},
+        "logging": {
+            "enabled": True,
+            "level": "DEBUG",
+            "format": "text",
+            "console": {"enabled": True, "colors": False},
+        },
     }
 
     # Configure MCP server based on transport
@@ -244,7 +254,11 @@ def generate_mcp_config(
 
 
 async def send_json_rpc_request(
-    url: str, method: str, params: dict[str, Any], api_key: str = "test-api-key", timeout: float = 30.0
+    url: str,
+    method: str,
+    params: dict[str, Any],
+    api_key: str = "test-api-key",
+    timeout: float = 30.0,
 ) -> dict[str, Any]:
     """Send a JSON-RPC request to AgentUp server.
 
@@ -288,10 +302,10 @@ def validate_mcp_tool_response(response: dict[str, Any], expected_tool: str) -> 
             if expected_tool in call.get("name", ""):
                 return True
 
-    # Check in history for assistant messages
+    # Check in history for agent messages
     if "history" in result:
         for message in result["history"]:
-            if message.get("role") == "assistant":
+            if message.get("role") == "agent":
                 for part in message.get("parts", []):
                     if part.get("kind") == "function_call":
                         if expected_tool in part.get("name", ""):

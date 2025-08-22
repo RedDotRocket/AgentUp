@@ -18,7 +18,11 @@ class TestAgentUpTool:
     def tool(self):
         """Create a test tool."""
         return AgentUpTool(
-            base_url="http://test:8000", api_key="test-key", agent_name="Test Agent", timeout=10, max_retries=2
+            base_url="http://test:8000",
+            api_key="test-key",
+            agent_name="Test Agent",
+            timeout=10,
+            max_retries=2,
         )
 
     @pytest.fixture
@@ -74,7 +78,7 @@ class TestAgentUpTool:
             mock_a2a_class.return_value.__aexit__.return_value = AsyncMock()
 
             # Mock the send_message method properly with async return
-            mock_response = {"message": {"role": "assistant", "parts": [{"kind": "text", "text": "Async response"}]}}
+            mock_response = {"message": {"role": "agent", "parts": [{"kind": "text", "text": "Async response"}]}}
 
             # Create proper mock functions for both methods
             async def mock_send_message(*args, **kwargs):
@@ -285,7 +289,10 @@ class TestStandaloneFunctions:
 
         # Test
         result = await query_agentup_agent(
-            query="Test query", base_url="http://test:8000", api_key="test-key", context_id="test-context"
+            query="Test query",
+            base_url="http://test:8000",
+            api_key="test-key",
+            context_id="test-context",
         )
 
         # Verify
@@ -295,7 +302,12 @@ class TestStandaloneFunctions:
     def test_create_agentup_tools(self):
         """Test factory function for creating multiple tools."""
         agents = [
-            {"name": "Agent 1", "base_url": "http://agent1:8000", "api_key": "key1", "description": "First agent"},
+            {
+                "name": "Agent 1",
+                "base_url": "http://agent1:8000",
+                "api_key": "key1",
+                "description": "First agent",
+            },
             {
                 "name": "Agent 2",
                 "base_url": "http://agent2:8000",

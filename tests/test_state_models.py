@@ -25,7 +25,10 @@ from agent.state.model import (
 class TestStateVariable:
     def test_string_state_variable(self):
         var = StateVariable[str](
-            key="user_name", value="John Doe", type_name=StateVariableType.STRING, description="User's full name"
+            key="user_name",
+            value="John Doe",
+            type_name=StateVariableType.STRING,
+            description="User's full name",
         )
 
         assert var.key == "user_name"
@@ -50,7 +53,10 @@ class TestStateVariable:
     def test_dict_state_variable(self):
         config_data = {"theme": "dark", "notifications": True}
         var = StateVariable[dict](
-            key="user_config", value=config_data, type_name=StateVariableType.DICT, tags=["config", "user"]
+            key="user_config",
+            value=config_data,
+            type_name=StateVariableType.DICT,
+            tags=["config", "user"],
         )
 
         assert var.key == "user_config"
@@ -106,7 +112,11 @@ class TestStateVariable:
         # Not yet expired
         recent_time = datetime.utcnow() - timedelta(seconds=1)
         fresh_var = StateVariable(
-            key="test", value="test", type_name=StateVariableType.STRING, ttl=10, updated_at=recent_time
+            key="test",
+            value="test",
+            type_name=StateVariableType.STRING,
+            ttl=10,
+            updated_at=recent_time,
         )
         assert not fresh_var.is_expired
 
@@ -152,7 +162,7 @@ class TestConversationMessage:
     def test_tool_calls_message(self):
         message = ConversationMessage(
             id="msg_tool",
-            role=ConversationRole.ASSISTANT,
+            role=ConversationRole.AGENT,
             content="I'll help you with that.",
             tool_calls=[
                 {"tool": "calculator", "operation": "add", "args": [2, 3]},
@@ -169,11 +179,11 @@ class TestConversationMessage:
             id="msg_reply",
             role=ConversationRole.USER,
             content="Thanks for the help!",
-            reply_to="msg_assistant",
+            reply_to="msg_agent",
             thread_id="thread_123",
         )
 
-        assert message.reply_to == "msg_assistant"
+        assert message.reply_to == "msg_agent"
         assert message.thread_id == "thread_123"
 
     def test_content_validation(self):
@@ -216,7 +226,7 @@ class TestConversationState:
         state = ConversationState(context_id="test")
 
         message1 = ConversationMessage(id="msg1", role=ConversationRole.USER, content="Hello")
-        message2 = ConversationMessage(id="msg2", role=ConversationRole.ASSISTANT, content="Hi there!")
+        message2 = ConversationMessage(id="msg2", role=ConversationRole.AGENT, content="Hi there!")
 
         state.add_message(message1)
         state.add_message(message2)
@@ -296,7 +306,11 @@ class TestConversationState:
 
         # Create expired variable manually
         expired_var = StateVariable(
-            key="expired", value="old_value", type_name=StateVariableType.STRING, ttl=5, updated_at=past_time
+            key="expired",
+            value="old_value",
+            type_name=StateVariableType.STRING,
+            ttl=5,
+            updated_at=past_time,
         )
         state.variables["expired"] = expired_var
 
@@ -316,9 +330,9 @@ class TestConversationState:
         # Add some messages
         messages = [
             ConversationMessage(id="1", role=ConversationRole.USER, content="Hello", tokens=2),
-            ConversationMessage(id="2", role=ConversationRole.ASSISTANT, content="Hi!", tokens=1),
+            ConversationMessage(id="2", role=ConversationRole.AGENT, content="Hi!", tokens=1),
             ConversationMessage(id="3", role=ConversationRole.USER, content="How are you?", tokens=3),
-            ConversationMessage(id="4", role=ConversationRole.ASSISTANT, content="I'm good!", tokens=2),
+            ConversationMessage(id="4", role=ConversationRole.AGENT, content="I'm good!", tokens=2),
         ]
 
         for msg in messages:
@@ -332,7 +346,7 @@ class TestConversationState:
 
         assert summary.total_messages == 4
         assert summary.user_messages == 2
-        assert summary.assistant_messages == 2
+        assert summary.agent_messages == 2
         assert summary.total_tokens == 8
         assert summary.first_message_at == messages[0].timestamp
         assert summary.last_message_at == messages[-1].timestamp
@@ -548,13 +562,16 @@ class TestModelIntegration:
         # Add conversation messages
         messages = [
             ConversationMessage(id="1", role=ConversationRole.USER, content="Hi, I'm Alice"),
-            ConversationMessage(id="2", role=ConversationRole.ASSISTANT, content="Hello Alice! How can I help?"),
+            ConversationMessage(id="2", role=ConversationRole.AGENT, content="Hello Alice! How can I help?"),
             ConversationMessage(id="3", role=ConversationRole.USER, content="What's the weather like?"),
-            ConversationMessage(id="4", role=ConversationRole.ASSISTANT, content="Let me check that for you."),
+            ConversationMessage(id="4", role=ConversationRole.AGENT, content="Let me check that for you."),
             ConversationMessage(
-                id="5", role=ConversationRole.FUNCTION, content="Sunny, 72°F", function_name="get_weather"
+                id="5",
+                role=ConversationRole.FUNCTION,
+                content="Sunny, 72°F",
+                function_name="get_weather",
             ),
-            ConversationMessage(id="6", role=ConversationRole.ASSISTANT, content="It's sunny and 72°F today!"),
+            ConversationMessage(id="6", role=ConversationRole.AGENT, content="It's sunny and 72°F today!"),
         ]
 
         for msg in messages:
@@ -571,7 +588,7 @@ class TestModelIntegration:
         # Note: Due to history size limit, some USER messages may have been archived
         # The total count should still be correct due to our fix
         assert summary.total_messages == 6  # All 6 messages should be counted (current + archived)
-        assert summary.assistant_messages >= 1
+        assert summary.agent_messages >= 1
 
     def test_state_persistence_simulation(self):
         # Simulate saving/loading state

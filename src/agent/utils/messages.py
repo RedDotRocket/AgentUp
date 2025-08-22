@@ -56,7 +56,11 @@ class MessageProcessor:
                                     break
 
                     # Return dict format for backwards compatibility
-                    return {"role": "user", "content": content, "message_id": getattr(message, "message_id", "unknown")}
+                    return {
+                        "role": "user",
+                        "content": content,
+                        "message_id": getattr(message, "message_id", "unknown"),
+                    }
         return None
 
     @staticmethod
@@ -81,8 +85,8 @@ class MessageProcessor:
         return {"role": "system", "content": content, "timestamp": datetime.utcnow().isoformat()}
 
     @staticmethod
-    def create_assistant_message(content: str) -> dict[str, Any]:
-        return {"role": "assistant", "content": content, "timestamp": datetime.utcnow().isoformat()}
+    def create_agent_message(content: str) -> dict[str, Any]:
+        return {"role": "agent", "content": content, "timestamp": datetime.utcnow().isoformat()}
 
 
 class ConversationContext:

@@ -18,7 +18,7 @@ from ..utils.validation import BaseValidator, CompositeValidator, ValidationResu
 
 class MessageRole(str, Enum):
     USER = "user"
-    ASSISTANT = "assistant"
+    AGENT = "agent"
     SYSTEM = "system"
     FUNCTION = "function"
     TOOL = "tool"
@@ -125,8 +125,8 @@ class ChatMessage(BaseModel):
         if self.role == MessageRole.TOOL and not self.tool_call_id:
             raise ValueError("Tool messages require tool_call_id")
 
-        # Assistant messages with tool calls
-        if self.role == MessageRole.ASSISTANT and self.tool_calls:
+        # Agent messages with tool calls
+        if self.role == MessageRole.AGENT and self.tool_calls:
             for tool_call in self.tool_calls:
                 if not tool_call.id:
                     raise ValueError("Tool calls must have valid IDs")
@@ -303,7 +303,7 @@ class ChatMessageValidator(BaseValidator[ChatMessage]):
 
         # Check for potential prompt injection patterns
         if isinstance(model.content, str):
-            injection_patterns = ["ignore previous", "system:", "assistant:", "jailbreak"]
+            injection_patterns = ["ignore previous", "system:", "agent:", "jailbreak"]
             content_lower = model.content.lower()
             for pattern in injection_patterns:
                 if pattern in content_lower:

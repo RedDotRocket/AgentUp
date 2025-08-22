@@ -53,7 +53,7 @@ async def handle_echo(task: Task) -> str:
    ```python
    # Get all available function schemas
    function_schemas = self.function_registry.get_function_schemas()
-   
+
    # LLM decides which functions to call
    response = await LLMManager.llm_with_functions(llm, messages, function_schemas, function_executor)
    ```
@@ -156,13 +156,13 @@ mcp:
 
 skills:
   - plugin_id: analyze_image  # Built-in skill
-  - plugin_id: ai_assistant   # AI-powered skill that can call tools
+  - plugin_id: ai_agent   # AI-powered skill that can call tools
 ```
 
 ### 2. Available Tools to LLM
-When the AI assistant processes a request, it sees these functions:
+When the AI agent processes a request, it sees these functions:
 - `analyze_image` - From AgentUp's built-in multi-modal handler
-- `mcp_read_file` - From the filesystem MCP server  
+- `mcp_read_file` - From the filesystem MCP server
 - `mcp_write_file` - From the filesystem MCP server
 - Any plugin skills that are registered
 
@@ -171,7 +171,7 @@ When the AI assistant processes a request, it sees these functions:
 User: "Please analyze the image in /tmp/chart.png and save a summary to /tmp/analysis.txt"
 
 LLM thinks: I need to read the file, analyze it, and write results
-1. Calls: mcp_read_file(path="/tmp/chart.png") 
+1. Calls: mcp_read_file(path="/tmp/chart.png")
 2. Calls: analyze_image(image_data=<binary data>)
 3. Calls: mcp_write_file(path="/tmp/analysis.txt", content="Chart shows...")
 ```
@@ -181,7 +181,7 @@ LLM thinks: I need to read the file, analyze it, and write results
 # Step 1: MCP tool call
 await mcp_client.call_tool("read_file", {"path": "/tmp/chart.png"})
 
-# Step 2: Local skill call  
+# Step 2: Local skill call
 analyze_handler = get_handler("analyze_image")
 result = await analyze_handler(task_with_image_data)
 
@@ -200,8 +200,8 @@ skills:
     description: Get current weather for a location
     tags: [weather, external_api]
     # This skill can be called by LLMs when AI routing is enabled
-    
-  - plugin_id: file_processor  
+
+  - plugin_id: file_processor
     name: File Processor
     description: Process uploaded files
     tags: [file, processing, multimodal]
@@ -219,7 +219,7 @@ routing:
 skills:
   - plugin_id: data_analysis
     routing_mode: ai  # Available as LLM tool
-    
+
   - plugin_id: simple_greeting
     routing_mode: direct  # Direct keyword matching only
     keywords: [hello, hi]
@@ -240,12 +240,12 @@ skills:
 ```
 User uploads image + asks for analysis
 → LLM calls analyze_image(image_data)
-→ LLM calls mcp_search_web(query="similar charts")  
+→ LLM calls mcp_search_web(query="similar charts")
 → LLM calls summarize_findings(data=[...])
 → Returns comprehensive analysis
 ```
 
-### 2. Development Assistant
+### 2. Development Agent
 ```
 User: "Check the status of my GitHub repo and update the README"
 → LLM calls mcp_github_get_repo_status()
@@ -257,7 +257,7 @@ User: "Check the status of my GitHub repo and update the README"
 ### 3. Multi-Agent Workflow
 ```
 Agent A exposes: code_analysis, security_scan
-Agent B exposes: documentation_generation  
+Agent B exposes: documentation_generation
 Agent C (orchestrator) can call tools from both A and B via MCP
 ```
 
@@ -265,7 +265,7 @@ Agent C (orchestrator) can call tools from both A and B via MCP
 
 AgentUp's skills system creates a seamless bridge between:
 - **A2A protocol messages** (how agents communicate)
-- **LLM function calling** (how AI systems invoke capabilities)  
+- **LLM function calling** (how AI systems invoke capabilities)
 - **MCP tools** (how agents share capabilities)
 
 This architecture enables:
