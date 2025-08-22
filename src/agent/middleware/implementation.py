@@ -174,7 +174,7 @@ class ValkeyCache(CacheBackend):
 class RateLimiter:
     def __init__(self, config: RateLimitConfig | None = None):
         self.config = config or RateLimitConfig(
-            enabled=False,
+            enabled=True,  # Default enabled for direct instantiation
             requests_per_minute=60,  # 1 per second average
             burst_limit=120,  # Allow 2-minute burst capacity
             window_size_seconds=10,  # 10-second detection window
