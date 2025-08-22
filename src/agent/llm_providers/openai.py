@@ -89,6 +89,13 @@ class OpenAIProvider(BaseLLMService):
 
     async def health_check(self) -> dict[str, Any]:
         try:
+            if self.client is None:
+                return {
+                    "status": "unhealthy",
+                    "error": "Client not initialized",
+                    "model": self.model,
+                }
+
             response = await self.client.get("/models")
             return {
                 "status": "healthy" if response.status_code == 200 else "unhealthy",
@@ -130,6 +137,9 @@ class OpenAIProvider(BaseLLMService):
             payload["response_format"] = {"type": "json_object"}
 
         try:
+            if self.client is None:
+                raise LLMProviderConfigError(f"OpenAI service '{self.name}' client not initialized")
+
             response = await self.client.post("/chat/completions", json=payload)
 
             if response.status_code != 200:
@@ -168,6 +178,9 @@ class OpenAIProvider(BaseLLMService):
         }
 
         try:
+            if self.client is None:
+                raise LLMProviderConfigError(f"OpenAI service '{self.name}' client not initialized")
+
             response = await self.client.post("/chat/completions", json=payload)
 
             if response.status_code != 200:
@@ -238,6 +251,9 @@ class OpenAIProvider(BaseLLMService):
         payload = {"model": embed_model, "input": text, "encoding_format": "float"}
 
         try:
+            if self.client is None:
+                raise LLMProviderConfigError(f"OpenAI service '{self.name}' client not initialized")
+
             response = await self.client.post("/embeddings", json=payload)
 
             if response.status_code != 200:
@@ -256,10 +272,10 @@ class OpenAIProvider(BaseLLMService):
         # Handle structured content for vision models
         if isinstance(message.content, list):
             # Multi-modal content (text + images)
-            msg_dict = {"role": message.role, "content": message.content}
+            msg_dict: dict[str, Any] = {"role": message.role, "content": message.content}
         else:
             # Simple text content
-            msg_dict = {"role": message.role, "content": message.content}
+            msg_dict: dict[str, Any] = {"role": message.role, "content": message.content}
 
         if message.function_call:
             msg_dict["function_call"] = {
@@ -285,6 +301,9 @@ class OpenAIProvider(BaseLLMService):
         }
 
         try:
+            if self.client is None:
+                raise LLMProviderConfigError(f"OpenAI service '{self.name}' client not initialized")
+
             async with self.client.stream("POST", "/chat/completions", json=payload) as response:
                 if response.status_code != 200:
                     error_detail = await response.aread()
@@ -326,6 +345,9 @@ class OpenAIProvider(BaseLLMService):
         }
 
         try:
+            if self.client is None:
+                raise LLMProviderConfigError(f"OpenAI service '{self.name}' client not initialized")
+
             async with self.client.stream("POST", "/chat/completions", json=payload) as response:
                 if response.status_code != 200:
                     error_detail = await response.aread()
@@ -369,12 +391,18 @@ class OpenAIProvider(BaseLLMService):
                                         )
                                         yield {
                                             "type": "function_call",
-                                            "data": {"name": function_call_data["name"], "arguments": args},
+                                            "data": {
+                                                "name": function_call_data["name"],
+                                                "arguments": args,
+                                            },
                                         }
                                     except json.JSONDecodeError:
                                         logger.warning(f"Invalid function arguments: {function_call_data['arguments']}")
 
-                                yield {"type": "done", "data": {"finish_reason": choice["finish_reason"]}}
+                                yield {
+                                    "type": "done",
+                                    "data": {"finish_reason": choice["finish_reason"]},
+                                }
                                 break
 
                         except json.JSONDecodeError:
