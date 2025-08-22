@@ -381,7 +381,7 @@ class LLMConfigValidator(BaseValidator[LLMConfig]):
 
 # Composite validator for LLM models
 def create_llm_validator() -> CompositeValidator[LLMConfig]:
-    validators = [
+    validators: list[BaseValidator[LLMConfig]] = [
         LLMConfigValidator(LLMConfig),
     ]
     return CompositeValidator(LLMConfig, validators)

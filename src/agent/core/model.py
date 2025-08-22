@@ -353,7 +353,7 @@ class ExecutionResultValidator(BaseValidator[ExecutionResult]):
 
 # Composite validator for core models
 def create_core_validator() -> CompositeValidator[FunctionSignature]:
-    validators = [
+    validators: list[BaseValidator[FunctionSignature]] = [
         FunctionSignatureValidator(FunctionSignature),
     ]
     return CompositeValidator(FunctionSignature, validators)

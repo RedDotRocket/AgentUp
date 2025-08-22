@@ -18,7 +18,7 @@ class NetworkRateLimitMiddleware(BaseHTTPMiddleware):
     token bucket algorithm.
     """
 
-    def __init__(self, app, endpoint_limits: dict[str, dict[str, Any]] = None):
+    def __init__(self, app, endpoint_limits: dict[str, dict[str, Any]] | None = None):
         """
         Initialize rate limiting middleware.
 

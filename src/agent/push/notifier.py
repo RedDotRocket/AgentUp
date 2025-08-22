@@ -1,5 +1,6 @@
 import json
 import uuid
+from typing import Protocol
 from urllib.parse import urlparse  # noqa: E402
 
 import httpx
@@ -8,8 +9,20 @@ from a2a.types import PushNotificationAuthenticationInfo, PushNotificationConfig
 
 logger = structlog.get_logger(__name__)
 
+# Import the protocol interfaces
+try:
+    from a2a.server.tasks.push_notification_config_store import PushNotificationConfigStore
+    from a2a.server.tasks.push_notification_sender import PushNotificationSender
+except ImportError:
+    # Fallback if protocols aren't available
+    class PushNotificationConfigStore(Protocol):
+        async def set_info(self, task_id: str, push_config: PushNotificationConfig) -> TaskPushNotificationConfig: ...
 
-class EnhancedPushNotifier:
+    class PushNotificationSender(Protocol):
+        async def send_notification(self, task: Task, config_id: str) -> bool: ...
+
+
+class EnhancedPushNotifier(PushNotificationConfigStore, PushNotificationSender):
     """
     Enhanced push notifier supporting multiple configurations per task.
 
