@@ -8,8 +8,15 @@ from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.server.tasks import InMemoryTaskStore
 from fastapi import FastAPI
 
+from typing import TYPE_CHECKING, Union, cast, Any
+
+if TYPE_CHECKING:
+    from a2a.server.tasks.push_notification_config_store import PushNotificationConfigStore
+    from a2a.server.tasks.push_notification_sender import PushNotificationSender
+
 from agent.a2a.agentcard import create_agent_card
 from agent.config.constants import DEFAULT_SERVER_HOST, DEFAULT_SERVER_PORT
+from agent.config.model import LogFormat
 from agent.core.executor import AgentUpExecutor
 from agent.push.notifier import EnhancedPushNotifier
 from agent.services import AgentBootstrapper, ConfigurationManager
@@ -61,9 +68,18 @@ def _setup_request_handler(app: FastAPI) -> None:
 
     # Use push service if available
     push_service = services.get("pushnotificationservice")
-    if push_service and push_service.push_notifier:
-        push_notifier = push_service.push_notifier
-        logger.debug("Using service-provided push notifier")
+    push_notifier: EnhancedPushNotifier
+    
+    if push_service and hasattr(push_service, "push_notifier") and push_service.push_notifier:
+        # Ensure the service push notifier is compatible
+        service_notifier = push_service.push_notifier
+        if hasattr(service_notifier, "set_info") and hasattr(service_notifier, "send_notification"):
+            # Type: ignore because we've verified it has the required methods
+            push_notifier = service_notifier  # type: ignore[assignment]
+            logger.debug("Using service-provided push notifier")
+        else:
+            push_notifier = EnhancedPushNotifier(client=client)
+            logger.debug("Service push notifier not compatible, using default")
     else:
         push_notifier = EnhancedPushNotifier(client=client)
         logger.debug("Using default push notifier")
@@ -72,11 +88,19 @@ def _setup_request_handler(app: FastAPI) -> None:
     agent_card = app.state.agent_card
 
     # Create request handler
+    # Cast to protocol types since EnhancedPushNotifier implements both interfaces
+    if TYPE_CHECKING:
+        config_store = cast("PushNotificationConfigStore", push_notifier)
+        sender = cast("PushNotificationSender", push_notifier)
+    else:
+        config_store = push_notifier
+        sender = push_notifier
+    
     request_handler = DefaultRequestHandler(
         agent_executor=AgentUpExecutor(agent=agent_card),
         task_store=InMemoryTaskStore(),
-        push_config_store=push_notifier,
-        push_sender=push_notifier,
+        push_config_store=config_store,
+        push_sender=sender,
     )
 
     # Set global request handler
@@ -154,8 +178,15 @@ def _configure_middleware(app: FastAPI) -> None:
             try:
                 logging_cfg = LoggingConfig(**logging_config)
             except Exception:
-                logging_cfg = LoggingConfig()
-
+                # Fallback with explicit defaults for type checker
+                logging_cfg = LoggingConfig(
+                    enabled=True,
+                    level="INFO",
+                    format=LogFormat.TEXT,
+                    correlation_id=True,
+                    request_logging=True,
+                    structured_data=False
+                )
             StructLogMiddleware = create_structlog_middleware_with_config(logging_cfg)
             app.add_middleware(StructLogMiddleware)
 
