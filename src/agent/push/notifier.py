@@ -19,7 +19,7 @@ except ImportError:
         async def set_info(self, task_id: str, push_config: PushNotificationConfig) -> TaskPushNotificationConfig: ...
 
     class PushNotificationSender(Protocol):
-        async def send_notification(self, task: Task, config_id: str) -> bool: ...
+        async def send_notification(self, task: Task, config_id: str | None = None) -> bool: ...
 
 
 class EnhancedPushNotifier(PushNotificationConfigStore, PushNotificationSender):
@@ -145,26 +145,47 @@ class EnhancedPushNotifier(PushNotificationConfigStore, PushNotificationSender):
 
         return False
 
-    async def send_notification(self, task: Task) -> None:
+    async def send_notification(self, task: Task, config_id: str | None = None) -> bool:
         """
-        Send push notifications to all registered webhooks for the task.
+        Send push notifications to registered webhooks for the task.
 
         Args:
             task: Task object to send in notification
+            config_id: Optional specific config ID to send to. If None, sends to all configs.
+
+        Returns:
+            bool: True if at least one notification was sent successfully, False otherwise
         """
         task_id = task.id
 
         if task_id not in self._configs:
             logger.debug(f"No push notification configs for task {task_id}")
-            return
+            return False
 
-        # Send to all registered configurations for this task
-        for config_id, config in self._configs[task_id].items():
-            try:
-                await self._send_single_notification(task, config)
-                logger.info(f"Sent push notification for task {task_id} to config {config_id}")
-            except Exception as e:
-                logger.error(f"Failed to send push notification for task {task_id} to config {config_id}: {e}")
+        success_count = 0
+
+        if config_id:
+            # Send to specific configuration
+            if config_id in self._configs[task_id]:
+                config = self._configs[task_id][config_id]
+                try:
+                    await self._send_single_notification(task, config)
+                    success_count += 1
+                except Exception as e:
+                    logger.error(f"Failed to send notification for config {config_id}: {e}")
+        else:
+            # Send to all registered configurations for this task
+            for current_config_id, config in self._configs[task_id].items():
+                try:
+                    await self._send_single_notification(task, config)
+                    success_count += 1
+                    logger.info(f"Sent push notification for task {task_id} to config {current_config_id}")
+                except Exception as e:
+                    logger.error(
+                        f"Failed to send push notification for task {task_id} to config {current_config_id}: {e}"
+                    )
+
+        return success_count > 0
 
     async def _send_single_notification(self, task: Task, config: TaskPushNotificationConfig) -> None:
         """
