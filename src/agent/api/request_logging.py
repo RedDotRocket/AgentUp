@@ -72,7 +72,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                         extra={
                             "method": request.method,
                             "path": request.url.path,
-                            "query_params": str(request.query_params) if request.query_params else None,
+                            "query_params": dict(request.query_params) if request.query_params else None,
                             "client_host": request.client.host if request.client else None,
                             "user_agent": request.headers.get("user-agent"),
                             "authenticated_user": auth_user,
