@@ -69,14 +69,16 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
                     logger.info(
                         "Request started",
-                        method=request.method,
-                        path=request.url.path,
-                        query_params=str(request.query_params) if request.query_params else None,
-                        client_host=request.client.host if request.client else None,
-                        user_agent=request.headers.get("user-agent"),
-                        authenticated_user=auth_user,
-                        auth_type=auth_type,
-                        forwarded_for=request.headers.get("X-Forwarded-For"),
+                        extra={
+                            "method": request.method,
+                            "path": request.url.path,
+                            "query_params": str(request.query_params) if request.query_params else None,
+                            "client_host": request.client.host if request.client else None,
+                            "user_agent": request.headers.get("user-agent"),
+                            "authenticated_user": auth_user,
+                            "auth_type": auth_type,
+                            "forwarded_for": request.headers.get("X-Forwarded-For"),
+                        },
                     )
                 except Exception:
                     # Fallback logging
@@ -94,8 +96,10 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                     try:
                         logger.info(
                             "Request completed",
-                            status_code=response.status_code,
-                            duration=round(duration, 3),
+                            extra={
+                                "status_code": response.status_code,
+                                "duration": round(duration, 3),
+                            },
                         )
                     except Exception:
                         # Fallback logging
@@ -114,9 +118,11 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 try:
                     logger.error(
                         "Request failed",
-                        error=str(e),
-                        error_type=type(e).__name__,
-                        duration=round(duration, 3),
+                        extra={
+                            "error": str(e),
+                            "error_type": type(e).__name__,
+                            "duration": round(duration, 3),
+                        },
                     )
                 except Exception:
                     # Fallback logging
