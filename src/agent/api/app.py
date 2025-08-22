@@ -1,5 +1,6 @@
 import os
 from contextlib import asynccontextmanager
+from typing import TYPE_CHECKING, cast
 
 import httpx
 import structlog
@@ -7,8 +8,6 @@ import uvicorn
 from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.server.tasks import InMemoryTaskStore
 from fastapi import FastAPI
-
-from typing import TYPE_CHECKING, Union, cast, Any
 
 if TYPE_CHECKING:
     from a2a.server.tasks.push_notification_config_store import PushNotificationConfigStore
@@ -69,7 +68,7 @@ def _setup_request_handler(app: FastAPI) -> None:
     # Use push service if available
     push_service = services.get("pushnotificationservice")
     push_notifier: EnhancedPushNotifier
-    
+
     if push_service and hasattr(push_service, "push_notifier") and push_service.push_notifier:
         # Ensure the service push notifier is compatible
         service_notifier = push_service.push_notifier
@@ -95,7 +94,7 @@ def _setup_request_handler(app: FastAPI) -> None:
     else:
         config_store = push_notifier
         sender = push_notifier
-    
+
     request_handler = DefaultRequestHandler(
         agent_executor=AgentUpExecutor(agent=agent_card),
         task_store=InMemoryTaskStore(),
@@ -185,7 +184,7 @@ def _configure_middleware(app: FastAPI) -> None:
                     format=LogFormat.TEXT,
                     correlation_id=True,
                     request_logging=True,
-                    structured_data=False
+                    structured_data=False,
                 )
             StructLogMiddleware = create_structlog_middleware_with_config(logging_cfg)
             app.add_middleware(StructLogMiddleware)
