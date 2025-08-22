@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 
 import structlog
 from a2a.types import Task
@@ -77,6 +77,7 @@ class FunctionRegistry:
         Returns:
             list[dict[str, Any]]: List of tool schemas filtered by user permissions
         """
+        scope_service = None
         try:
             from agent.security.scope_service import get_scope_service
 
@@ -135,11 +136,11 @@ class FunctionRegistry:
         except Exception as e:
             logger.error(f"Failed to filter tools by user scopes: {e}")
             # Clean up cache on error
-            try:
-                scope_service.clear_request_cache()
-            except Exception:
-                # Security fallback: return empty list rather than all tools
-                pass  # nosec
+            if scope_service:
+                try:
+                    scope_service.clear_request_cache()
+                except Exception:
+                    pass  # nosec
             return []
 
     def _get_plugin_tools(self, scope_service, user_scopes: set[str]) -> list[dict[str, Any]]:
@@ -544,7 +545,7 @@ class FunctionDispatcher:
     def _extract_user_message(self, task: Task) -> str:
         # Use existing MessageProcessor for A2A compliance
         messages = MessageProcessor.extract_messages(task)
-        latest_message = MessageProcessor.get_latest_user_message(messages)
+        latest_message = MessageProcessor.get_latest_user_message(cast(Any, messages))
 
         if latest_message:
             return (
@@ -608,7 +609,7 @@ def ai_function(description: str, parameters: dict[str, Any] | None = None):
 
     def decorator(func: Callable):
         # Create function schema
-        schema = {
+        schema: dict[str, Any] = {
             "name": func.__name__.replace("handle_", ""),
             "description": description,
         }
@@ -621,8 +622,8 @@ def ai_function(description: str, parameters: dict[str, Any] | None = None):
             }
 
         # Store schema on function for later registration
-        func._ai_function_schema = schema
-        func._is_ai_function = True
+        func._ai_function_schema = schema  # type: ignore[attr-defined]
+        func._is_ai_function = True  # type: ignore[attr-defined]
 
         return func
 
@@ -677,7 +678,7 @@ def register_ai_functions_from_capabilities():
 
             # Get the capabilities package
             capabilities_pkg = sys.modules.get("src.agent.capabilities") or sys.modules.get(".capabilities", None)
-            if capabilities_pkg:
+            if capabilities_pkg and capabilities_pkg.__file__:
                 capabilities_dir = Path(capabilities_pkg.__file__).parent
 
                 # Find all potential capability modules
@@ -741,7 +742,7 @@ def register_ai_functions_from_capabilities():
                     )
 
                 if has_ai_flag and has_schema:
-                    schema = obj._ai_function_schema
+                    schema = obj._ai_function_schema  # type: ignore[attr-defined]
                     registry.register_function(schema["name"], obj, schema)
                     logger.debug(f"Auto-registered AI function: {schema['name']} from {name}")
                     registered_count += 1
@@ -769,7 +770,7 @@ def register_ai_functions_from_capabilities():
                     # Get enabled plugins from intent config
                     enabled_plugins = {}
                     for package_name, plugin_config in resolver.intent_config.plugins.items():
-                        if plugin_config.enabled:
+                        if hasattr(plugin_config, "enabled") and plugin_config.enabled:
                             enabled_plugins[package_name] = plugin_config
                     configured_plugins = set(enabled_plugins.keys())
                 else:
