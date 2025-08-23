@@ -111,9 +111,7 @@ Always be helpful, accurate, and maintain a friendly tone.""",
 
             state_config = _load_state_config()
             if not state_config.get("enabled", False):
-                logger.debug(
-                    f"State management disabled - not storing history for context {context_id}"
-                )
+                logger.debug(f"State management disabled - not storing history for context {context_id}")
                 return
 
             backend = state_config.get("backend", "memory")
@@ -123,14 +121,10 @@ Always be helpful, accurate, and maintain a friendly tone.""",
             context = get_context_manager(backend, **backend_config)
 
             # Store user message
-            await context.add_to_history(
-                context_id, "user", user_input, {"timestamp": datetime.utcnow().isoformat()}
-            )
+            await context.add_to_history(context_id, "user", user_input, {"timestamp": datetime.utcnow().isoformat()})
 
             # Store agent response
-            await context.add_to_history(
-                context_id, "agent", response, {"timestamp": datetime.utcnow().isoformat()}
-            )
+            await context.add_to_history(context_id, "agent", response, {"timestamp": datetime.utcnow().isoformat()})
 
             logger.debug(f"Updated conversation history for context {context_id}")
 

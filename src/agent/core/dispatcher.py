@@ -32,17 +32,13 @@ class FunctionRegistry:
         if name in self._functions:
             # Check if this is the same function being registered again
             existing_schema = self._functions[name]
-            if existing_schema.get("description") == schema.get(
-                "description"
-            ) and existing_schema.get("parameters") == schema.get("parameters"):
-                logger.debug(
-                    f"Function '{name}' already registered with same schema - skipping duplicate"
-                )
+            if existing_schema.get("description") == schema.get("description") and existing_schema.get(
+                "parameters"
+            ) == schema.get("parameters"):
+                logger.debug(f"Function '{name}' already registered with same schema - skipping duplicate")
                 return
             else:
-                logger.warning(
-                    f"Function '{name}' being re-registered with different schema - overriding"
-                )
+                logger.warning(f"Function '{name}' being re-registered with different schema - overriding")
 
         self._functions[name] = schema
         self._handlers[name] = handler
@@ -213,9 +209,7 @@ class FunctionRegistry:
                         # Log function access denied for security audit
                         ai_functions = plugin_adapter.get_ai_functions(capability_id)
                         for ai_function in ai_functions:
-                            audit_logger.log_function_access_denied(
-                                user_id, ai_function.name, len(required_scopes)
-                            )
+                            audit_logger.log_function_access_denied(user_id, ai_function.name, len(required_scopes))
             except Exception as e:
                 logger.warning(f"Failed to get capabilities for plugin '{plugin_name}': {e}")
                 continue
@@ -240,9 +234,7 @@ class FunctionRegistry:
         for tool_name, tool_schema in self._mcp_tools.items():
             # Get the original name (with colon) to check scopes
             original_name = tool_schema.get("original_name", tool_name)
-            required_scopes = tool_scopes.get(
-                original_name, ["mcp:access"]
-            )  # Default to mcp:access
+            required_scopes = tool_scopes.get(original_name, ["mcp:access"])  # Default to mcp:access
 
             # Use centralized scope validation
             result = scope_service.validate_multiple_scopes(user_scopes, required_scopes)
@@ -262,9 +254,7 @@ class FunctionRegistry:
 
     async def register_mcp_client(self, mcp_client) -> None:
         # CONDITIONAL_MCP_IMPORTS
-        logger.debug(
-            f"Registering MCP client, initialized: {mcp_client.is_initialized if mcp_client else False}"
-        )
+        logger.debug(f"Registering MCP client, initialized: {mcp_client.is_initialized if mcp_client else False}")
         self._mcp_client = mcp_client
 
         if mcp_client and mcp_client.is_initialized:
@@ -286,13 +276,9 @@ class FunctionRegistry:
                     cleaned_schema["original_name"] = original_name  # Keep for MCP calls
 
                     self._mcp_tools[function_name] = cleaned_schema
-                    logger.debug(
-                        f"Registered MCP tool in function registry: {original_name} -> {function_name}"
-                    )
+                    logger.debug(f"Registered MCP tool in function registry: {original_name} -> {function_name}")
                 else:
-                    logger.debug(
-                        f"Skipping MCP tool '{function_name}' - already registered with scope enforcement"
-                    )
+                    logger.debug(f"Skipping MCP tool '{function_name}' - already registered with scope enforcement")
         else:
             logger.warning(
                 f"Cannot register MCP client - client: {mcp_client is not None}, initialized: {mcp_client.is_initialized if mcp_client else False}"
@@ -363,9 +349,7 @@ class FunctionDispatcher:
                 user_input = ""
                 for message in reversed(task.history):
                     if message.role == "user" and message.parts:
-                        user_input = self.conversation_manager.extract_text_from_parts(
-                            message.parts
-                        )
+                        user_input = self.conversation_manager.extract_text_from_parts(message.parts)
                         break
                 return self._fallback_response(user_input)
 
@@ -391,13 +375,9 @@ class FunctionDispatcher:
                     logger.debug(f"User ID: {getattr(auth_result, 'user_id', 'unknown')}")
                 if auth_result:
                     # User is authenticated - use scope-filtered tools (even if scopes are empty)
-                    function_schemas = self.function_registry.get_available_tools_for_ai(
-                        auth_result.scopes
-                    )
+                    function_schemas = self.function_registry.get_available_tools_for_ai(auth_result.scopes)
                     if auth_result.scopes:
-                        logger.debug(
-                            f"Using scope-filtered tools for user with {len(auth_result.scopes)} scopes"
-                        )
+                        logger.debug(f"Using scope-filtered tools for user with {len(auth_result.scopes)} scopes")
                     else:
                         logger.warning(
                             f"User '{getattr(auth_result, 'user_id', 'unknown')}' has no scopes - no tools available"
@@ -411,9 +391,7 @@ class FunctionDispatcher:
                 function_schemas = []
             logger.info(f"Available function schemas for AI: {len(function_schemas)} functions")
             if len(function_schemas) == 0:
-                logger.warning(
-                    "No function schemas available for AI - this will prevent tool calling"
-                )
+                logger.warning("No function schemas available for AI - this will prevent tool calling")
                 logger.warning(
                     "Possible causes: 1) No user scopes, 2) All tools filtered out by scopes, 3) No tools configured"
                 )
@@ -430,9 +408,7 @@ class FunctionDispatcher:
             try:
                 ai_context, ai_context_id = await self._get_ai_processing_state_context(task)
                 if ai_context and ai_context_id:
-                    logger.debug(
-                        f"AI processing: Applied state management for context {ai_context_id}"
-                    )
+                    logger.debug(f"AI processing: Applied state management for context {ai_context_id}")
                 else:
                     logger.warning(
                         f"AI processing: No state context available - context={ai_context is not None}, context_id={ai_context_id}"
@@ -443,14 +419,10 @@ class FunctionDispatcher:
             # LLM processing with function calling
             if function_schemas:
                 try:
-                    response = await LLMManager.llm_with_functions(
-                        llm, messages, function_schemas, function_executor
-                    )
+                    response = await LLMManager.llm_with_functions(llm, messages, function_schemas, function_executor)
                 except Exception as e:
                     logger.error(f"Error during LLM function calling: {e}", exc_info=True)
-                    return (
-                        f"I encountered an error processing your request with functions: {str(e)}"
-                    )
+                    return f"I encountered an error processing your request with functions: {str(e)}"
             else:
                 # No functions available, direct LLM response
                 try:
@@ -470,17 +442,11 @@ class FunctionDispatcher:
                     user_input = ""
                     for message in reversed(task.history):
                         if message.role == "user" and message.parts:
-                            user_input = self.conversation_manager.extract_text_from_parts(
-                                message.parts
-                            )
+                            user_input = self.conversation_manager.extract_text_from_parts(message.parts)
                             break
 
-                    await self._store_ai_processing_state(
-                        ai_context, ai_context_id, user_input, response
-                    )
-                    logger.info(
-                        f"AI processing: Stored conversation state for context {ai_context_id}"
-                    )
+                    await self._store_ai_processing_state(ai_context, ai_context_id, user_input, response)
+                    logger.info(f"AI processing: Stored conversation state for context {ai_context_id}")
                 except Exception as e:
                     logger.error(f"AI processing: Failed to store state: {e}")
             else:
@@ -492,9 +458,7 @@ class FunctionDispatcher:
             logger.error(f"Function dispatcher error: {e}", exc_info=True)
             return f"I encountered an error processing your request: {str(e)}"
 
-    async def _get_ai_processing_state_context(
-        self, task: Task
-    ) -> tuple[Any, str] | tuple[None, None]:
+    async def _get_ai_processing_state_context(self, task: Task) -> tuple[Any, str] | tuple[None, None]:
         try:
             from agent.capabilities.manager import _load_state_config
             from agent.state.context import get_context_manager
@@ -515,9 +479,7 @@ class FunctionDispatcher:
             context = get_context_manager(backend, **backend_config)
 
             # Extract context ID from task
-            context_id = (
-                getattr(task, "context_id", None) or getattr(task, "context_id", None) or task.id
-            )
+            context_id = getattr(task, "context_id", None) or getattr(task, "context_id", None) or task.id
             logger.info(
                 f"AI processing: Using context_id={context_id} (context_id={getattr(task, 'context_id', 'missing')}, task.id={task.id})"
             )
@@ -528,9 +490,7 @@ class FunctionDispatcher:
             logger.error(f"Failed to get AI processing state context: {e}")
             return None, None
 
-    async def _store_ai_processing_state(
-        self, context, context_id: str, user_input: str, response: str
-    ):
+    async def _store_ai_processing_state(self, context, context_id: str, user_input: str, response: str):
         try:
             # Get conversation count
             conversation_count = await context.get_variable(context_id, "ai_conversation_count", 0)
@@ -551,9 +511,7 @@ class FunctionDispatcher:
                 {"processing": "ai_direct", "count": conversation_count},
             )
 
-            logger.info(
-                f"AI processing: Stored state - Context: {context_id}, Count: {conversation_count}"
-            )
+            logger.info(f"AI processing: Stored state - Context: {context_id}, Count: {conversation_count}")
 
         except Exception as e:
             logger.error(f"Failed to store AI processing state: {e}")
@@ -655,9 +613,7 @@ def register_ai_functions_from_capabilities():
             from pathlib import Path
 
             # Get the capabilities package
-            capabilities_pkg = sys.modules.get("src.agent.capabilities") or sys.modules.get(
-                ".capabilities", None
-            )
+            capabilities_pkg = sys.modules.get("src.agent.capabilities") or sys.modules.get(".capabilities", None)
             if capabilities_pkg and capabilities_pkg.__file__:
                 capabilities_dir = Path(capabilities_pkg.__file__).parent
 
@@ -674,9 +630,7 @@ def register_ai_functions_from_capabilities():
                         executor_module = getattr(capabilities_pkg, module_attr_name)
                         if executor_module not in executor_modules:
                             executor_modules.append(executor_module)
-                            logger.debug(
-                                f"Added dynamically discovered capability module: {module_name}"
-                            )
+                            logger.debug(f"Added dynamically discovered capability module: {module_name}")
                     else:
                         # Try to import it directly
                         try:
@@ -685,9 +639,7 @@ def register_ai_functions_from_capabilities():
                             )
                             if executor_module not in executor_modules:
                                 executor_modules.append(executor_module)
-                                logger.debug(
-                                    f"Dynamically imported capability module: {module_name}"
-                                )
+                                logger.debug(f"Dynamically imported capability module: {module_name}")
                         except ImportError as e:
                             logger.debug(f"Could not dynamically import {module_name}: {e}")
                         except Exception as e:
@@ -732,9 +684,7 @@ def register_ai_functions_from_capabilities():
                     registered_count += 1
                     ai_functions_in_module += 1
 
-        logger.debug(
-            f"Module {executor_module.__name__}: found {ai_functions_in_module} AI functions"
-        )
+        logger.debug(f"Module {executor_module.__name__}: found {ai_functions_in_module} AI functions")
 
     # Also register AI functions from plugins
     try:

@@ -54,9 +54,7 @@ class StateVariable(BaseModel, Generic[T]):
         import re
 
         if not re.match(r"^[a-zA-Z0-9._-]+$", v):
-            raise ValueError(
-                "Key can only contain alphanumeric characters, dots, hyphens, and underscores"
-            )
+            raise ValueError("Key can only contain alphanumeric characters, dots, hyphens, and underscores")
         return v
 
     @field_validator("ttl")
@@ -141,9 +139,7 @@ class ConversationState(BaseModel):
     # Timestamps
     created_at: Timestamp = Field(default_factory=datetime.utcnow, description="Creation time")
     updated_at: Timestamp = Field(default_factory=datetime.utcnow, description="Last update time")
-    last_activity: Timestamp = Field(
-        default_factory=datetime.utcnow, description="Last activity time"
-    )
+    last_activity: Timestamp = Field(default_factory=datetime.utcnow, description="Last activity time")
 
     # State data
     variables: dict[str, StateVariable] = Field(default_factory=dict, description="State variables")
@@ -314,12 +310,8 @@ class ConversationState(BaseModel):
 
         # Update counts
         self.summary.total_messages += len(to_archive)
-        self.summary.user_messages += sum(
-            1 for msg in to_archive if msg.role == ConversationRole.USER
-        )
-        self.summary.agent_messages += sum(
-            1 for msg in to_archive if msg.role == ConversationRole.AGENT
-        )
+        self.summary.user_messages += sum(1 for msg in to_archive if msg.role == ConversationRole.USER)
+        self.summary.agent_messages += sum(1 for msg in to_archive if msg.role == ConversationRole.AGENT)
 
 
 class StateBackendType(str, Enum):
@@ -348,9 +340,7 @@ class StateBackendConfig(BaseModel):
     password: str | None = Field(None, description="Password")
 
     # Redis-specific settings
-    redis_settings: ConfigDictType = Field(
-        default_factory=dict, description="Redis-specific config"
-    )
+    redis_settings: ConfigDictType = Field(default_factory=dict, description="Redis-specific config")
 
     # File-specific settings
     file_path: FilePath | None = Field(None, description="File storage path")
@@ -486,9 +476,7 @@ class StateMetrics(BaseModel):
 
     # Backend metrics
     backend_type: StateBackendType = Field(..., description="Backend type")
-    backend_health: Literal["healthy", "degraded", "unhealthy"] = Field(
-        "healthy", description="Backend health status"
-    )
+    backend_health: Literal["healthy", "degraded", "unhealthy"] = Field("healthy", description="Backend health status")
 
     # Time window
     measurement_window: timedelta = Field(..., description="Measurement time window")
