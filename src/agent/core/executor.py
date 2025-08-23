@@ -57,7 +57,9 @@ class AgentUpExecutor(AgentExecutor):
         elif hasattr(agent, "capabilities") and getattr(agent, "capabilities", None):
             # Check A2A AgentCard capabilities
             capabilities = getattr(agent, "capabilities", None)
-            self.supports_streaming = getattr(capabilities, "streaming", False) if capabilities else False
+            self.supports_streaming = (
+                getattr(capabilities, "streaming", False) if capabilities else False
+            )
         else:
             self.supports_streaming = False
 
@@ -125,7 +127,9 @@ class AgentUpExecutor(AgentExecutor):
                 task = new_task(context.message)
                 await event_queue.enqueue_event(task)
             else:
-                raise ServerError(error=InvalidParamsError(data={"reason": "No task or message provided"}))
+                raise ServerError(
+                    error=InvalidParamsError(data={"reason": "No task or message provided"})
+                )
 
         updater = TaskUpdater(event_queue, task.id, task.context_id)
 
@@ -159,7 +163,9 @@ class AgentUpExecutor(AgentExecutor):
             direct_plugin = self._find_direct_plugin(user_input)
 
             if direct_plugin:
-                logger.info(f"Processing task {task.id} with direct routing to plugin: {direct_plugin}")
+                logger.info(
+                    f"Processing task {task.id} with direct routing to plugin: {direct_plugin}"
+                )
                 # Process with direct routing to specific plugin
                 result = await self._process_direct_routing(task, direct_plugin)
                 await self._create_response_artifact(result, task, updater)
@@ -196,14 +202,7 @@ class AgentUpExecutor(AgentExecutor):
             )
 
     def _extract_user_message(self, task: Task) -> str:
-        """Extract user message text from A2A task history.
-
-        Args:
-            task: A2A Task object
-
-        Returns:
-            User message text or empty string
-        """
+        """Extract user message text from A2A task history."""
         try:
             if not (hasattr(task, "history") and task.history):
                 return ""
@@ -211,11 +210,11 @@ class AgentUpExecutor(AgentExecutor):
             # Get the latest user message from history
             for message in reversed(task.history):
                 if message.role == "user" and message.parts:
-                    for part in message.parts:
-                        # A2A SDK uses Part(root=TextPart(...)) structure
-                        if hasattr(part, "root") and hasattr(part.root, "kind"):
-                            if part.root.kind == "text" and hasattr(part.root, "text"):
-                                return part.root.text
+                    # Use ConversationManager helper for consistency
+                    from agent.state.conversation import ConversationManager
+
+                    conversation_manager = ConversationManager()
+                    return conversation_manager.extract_text_from_parts(message.parts)
             return ""
         except Exception as e:
             logger.error(f"Error extracting user message: {e}")
@@ -246,7 +245,9 @@ class AgentUpExecutor(AgentExecutor):
                         logger.debug(f"Pattern '{pattern}' matched for plugin '{plugin_name}'")
                         return plugin_name
                 except re.error as e:
-                    logger.warning(f"Invalid regex pattern '{pattern}' in plugin '{plugin_name}': {e}")
+                    logger.warning(
+                        f"Invalid regex pattern '{pattern}' in plugin '{plugin_name}': {e}"
+                    )
 
         return None
 
@@ -293,7 +294,9 @@ class AgentUpExecutor(AgentExecutor):
         updater = getattr(context, "updater", None)
 
         if not task:
-            raise ServerError(error=InvalidParamsError(data={"reason": "No task available for streaming"}))
+            raise ServerError(
+                error=InvalidParamsError(data={"reason": "No task available for streaming"})
+            )
         if not updater:
             updater = TaskUpdater(event_queue, task.id, task.context_id)
 
@@ -343,7 +346,9 @@ class AgentUpExecutor(AgentExecutor):
             chunk_count = 0
 
             # Collect all streaming chunks without sending individual events
-            async for chunk in self.dispatcher.streaming_handler.process_task_streaming(task, auth_result):
+            async for chunk in self.dispatcher.streaming_handler.process_task_streaming(
+                task, auth_result
+            ):
                 chunk_count += 1
 
                 if isinstance(chunk, str):
@@ -440,7 +445,9 @@ class AgentUpExecutor(AgentExecutor):
             parts.append(Part(root=TextPart(text=str(result))))
 
         # Create multi-modal artifact
-        artifact = new_artifact(parts, name=f"{self.agent_name}-result", description=f"Response from {self.agent_name}")
+        artifact = new_artifact(
+            parts, name=f"{self.agent_name}-result", description=f"Response from {self.agent_name}"
+        )
 
         await updater.add_artifact(parts, name=artifact.name)
         await updater.complete()
@@ -492,10 +499,14 @@ class AgentUpExecutor(AgentExecutor):
             except Exception as e:
                 logger.error(f"Error canceling task {task.id}: {e}")
                 raise ServerError(
-                    error=UnsupportedOperationError(data={"reason": f"Failed to cancel task: {str(e)}"})
+                    error=UnsupportedOperationError(
+                        data={"reason": f"Failed to cancel task: {str(e)}"}
+                    )
                 ) from e
         else:
             # Cancellation not supported by dispatcher
             raise ServerError(
-                error=UnsupportedOperationError(data={"reason": "Task cancellation is not supported by this agent"})
+                error=UnsupportedOperationError(
+                    data={"reason": "Task cancellation is not supported by this agent"}
+                )
             )

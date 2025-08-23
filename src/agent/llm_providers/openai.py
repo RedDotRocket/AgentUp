@@ -269,13 +269,16 @@ class OpenAIProvider(BaseLLMService):
             raise LLMProviderAPIError(f"Invalid OpenAI embeddings API response format: {e}") from e
 
     def _chat_message_to_dict(self, message: ChatMessage) -> dict[str, Any]:
+        # Map A2A 'agent' role to OpenAI 'assistant' role
+        role = "assistant" if message.role == "agent" else message.role
+
         # Handle structured content for vision models
         if isinstance(message.content, list):
             # Multi-modal content (text + images)
-            msg_dict: dict[str, Any] = {"role": message.role, "content": message.content}
+            msg_dict: dict[str, Any] = {"role": role, "content": message.content}
         else:
             # Simple text content
-            msg_dict: dict[str, Any] = {"role": message.role, "content": message.content}
+            msg_dict: dict[str, Any] = {"role": role, "content": message.content}
 
         if message.function_call:
             msg_dict["function_call"] = {
