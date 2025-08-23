@@ -355,7 +355,7 @@ def execute_capability(self, context: CapabilityContext) -> CapabilityResult:
 
         # 3. Add metadata for audit purposes
         result.metadata.update({
-            "executed_at": datetime.utcnow().isoformat(),
+            "executed_at": datetime.now(timezone.utc).isoformat(),
             "operation": operation,
         })
 
@@ -560,7 +560,7 @@ def _log_operation(self, context: EnhancedCapabilityContext, operation: str, res
             "result": result,
             "scopes": context.user_scopes,
             "request_id": context.request_id,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
     )
 ```
@@ -907,7 +907,7 @@ git push origin main --tags
 
 Visit https://pypi.org/manage/account/publishing/ and add:
 - **Publisher**: GitHub
-- **Owner**: your-username  
+- **Owner**: your-username
 - **Repository**: your-repo-name
 - **Workflow**: publish.yml
 
@@ -942,18 +942,18 @@ jobs:
     permissions:
       id-token: write
       contents: read
-    
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v4
         with:
           python-version: "3.11"
-      
+
       - name: Build package
         run: |
           python -m pip install --upgrade pip build
           python -m build
-      
+
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
 ```
@@ -1161,7 +1161,7 @@ AgentUp's security system protects **plugin capabilities** but allows **native L
 
 #### Secured Path (Plugin Tools Available)
 When users have appropriate scopes:
-- AI receives function schemas for plugin capabilities 
+- AI receives function schemas for plugin capabilities
 - AI can call specific plugin functions (e.g., `analyze_image`)
 - Plugin functions execute with full security enforcement
 - Users access enhanced, plugin-specific functionality

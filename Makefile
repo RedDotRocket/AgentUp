@@ -93,6 +93,9 @@ format: ## Format code with ruff (parallel)
 format-check: ## Check code formatting
 	uv run ruff format --check src/ tests/
 
+type:
+	uv run mypy --show-error-codes --ignore-missing-imports
+
 # Security scanning
 security: ## Run bandit security scan
 	uv run bandit -r src/ -ll

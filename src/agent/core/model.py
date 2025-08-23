@@ -7,7 +7,7 @@ using Pydantic models for type safety and validation.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -159,7 +159,7 @@ class ExecutionContext(BaseModel):
     session_id: str | None = Field(None, description="Session identifier")
     correlation_id: str | None = Field(None, description="Correlation identifier for tracing")
     metadata: dict[str, JsonValue] = Field(default_factory=dict, description="Context metadata")
-    started_at: datetime = Field(default_factory=datetime.utcnow, description="Execution start time")
+    started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Execution start time")
     timeout_seconds: int = Field(300, description="Execution timeout", gt=0, le=3600)
     retry_count: int = Field(0, description="Current retry attempt", ge=0)
     max_retries: int = Field(3, description="Maximum retry attempts", ge=0)
@@ -183,7 +183,7 @@ class ExecutionContext(BaseModel):
 
     @property
     def elapsed_seconds(self) -> float:
-        return (datetime.utcnow() - self.started_at).total_seconds()
+        return (datetime.now(timezone.utc) - self.started_at).total_seconds()
 
 
 class ExecutionResult(BaseModel):
@@ -233,7 +233,7 @@ class ExecutionResult(BaseModel):
             ExecutionStatus.CANCELLED,
         ):
             if self.completed_at is None:
-                self.completed_at = datetime.utcnow()
+                self.completed_at = datetime.now(timezone.utc)
 
         # Calculate execution time if not provided
         if self.execution_time_ms is None and self.completed_at:
@@ -245,19 +245,14 @@ class ExecutionResult(BaseModel):
 
 class FunctionRegistry(BaseModel):
     functions: dict[str, FunctionSignature] = Field(default_factory=dict, description="Registered functions")
-    last_updated: datetime = Field(default_factory=datetime.utcnow, description="Last registry update")
+    last_updated: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc), description="Last registry update"
+    )
     version: str = Field("1.0.0", description="Registry version")
 
     def register_function(self, signature: FunctionSignature) -> None:
         self.functions[signature.name] = signature
-        self.last_updated = datetime.utcnow()
-
-    def unregister_function(self, name: str) -> bool:
-        if name in self.functions:
-            del self.functions[name]
-            self.last_updated = datetime.utcnow()
-            return True
-        return False
+        self.last_updated = datetime.now(timezone.utc)
 
     def get_function(self, name: str) -> FunctionSignature | None:
         return self.functions.get(name)

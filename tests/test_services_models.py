@@ -2,7 +2,7 @@
 Tests for services models and validators.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from pydantic import ValidationError
@@ -75,7 +75,10 @@ class TestServiceRegistration:
         # Invalid URLs
         with pytest.raises(ValidationError) as exc_info:
             ServiceRegistration(
-                name="test-service", service_type=ServiceType.LLM, version="1.0.0", endpoint="invalid-url"
+                name="test-service",
+                service_type=ServiceType.LLM,
+                version="1.0.0",
+                endpoint="invalid-url",
             )
         assert "URL must start with http:// or https://" in str(exc_info.value)
 
@@ -124,7 +127,10 @@ class TestServiceRegistration:
 
         # MCP service with endpoint should succeed
         registration = ServiceRegistration(
-            name="mcp-service", service_type=ServiceType.MCP, version="1.0.0", endpoint="https://mcp.example.com"
+            name="mcp-service",
+            service_type=ServiceType.MCP,
+            version="1.0.0",
+            endpoint="https://mcp.example.com",
         )
         assert registration.endpoint == "https://mcp.example.com"
 
@@ -176,13 +182,17 @@ class TestServiceHealth:
 
         # Unhealthy with error message should succeed
         health = ServiceHealth(
-            service_name="test-service", status=ServiceStatus.UNHEALTHY, error_message="Connection timeout"
+            service_name="test-service",
+            status=ServiceStatus.UNHEALTHY,
+            error_message="Connection timeout",
         )
         assert health.error_message == "Connection timeout"
 
     def test_healthy_status_clears_error(self):
         health = ServiceHealth(
-            service_name="test-service", status=ServiceStatus.HEALTHY, error_message="Previous error"
+            service_name="test-service",
+            status=ServiceStatus.HEALTHY,
+            error_message="Previous error",
         )
         assert health.error_message is None
 
@@ -224,7 +234,11 @@ class TestServiceMetrics:
 
         # Peak response time less than average
         with pytest.raises(ValidationError) as exc_info:
-            ServiceMetrics(service_name="test-service", average_response_time_ms=200.0, peak_response_time_ms=100.0)
+            ServiceMetrics(
+                service_name="test-service",
+                average_response_time_ms=200.0,
+                peak_response_time_ms=100.0,
+            )
         assert "Peak response time cannot be less than average" in str(exc_info.value)
 
     def test_negative_values_validation(self):
@@ -241,7 +255,10 @@ class TestServiceMetrics:
 class TestServiceDependency:
     def test_service_dependency_creation(self):
         dependency = ServiceDependency(
-            service_name="web-service", depends_on="database-service", dependency_type="required", timeout_seconds=30
+            service_name="web-service",
+            depends_on="database-service",
+            dependency_type="required",
+            timeout_seconds=30,
         )
 
         assert dependency.service_name == "web-service"
@@ -296,7 +313,8 @@ class TestServiceConfiguration:
         # Invalid failure threshold
         with pytest.raises(ValidationError) as exc_info:
             ServiceConfiguration(
-                registration=registration, health_config={"check_interval": 30, "failure_threshold": 0}
+                registration=registration,
+                health_config={"check_interval": 30, "failure_threshold": 0},
             )
         assert "Failure threshold must be positive" in str(exc_info.value)
 
@@ -306,7 +324,8 @@ class TestServiceConfiguration:
         # Invalid metrics config (non-integer collection interval)
         with pytest.raises(ValidationError) as exc_info:
             ServiceConfiguration(
-                registration=registration, metrics_config={"enabled": True, "collection_interval": "invalid"}
+                registration=registration,
+                metrics_config={"enabled": True, "collection_interval": "invalid"},
             )
         assert "Metrics collection interval must be an integer" in str(exc_info.value)
 
@@ -366,7 +385,7 @@ class TestServiceValidators:
         assert "status is accurate" in result.suggestions[0]
 
         # Test stale health data warning
-        old_time = datetime.utcnow() - timedelta(hours=2)
+        old_time = datetime.now(timezone.utc) - timedelta(hours=2)
         health = ServiceHealth(service_name="test-service", status=ServiceStatus.HEALTHY, last_check=old_time)
         result = validator.validate(health)
         assert result.valid
@@ -404,7 +423,10 @@ class TestServiceValidators:
 
         # Test critical dependency with long timeout warning
         dependency = ServiceDependency(
-            service_name="test-service", depends_on="other-service", timeout_seconds=120, critical=True
+            service_name="test-service",
+            depends_on="other-service",
+            timeout_seconds=120,
+            critical=True,
         )
         config = ServiceConfiguration(registration=registration, dependencies=[dependency])
         result = validator.validate(config)
@@ -435,7 +457,10 @@ class TestServiceValidators:
 class TestModelSerialization:
     def test_service_registration_serialization(self):
         registration = ServiceRegistration(
-            name="test-service", service_type=ServiceType.LLM, version="1.0.0", endpoint="https://api.example.com"
+            name="test-service",
+            service_type=ServiceType.LLM,
+            version="1.0.0",
+            endpoint="https://api.example.com",
         )
 
         # Test model_dump

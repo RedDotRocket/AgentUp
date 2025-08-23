@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import tempfile
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
@@ -99,7 +99,8 @@ class CacheConfig(BaseModel):
 
     # File cache specific
     file_cache_dir: str = Field(
-        default_factory=lambda: tempfile.mkdtemp(prefix="agentup_cache_"), description="File cache directory"
+        default_factory=lambda: tempfile.mkdtemp(prefix="agentup_cache_"),
+        description="File cache directory",
     )
     file_max_size_mb: int = Field(100, description="Max file cache size in MB", gt=0)
 
@@ -158,7 +159,11 @@ class CacheConfig(BaseModel):
 
     @property
     def is_persistent(self) -> bool:
-        return self.backend_type in (CacheBackendType.VALKEY, CacheBackendType.REDIS, CacheBackendType.FILE)
+        return self.backend_type in (
+            CacheBackendType.VALKEY,
+            CacheBackendType.REDIS,
+            CacheBackendType.FILE,
+        )
 
     @property
     def estimated_memory_usage_mb(self) -> float:
@@ -308,7 +313,9 @@ class MiddlewareConfig(BaseModel):
 
 class MiddlewareRegistry(BaseModel):
     middleware: dict[str, Any] = Field(default_factory=dict, description="Registered middleware functions")
-    last_updated: datetime = Field(default_factory=datetime.utcnow, description="Last registry update")
+    last_updated: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc), description="Last registry update"
+    )
     version: str = Field("1.0.0", description="Registry version")
 
     # Add backward compatibility property
@@ -318,17 +325,17 @@ class MiddlewareRegistry(BaseModel):
 
     def register_middleware(self, name: str, config: dict[str, JsonValue]) -> None:
         self.middleware[name] = config
-        self.last_updated = datetime.utcnow()
+        self.last_updated = datetime.now(timezone.utc)
 
     # Add backward compatibility methods
     def register(self, name: str, middleware: Any) -> None:
         self.middleware[name] = middleware
-        self.last_updated = datetime.utcnow()
+        self.last_updated = datetime.now(timezone.utc)
 
     def unregister_middleware(self, name: str) -> bool:
         if name in self.middleware:
             del self.middleware[name]
-            self.last_updated = datetime.utcnow()
+            self.last_updated = datetime.now(timezone.utc)
             return True
         return False
 
@@ -430,7 +437,10 @@ class CacheConfigValidator(BaseValidator[CacheConfig]):
             result.add_warning("Long TTL may lead to stale data issues")
 
         # Check compression usage
-        if not model.compression_enabled and model.backend_type in (CacheBackendType.VALKEY, CacheBackendType.REDIS):
+        if not model.compression_enabled and model.backend_type in (
+            CacheBackendType.VALKEY,
+            CacheBackendType.REDIS,
+        ):
             result.add_suggestion("Consider enabling compression for network cache backends")
 
         # Validate file cache directory

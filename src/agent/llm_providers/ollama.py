@@ -167,7 +167,7 @@ class OllamaProvider(BaseLLMService):
 
         return str(content)
 
-    async def chat_complete(self, messages: list[ChatMessage], **kwargs) -> LLMResponse:
+    async def _chat_complete_impl(self, messages: list[ChatMessage], **kwargs) -> LLMResponse:
         if not self._initialized:
             await self.initialize()
 
@@ -194,13 +194,17 @@ class OllamaProvider(BaseLLMService):
                             images.append(base64_data)
 
                 # Build message with proper Ollama format
-                ollama_msg = {"role": msg.role, "content": text_content}
+                # Convert role to string if it's an enum
+                role_str = str(msg.role.value) if hasattr(msg.role, "value") else str(msg.role)
+                ollama_msg = {"role": role_str, "content": text_content}
                 if images:
                     ollama_msg["images"] = images
 
                 ollama_messages.append(ollama_msg)
             else:
-                ollama_messages.append({"role": msg.role, "content": content})
+                # Convert role to string if it's an enum
+                role_str = str(msg.role.value) if hasattr(msg.role, "value") else str(msg.role)
+                ollama_messages.append({"role": role_str, "content": content})
 
         payload = {
             "model": self.model,
@@ -235,7 +239,7 @@ class OllamaProvider(BaseLLMService):
         except KeyError as e:
             raise LLMProviderAPIError(f"Invalid Ollama chat API response format: {e}") from e
 
-    async def stream_chat_complete(self, messages: list[ChatMessage], **kwargs):
+    async def _stream_chat_complete_impl(self, messages: list[ChatMessage], **kwargs):
         if not self._initialized:
             await self.initialize()
 
@@ -262,13 +266,17 @@ class OllamaProvider(BaseLLMService):
                             images.append(base64_data)
 
                 # Build message with proper Ollama format
-                ollama_msg = {"role": msg.role, "content": text_content}
+                # Convert role to string if it's an enum
+                role_str = str(msg.role.value) if hasattr(msg.role, "value") else str(msg.role)
+                ollama_msg = {"role": role_str, "content": text_content}
                 if images:
                     ollama_msg["images"] = images
 
                 ollama_messages.append(ollama_msg)
             else:
-                ollama_messages.append({"role": msg.role, "content": content})
+                # Convert role to string if it's an enum
+                role_str = str(msg.role.value) if hasattr(msg.role, "value") else str(msg.role)
+                ollama_messages.append({"role": role_str, "content": content})
 
         payload = {
             "model": self.model,

@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Any
 
 import structlog
-from a2a.types import Message, Task, TaskState
+from a2a.types import Message, Part, Role, Task, TaskState, TaskStatus, TextPart
 
 logger = structlog.get_logger(__name__)
 
@@ -25,7 +25,7 @@ class StreamingHandler:
 
             # Check if we should use native streaming
             llm = await LLMManager.get_llm_service()
-            if llm and hasattr(llm, "stream") and llm.stream:
+            if llm and getattr(llm, "stream", False):
                 # Use native streaming - real tokens as generated
                 async for chunk in self._process_task_streaming_native(task, dispatcher, auth_result):
                     yield chunk
@@ -41,7 +41,9 @@ class StreamingHandler:
             logger.error(f"Streaming error: {e}", exc_info=True)
             yield {"error": str(e)}
 
-    async def _process_task_streaming_native(self, task: Task, dispatcher, auth_result) -> AsyncIterator[str]:
+    async def _process_task_streaming_native(
+        self, task: Task, dispatcher, auth_result
+    ) -> AsyncIterator[str | dict[str, Any]]:
         """Process task with native LLM streaming."""
         try:
             from agent.core.function_executor import FunctionExecutor
@@ -81,7 +83,14 @@ class StreamingHandler:
                 async for chunk in LLMManager.llm_with_functions_streaming(
                     llm, messages, function_schemas, function_executor
                 ):
-                    yield chunk
+                    # Convert LLMManagerResponse to expected type
+                    if isinstance(chunk, str | dict):
+                        yield chunk
+                    elif hasattr(chunk, "content"):
+                        # This is likely an LLMManagerResponse with content attribute
+                        yield chunk.content
+                    else:
+                        yield str(chunk)
             else:
                 # Direct streaming response (no functions)
                 if hasattr(llm, "stream_chat_complete"):
@@ -121,18 +130,18 @@ class StreamingHandler:
                 kind="message",
                 role=message_params.get("role", "user"),
                 parts=message_params.get("parts", []),
-                messageId=message_params.get("messageId", str(uuid.uuid4())),
-                contextId=context_id,
-                taskId=task_id,
+                message_id=message_params.get("messageId", str(uuid.uuid4())),
+                context_id=context_id,
+                task_id=task_id,
             )
 
             # Create A2A Task
             task = Task(
                 id=task_id,
-                contextId=context_id,
+                context_id=context_id,
                 history=[message],
                 kind="task",
-                status={"state": TaskState.submitted, "timestamp": None, "message": None},
+                status=TaskStatus(state=TaskState.submitted, timestamp=None, message=None),
             )
 
             # Get dispatcher and conversation manager
@@ -147,22 +156,22 @@ class StreamingHandler:
                 # Add user message
                 user_msg = Message(
                     kind="message",
-                    role="user",
-                    parts=[{"kind": "text", "text": turn["user"]}],
-                    messageId=str(uuid.uuid4()),
-                    contextId=context_id,
-                    taskId=task_id,
+                    role=Role.user,
+                    parts=[Part(root=TextPart(kind="text", text=turn["user"]))],
+                    message_id=str(uuid.uuid4()),
+                    context_id=context_id,
+                    task_id=task_id,
                 )
                 a2a_history.append(user_msg)
 
                 # Add agent message (using 'agent' role for A2A compliance)
                 agent_msg = Message(
                     kind="message",
-                    role="agent",
-                    parts=[{"kind": "text", "text": turn["agent"]}],
-                    messageId=str(uuid.uuid4()),
-                    contextId=context_id,
-                    taskId=task_id,
+                    role=Role.agent,
+                    parts=[Part(root=TextPart(kind="text", text=turn["agent"]))],
+                    message_id=str(uuid.uuid4()),
+                    context_id=context_id,
+                    task_id=task_id,
                 )
                 a2a_history.append(agent_msg)
 
@@ -221,8 +230,18 @@ class StreamingHandler:
 
             async for chunk in self.process_task_streaming(task, auth_result):
                 chunk_count += 1
-                full_response += chunk  # Build complete response
-                batch_parts.append({"kind": "text", "metadata": None, "text": chunk})
+                # Handle both string and dict chunk types
+                if isinstance(chunk, str):
+                    chunk_text = chunk
+                    full_response += chunk_text  # Build complete response
+                elif isinstance(chunk, dict):
+                    chunk_text = str(chunk.get("content", "")) or str(chunk)
+                    full_response += chunk_text
+                else:
+                    chunk_text = str(chunk)
+                    full_response += chunk_text
+
+                batch_parts.append({"kind": "text", "metadata": None, "text": chunk_text})
 
                 # Send chunks in batches of 10 for performance
                 if len(batch_parts) >= 10:

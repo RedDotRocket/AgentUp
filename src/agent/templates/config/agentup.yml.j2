@@ -11,6 +11,21 @@ provider_url: https://agentup.dev
 icon_url: https://raw.githubusercontent.com/RedDotRocket/AgentUp/refs/heads/main/assets/icon.png
 documentation_url: https://docs.agentup.dev
 
+# Agent Execution Configuration
+agent_type: "{{ agent_type | default('reactive') }}"
+{% if agent_type == 'iterative' %}
+memory_config:
+  persistence: true
+  max_entries: 1000
+  ttl_hours: 24
+
+iterative_config:
+  max_iterations: {{ max_iterations | default(10) }}
+  reflection_interval: 1
+  require_explicit_completion: true
+  timeout_minutes: 30
+{% endif %}
+
 # CORS Configuration
 cors:
   enabled: {{ cors_enabled | default(true) }}

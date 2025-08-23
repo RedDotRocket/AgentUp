@@ -2,7 +2,7 @@
 Tests for AgentUp state management models.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from pydantic import ValidationError
@@ -99,7 +99,7 @@ class TestStateVariable:
         assert not var.is_expired
 
         # Expired variable
-        past_time = datetime.utcnow() - timedelta(seconds=10)
+        past_time = datetime.now(timezone.utc) - timedelta(seconds=10)
         expired_var = StateVariable(
             key="test",
             value="test",
@@ -110,7 +110,7 @@ class TestStateVariable:
         assert expired_var.is_expired
 
         # Not yet expired
-        recent_time = datetime.utcnow() - timedelta(seconds=1)
+        recent_time = datetime.now(timezone.utc) - timedelta(seconds=1)
         fresh_var = StateVariable(
             key="test",
             value="test",
@@ -302,7 +302,7 @@ class TestConversationState:
         state = ConversationState(context_id="test")
 
         # Set variables with different TTLs
-        past_time = datetime.utcnow() - timedelta(seconds=10)
+        past_time = datetime.now(timezone.utc) - timedelta(seconds=10)
 
         # Create expired variable manually
         expired_var = StateVariable(
@@ -594,7 +594,7 @@ class TestModelIntegration:
         # Simulate saving/loading state
         original_state = ConversationState(context_id="persist_test", user_id="user456")
 
-        original_state.set_variable("session_start", datetime.utcnow().isoformat())
+        original_state.set_variable("session_start", datetime.now(timezone.utc).isoformat())
         original_state.add_message(ConversationMessage(id="msg1", role=ConversationRole.USER, content="Test message"))
 
         # Serialize to dict (simulating persistence)

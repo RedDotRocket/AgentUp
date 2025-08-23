@@ -2,7 +2,7 @@
 Tests for core models and validators.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 from pydantic import ValidationError
@@ -172,7 +172,10 @@ class TestFunctionSignature:
         # Valid tags
         valid_tags = ["nlp", "text-processing", "ai_function", "utility"]
         signature = FunctionSignature(
-            name="test_func", module="test_module", function_type=FunctionType.BUILTIN, tags=valid_tags
+            name="test_func",
+            module="test_module",
+            function_type=FunctionType.BUILTIN,
+            tags=valid_tags,
         )
         assert signature.tags == valid_tags
 
@@ -180,7 +183,10 @@ class TestFunctionSignature:
         invalid_tags = ["tag!", "tag with spaces", "", "tag@123"]
         with pytest.raises(ValidationError):
             FunctionSignature(
-                name="test_func", module="test_module", function_type=FunctionType.BUILTIN, tags=invalid_tags
+                name="test_func",
+                module="test_module",
+                function_type=FunctionType.BUILTIN,
+                tags=invalid_tags,
             )
 
     def test_version_validation(self):
@@ -188,7 +194,10 @@ class TestFunctionSignature:
         valid_versions = ["1.0.0", "2.1.3", "1.0.0-alpha", "1.0.0-beta.1", "1.0.0+build.123"]
         for version in valid_versions:
             signature = FunctionSignature(
-                name="test_func", module="test_module", function_type=FunctionType.BUILTIN, version=version
+                name="test_func",
+                module="test_module",
+                function_type=FunctionType.BUILTIN,
+                version=version,
             )
             assert signature.version == version
 
@@ -197,7 +206,10 @@ class TestFunctionSignature:
         for version in invalid_versions:
             with pytest.raises(ValidationError):
                 FunctionSignature(
-                    name="test_func", module="test_module", function_type=FunctionType.BUILTIN, version=version
+                    name="test_func",
+                    module="test_module",
+                    function_type=FunctionType.BUILTIN,
+                    version=version,
                 )
 
     def test_parameter_properties(self):
@@ -205,7 +217,10 @@ class TestFunctionSignature:
         param2 = FunctionParameter(name="optional_param", type=ParameterType.STRING, required=False)
 
         signature = FunctionSignature(
-            name="test_func", module="test_module", function_type=FunctionType.BUILTIN, parameters=[param1, param2]
+            name="test_func",
+            module="test_module",
+            function_type=FunctionType.BUILTIN,
+            parameters=[param1, param2],
         )
 
         required_params = signature.required_parameters
@@ -288,7 +303,7 @@ class TestExecutionContext:
 
 class TestExecutionResult:
     def test_execution_result_creation(self):
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         result = ExecutionResult(
             request_id="req-123",
             function_name="test_function",
@@ -310,7 +325,7 @@ class TestExecutionResult:
             request_id="req-123",
             function_name="test_func",
             status=ExecutionStatus.COMPLETED,
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(timezone.utc),
         )
         assert result.is_successful is True
         assert result.is_failed is False
@@ -321,7 +336,7 @@ class TestExecutionResult:
             function_name="test_func",
             status=ExecutionStatus.FAILED,
             error="Function failed",
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(timezone.utc),
         )
         assert result.is_successful is False
         assert result.is_failed is True
@@ -332,7 +347,7 @@ class TestExecutionResult:
             function_name="test_func",
             status=ExecutionStatus.TIMEOUT,
             error="Function timed out",
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(timezone.utc),
         )
         assert result.is_successful is False
         assert result.is_failed is True
@@ -344,7 +359,7 @@ class TestExecutionResult:
                 request_id="req-123",
                 function_name="test_func",
                 status=ExecutionStatus.FAILED,
-                started_at=datetime.utcnow(),
+                started_at=datetime.now(timezone.utc),
             )
         assert "Failed executions must have error message" in str(exc_info.value)
 
@@ -354,7 +369,7 @@ class TestExecutionResult:
             function_name="test_func",
             status=ExecutionStatus.FAILED,
             error="Function failed",
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(timezone.utc),
         )
         assert result.error == "Function failed"
 
@@ -364,7 +379,7 @@ class TestExecutionResult:
             function_name="test_func",
             status=ExecutionStatus.COMPLETED,
             error="Previous error",
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(timezone.utc),
         )
         assert result.error is None
 
@@ -373,14 +388,17 @@ class TestExecutionResult:
             request_id="req-123",
             function_name="test_func",
             status=ExecutionStatus.COMPLETED,
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(timezone.utc),
         )
         assert result.completed_at is not None
 
     def test_duration_calculation(self):
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         result = ExecutionResult(
-            request_id="req-123", function_name="test_func", status=ExecutionStatus.COMPLETED, started_at=start_time
+            request_id="req-123",
+            function_name="test_func",
+            status=ExecutionStatus.COMPLETED,
+            started_at=start_time,
         )
 
         # Should have completion time and execution time set automatically
@@ -413,23 +431,6 @@ class TestFunctionRegistry:
         assert "test_func" in registry.functions
         assert registry.functions["test_func"] == signature
         assert registry.function_count == 1
-
-    def test_unregister_function(self):
-        registry = FunctionRegistry()
-        signature = FunctionSignature(name="test_func", module="test_module", function_type=FunctionType.BUILTIN)
-
-        # Register and then unregister
-        registry.register_function(signature)
-        assert registry.function_count == 1
-
-        success = registry.unregister_function("test_func")
-        assert success is True
-        assert registry.function_count == 0
-        assert "test_func" not in registry.functions
-
-        # Try to unregister non-existent function
-        success = registry.unregister_function("nonexistent")
-        assert success is False
 
     def test_get_function(self):
         registry = FunctionRegistry()
@@ -488,7 +489,10 @@ class TestValidators:
         # Test large parameter count warning
         many_params = [FunctionParameter(name=f"param_{i}", type=ParameterType.STRING) for i in range(25)]
         complex_signature = FunctionSignature(
-            name="complex_func", module="test_module", function_type=FunctionType.BUILTIN, parameters=many_params
+            name="complex_func",
+            module="test_module",
+            function_type=FunctionType.BUILTIN,
+            parameters=many_params,
         )
         result = validator.validate(complex_signature)
         assert result.valid is True
@@ -504,7 +508,10 @@ class TestValidators:
 
         # Test deprecated function without explanation
         deprecated_signature = FunctionSignature(
-            name="old_func", module="test_module", function_type=FunctionType.BUILTIN, deprecated=True
+            name="old_func",
+            module="test_module",
+            function_type=FunctionType.BUILTIN,
+            deprecated=True,
         )
         result = validator.validate(deprecated_signature)
         assert result.valid is True
@@ -513,7 +520,10 @@ class TestValidators:
 
         # Test missing examples on complex function
         complex_no_examples = FunctionSignature(
-            name="complex_func", module="test_module", function_type=FunctionType.BUILTIN, parameters=many_params
+            name="complex_func",
+            module="test_module",
+            function_type=FunctionType.BUILTIN,
+            parameters=many_params,
         )
         result = validator.validate(complex_no_examples)
         assert result.valid is True
@@ -561,7 +571,7 @@ class TestValidators:
             request_id="req-123",
             function_name="test_func",
             status=ExecutionStatus.COMPLETED,
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(timezone.utc),
             execution_time_ms=400000,  # > 5 minutes
         )
         result = validator.validate(long_execution_result)
@@ -574,7 +584,7 @@ class TestValidators:
             request_id="req-123",
             function_name="test_func",
             status=ExecutionStatus.COMPLETED,
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(timezone.utc),
             memory_usage_mb=1500,  # > 1GB
         )
         result = validator.validate(high_memory_result)
@@ -588,7 +598,7 @@ class TestValidators:
             function_name="test_func",
             status=ExecutionStatus.FAILED,
             error="Something went wrong",
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(timezone.utc),
         )
         result = validator.validate(error_without_type)
         assert result.valid is True
@@ -601,7 +611,7 @@ class TestValidators:
             function_name="test_func",
             status=ExecutionStatus.FAILED,
             error="Failed to authenticate with password 'secret123'",
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(timezone.utc),
         )
         result = validator.validate(sensitive_error_result)
         assert result.valid is True
@@ -695,7 +705,7 @@ class TestModelSerialization:
             function_name="test_function",
             status=ExecutionStatus.COMPLETED,
             result={"output": "success", "count": 42},
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(timezone.utc),
             execution_time_ms=150.5,
             metadata={"cached": True},
         )

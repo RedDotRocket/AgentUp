@@ -13,6 +13,7 @@ from a2a.types import (
     InternalError,
     JSONRPCErrorResponse,
     SendMessageRequest,
+    SendStreamingMessageRequest,
     SetTaskPushNotificationConfigRequest,
     TaskResubscriptionRequest,
 )
@@ -197,7 +198,7 @@ async def jsonrpc_endpoint(
             # Non-streaming method
             rpc_request = SendMessageRequest(jsonrpc="2.0", id=request_id or "", method=method, params=params)
             # Set thread-local auth for executor access
-            from agent.core.executor import set_current_auth_for_executor
+            from agent.core.base import set_current_auth_for_executor
 
             set_current_auth_for_executor(auth_result)
 
@@ -206,21 +207,21 @@ async def jsonrpc_endpoint(
             return JSONResponse(status_code=200, content=response.model_dump(by_alias=True))
 
         elif method == "message/stream":
-            # Direct streaming implementation using StreamingHandler
-            from agent.api.streaming import StreamingHandler
-            from agent.core.executor import set_current_auth_for_executor
+            # Use JSONRPCHandler streaming to ensure iterative agent execution
+            from agent.core.base import set_current_auth_for_executor
 
             # Set thread-local auth for executor access
             set_current_auth_for_executor(auth_result)
 
-            # Create streaming handler
-            streaming_handler = StreamingHandler(None, None)  # These aren't used in the new method
+            # Create streaming message request
+            rpc_request = SendStreamingMessageRequest(
+                jsonrpc="2.0", id=request_id or "", method="message/stream", params=params
+            )
 
             with AuthContext(auth_result):
+                # Use JSONRPCHandler's streaming method which uses our configured AgentUpExecutor
                 return StreamingResponse(
-                    streaming_handler.create_streaming_response(
-                        params, str(request_id) if request_id is not None else "", auth_result
-                    ),
+                    sse_generator(jsonrpc_handler.on_message_send_stream(rpc_request)),
                     media_type="text/event-stream",
                     headers={
                         "Cache-Control": "no-cache",

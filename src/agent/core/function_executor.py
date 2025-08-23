@@ -71,52 +71,189 @@ class FunctionExecutor:
         # Use the new function call method
         return await self.execute_function_call(function_name, params)
 
-    async def execute_function_call(self, function_name: str, arguments: dict[str, Any]) -> str:
+    async def execute_function_call(self, function_name: str, arguments: dict[str, Any]) -> str | Any:
+        """Execute a function call with comprehensive security error handling."""
+        import traceback
+        import uuid
+
+        from agent.security.audit_logger import get_security_audit_logger
+
+        # Generate correlation ID for security tracking
+        correlation_id = str(uuid.uuid4())[:8]
+        audit_logger = get_security_audit_logger()
+
         try:
             # Check if this is an MCP tool
             if self.function_registry.is_mcp_tool(function_name):
                 try:
                     result = await self.function_registry.call_mcp_tool(function_name, arguments)
-                    logger.info(
-                        f"MCP tool '{function_name}' executed successfully, result: {str(result)[:200]}{'...' if len(str(result)) > 200 else ''}"
-                    )
+                    logger.info(f"MCP tool '{function_name}' completed [corr:{correlation_id}]")
                     return str(result)
-                except PermissionError as e:
-                    # Generic error message to prevent scope information leakage
-                    logger.warning(f"Permission denied for MCP tool '{function_name}': {e}")
+                except PermissionError:
+                    # Security audit logging for permission denials
+                    audit_logger.log_authorization_failure(
+                        user_id="system", resource=f"mcp_tool:{function_name}", action="execute"
+                    )
+                    # Generic error message to prevent information leakage
+                    logger.warning(f"Permission denied for MCP tool '{function_name}' [corr:{correlation_id}]")
                     return "I'm unable to perform that action due to insufficient permissions."
                 except Exception as e:
-                    logger.error(f"MCP tool call failed: {function_name}, error: {e}")
-                    raise
+                    # Log detailed error for debugging but don't expose to user
+                    logger.error(f"MCP tool call failed: {function_name} [corr:{correlation_id}], error: {e}")
+                    audit_logger.log_configuration_error(
+                        "mcp_tool_execution",
+                        "mcp_tool_execution_failed",
+                        {
+                            "correlation_id": correlation_id,
+                            "error_type": type(e).__name__,
+                            "function_name": function_name,
+                        },
+                    )
+                    # Return generic error to user
+                    return f"An error occurred while executing the requested action [ref:{correlation_id}]"
 
             # Handle local function
             handler = self.function_registry.get_handler(function_name)
-            logger.debug(f"Handler for '{function_name}': {handler}")
-            logger.info(f"Executing function '{function_name}' with arguments: {arguments}")
+            logger.debug(f"Handler for '{function_name}': {handler} [corr:{correlation_id}]")
+            logger.info(f"Executing function '{function_name}' [corr:{correlation_id}]")
+
             if not handler:
-                logger.error(
+                error_msg = (
                     f"Function '{function_name}' not found in handlers: {self.function_registry.list_functions()}"
                 )
-                raise ValueError(f"Function not found: {function_name}")
+                logger.error(f"{error_msg} [corr:{correlation_id}]")
+                audit_logger.log_configuration_error(
+                    "function_registry",
+                    "function_not_found",
+                    {
+                        "correlation_id": correlation_id,
+                        "function_name": function_name,
+                        "available_functions_count": len(self.function_registry.list_functions()),
+                    },
+                )
+                # Don't expose internal function list to user
+                return f"The requested function is not available [ref:{correlation_id}]"
 
-            # Create task with function parameters
+            # Create task with function parameters - validate parameter safety
             task_with_params = self.task
             if hasattr(self.task, "metadata"):
                 if self.task.metadata is None:
                     self.task.metadata = {}
-                self.task.metadata.update(arguments)
+
+                # Sanitize arguments before adding to task metadata
+                sanitized_arguments = self._sanitize_function_arguments(arguments, correlation_id)
+                self.task.metadata.update(sanitized_arguments)
 
             # Apply state management if handler accepts context parameters
             result = await self._execute_with_state_management(handler, task_with_params, function_name)
-            logger.info(
-                f"Function '{function_name}' executed successfully, result type: {type(result).__name__}, result: {str(result)[:200]}{'...' if len(str(result)) > 200 else ''}"
-            )
-            return str(result)
+
+            # Check if result is a FunctionExecutionResult - preserve it for completion signaling
+            from agent.core.models.iteration import FunctionExecutionResult
+
+            if isinstance(result, FunctionExecutionResult):
+                logger.info(f"Function '{function_name}' completed [corr:{correlation_id}]")
+                return result  # Return as-is for completion detection
+            else:
+                logger.info(f"Function '{function_name}' completed [corr:{correlation_id}]")
+                return str(result)
 
         except PermissionError as e:
+            # Security audit logging for permission denials
+            audit_logger.log_authorization_failure(
+                user_id="system", resource=f"function:{function_name}", action="execute"
+            )
             # Generic error message to prevent scope information leakage
-            logger.warning(f"Permission denied for function '{function_name}': {e}")
+            logger.warning(f"Permission denied for function '{function_name}' [corr:{correlation_id}]: {str(e)[:100]}")
             return "I'm unable to perform that action due to insufficient permissions."
+
+        except ValueError as e:
+            # Handle validation errors securely
+            logger.warning(f"Validation error in function '{function_name}' [corr:{correlation_id}]: {str(e)[:100]}")
+            audit_logger.log_configuration_error(
+                "function_validation",
+                "function_validation_failed",
+                {"correlation_id": correlation_id, "error_type": "ValueError", "function_name": function_name},
+            )
+            return f"Invalid request format [ref:{correlation_id}]"
+
+        except Exception as e:
+            # Comprehensive error handling with security audit
+            error_type = type(e).__name__
+
+            # Full error details for debugging (server logs only)
+            logger.error(
+                f"Function execution failed: {function_name} [corr:{correlation_id}]",
+                exc_info=True,
+                extra={
+                    "function_name": function_name,
+                    "error_type": error_type,
+                    "correlation_id": correlation_id,
+                    "arguments": str(arguments)[:200],
+                },
+            )
+
+            # Security audit for system errors
+            audit_logger.log_configuration_error(
+                "function_execution",
+                "function_execution_failed",
+                {
+                    "correlation_id": correlation_id,
+                    "error_type": error_type,
+                    "function_name": function_name,
+                    "stack_trace": traceback.format_exc()[:500],  # Truncated stack trace
+                },
+            )
+
+            # Generic error message for user (no sensitive details)
+            return f"An error occurred while processing your request [ref:{correlation_id}]"
+
+    def _sanitize_function_arguments(self, arguments: dict[str, Any], correlation_id: str) -> dict[str, Any]:
+        """Sanitize function arguments to prevent injection attacks."""
+        MAX_STRING_LENGTH = 1000
+        MAX_NESTED_DEPTH = 5
+        ALLOWED_TYPES = (str, int, float, bool, list, dict, type(None))
+
+        def _sanitize_value(value, depth=0):
+            if depth > MAX_NESTED_DEPTH:
+                logger.warning(f"Argument nesting too deep, truncating [corr:{correlation_id}]")
+                return None
+
+            if not isinstance(value, ALLOWED_TYPES):
+                logger.warning(f"Disallowed argument type: {type(value)} [corr:{correlation_id}]")
+                return str(value)[:MAX_STRING_LENGTH]
+
+            if isinstance(value, str):
+                # Sanitize string length and remove potential control characters
+                sanitized = "".join(char for char in value if ord(char) >= 32 or char in "\t\n\r")
+                return sanitized[:MAX_STRING_LENGTH]
+
+            elif isinstance(value, list):
+                if len(value) > 100:  # Limit array size
+                    logger.warning(f"Array too large ({len(value)}), truncating [corr:{correlation_id}]")
+                    value = value[:100]
+                return [_sanitize_value(item, depth + 1) for item in value]
+
+            elif isinstance(value, dict):
+                if len(value) > 50:  # Limit object size
+                    logger.warning(f"Object too large ({len(value)}), truncating [corr:{correlation_id}]")
+                    value = dict(list(value.items())[:50])
+                return {str(k)[:100]: _sanitize_value(v, depth + 1) for k, v in value.items()}
+
+            return value
+
+        try:
+            sanitized = {}
+            for key, value in arguments.items():
+                sanitized_key = str(key)[:100]  # Limit key length
+                sanitized[sanitized_key] = _sanitize_value(value)
+
+            logger.debug(f"Sanitized {len(arguments)} function arguments [corr:{correlation_id}]")
+            return sanitized
+
+        except Exception as e:
+            logger.error(f"Failed to sanitize arguments [corr:{correlation_id}]: {e}")
+            # Return empty dict on sanitization failure for security
+            return {}
 
     async def _execute_with_state_management(self, handler, task, function_name: str):
         try:

@@ -7,6 +7,7 @@ import httpx
 import questionary
 
 from agent.cli.style import custom_style, print_error, print_header, print_success_footer
+from agent.core.models import AgentType
 from agent.generator import ProjectGenerator
 from agent.templates import get_feature_choices
 from agent.utils.git_utils import get_git_author_info, initialize_git_repo
@@ -35,14 +36,15 @@ def init_agent(
     print_header("AgentUp Agent Creator", "Create your AI agent")
 
     # Initial setup
+    output_path: Path | None
     if config:
         project_config = {"base_config": Path(config)}
-        output_dir = output_dir or Path.cwd() / "new_agent"  # Use a default output dir if not provided
+        output_path = Path(output_dir) if output_dir else Path.cwd() / "new_agent"
         if not name:
             click.echo("Warning: Agent name will be read from config file.", err=True)
     else:
-        project_config, output_dir = _prompt_for_basic_config(name, version, quick, output_dir)
-        if output_dir is None:
+        project_config, output_path = _prompt_for_basic_config(name, version, quick, output_dir)
+        if output_path is None:
             return
 
     # Configuration
@@ -52,18 +54,18 @@ def init_agent(
     # Generate the project
     click.echo(f"\n{click.style('Creating project...', fg='yellow')}")
     try:
-        generator = ProjectGenerator(output_dir, project_config)
+        generator = ProjectGenerator(output_path, project_config)
         generator.generate()
 
-        _handle_git_initialization(output_dir, no_git)
+        _handle_git_initialization(output_path, no_git)
 
         print_success_footer(
             "✓ Project created successfully!",
-            location=str(output_dir),
+            location=str(output_path),
             docs_url="https://docs.agentup.dev/getting-started/first-agent/",
         )
         click.secho("\nNext steps:", fg="white", bold=True)
-        click.echo(f"  1. cd {output_dir.name}")
+        click.echo(f"  1. cd {output_path.name}")
         click.echo("  2. uv sync                 # Install dependencies")
         click.echo("  3. uv add <plugin_name>    # Add AgentUp plugins")
         click.echo("  4. agentup plugin sync     # Sync plugins with config")
@@ -79,7 +81,7 @@ def _prompt_for_basic_config(
     name: str | None, version: str | None, quick: bool, output_dir: str | None
 ) -> tuple[dict[str, Any], Path | None]:
     """Prompts for basic project configuration and returns the config and output path."""
-    project_config = {}
+    project_config: dict[str, Any] = {}
 
     if not name:
         name = questionary.text("Agent name:", style=custom_style, validate=lambda x: len(x.strip()) > 0).ask()
@@ -88,19 +90,20 @@ def _prompt_for_basic_config(
             return {}, None
     project_config["name"] = name
 
+    output_path: Path
     if not output_dir:
         # Normalize the name for directory: lowercase and replace spaces with underscores
         dir_name = name.lower().replace(" ", "_")
-        output_dir = Path.cwd() / dir_name
+        output_path = Path.cwd() / dir_name
     else:
-        output_dir = Path(output_dir)
+        output_path = Path(output_dir)
 
-    if output_dir.exists():
+    if output_path.exists():
         if quick:
             # In quick mode, automatically overwrite if directory exists
-            click.echo(f"Directory {output_dir} already exists. Continuing in quick mode...")
+            click.echo(f"Directory {output_path} already exists. Continuing in quick mode...")
         elif not questionary.confirm(
-            f"Directory {output_dir} already exists. Continue?", default=False, style=custom_style
+            f"Directory {output_path} already exists. Continue?", default=False, style=custom_style
         ).ask():
             click.echo("Cancelled.")
             return {}, None
@@ -115,13 +118,46 @@ def _prompt_for_basic_config(
             version = questionary.text("Version:", default="0.0.1", style=custom_style).ask()
         project_config["version"] = version
 
-    return project_config, output_dir
+    return project_config, output_path
 
 
 def _prompt_for_features(project_config: dict[str, Any], quick: bool, no_git: bool):
     """Prompts for and configures advanced features."""
     if not no_git:
         project_config["author_info"] = get_git_author_info()
+
+    # Agent type selection (always prompt, even in quick mode)
+    agent_type_choices = [
+        questionary.Choice("Reactive (single-shot request/response)", value=AgentType.REACTIVE),
+        questionary.Choice("Iterative (self-directed multi-turn loops)", value=AgentType.ITERATIVE),
+    ]
+
+    selected_agent_type = questionary.select(
+        "Select agent execution type:", choices=agent_type_choices, default=AgentType.REACTIVE, style=custom_style
+    ).ask()
+
+    project_config["agent_type"] = selected_agent_type
+
+    # Configure iterative-specific settings if selected
+    if selected_agent_type == AgentType.ITERATIVE:
+        max_iterations = questionary.text(
+            "Maximum iterations per task (1-100):", default="10", style=custom_style
+        ).ask()
+
+        try:
+            max_iterations = int(max_iterations)
+            if not 1 <= max_iterations <= 100:
+                max_iterations = 10
+        except ValueError:
+            max_iterations = 10
+
+        project_config["max_iterations"] = max_iterations
+
+        memory_enabled = questionary.confirm(
+            "Enable memory for learning and context preservation?", default=True, style=custom_style
+        ).ask()
+
+        project_config["memory_enabled"] = memory_enabled
 
     if quick:
         default_features = [choice.value for choice in get_feature_choices() if choice.checked]
@@ -202,11 +238,14 @@ def _select_ollama_model(custom_style) -> str | None:
         click.echo("No models found locally. Defaulting to 'llama3:latest'.", err=True)
         return "llama3"
 
-    return questionary.select(
+    selected_model = questionary.select(
         "Please select an Ollama model:",
         choices=models,
         style=custom_style,
     ).ask()
+
+    # questionary.ask() can return None if cancelled
+    return selected_model if selected_model is not None else None
 
 
 def _handle_git_initialization(output_dir: Path, no_git: bool):

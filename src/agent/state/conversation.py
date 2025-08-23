@@ -1,3 +1,4 @@
+from datetime import timezone
 from typing import Any
 
 import structlog
@@ -23,8 +24,8 @@ class ConversationManager:
                 text_content += part["text"]
         return text_content
 
-    def prepare_llm_conversation(self, task) -> list[dict[str, str]]:
-        """Prepare LLM conversation directly from A2A task history."""
+    async def prepare_llm_conversation(self, task) -> list[dict[str, str]]:
+        """Prepare LLM conversation from A2A task history AND stored conversation state."""
         from agent.config import Config
 
         ai_config = Config.ai
@@ -49,14 +50,39 @@ Always be helpful, accurate, and maintain a friendly tone.""",
 
         messages = [{"role": "system", "content": system_prompt}]
 
-        # Use A2A task.history directly - last 10 messages for context management
+        # First, try to get stored conversation history from persistent state
+        stored_conversation_turns = []
+        if hasattr(task, "context_id") and task.context_id:
+            try:
+                stored_conversation_turns = await self.get_conversation_history(task.context_id)
+                if stored_conversation_turns:
+                    logger.info(
+                        f"Retrieved {len(stored_conversation_turns)} stored conversation turns for context {task.context_id}"
+                    )
+                else:
+                    logger.debug(f"No stored conversation history found for context {task.context_id}")
+            except Exception as e:
+                logger.warning(f"Failed to retrieve stored conversation history for {task.context_id}: {e}")
+
+        # Convert stored conversation turns to individual messages
+        for turn in stored_conversation_turns:
+            if isinstance(turn, dict):
+                # Add user message
+                if turn.get("user", "").strip():
+                    messages.append({"role": "user", "content": turn["user"]})
+                # Add agent response
+                if turn.get("agent", "").strip():
+                    messages.append({"role": "assistant", "content": turn["agent"]})
+
+        # Then add A2A task.history (most recent messages) - last 5 messages to avoid context overflow
         if hasattr(task, "history") and task.history:
-            for message in task.history[-10:]:
+            for message in task.history[-5:]:
                 if hasattr(message, "role") and hasattr(message, "parts"):
                     content = self.extract_text_from_parts(message.parts)
                     if content.strip():
                         messages.append({"role": message.role, "content": content})
 
+        logger.debug(f"Prepared LLM conversation with {len(messages)} total messages (including system prompt)")
         return messages
 
     async def get_conversation_history(self, context_id: str) -> list[dict[str, Any]]:
@@ -148,7 +174,7 @@ Always be helpful, accurate, and maintain a friendly tone.""",
                 context_id,
                 "user",
                 user_input,
-                {"timestamp": datetime.now(datetime.timezone.utc).isoformat()},
+                {"timestamp": datetime.now(timezone.utc).isoformat()},
             )
 
             # Store agent response
@@ -156,7 +182,7 @@ Always be helpful, accurate, and maintain a friendly tone.""",
                 context_id,
                 "agent",
                 response,
-                {"timestamp": datetime.now(datetime.timezone.utc).isoformat()},
+                {"timestamp": datetime.now(timezone.utc).isoformat()},
             )
 
             logger.debug(f"Updated conversation history for context {context_id}")

@@ -14,13 +14,13 @@ logger = structlog.get_logger(__name__)
 
 # Default values from configuration models
 DEFAULT_AUTH_TYPE = "api_key"
-DEFAULT_CACHE_BACKEND = MiddlewareConfig.model_fields["caching"].default_factory()["backend"]
+DEFAULT_CACHE_BACKEND = MiddlewareConfig.model_fields["caching"].get_default(call_default_factory=True)["backend"]
 DEFAULT_STATE_BACKEND = DEFAULT_CACHE_BACKEND  # Use same default as cache
 DEFAULT_ENVIRONMENT = AgentConfig.model_fields["environment"].default
 
 
 class ProjectGenerator:
-    def __init__(self, output_dir: Path, config: dict[str, Any], features: list[str] = None):
+    def __init__(self, output_dir: Path, config: dict[str, Any], features: list[str] | None = None):
         self.output_dir = Path(output_dir)
         self.config = config
         self.project_name = config["name"]
@@ -199,6 +199,8 @@ class ProjectGenerator:
             "features": self.features,
             "feature_config": self.config.get("feature_config", {}),
             "has_env_file": True,  # Most agents will have .env file
+            "agent_type": self.config.get("agent_type", "reactive"),
+            "max_iterations": self.config.get("max_iterations", 10),
         }
 
     def _build_feature_flags(self) -> dict[str, Any]:

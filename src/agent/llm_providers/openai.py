@@ -114,7 +114,7 @@ class OpenAIProvider(BaseLLMService):
         messages = [ChatMessage(role="user", content=prompt)]
         return await self.chat_complete(messages, **kwargs)
 
-    async def chat_complete(self, messages: list[ChatMessage], **kwargs) -> LLMResponse:
+    async def _chat_complete_impl(self, messages: list[ChatMessage], **kwargs) -> LLMResponse:
         if not self._initialized:
             await self.initialize()
 
@@ -269,8 +269,11 @@ class OpenAIProvider(BaseLLMService):
             raise LLMProviderAPIError(f"Invalid OpenAI embeddings API response format: {e}") from e
 
     def _chat_message_to_dict(self, message: ChatMessage) -> dict[str, Any]:
+        # Convert role to string if it's an enum
+        role_str = str(message.role.value) if hasattr(message.role, "value") else str(message.role)
+
         # Map A2A 'agent' role to OpenAI 'assistant' role
-        role = "assistant" if message.role == "agent" else message.role
+        role = "assistant" if role_str == "agent" else role_str
 
         # Create message dictionary with role mapping
         msg_dict: dict[str, Any] = {"role": role, "content": message.content}
@@ -286,7 +289,7 @@ class OpenAIProvider(BaseLLMService):
 
         return msg_dict
 
-    async def stream_chat_complete(self, messages: list[ChatMessage], **kwargs):
+    async def _stream_chat_complete_impl(self, messages: list[ChatMessage], **kwargs):
         if not self._initialized:
             await self.initialize()
 

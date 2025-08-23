@@ -5,7 +5,7 @@ This module tests all MCP-related Pydantic models for validation,
 serialization, and business logic.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from pydantic import ValidationError
@@ -374,7 +374,7 @@ class TestMCPSession:
         assert session.is_healthy is True
 
         # Old session should be unhealthy
-        old_time = datetime.utcnow() - timedelta(seconds=400)
+        old_time = datetime.now(timezone.utc) - timedelta(seconds=400)
         session = MCPSession(
             session_id="test",
             server_name="test",
@@ -520,7 +520,7 @@ class TestMCPValidators:
         validator = MCPSessionValidator(MCPSession)
 
         # Stale session should generate warning
-        old_time = datetime.utcnow() - timedelta(seconds=200)
+        old_time = datetime.now(timezone.utc) - timedelta(seconds=200)
         stale_session = MCPSession(
             session_id="stale",
             server_name="test",

@@ -19,6 +19,33 @@ from ..types import ConfigDict as ConfigDictType
 from ..types import FilePath, LogLevel, ModulePath, ServiceName, ServiceType, Version
 
 
+class AgentType(str, Enum):
+    """Agent execution types."""
+
+    REACTIVE = "reactive"
+    ITERATIVE = "iterative"
+
+
+class MemoryConfig(BaseModel):
+    """Memory configuration for agents."""
+
+    persistence: bool = Field(default=True, description="Enable memory persistence")
+    max_entries: int = Field(default=1000, description="Maximum memory entries")
+    ttl_hours: int = Field(default=24, description="Memory TTL in hours")
+
+
+class IterativeConfig(BaseModel):
+    """Configuration for iterative agents."""
+
+    max_iterations: int = Field(default=10, ge=1, le=100, description="Maximum iterations per task")
+    reflection_interval: int = Field(default=1, ge=1, description="Reflect every N iterations")
+    require_explicit_completion: bool = Field(default=True, description="Require explicit completion")
+    timeout_minutes: int = Field(default=30, ge=1, description="Timeout in minutes")
+    completion_confidence_threshold: float = Field(
+        default=0.8, ge=0.0, le=1.0, description="Minimum confidence threshold (0.0-1.0) for goal completion"
+    )
+
+
 class BaseAgent(BaseModel):
     model_config = {
         "arbitrary_types_allowed": True,
@@ -49,33 +76,33 @@ class LogFormat(str, Enum):
 
 
 class LoggingConsoleConfig(BaseModel):
-    enabled: bool = Field(True, description="Enable console logging")
-    colors: bool = Field(True, description="Enable colored output")
-    show_time: bool = Field(True, description="Show timestamps")
-    show_level: bool = Field(True, description="Show log level")
+    enabled: bool = Field(default=True, description="Enable console logging")
+    colors: bool = Field(default=True, description="Enable colored output")
+    show_time: bool = Field(default=True, description="Show timestamps")
+    show_level: bool = Field(default=True, description="Show log level")
 
 
 class LoggingFileConfig(BaseModel):
-    enabled: bool = Field(False, description="Enable file logging")
-    path: FilePath = Field("logs/agentup.log", description="Log file path")
-    max_size: int = Field(10 * 1024 * 1024, description="Max file size in bytes")
-    backup_count: int = Field(5, description="Number of backup files to keep")
-    rotation: Literal["size", "time", "never"] = Field("size", description="Rotation strategy")
+    enabled: bool = Field(default=False, description="Enable file logging")
+    path: FilePath = Field(default="logs/agentup.log", description="Log file path")
+    max_size: int = Field(default=10 * 1024 * 1024, description="Max file size in bytes")
+    backup_count: int = Field(default=5, description="Number of backup files to keep")
+    rotation: Literal["size", "time", "never"] = Field(default="size", description="Rotation strategy")
 
 
 class LoggingConfig(BaseModel):
-    enabled: bool = Field(True, description="Enable logging system")
-    level: LogLevel = Field("INFO", description="Global log level")
-    format: LogFormat = Field(LogFormat.TEXT, description="Log output format")
+    enabled: bool = Field(default=True, description="Enable logging system")
+    level: LogLevel = Field(default="INFO", description="Global log level")
+    format: LogFormat = Field(default=LogFormat.TEXT, description="Log output format")
 
     # Output destinations
-    console: LoggingConsoleConfig = Field(default_factory=LoggingConsoleConfig)
-    file: LoggingFileConfig = Field(default_factory=LoggingFileConfig)
+    console: LoggingConsoleConfig = Field(default_factory=lambda: LoggingConsoleConfig())
+    file: LoggingFileConfig = Field(default_factory=lambda: LoggingFileConfig())
 
     # Advanced configuration
-    correlation_id: bool = Field(True, description="Include correlation IDs")
-    request_logging: bool = Field(True, description="Log HTTP requests")
-    structured_data: bool = Field(False, description="Include structured metadata")
+    correlation_id: bool = Field(default=True, description="Include correlation IDs")
+    request_logging: bool = Field(default=True, description="Log HTTP requests")
+    structured_data: bool = Field(default=False, description="Include structured metadata")
 
     # Module-specific log levels
     modules: dict[str, LogLevel] = Field(default_factory=dict)
@@ -213,17 +240,17 @@ class MCPServerConfig(BaseModel):
 
 
 class MCPConfig(BaseModel):
-    enabled: bool = Field(False, description="Enable MCP support")
+    enabled: bool = Field(default=False, description="Enable MCP support")
 
     # Client configuration
-    client_enabled: bool = Field(True, description="Enable MCP client")
-    client_timeout: int = Field(30, description="Client timeout in seconds")
-    client_retry_attempts: int = Field(3, description="Client retry attempts")
+    client_enabled: bool = Field(default=True, description="Enable MCP client")
+    client_timeout: int = Field(default=30, description="Client timeout in seconds")
+    client_retry_attempts: int = Field(default=3, description="Client retry attempts")
 
     # Server configuration
-    server_enabled: bool = Field(False, description="Enable MCP server")
-    server_host: str = Field("localhost", description="Server host")
-    server_port: int = Field(8080, description="Server port")
+    server_enabled: bool = Field(default=False, description="Enable MCP server")
+    server_host: str = Field(default="localhost", description="Server host")
+    server_port: int = Field(default=8080, description="Server port")
 
     # Server configurations
     servers: list[MCPServerConfig] = Field(default_factory=list, description="MCP servers")
@@ -280,7 +307,7 @@ class OAuth2Config(BaseModel):
 
 
 class SecurityConfig(BaseModel):
-    enabled: bool = Field(True, description="Enable security features")
+    enabled: bool = Field(default=True, description="Enable security features")
     auth: dict[str, ApiKeyConfig | BearerConfig | JWTConfig | OAuth2Config] = Field(
         default_factory=dict, description="Authentication configuration by type"
     )
@@ -358,7 +385,7 @@ class PluginConfig(BaseModel):
     @computed_field
     @property
     def has_middleware(self) -> bool:
-        return self.plugin_override is not None and len(self.plugin_override) > 0
+        return self.plugin_override is not None and len(self.plugin_override or []) > 0
 
     @computed_field
     @property
@@ -377,7 +404,7 @@ class PluginConfig(BaseModel):
         score += min(0.4, len(self.capabilities) / 10 * 0.4)
 
         # Middleware complexity (0.0 to 0.2)
-        if self.has_middleware:
+        if self.has_middleware and self.plugin_override:
             score += min(0.2, len(self.plugin_override) / 5 * 0.2)
 
         # Scope count (0.0 to 0.2)
@@ -411,7 +438,7 @@ class AIProviderConfig(BaseModel):
 
 
 class MiddlewareConfig(BaseModel):
-    enabled: bool = Field(True, description="Enable middleware system")
+    enabled: bool = Field(default=True, description="Enable middleware system")
 
     # Rate limiting
     rate_limiting: dict[str, Any] = Field(
@@ -430,22 +457,22 @@ class MiddlewareConfig(BaseModel):
 
 
 class APIConfig(BaseModel):
-    enabled: bool = Field(True, description="Enable API server")
-    host: str = Field("127.0.0.1", description="Server host")
-    port: int = Field(8000, description="Server port")
+    enabled: bool = Field(default=True, description="Enable API server")
+    host: str = Field(default="127.0.0.1", description="Server host")
+    port: int = Field(default=8000, description="Server port")
 
     # Server settings
-    workers: int = Field(1, description="Number of workers")
-    reload: bool = Field(False, description="Enable auto-reload")
-    debug: bool = Field(False, description="Enable debug mode")
+    workers: int = Field(default=1, description="Number of workers")
+    reload: bool = Field(default=False, description="Enable auto-reload")
+    debug: bool = Field(default=False, description="Enable debug mode")
 
     # Request handling
-    max_request_size: int = Field(16 * 1024 * 1024, description="Max request size in bytes")
-    request_timeout: int = Field(30, description="Request timeout in seconds")
-    keepalive_timeout: int = Field(5, description="Keep-alive timeout in seconds")
+    max_request_size: int = Field(default=16 * 1024 * 1024, description="Max request size in bytes")
+    request_timeout: int = Field(default=30, description="Request timeout in seconds")
+    keepalive_timeout: int = Field(default=5, description="Keep-alive timeout in seconds")
 
     # CORS settings
-    cors_enabled: bool = Field(True, description="Enable CORS")
+    cors_enabled: bool = Field(default=True, description="Enable CORS")
     cors_origins: list[str] = Field(default_factory=lambda: ["*"], description="Allowed origins")
     cors_methods: list[str] = Field(
         default_factory=lambda: ["GET", "POST", "PUT", "DELETE"], description="Allowed methods"
@@ -472,6 +499,15 @@ class AgentConfig(BaseModel):
     description: str = Field("AI agent powered by AgentUp", description="Agent description")
     version: Version = Field("1.0.0", description="Agent version")
 
+    # Agent execution configuration
+    agent_type: AgentType = Field(AgentType.REACTIVE, description="Type of agent execution (reactive or iterative)")
+    memory_config: MemoryConfig = Field(
+        default_factory=lambda: MemoryConfig(), description="Memory configuration for agents"
+    )
+    iterative_config: IterativeConfig = Field(
+        default_factory=lambda: IterativeConfig(), description="Configuration for iterative agents"
+    )
+
     # Add property for backward compatibility
     @property
     def name(self) -> str:
@@ -488,12 +524,12 @@ class AgentConfig(BaseModel):
     mcp_shutdown_path: ModulePath | None = Field(None, description="MCP shutdown module path")
 
     # Configuration sections
-    logging: LoggingConfig = Field(default_factory=LoggingConfig)
-    api: APIConfig = Field(default_factory=APIConfig)
-    security: SecurityConfig = Field(default_factory=SecurityConfig)
+    logging: LoggingConfig = Field(default_factory=lambda: LoggingConfig())
+    api: APIConfig = Field(default_factory=lambda: APIConfig())
+    security: SecurityConfig = Field(default_factory=lambda: SecurityConfig())
     plugins: dict[str, Any] = Field(default_factory=dict, description="Plugin configurations (dictionary format)")
-    middleware: MiddlewareConfig = Field(default_factory=MiddlewareConfig)
-    mcp: MCPConfig = Field(default_factory=MCPConfig)
+    middleware: MiddlewareConfig = Field(default_factory=lambda: MiddlewareConfig())
+    mcp: MCPConfig = Field(default_factory=lambda: MCPConfig())
 
     # AI configuration
     ai: dict[str, Any] = Field(default_factory=dict, description="AI settings")
@@ -574,7 +610,8 @@ class AgentConfig(BaseModel):
     def validate_mcp_consistency(self) -> AgentConfig:
         if self.mcp_enabled:
             if not self.mcp.enabled:
-                self.mcp = MCPConfig(enabled=True)
+                # MCPConfig will use its own field defaults
+                self.mcp.enabled = True
         return self
 
 
@@ -598,7 +635,7 @@ class ConfigurationSettings(BaseSettings):
     # Security settings
     SECRET_KEY: str | None = Field(None, description="Application secret key")
 
-    model_config = ConfigDict(env_prefix="AGENTUP_", case_sensitive=True)
+    model_config = {"env_prefix": "AGENTUP_", "case_sensitive": True}
 
     def create_directories(self) -> None:
         directories = [self.DATA_DIR, self.LOGS_DIR, self.PLUGINS_DIR]
@@ -645,4 +682,7 @@ __all__ = [
     "ConfigurationSettings",
     "EnvironmentVariable",
     "expand_env_vars",
+    "AgentType",
+    "MemoryConfig",
+    "IterativeConfig",
 ]

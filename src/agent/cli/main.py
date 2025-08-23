@@ -21,7 +21,7 @@ def setup_cli_logging():
 
     try:
         from agent.config.logging import setup_logging
-        from agent.config.model import LoggingConfig
+        from agent.config.model import LogFormat, LoggingConfig, LoggingConsoleConfig
 
         # In debug mode, allow resolver logs through, otherwise suppress them
         resolver_level = "INFO" if is_debug else "CRITICAL"  # noqa: F841
@@ -30,10 +30,20 @@ def setup_cli_logging():
         )  # Suppress cache debug logs even in debug mode
 
         # Create logging config
+        console_config = LoggingConsoleConfig(
+            enabled=True,
+            colors=True,
+            show_time=True,
+            show_level=True,
+        )
         cli_logging_config = LoggingConfig(
+            enabled=True,
             level=log_level,
-            format="text",
-            console={"colors": True},
+            format=LogFormat.TEXT,
+            console=console_config,
+            correlation_id=False,
+            request_logging=False,
+            structured_data=False,
             modules={
                 "agent.plugins": "WARNING",  # Suppress plugin discovery logs
                 "agent.plugins.manager": "WARNING",
