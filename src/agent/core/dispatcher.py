@@ -346,11 +346,7 @@ class FunctionDispatcher:
                 logger.warning("Falling back to basic response")
 
                 # Extract user input for fallback
-                user_input = ""
-                for message in reversed(task.history):
-                    if message.role == "user" and message.parts:
-                        user_input = self.conversation_manager.extract_text_from_parts(message.parts)
-                        break
+                user_input = self._get_latest_user_input(task)
                 return self._fallback_response(user_input)
 
             # Prepare LLM conversation directly from A2A task history
@@ -439,11 +435,7 @@ class FunctionDispatcher:
             if ai_context and ai_context_id:
                 try:
                     # Extract latest user message for state storage
-                    user_input = ""
-                    for message in reversed(task.history):
-                        if message.role == "user" and message.parts:
-                            user_input = self.conversation_manager.extract_text_from_parts(message.parts)
-                            break
+                    user_input = self._get_latest_user_input(task)
 
                     await self._store_ai_processing_state(ai_context, ai_context_id, user_input, response)
                     logger.info(f"AI processing: Stored conversation state for context {ai_context_id}")
@@ -532,6 +524,17 @@ class FunctionDispatcher:
 
     def _fallback_response(self, user_input: str) -> str:
         return f"I received your message: '{user_input}'. However, my AI capabilities are currently unavailable. Please try again later."
+
+    def _get_latest_user_input(self, task: Task) -> str:
+        """Extract the latest user input from task history."""
+        from agent.state.conversation import ConversationManager
+
+        user_input = ""
+        for message in reversed(task.history):
+            if message.role == "user" and message.parts:
+                user_input = ConversationManager.extract_text_from_parts(message.parts)
+                break
+        return user_input
 
 
 # Decorator for registering plugins as AI functions

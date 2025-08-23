@@ -272,13 +272,8 @@ class OpenAIProvider(BaseLLMService):
         # Map A2A 'agent' role to OpenAI 'assistant' role
         role = "assistant" if message.role == "agent" else message.role
 
-        # Handle structured content for vision models
-        if isinstance(message.content, list):
-            # Multi-modal content (text + images)
-            msg_dict: dict[str, Any] = {"role": role, "content": message.content}
-        else:
-            # Simple text content
-            msg_dict: dict[str, Any] = {"role": role, "content": message.content}
+        # Create message dictionary with role mapping
+        msg_dict: dict[str, Any] = {"role": role, "content": message.content}
 
         if message.function_call:
             msg_dict["function_call"] = {

@@ -204,11 +204,10 @@ class AgentUpExecutor(AgentExecutor):
             # Get the latest user message from history
             for message in reversed(task.history):
                 if message.role == "user" and message.parts:
-                    # Use ConversationManager helper for consistency
+                    # Use ConversationManager static helper for consistency
                     from agent.state.conversation import ConversationManager
 
-                    conversation_manager = ConversationManager()
-                    return conversation_manager.extract_text_from_parts(message.parts)
+                    return ConversationManager.extract_text_from_parts(message.parts)
             return ""
         except Exception as e:
             logger.error(f"Error extracting user message: {e}")

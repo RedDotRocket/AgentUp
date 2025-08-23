@@ -9,7 +9,8 @@ class ConversationManager:
     def __init__(self):
         pass
 
-    def extract_text_from_parts(self, parts) -> str:
+    @staticmethod
+    def extract_text_from_parts(parts) -> str:
         """Extract text content from A2A message parts."""
         text_content = ""
         for part in parts:
@@ -77,21 +78,43 @@ Always be helpful, accurate, and maintain a friendly tone.""",
             context = get_context_manager(backend, **backend_config)
 
             # Retrieve conversation history
-            history = []
             stored_history = await context.get_history(context_id)
 
-            # Convert stored history to expected format
-            for i in range(0, len(stored_history) - 1, 2):
-                if i + 1 < len(stored_history):
-                    user_msg = stored_history[i]
-                    agent_msg = stored_history[i + 1]
-                    if user_msg.get("role") == "user" and agent_msg.get("role") == "agent":
+            # Robust conversation turn reconstruction
+            history = []
+            current_user_msg = None
+
+            for msg in stored_history:
+                if msg.get("role") == "user":
+                    # If we have a pending user message, save it with empty agent response
+                    if current_user_msg is not None:
                         history.append(
                             {
-                                "user": user_msg.get("content", ""),
-                                "agent": agent_msg.get("content", ""),
+                                "user": current_user_msg,
+                                "agent": "",
                             }
                         )
+                    # Store new user message
+                    current_user_msg = msg.get("content", "")
+
+                elif msg.get("role") == "agent" and current_user_msg is not None:
+                    # Complete the conversation turn
+                    history.append(
+                        {
+                            "user": current_user_msg,
+                            "agent": msg.get("content", ""),
+                        }
+                    )
+                    current_user_msg = None
+
+            # Handle any remaining unpaired user message
+            if current_user_msg is not None:
+                history.append(
+                    {
+                        "user": current_user_msg,
+                        "agent": "",
+                    }
+                )
 
             logger.debug(f"Retrieved {len(history)} conversation turns for context {context_id}")
             return history
@@ -121,10 +144,20 @@ Always be helpful, accurate, and maintain a friendly tone.""",
             context = get_context_manager(backend, **backend_config)
 
             # Store user message
-            await context.add_to_history(context_id, "user", user_input, {"timestamp": datetime.utcnow().isoformat()})
+            await context.add_to_history(
+                context_id,
+                "user",
+                user_input,
+                {"timestamp": datetime.now(datetime.timezone.utc).isoformat()},
+            )
 
             # Store agent response
-            await context.add_to_history(context_id, "agent", response, {"timestamp": datetime.utcnow().isoformat()})
+            await context.add_to_history(
+                context_id,
+                "agent",
+                response,
+                {"timestamp": datetime.now(datetime.timezone.utc).isoformat()},
+            )
 
             logger.debug(f"Updated conversation history for context {context_id}")
 
