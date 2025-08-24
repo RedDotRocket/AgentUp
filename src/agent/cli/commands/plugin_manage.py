@@ -24,9 +24,9 @@ def _find_similar_plugin_names(target_name: str, available_names: list[str], max
             return [name]  # Exact match found
 
     # 2. Simple character replacement (- <-> _)
-    target_normalized = target_name.replace("-", "_").replace("_", "-")
+    target_normalized = target_name.replace("_", "-")
     for name in available_names:
-        name_normalized = name.replace("-", "_").replace("_", "-")
+        name_normalized = name.replace("_", "-")
         if target_normalized.lower() == name_normalized.lower():
             suggestions.append(name)
 
@@ -328,29 +328,19 @@ def add(ctx, plugin_name: str):
 
             # Suggest similar plugin names from available installed plugins
             try:
-                available_plugins = []
-                for dist in metadata.distributions():
-                    try:
-                        entry_points = dist.entry_points
-                        if hasattr(entry_points, "select"):
-                            plugin_entries = entry_points.select(group="agentup.plugins")
-                        else:
-                            plugin_entries = entry_points.get("agentup.plugins", [])
+                from agent.plugins.manager import PluginRegistry
 
-                        for entry_point in plugin_entries:
-                            available_plugins.append(entry_point.name)
-                    except (AttributeError, KeyError, TypeError, ValueError):
-                        continue
-
+                registry = PluginRegistry()
+                available_plugins_info = registry.discover_all_available_plugins()
+                available_plugins = [p["name"] for p in available_plugins_info]
                 suggestions = _find_similar_plugin_names(plugin_name, available_plugins)
                 if suggestions:
                     if len(suggestions) == 1:
                         click.secho(f"Did you mean: {suggestions[0]}?", fg="cyan")
                     else:
                         click.secho(f"Did you mean one of: {', '.join(suggestions)}?", fg="cyan")
-            except Exception:  # nosec
-                pass  # Ignore errors in suggestion generation
-
+            except Exception:
+                pass  # nosec
             return
 
         click.secho(
