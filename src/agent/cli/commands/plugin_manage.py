@@ -348,7 +348,7 @@ def add(ctx, plugin_name: str):
                         click.secho(f"Did you mean: {suggestions[0]}?", fg="cyan")
                     else:
                         click.secho(f"Did you mean one of: {', '.join(suggestions)}?", fg="cyan")
-            except Exception:
+            except Exception:  # nosec
                 pass  # Ignore errors in suggestion generation
 
             return
