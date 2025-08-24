@@ -213,14 +213,11 @@ class AgentBootstrapper:
 
         try:
             self.logger.info("Integrating plugins with capabilities system")
-            from agent.plugins.integration import integrate_plugins_with_capabilities
+            from agent.plugins.integration import enable_plugin_system
 
-            # Pass the Pydantic config directly
-            capabilities_registered = integrate_plugins_with_capabilities(Config)
-            if len(capabilities_registered) == 0:
-                self.logger.debug("No capabilities registered from plugins")
-            else:
-                self.logger.info(f"Registered {len(capabilities_registered)} capabilities from plugins")
+            # Use the complete plugin integration that handles both capabilities and function registry
+            enable_plugin_system()
+            self.logger.info("Plugin system enabled and integrated with function registry")
 
         except Exception as e:
             self.logger.error(f"Plugin integration failed: {e}")

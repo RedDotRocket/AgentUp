@@ -99,121 +99,16 @@ class PluginRegistry:
                 allowed_plugins_temp = {}
 
                 # Validate plugin configuration format
-                if not isinstance(configured_plugins, dict | list):
-                    raise ValueError(f"Plugin configuration must be a dict or list, got {type(configured_plugins)}")
+                if not isinstance(configured_plugins, dict):
+                    raise ValueError(f"Plugin configuration must be a dict, got {type(configured_plugins)}")
 
-                # Handle both dictionary and list formats for backward compatibility
-                if isinstance(configured_plugins, dict):
-                    # New dictionary format: package_name -> plugin_config
-                    for package_name, plugin_config in configured_plugins.items():
-                        logger.debug(
-                            f"Processing plugin entry: package_name='{package_name}', plugin_config={plugin_config}"
-                        )
-                        if plugin_config and isinstance(plugin_config, dict):
-                            plugin_info = {
-                                "package": package_name,
-                                "plugin_name": plugin_config.get("name", package_name),
-                                "verified": plugin_config.get("verified", False),
-                                "min_version": plugin_config.get("min_version"),
-                                "max_version": plugin_config.get("max_version"),
-                            }
-
-                            # Add entry for package name (from config)
-                            allowed_plugins_temp[package_name] = plugin_info
-
-                            # Add entry for plugin name if different from package name
-                            plugin_name = plugin_config.get("name", package_name)
-                            if plugin_name != package_name:
-                                allowed_plugins_temp[plugin_name] = plugin_info
-
-                            # Try to discover actual plugin name from entry points
-                            discovered_plugin_name = None
-                            try:
-                                discovered_plugin_name = self._discover_plugin_name_for_package(package_name)
-                            except Exception as e:
-                                logger.debug(f"Could not discover plugin name for package {package_name}: {e}")
-
-                            # Add discovered name if found
-                            if discovered_plugin_name and discovered_plugin_name != package_name:
-                                logger.debug(
-                                    f"Found entry point name '{discovered_plugin_name}' for package '{package_name}'"
-                                )
-                                allowed_plugins_temp[discovered_plugin_name] = plugin_info
-
-                            # Try common transformations as fallback if entry point discovery didn't work
-                            possible_names = [
-                                package_name.replace("-", "_"),  # agentup-systools -> agentup_systools
-                                package_name.replace("agentup-", ""),  # agentup-brave -> brave
-                                package_name.replace("agentup-", "").replace(
-                                    "-", "_"
-                                ),  # agentup-some-plugin -> some_plugin
-                            ]
-
-                            logger.debug(
-                                f"Processing package '{package_name}' with transformed names: {possible_names}"
-                            )
-
-                            # Add all possible names to the allowlist
-                            for possible_name in possible_names:
-                                if possible_name != package_name and possible_name:  # Avoid empty strings
-                                    logger.debug(
-                                        f"Adding transformed plugin name '{possible_name}' for package '{package_name}'"
-                                    )
-                                    allowed_plugins_temp[possible_name] = plugin_info
-                elif isinstance(configured_plugins, list):
-                    # Old list format: list of plugin configs
-                    for plugin_config in configured_plugins:
-                        package_name = plugin_config.get("package") or plugin_config.get("name")
-                        plugin_name = plugin_config.get("name", package_name)
-                        logger.debug(
-                            f"Processing plugin entry (list format): package_name='{package_name}', plugin_config={plugin_config}"
-                        )
-                        if package_name:
-                            plugin_info = {
-                                "package": package_name,
-                                "plugin_name": plugin_name,
-                                "verified": plugin_config.get("verified", False),
-                                "min_version": plugin_config.get("min_version"),
-                                "max_version": plugin_config.get("max_version"),
-                            }
-
-                            # Add entry for package name (from config)
-                            allowed_plugins_temp[package_name] = plugin_info
-
-                            # Try to discover actual plugin name from entry points
-                            discovered_plugin_name = None
-                            try:
-                                discovered_plugin_name = self._discover_plugin_name_for_package(package_name)
-                            except Exception as e:
-                                logger.debug(f"Could not discover plugin name for package {package_name}: {e}")
-
-                            # Add discovered name if found
-                            if discovered_plugin_name and discovered_plugin_name != package_name:
-                                logger.debug(
-                                    f"Found entry point name '{discovered_plugin_name}' for package '{package_name}'"
-                                )
-                                allowed_plugins_temp[discovered_plugin_name] = plugin_info
-
-                            # Try common transformations as fallback if entry point discovery didn't work
-                            possible_names = [
-                                package_name.replace("-", "_"),  # agentup-systools -> agentup_systools
-                                package_name.replace("agentup-", ""),  # agentup-brave -> brave
-                                package_name.replace("agentup-", "").replace(
-                                    "-", "_"
-                                ),  # agentup-some-plugin -> some_plugin
-                            ]
-
-                            logger.debug(
-                                f"Processing package '{package_name}' with transformed names: {possible_names}"
-                            )
-
-                            # Add all possible names to the allowlist
-                            for possible_name in possible_names:
-                                if possible_name != package_name and possible_name:  # Avoid empty strings
-                                    logger.debug(
-                                        f"Adding transformed plugin name '{possible_name}' for package '{package_name}'"
-                                    )
-                                    allowed_plugins_temp[possible_name] = plugin_info
+                # Handle dictionary format - simple exact name matching only
+                for package_name, plugin_config in configured_plugins.items():
+                    logger.debug(
+                        f"Processing plugin entry: package_name='{package_name}', plugin_config={plugin_config}"
+                    )
+                    plugin_info = {"package": package_name}
+                    allowed_plugins_temp[package_name] = plugin_info
 
                 # Successfully processed all plugins, assign to actual field
                 self.allowed_plugins = allowed_plugins_temp
@@ -409,57 +304,7 @@ class PluginRegistry:
             logger.debug(f"Plugin '{package_name}' not in allowlist (mode: {self.security_mode})")
             return False
 
-        allowed_config = self.allowed_plugins[package_name]
-
-        # Check package name matches (redundant now but kept for safety)
-        expected_package = allowed_config.get("package")
-        if expected_package and dist:
-            actual_package = dist.name
-            if actual_package != expected_package:
-                logger.warning(
-                    f"Plugin {package_name} package mismatch: expected {expected_package}, got {actual_package}"
-                )
-                return False
-
-        # Check version constraints if specified
-        if dist:
-            version = dist.version
-            min_version = allowed_config.get("min_version")
-            max_version = allowed_config.get("max_version")
-
-            if min_version and not self._version_satisfies(version, f">={min_version}"):
-                logger.warning(f"Plugin {package_name} version {version} below minimum {min_version}")
-                return False
-
-            if max_version and not self._version_satisfies(version, f"<={max_version}"):
-                logger.warning(f"Plugin {package_name} version {version} above maximum {max_version}")
-                return False
-
         return True
-
-    def _discover_plugin_name_for_package(self, package_name: str) -> str | None:
-        """Discover the actual plugin name (entry point name) for a given package name."""
-        try:
-            import importlib.metadata as metadata
-
-            # Look for the package in installed distributions
-            for dist in metadata.distributions():
-                if dist.name == package_name:
-                    # Check if this package has agentup plugin entry points
-                    entry_points = dist.entry_points
-                    if hasattr(entry_points, "select"):
-                        plugin_entries = entry_points.select(group="agentup.plugins")
-                    else:
-                        plugin_entries = entry_points.get("agentup.plugins", [])
-
-                    # Return the first plugin entry point name we find
-                    for entry_point in plugin_entries:
-                        return entry_point.name
-
-        except Exception as e:
-            logger.debug(f"Error discovering plugin name for {package_name}: {e}")
-
-        return None
 
     def _register_plugin(
         self,
@@ -763,39 +608,6 @@ class PluginRegistry:
                 issues.append(f"Configuration contains suspicious pattern: {pattern}")
 
         return len(issues) == 0, issues
-
-    def _version_satisfies(self, version: str, constraint: str) -> bool:
-        """Check if version satisfies constraint using packaging library"""
-        try:
-            from packaging import version as pkg_version
-
-            v = pkg_version.parse(version)
-
-            if constraint.startswith(">="):
-                min_v = pkg_version.parse(constraint[2:])
-                return v >= min_v
-            elif constraint.startswith("<="):
-                max_v = pkg_version.parse(constraint[2:])
-                return v <= max_v
-            elif constraint.startswith(">"):
-                min_v = pkg_version.parse(constraint[1:])
-                return v > min_v
-            elif constraint.startswith("<"):
-                max_v = pkg_version.parse(constraint[1:])
-                return v < max_v
-            elif constraint.startswith("=="):
-                exact_v = pkg_version.parse(constraint[2:])
-                return v == exact_v
-
-            return True
-
-        except ImportError:
-            # Fallback to string comparison if packaging not available
-            logger.warning("packaging library not available for version checking")
-            return True
-        except Exception as e:
-            logger.warning(f"Version constraint check failed for {version} {constraint}: {e}")
-            return True
 
     def get_security_report(self, plugin_name: str) -> dict[str, Any]:
         """Generate security report for a plugin"""

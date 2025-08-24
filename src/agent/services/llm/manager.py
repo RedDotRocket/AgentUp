@@ -124,7 +124,7 @@ class LLMManager:
                 logger.debug("Sending function results back to LLM for final response")
                 try:
                     final_response = await llm.chat_complete(chat_messages)
-                    logger.info(
+                    logger.debug(
                         f"Final LLM response after function execution: {final_response.content[:200]}{'...' if len(str(final_response.content)) > 200 else ''}"
                     )
                     return final_response.content
@@ -142,7 +142,6 @@ class LLMManager:
 
     @staticmethod
     async def llm_direct_response(llm, messages: list[dict[str, str]]) -> str:
-        # CONDITIONAL_LLM_PROVIDER_IMPORTS
         # Note: llm_providers module is generated during project creation from templates
         try:
             from agent.llm_providers.base import ChatMessage  # type: ignore[import-untyped]

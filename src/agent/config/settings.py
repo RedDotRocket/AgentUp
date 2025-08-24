@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Annotated, Any
 
 from dotenv import load_dotenv
-from pydantic import Field, HttpUrl, field_validator
+from pydantic import Field, HttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from ..types import ConfigDict as ConfigDictType
@@ -16,7 +16,6 @@ from .model import (
     LoggingConfig,
     MCPConfig,
     MiddlewareConfig,
-    PluginConfig,
     SecurityConfig,
     ServiceConfig,
 )
@@ -72,7 +71,7 @@ class Settings(BaseSettings):
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     api: APIConfig = Field(default_factory=APIConfig)
     security: SecurityConfig = Field(default_factory=SecurityConfig)
-    plugins: list[PluginConfig] = Field(default_factory=list)
+    plugins: dict[str, Any] = Field(default_factory=dict, description="Plugin configurations (dictionary format)")
     middleware: MiddlewareConfig = Field(default_factory=MiddlewareConfig)
     mcp: MCPConfig = Field(default_factory=MCPConfig)
 
@@ -94,80 +93,6 @@ class Settings(BaseSettings):
 
     # Development settings
     development: dict[str, Any] = Field(default_factory=dict)
-
-    @field_validator("plugins", mode="before")
-    @classmethod
-    def validate_plugins(cls, v):
-        """Handle both old plugin format (dicts) and new format (strings)."""
-        from pydantic import ValidationError
-
-        if v is None:
-            return []
-
-        # Handle new dict format: plugins: {package_name: {config...}}
-        if isinstance(v, dict):
-            list_format = []
-            for package_name, plugin_config in v.items():
-                if isinstance(plugin_config, str):
-                    # Simple string value - convert to package name
-                    list_format.append(package_name)
-                elif isinstance(plugin_config, dict):
-                    # Dict config - ensure it has required fields for PluginConfig
-                    config_dict = plugin_config.copy()
-
-                    # Ensure package field exists
-                    if "package" not in config_dict:
-                        config_dict["package"] = package_name
-
-                    # Ensure name field exists (uses package name as identifier)
-                    if "name" not in config_dict:
-                        # Use package name as plugin name
-                        config_dict["name"] = package_name
-
-                    # Convert new capability format to old format if needed
-                    if "capabilities" in config_dict:
-                        if isinstance(config_dict["capabilities"], dict):
-                            # Convert dict capabilities back to list format for old Settings
-                            cap_list = []
-                            for cap_id, cap_config in config_dict["capabilities"].items():
-                                cap_dict = {"capability_id": cap_id}
-                                if isinstance(cap_config, dict):
-                                    cap_dict.update(cap_config)
-                                cap_list.append(cap_dict)
-                            config_dict["capabilities"] = cap_list
-                        # If capabilities are already a list, keep them as-is
-
-                    list_format.append(config_dict)
-                else:
-                    # Convert other types to string package names
-                    list_format.append(str(package_name))
-            v = list_format
-
-        if not isinstance(v, list):
-            return []
-
-        validated_plugins = []
-        for item in v:
-            if isinstance(item, str):
-                # New intent-based format: convert string to minimal PluginConfig
-                # Use package name as the plugin name
-                plugin_name = item
-
-                plugin_config = PluginConfig(name=plugin_name, package=item, enabled=True)
-                validated_plugins.append(plugin_config)
-            elif isinstance(item, dict):
-                # Old format: validate as PluginConfig
-                try:
-                    plugin_config = PluginConfig(**item)
-                    validated_plugins.append(plugin_config)
-                except ValidationError:
-                    # Skip invalid plugin configs
-                    continue
-            elif hasattr(item, "name"):
-                # Already a PluginConfig object
-                validated_plugins.append(item)
-
-        return validated_plugins
 
     def __init__(self, **kwargs):
         # Load .env file if it exists

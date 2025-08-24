@@ -462,11 +462,11 @@ class TestPluginAllowlist:
 
         registry = PluginRegistry(config)
 
-        assert "test_plugin" in registry.allowed_plugins
-        assert registry.allowed_plugins["test_plugin"]["package"] == "custom-package"
+        assert "custom-package" in registry.allowed_plugins
+        assert registry.allowed_plugins["custom-package"]["package"] == "custom-package"
 
-        assert "auto_plugin" in registry.allowed_plugins
-        assert registry.allowed_plugins["auto_plugin"]["package"] == "auto-plugin"
+        assert "auto-plugin" in registry.allowed_plugins
+        assert registry.allowed_plugins["auto-plugin"]["package"] == "auto-plugin"
 
     @patch("src.agent.plugins.manager.logger")
     def test_load_plugin_allowlist_error_handling(self, mock_logger):
@@ -490,7 +490,8 @@ class TestPluginAllowlist:
 
     def test_is_plugin_allowed_plugin_in_allowlist(self):
         """Test plugin allowed check when plugin in allowlist."""
-        registry = PluginRegistry()
+        config = {"plugins": {}}
+        registry = PluginRegistry(config)
         registry.allowed_plugins = {"allowed_plugin": {"package": "test-package"}}
 
         result = registry._is_plugin_allowed("allowed_plugin", None)
@@ -506,7 +507,7 @@ class TestPluginAllowlist:
 
     @patch("src.agent.plugins.manager.logger")
     def test_is_plugin_allowed_package_mismatch(self, mock_logger):
-        """Test plugin allowed check with package mismatch."""
+        """Test plugin allowed check with simplified logic (no package verification)."""
         registry = PluginRegistry()
         registry.allowed_plugins = {"test_plugin": {"package": "expected-package"}}
 
@@ -514,8 +515,9 @@ class TestPluginAllowlist:
         mock_dist = Mock()
         mock_dist.name = "actual-package"
 
+        # With simplified logic, only package name presence in allowlist matters
         result = registry._is_plugin_allowed("test_plugin", mock_dist)
-        assert result is False
+        assert result is True
 
 
 class TestPluginDiscovery:
@@ -551,7 +553,8 @@ class TestPluginDiscovery:
         mock_ep_result.select = Mock(return_value=[mock_entry_point])
         mock_entry_points.return_value = mock_ep_result
 
-        registry = PluginRegistry()
+        config = {"plugins": {}}
+        registry = PluginRegistry(config)
         # Allow the plugin
         registry.allowed_plugins = {"test_plugin": {"package": "test-package"}}
 
@@ -598,7 +601,8 @@ class TestPluginDiscovery:
         mock_ep_result.select = Mock(return_value=[mock_entry_point])
         mock_entry_points.return_value = mock_ep_result
 
-        registry = PluginRegistry()
+        config = {"plugins": {}}
+        registry = PluginRegistry(config)
         registry.allowed_plugins = {"error_plugin": {"package": "error-package"}}
 
         registry._load_entry_point_plugins()
@@ -623,7 +627,8 @@ class TestPluginDiscovery:
         mock_ep_result = {"agentup.plugins": [mock_entry_point]}
         mock_entry_points.return_value = mock_ep_result
 
-        registry = PluginRegistry()
+        config = {"plugins": {}}
+        registry = PluginRegistry(config)
         registry.allowed_plugins = {"test_plugin": {"package": "test-package"}}
 
         registry._load_entry_point_plugins()
@@ -805,7 +810,8 @@ class TestPluginDiscoveryAll:
         mock_ep_result.select = Mock(return_value=[mock_entry_point])
         mock_entry_points.return_value = mock_ep_result
 
-        registry = PluginRegistry()
+        config = {"plugins": {}}
+        registry = PluginRegistry(config)
         available = registry.discover_all_available_plugins()
 
         assert len(available) == 1

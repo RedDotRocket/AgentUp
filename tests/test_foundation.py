@@ -50,7 +50,8 @@ class TestTestFoundation:
         assert "plugins" in minimal_agent_config, "Should have plugins section"
         assert minimal_agent_config["agent"]["name"] == "minimal-test"
         assert len(minimal_agent_config["plugins"]) == 1
-        assert minimal_agent_config["plugins"][0]["name"] == "echo"
+        assert "echo" in minimal_agent_config["plugins"]
+        assert minimal_agent_config["plugins"]["echo"]["name"] == "echo"
 
     def test_provider_specific_configs(
         self, ollama_agent_config: dict[str, Any], anthropic_agent_config: dict[str, Any]

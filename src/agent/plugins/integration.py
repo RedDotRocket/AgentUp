@@ -333,10 +333,12 @@ def integrate_with_function_registry(
 def _create_ai_function_handler(capability_id: str, ai_func, plugin_registry: PluginRegistry):
     """Create handler for AI function calls"""
 
-    async def handler(task, context):
+    async def handler(task):
         """Handle AI function call"""
-        # Extract parameters from the function call
-        parameters = context.get("parameters", {}) if isinstance(context, dict) else {}
+        # Extract parameters from the task metadata (set by function executor)
+        parameters = {}
+        if hasattr(task, "metadata") and task.metadata:
+            parameters = {k: v for k, v in task.metadata.items() if k != "function_name"}
 
         # Create CapabilityContext for the plugin
         plugin_context = CapabilityContext(
@@ -355,7 +357,7 @@ def _create_ai_function_handler(capability_id: str, ai_func, plugin_registry: Pl
         # Execute the capability
         result = await plugin_registry.execute_capability(capability_id, plugin_context)
 
-        return result
+        return result.content
 
     return handler
 

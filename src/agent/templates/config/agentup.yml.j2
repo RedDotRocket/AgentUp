@@ -23,7 +23,7 @@ cors:
 # Plugin configurations (use agentup plugin sync / add / remove)
 plugins:{% if initial_plugins %}
 {% for plugin in initial_plugins %}
-  - package: {{ plugin.package }}
+  {{ plugin.package }}:
     enabled: {{ plugin.enabled | default(true) }}
 {% if plugin.plugin_override %}
     plugin_override:

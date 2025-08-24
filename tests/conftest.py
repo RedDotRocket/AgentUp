@@ -28,14 +28,14 @@ def sample_agent_config() -> dict[str, Any]:
         "name": "test-agent",  # Use new format
         "description": "Test Agent for Unit Testing",
         "version": "0.5.1",
-        "plugins": [
-            {
+        "plugins": {
+            "test-plugin": {
                 "description": "General purpose AI agent",
                 "enabled": True,
                 "capabilities": [],
                 "priority": 100,
             }
-        ],
+        },
         "ai_provider": {
             "provider": "openai",
             "api_key": "${OPENAI_API_KEY}",
@@ -72,8 +72,8 @@ def sample_agent_config() -> dict[str, Any]:
 def minimal_agent_config() -> dict[str, Any]:
     return {
         "agent": {"name": "minimal-test", "description": "Minimal Test Agent", "version": "0.5.1"},
-        "plugins": [
-            {
+        "plugins": {
+            "echo": {
                 "name": "echo",
                 "description": "Echo back the input text",
                 "tags": ["echo", "basic", "simple"],
@@ -83,7 +83,7 @@ def minimal_agent_config() -> dict[str, Any]:
                 "patterns": [".*"],
                 "priority": 50,
             }
-        ],
+        },
     }
 
 

@@ -495,24 +495,6 @@ class AgentConfig(BaseModel):
     middleware: MiddlewareConfig = Field(default_factory=MiddlewareConfig)
     mcp: MCPConfig = Field(default_factory=MCPConfig)
 
-    @field_validator("plugins", mode="before")
-    @classmethod
-    def validate_plugins_format(cls, v):
-        """Convert list format to dict format for backward compatibility."""
-        if isinstance(v, list):
-            # Convert list format to dict format using package names as keys
-            plugin_dict = {}
-            for plugin_config in v:
-                if isinstance(plugin_config, dict) and "name" in plugin_config:
-                    plugin_name = plugin_config["name"]
-                    # Use the plugin name as key, store the rest as config
-                    plugin_dict[plugin_name] = plugin_config
-                else:
-                    # Handle invalid plugin config
-                    continue
-            return plugin_dict
-        return v
-
     # AI configuration
     ai: dict[str, Any] = Field(default_factory=dict, description="AI settings")
     ai_provider: dict[str, Any] = Field(default_factory=dict, description="AI provider configuration")
