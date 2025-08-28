@@ -2176,7 +2176,7 @@ wheels = [
 
 [[package]]
 name = "mkdocs-mermaid2-plugin"
-version = "1.2.1"
+version = "1.2.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "beautifulsoup4" },
@@ -2186,9 +2186,9 @@ dependencies = [
     { name = "requests" },
     { name = "setuptools" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3e/1a/f580733da1924ebc9b4bb04a34ca63ae62a50b0e62eeb016e78d9dee6d69/mkdocs_mermaid2_plugin-1.2.1.tar.gz", hash = "sha256:9c7694c73a65905ac1578f966e5c193325c4d5a5bc1836727e74ac9f99d0e921", size = 16104, upload-time = "2024-11-02T06:27:36.302Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3c/d4/efbabe9d04252b3007bc79b0d6db2206b40b74e20619cbed23c1e1d03b2a/mkdocs_mermaid2_plugin-1.2.2.tar.gz", hash = "sha256:20a44440d32cf5fd1811b3e261662adb3e1b98be272e6f6fb9a476f3e28fd507", size = 16209, upload-time = "2025-08-27T23:51:51.078Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/24/ce/c8a41cb0f3044990c8afbdc20c853845a9e940995d4e0cffecafbb5e927b/mkdocs_mermaid2_plugin-1.2.1-py3-none-any.whl", hash = "sha256:22d2cf2c6867d4959a5e0903da2dde78d74581fc0b107b791bc4c7ceb9ce9741", size = 17260, upload-time = "2024-11-02T06:27:34.652Z" },
+    { url = "https://files.pythonhosted.org/packages/8e/d5/15f6eeeb755e57a501fad6dcfb3fe406dea5f6a6347a77c3be114294f7bb/mkdocs_mermaid2_plugin-1.2.2-py3-none-any.whl", hash = "sha256:a003dddd6346ecc0ad530f48f577fe6f8b21ea23fbee09eabf0172bbc1f23df8", size = 17300, upload-time = "2025-08-27T23:51:49.988Z" },
 ]
 
 [[package]]
