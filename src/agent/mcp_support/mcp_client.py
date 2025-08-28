@@ -598,7 +598,8 @@ class MCPClientService:
         args_str = str(sorted(arguments.items()))
         cache_input = f"{tool_name}:{args_str}"
         # Use hash to create a shorter key
-        return hashlib.md5(cache_input.encode()).hexdigest()
+        # Bandit nosec, as not used for security, just for caching
+        return hashlib.md5(cache_input.encode()).hexdigest() # nosec
 
     def _cleanup_expired_cache(self) -> None:
         """Remove expired entries from the function call cache."""

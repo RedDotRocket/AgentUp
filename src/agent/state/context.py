@@ -133,8 +133,8 @@ class FileStorage(StateStorage):
                     backup_path = f"{file_path}.corrupted.{int(time.time())}"
                     shutil.copy2(file_path, backup_path)
                     logger.warning(f"Backed up corrupted state file to {backup_path}")
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning(f"Failed to backup corrupted state file: {e}")
                 return None
             except Exception as e:
                 logger.error(f"Error loading state {context_id}: {e}")
