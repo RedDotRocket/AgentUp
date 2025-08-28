@@ -18,6 +18,7 @@ from agent.core.models import (
     LearningType,
     ReflectionData,
 )
+from agent.core.models.iteration import CompletionData
 
 # Removed GoalCompletedException import - now using structured completion results
 
@@ -61,8 +62,9 @@ class IterativeStrategy(AgentExecutorBase):
         import asyncio
 
         self._completion_lock = asyncio.Lock()
-        self._completion_data = None
+        self._completion_data: CompletionData | None = None
         self._completion_detected = False
+        self._completion_from_tool = False  # Track if completion came from mark_goal_complete capability
 
         # Track execution timing
         self._execution_start_time = None
@@ -77,6 +79,7 @@ class IterativeStrategy(AgentExecutorBase):
         async with self._completion_lock:
             self._completion_detected = False
             self._completion_data = None
+            self._completion_from_tool = False
 
         # Validate request
         error = self._validate_request(context)
@@ -331,6 +334,33 @@ class IterativeStrategy(AgentExecutorBase):
         auth_result = get_current_auth_for_executor()
         result = await self.dispatcher.process_task(iteration_task, auth_result)
 
+        # Stream meaningful results (skip completion signals)
+        if result and isinstance(result, str) and result.strip():
+            logger.info(f"Streaming result from iteration {state.iteration_count + 1}: {result[:100]}...")
+
+            try:
+                # Create artifact with the iteration result content
+                parts = [Part(root=TextPart(text=result))]
+                artifact = new_artifact(
+                    parts,
+                    name=f"{self.agent_name}-iteration-{state.iteration_count + 1}",
+                    description=f"Iteration {state.iteration_count + 1} result",
+                )
+
+                await updater.update_status(
+                    TaskState.working,
+                    new_agent_text_message(f"Iteration {state.iteration_count + 1} progress", task.context_id, task.id),
+                    final=False,
+                )
+
+                # Add the artifact with the actual content
+                await updater.add_artifact(parts, name=artifact.name)
+                logger.info(f"Successfully streamed {len(result)} characters to user with artifact")
+            except Exception as e:
+                logger.error(f"Failed to stream result: {e}")
+        elif isinstance(result, dict) and result.get("completed"):
+            logger.info(f"Iteration {state.iteration_count + 1} returned completion signal - not streaming")
+
         # Thread-safe completion detection and state updates
         async with self._completion_lock:
             # Double-check completion hasn't been detected by another thread
@@ -345,6 +375,7 @@ class IterativeStrategy(AgentExecutorBase):
 
                 # Mark completion as detected to prevent race conditions
                 self._completion_detected = True
+                self._completion_from_tool = True  # Flag that completion came from goal completion tool
 
                 # Set completion state
                 state.should_continue = False
@@ -354,17 +385,28 @@ class IterativeStrategy(AgentExecutorBase):
                 return
 
             # Check if result indicates completion (structured format)
-            elif isinstance(result, dict) and result.get("completed"):
+            if isinstance(result, dict) and result.get("completed"):
                 logger.info("Goal completion detected from structured result - acquiring completion lock")
+
+                # Parse structured result using Pydantic model
+                from agent.core.models.iteration import StructuredCompletionResult
+
+                try:
+                    structured_result = StructuredCompletionResult(**result)
+                except Exception as e:
+                    logger.error(f"Failed to parse structured completion result: {e}")
+                    # Continue with normal processing if parsing fails
+                    return
 
                 # Mark completion as detected to prevent race conditions
                 self._completion_detected = True
+                self._completion_from_tool = True  # Flag that completion came from goal completion tool
 
                 # Set completion state
                 state.should_continue = False
 
                 # Update state with completion data
-                completion_data = result.get("completion_data", {})
+                completion_data = structured_result.completion_data
                 if completion_data:
                     # Validate completion data integrity
                     validated_completion_data = self._validate_completion_data(completion_data)
@@ -373,7 +415,7 @@ class IterativeStrategy(AgentExecutorBase):
                     self._completion_data = validated_completion_data
 
                     # Add completed tasks to state
-                    for completed_task in validated_completion_data.get("tasks_completed", []):
+                    for completed_task in validated_completion_data.tasks_completed:
                         if isinstance(completed_task, str) and completed_task.strip():
                             state.add_completed_task(completed_task.strip())
 
@@ -381,29 +423,19 @@ class IterativeStrategy(AgentExecutorBase):
                     from agent.core.models.iteration import GoalStatus, ReflectionData
 
                     state.reflection_data = ReflectionData(
-                        progress_assessment=validated_completion_data.get("summary", "Goal completed successfully"),
+                        progress_assessment=validated_completion_data.summary,
                         goal_achievement_status=GoalStatus.FULLY_ACHIEVED,
                         next_action_reasoning="Goal completed successfully",
-                        learned_insights=validated_completion_data.get("remaining_issues", []),
+                        learned_insights=validated_completion_data.remaining_issues,
                     )
 
-                    logger.info(f"Completion data validated and stored: {len(validated_completion_data)} fields")
-
-                # Use final response as result
-                result = result.get("final_response", "Goal marked as complete - execution stopped")
-            else:
-                # Stream intermediate result to user immediately (NOT a completion)
-                if result and str(result).strip():
-                    logger.debug(f"Streaming intermediate iteration result: {str(result)[:100]}...")
-                    await updater.update_status(
-                        TaskState.working,
-                        new_agent_text_message(
-                            str(result),
-                            task.context_id,
-                            task.id,
-                        ),
-                        final=False,
+                    logger.info(
+                        f"Completion data validated and stored: {len(validated_completion_data.tasks_completed)} tasks completed"
                     )
+
+                logger.info("Structured goal completion processed successfully")
+                logger.info(f"Set should_continue=False, returning from iteration {state.iteration_count + 1}")
+                return
 
         # Store result in action history (outside completion lock to avoid deadlock)
         action_result = ActionResult(
@@ -419,13 +451,20 @@ class IterativeStrategy(AgentExecutorBase):
 
         logger.info(f"Completed iteration {state.iteration_count}, should_continue: {state.should_continue}")
 
-    def _validate_completion_data(self, completion_data: dict) -> dict:
+    def _validate_completion_data(self, completion_data: dict) -> CompletionData:
         """Validate completion data to prevent corruption or injection."""
-        ALLOWED_KEYS = {"summary", "confidence", "tasks_completed", "remaining_issues"}
+        ALLOWED_KEYS = {"summary", "result_content", "confidence", "tasks_completed", "remaining_issues"}
         MAX_STRING_LENGTH = 2000
+        MAX_RESULT_CONTENT_LENGTH = 8000
         MAX_ARRAY_SIZE = 50
 
-        validated = {}
+        validated = {
+            "summary": "Goal completed successfully",
+            "result_content": "",
+            "confidence": 1.0,
+            "tasks_completed": [],
+            "remaining_issues": [],
+        }
 
         for key, value in completion_data.items():
             if key not in ALLOWED_KEYS:
@@ -435,6 +474,8 @@ class IterativeStrategy(AgentExecutorBase):
             try:
                 if key == "summary" and isinstance(value, str):
                     validated[key] = value[:MAX_STRING_LENGTH].strip()
+                elif key == "result_content" and isinstance(value, str):
+                    validated[key] = value[:MAX_RESULT_CONTENT_LENGTH].strip()
                 elif key == "confidence" and isinstance(value, int | float):
                     validated[key] = max(0.0, min(1.0, float(value)))  # Clamp to valid range
                 elif key in ["tasks_completed", "remaining_issues"] and isinstance(value, list):
@@ -457,7 +498,7 @@ class IterativeStrategy(AgentExecutorBase):
             except (ValueError, TypeError) as e:
                 logger.warning(f"Failed to validate completion data '{key}': {e}")
 
-        return validated
+        return CompletionData(**validated)
 
     async def _decompose_goal_with_llm(self, goal: str, task: Task) -> list[str]:
         """Use LLM to decompose goal into actionable tasks."""
@@ -861,15 +902,27 @@ Evaluate the current state and decide: Is the goal complete, partially complete,
         if dispatcher_result and "GOAL_COMPLETED:" in dispatcher_result:
             logger.info("Found GOAL_COMPLETED signal in result")
             try:
-                # Extract the completion data from the signal
-                completion_json = dispatcher_result.split("GOAL_COMPLETED:", 1)[1].strip()
+                # Extract JSON object from the string using a regex for robustness
+                import re
+
+                json_match = re.search(r"\{.*\}", dispatcher_result, re.DOTALL)
+                if not json_match:
+                    logger.warning("Could not extract JSON from GOAL_COMPLETED signal", signal=dispatcher_result)
+                    return False
+
+                completion_json = json_match.group(0)
                 logger.debug(f"Parsing completion JSON: {completion_json}")
-                completion_data = json.loads(completion_json)
+                completion_dict = json.loads(completion_json)
 
-                # Store completion data for later use
-                self._completion_data = completion_data
+                # Create structured Pydantic model from completion data
+                from agent.core.models.iteration import CompletionData
 
-                confidence = completion_data.get("confidence", 0)
+                self._completion_data = CompletionData(**completion_dict)
+                logger.debug(
+                    f"Stored completion data: summary='{self._completion_data.summary}', result_content='{self._completion_data.result_content[:100] if self._completion_data.result_content else 'None'}...'"
+                )
+
+                confidence = self._completion_data.confidence
                 threshold = self.config.iterative.completion_confidence_threshold
 
                 # Lower threshold if agent is stuck in a loop
@@ -887,7 +940,7 @@ Evaluate the current state and decide: Is the goal complete, partially complete,
 
         # Legacy check for old completion data format
         if hasattr(self, "_completion_data") and self._completion_data:
-            confidence = self._completion_data.get("confidence", 0)
+            confidence = self._completion_data.confidence
             threshold = self.config.iterative.completion_confidence_threshold
 
             # Lower threshold if agent is stuck in a loop
@@ -1123,7 +1176,7 @@ Evaluate the current state and decide: Is the goal complete, partially complete,
 
         # Check if we have completion data from mark_goal_complete
         if hasattr(self, "_completion_data") and self._completion_data:
-            completion_confidence = self._completion_data.get("confidence", 0.0)
+            completion_confidence = self._completion_data.confidence
 
             # Enforce minimum confidence threshold for security
             if completion_confidence < confidence_threshold:
@@ -1181,22 +1234,25 @@ Evaluate the current state and decide: Is the goal complete, partially complete,
                     f"Completion confidence {completion_confidence:.2f} meets threshold {confidence_threshold:.2f}"
                 )
 
-            # Use the actual summary from the completion tool
-            completion_summary = self._completion_data.get("summary", "Goal completed successfully")
             # Calculate total execution time
             total_time = self._get_total_execution_time()
+
+            # Always show completion metadata (confidence, iterations, time) but not duplicate content
+            # User has already seen the full analysis via streaming
             completion_message = (
                 f"🎯 Goal completed after {state.iteration_count} iterations "
-                f"(confidence: {completion_confidence:.1%}) in {total_time}.\n\n{completion_summary}\n\n"
-                f"💬 Ready for your next request!"
+                f"(confidence: {completion_confidence:.1%}) in {total_time}."
             )
+            logger.info("Sending completion metadata summary")
         elif state.reflection_data and state.reflection_data.goal_achievement_status == GoalStatus.FULLY_ACHIEVED:
             total_time = self._get_total_execution_time()
-            completion_message = f"🎯 Goal achieved after {state.iteration_count} iterations in {total_time}: {state.goal}\n\n💬 Ready for your next request!"
+            completion_message = f"🎯 Goal achieved after {state.iteration_count} iterations in {total_time}."
             completion_approved = True
         elif state.iteration_count >= self.config.iterative.max_iterations:
             total_time = self._get_total_execution_time()
-            completion_message = f"⏱️ Reached maximum iterations ({self.config.iterative.max_iterations}) in {total_time}. Current progress: {state.reflection_data.progress_assessment if state.reflection_data else 'Unknown'}\n\n💬 Ready for your next request!"
+            completion_message = (
+                f"⏱️ Reached maximum iterations ({self.config.iterative.max_iterations}) in {total_time}."
+            )
             completion_approved = False  # Max iterations reached without proper completion
 
             # Log max iterations reached for security monitoring
@@ -1211,7 +1267,7 @@ Evaluate the current state and decide: Is the goal complete, partially complete,
             )
         else:
             total_time = self._get_total_execution_time()
-            completion_message = f"⏹️ Processing stopped after {state.iteration_count} iterations in {total_time}\n\n💬 Ready for your next request!"
+            completion_message = f"⏹️ Processing stopped after {state.iteration_count} iterations in {total_time}."
             completion_approved = False
 
         # Security audit for completion events
@@ -1254,9 +1310,9 @@ Evaluate the current state and decide: Is the goal complete, partially complete,
             artifact_data.update(
                 {
                     "completion_confidence": completion_confidence,
-                    "completion_summary": self._completion_data.get("summary", ""),
-                    "tasks_completed_details": self._completion_data.get("tasks_completed", []),
-                    "remaining_issues": self._completion_data.get("remaining_issues", []),
+                    "completion_summary": self._completion_data.summary,
+                    "tasks_completed_details": self._completion_data.tasks_completed,
+                    "remaining_issues": self._completion_data.remaining_issues,
                 }
             )
 
@@ -1288,15 +1344,14 @@ Evaluate the current state and decide: Is the goal complete, partially complete,
         except Exception as e:
             logger.error(f"Failed to store conversation history: {e}")
 
-        # Send final completion message with working state but mark as final for this execution
-        # This closes the streaming response while keeping the task open for follow-ups
+        # Send the completion metadata summary (confidence, iterations, time)
+        # User has already seen all the content via streaming, this is just the final metadata
+        logger.info("Sending completion metadata summary and marking execution as final")
         await updater.update_status(
             TaskState.working,
             new_agent_text_message(completion_message, task.context_id, task.id),
             final=True,  # Mark as final to close this execution's stream
         )
-
-        logger.info("Goal completed, sent final message, task remains available for follow-up requests")
 
     def _get_total_execution_time(self) -> str:
         """Get formatted total execution time from start to completion."""

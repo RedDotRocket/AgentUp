@@ -135,14 +135,16 @@ class FunctionExecutor:
                 return f"The requested function is not available [ref:{correlation_id}]"
 
             # Create task with function parameters - validate parameter safety
-            task_with_params = self.task
-            if hasattr(self.task, "metadata"):
-                if self.task.metadata is None:
-                    self.task.metadata = {}
+            # Create a copy of the task to avoid mutating the original's metadata
+            import copy
 
-                # Sanitize arguments before adding to task metadata
-                sanitized_arguments = self._sanitize_function_arguments(arguments, correlation_id)
-                self.task.metadata.update(sanitized_arguments)
+            task_with_params = copy.deepcopy(self.task)
+            if not hasattr(task_with_params, "metadata") or task_with_params.metadata is None:
+                task_with_params.metadata = {}
+
+            # Sanitize arguments before adding to task metadata
+            sanitized_arguments = self._sanitize_function_arguments(arguments, correlation_id)
+            task_with_params.metadata.update(sanitized_arguments)
 
             # Apply state management if handler accepts context parameters
             result = await self._execute_with_state_management(handler, task_with_params, function_name)

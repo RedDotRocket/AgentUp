@@ -18,6 +18,16 @@ class GoalStatus(str, Enum):
     REQUIRES_CLARIFICATION = "requires_clarification"
 
 
+class CompletionData(BaseModel):
+    """Structured completion data from goal completion capability."""
+
+    summary: str = "Goal completed successfully"
+    result_content: str = ""  # The actual substantive result/answer
+    confidence: float = 1.0
+    tasks_completed: list[str] = Field(default_factory=list)
+    remaining_issues: list[str] = Field(default_factory=list)
+
+
 class ActionResult(BaseModel):
     """Result of an action execution."""
 
@@ -87,3 +97,11 @@ class IterationState(BaseModel):
         # Update should_continue based on reflection
         if reflection.goal_achievement_status == GoalStatus.FULLY_ACHIEVED:
             self.should_continue = False
+
+
+class StructuredCompletionResult(BaseModel):
+    """Structured completion result from goal completion capability."""
+
+    completed: bool
+    completion_data: dict[str, Any] = Field(default_factory=dict)
+    final_response: str = ""

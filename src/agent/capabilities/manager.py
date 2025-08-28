@@ -39,22 +39,24 @@ def register_system_capabilities() -> None:
 
         Note: This is an internal-only capability and does not require authentication.
         """
-        from agent.core.models.iteration import FunctionExecutionResult
+        from agent.core.models.iteration import CompletionData, FunctionExecutionResult
 
         # This is an internal system capability
         logger.debug("Processing internal goal completion request")
 
         # Security constants for input validation
-        ALLOWED_COMPLETION_FIELDS = {"summary", "confidence", "tasks_completed", "remaining_issues"}
+        ALLOWED_COMPLETION_FIELDS = {"summary", "result_content", "confidence", "tasks_completed", "remaining_issues"}
         MAX_SUMMARY_LENGTH = 2000
+        MAX_RESULT_CONTENT_LENGTH = 8000  # Allow longer content for substantive results
         MAX_TASK_DESCRIPTION_LENGTH = 200
         MAX_TASKS_ARRAY_LENGTH = 50
         MIN_CONFIDENCE = 0.0
         MAX_CONFIDENCE = 1.0
 
         # Default completion data with secure defaults
-        completion_data = {
+        completion_dict = {
             "summary": "Goal completed successfully",
+            "result_content": "",  # The actual substantive result/answer
             "confidence": 1.0,
             "tasks_completed": [],
             "remaining_issues": [],
@@ -64,7 +66,7 @@ def register_system_capabilities() -> None:
         if hasattr(task, "metadata") and task.metadata:
             for key, value in task.metadata.items():
                 # Only process allowed fields to prevent injection
-                if key not in ALLOWED_COMPLETION_FIELDS or key not in completion_data:
+                if key not in ALLOWED_COMPLETION_FIELDS or key not in completion_dict:
                     logger.warning(f"Ignoring invalid completion field: {key}")
                     continue
 
@@ -74,13 +76,19 @@ def register_system_capabilities() -> None:
                         # Sanitize and truncate summary
                         sanitized_summary = value.strip()[:MAX_SUMMARY_LENGTH]
                         if sanitized_summary:
-                            completion_data[key] = sanitized_summary
+                            completion_dict[key] = sanitized_summary
+
+                    elif key == "result_content" and isinstance(value, str):
+                        # Sanitize and truncate result content (substantive answer)
+                        sanitized_content = value.strip()[:MAX_RESULT_CONTENT_LENGTH]
+                        if sanitized_content:
+                            completion_dict[key] = sanitized_content
 
                     elif key == "confidence" and isinstance(value, int | float):
                         # Validate and clamp confidence to safe range
                         confidence = float(value)
                         if MIN_CONFIDENCE <= confidence <= MAX_CONFIDENCE:
-                            completion_data[key] = confidence
+                            completion_dict[key] = confidence
                         else:
                             logger.warning(f"Confidence value {confidence} out of range, using default")
 
@@ -95,7 +103,7 @@ def register_system_capabilities() -> None:
                                         validated_tasks.append(sanitized_item)
                                 else:
                                     logger.warning(f"Invalid task item type: {type(item)}")
-                            completion_data[key] = validated_tasks
+                            completion_dict[key] = validated_tasks
                         else:
                             logger.warning(f"Tasks array too long ({len(value)}), using default")
 
@@ -103,12 +111,18 @@ def register_system_capabilities() -> None:
                     logger.warning(f"Failed to validate completion field '{key}': {e}")
                     # Keep default value for invalid fields
 
-            logger.debug(f"Validated completion data fields: {list(completion_data.keys())}")
+            logger.debug(f"Validated completion data fields: {list(completion_dict.keys())}")
+
+        # Create structured Pydantic model from validated dictionary
+        completion_data = CompletionData(**completion_dict)
 
         logger.info("Goal marked as complete by internal system - returning structured completion result")
 
         return FunctionExecutionResult(
-            success=True, result=completion_data["summary"], completed=True, completion_data=completion_data
+            success=True,
+            result=completion_data.result_content or completion_data.summary,
+            completed=True,
+            completion_data=completion_data.model_dump(),
         )
 
     logger.info("System capabilities registered: mark_goal_complete")
