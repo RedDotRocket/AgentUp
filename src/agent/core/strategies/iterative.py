@@ -11,7 +11,6 @@ from agent.core.base import AgentExecutorBase, get_current_auth_for_executor
 from agent.core.models import (
     ActionResult,
     AgentConfiguration,
-    AgentType,
     GoalStatus,
     IterationState,
     LearningInsight,
@@ -1123,7 +1122,7 @@ Evaluate the current state and decide: Is the goal complete, partially complete,
 
             memory_context = MemoryContext(
                 context_id=state.context_id,
-                agent_type=AgentType.ITERATIVE,
+                agent_type="iterative",
             )
 
             for insight in insights:
@@ -1285,7 +1284,7 @@ Evaluate the current state and decide: Is the goal complete, partially complete,
 
                 memory_context = MemoryContext(
                     context_id=state.context_id,
-                    agent_type=AgentType.ITERATIVE,
+                    agent_type="iterative",
                 )
                 memory_context.mark_success()
                 await self.memory_manager.set_variable(

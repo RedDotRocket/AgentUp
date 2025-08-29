@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 from agent.a2a.agentcard import create_agent_card
 from agent.config.constants import DEFAULT_SERVER_HOST, DEFAULT_SERVER_PORT
-from agent.config.model import AgentType, LogFormat
+from agent.config.model import LogFormat
 from agent.core.executor import AgentUpExecutor
 from agent.push.notifier import EnhancedPushNotifier
 from agent.services import AgentBootstrapper, ConfigurationManager
@@ -100,6 +100,7 @@ def _setup_request_handler(app: FastAPI) -> None:
     agent_type = config.get("agent_type", "reactive")
 
     # Create agent configuration for executor
+    from agent.config.model import AgentType
     from agent.core.models import AgentConfiguration
 
     if agent_type == AgentType.ITERATIVE:
@@ -113,12 +114,12 @@ def _setup_request_handler(app: FastAPI) -> None:
         iterative_config = IterativeConfig(**iterative_config_data) if iterative_config_data else IterativeConfig()
 
         agent_config = AgentConfiguration(
-            agent_type=AgentType.ITERATIVE,  # Pass string directly
+            agent_type=AgentType.ITERATIVE,
             memory=memory_config,
             iterative=iterative_config,
         )
     else:
-        agent_config = AgentConfiguration(agent_type=AgentType.REACTIVE)  # Pass string directly
+        agent_config = AgentConfiguration(agent_type=AgentType.REACTIVE)
 
     request_handler = DefaultRequestHandler(
         agent_executor=AgentUpExecutor(agent=agent_card, config=agent_config),

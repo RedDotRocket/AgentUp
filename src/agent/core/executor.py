@@ -115,17 +115,20 @@ def create_agent_executor(
     Returns:
         Configured AgentUpExecutor instance
     """
-    # Parse agent type - AgentConfiguration accepts both strings and enums
-    if isinstance(agent_type, AgentType):
-        agent_type_value = agent_type
+    # Parse agent type - AgentConfiguration expects string values
+    if agent_type is None:
+        agent_type_value = "reactive"  # Default for None
+    elif isinstance(agent_type, AgentType):
+        agent_type_value = agent_type.value  # Convert enum to its string value
     elif isinstance(agent_type, str):
-        try:
-            agent_type_value = AgentType(agent_type.lower())
-        except ValueError:
+        agent_type_value = agent_type.lower()
+        if agent_type_value not in ["reactive", "iterative"]:
             logger.warning(f"Invalid agent_type '{agent_type}', defaulting to reactive")
-            agent_type_value = AgentType.REACTIVE
+            agent_type_value = "reactive"
     else:
-        agent_type_value = AgentType.REACTIVE  # Default
+        # This branch is unreachable with proper typing, but provides runtime safety
+        # for cases where type hints are not enforced (e.g., dynamic calls)
+        raise TypeError(f"Unsupported type for agent_type: {type(agent_type).__name__}")
 
     # Create configuration
     config = AgentConfiguration(agent_type=agent_type_value, **config_kwargs)

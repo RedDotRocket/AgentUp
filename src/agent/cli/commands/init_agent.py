@@ -7,7 +7,6 @@ import httpx
 import questionary
 
 from agent.cli.style import custom_style, print_error, print_header, print_success_footer
-from agent.core.models import AgentType
 from agent.generator import ProjectGenerator
 from agent.templates import get_feature_choices
 from agent.utils.git_utils import get_git_author_info, initialize_git_repo
@@ -128,18 +127,18 @@ def _prompt_for_features(project_config: dict[str, Any], quick: bool, no_git: bo
 
     # Agent type selection (always prompt, even in quick mode)
     agent_type_choices = [
-        questionary.Choice("Reactive (single-shot request/response)", value=AgentType.REACTIVE),
-        questionary.Choice("Iterative (self-directed multi-turn loops)", value=AgentType.ITERATIVE),
+        questionary.Choice("Reactive (single-shot request/response)", value="reactive"),
+        questionary.Choice("Iterative (self-directed multi-turn loops)", value="iterative"),
     ]
 
     selected_agent_type = questionary.select(
-        "Select agent execution type:", choices=agent_type_choices, default=AgentType.REACTIVE, style=custom_style
+        "Select agent execution type:", choices=agent_type_choices, default="reactive", style=custom_style
     ).ask()
 
     project_config["agent_type"] = selected_agent_type
 
     # Configure iterative-specific settings if selected
-    if selected_agent_type == AgentType.ITERATIVE:
+    if selected_agent_type == "iterative":
         max_iterations = questionary.text(
             "Maximum iterations per task (1-100):", default="10", style=custom_style
         ).ask()
