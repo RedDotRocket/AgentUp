@@ -54,6 +54,11 @@ class Settings(BaseSettings):
     # Environment
     environment: str = Field("development", pattern="^(development|staging|production)$")
 
+    # Agent execution configuration
+    agent_type: str = Field("reactive", description="Agent execution type (reactive or iterative)")
+    memory_config: dict[str, Any] = Field(default_factory=dict, description="Memory configuration for agents")
+    iterative_config: dict[str, Any] = Field(default_factory=dict, description="Configuration for iterative agents")
+
     # Multi-agent orchestration
     orchestrator: HttpUrl | None = Field(None, description="Orchestrator URL for multi-agent registration")
 

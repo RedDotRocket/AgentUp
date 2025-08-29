@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from a2a.types import Message, Role, Task
@@ -21,10 +21,15 @@ class MessageProcessor:
             if isinstance(msg, dict):
                 # Convert dict to Message object
                 try:
+                    from a2a.types import Part, TextPart
+
                     message = Message(
+                        message_id=msg.get("message_id", f"msg-{datetime.now().timestamp()}"),
                         role=msg.get("role", "user"),
-                        content=msg.get("content", ""),
-                        timestamp=msg.get("timestamp", datetime.utcnow().isoformat()),
+                        parts=[Part(root=TextPart(kind="text", text=msg.get("content", "")))],
+                        kind="message",
+                        context_id=msg.get("context_id"),
+                        task_id=msg.get("task_id"),
                     )
                     messages.append(message)
                 except Exception:
@@ -75,18 +80,26 @@ class MessageProcessor:
                     {
                         "role": getattr(message, "role", "unknown"),
                         "content": getattr(message, "content", ""),
-                        "timestamp": getattr(message, "timestamp", datetime.utcnow().isoformat()),
+                        "timestamp": getattr(message, "timestamp", datetime.now(timezone.utc).isoformat()),
                     }
                 )
         return history
 
     @staticmethod
     def create_system_message(content: str) -> dict[str, Any]:
-        return {"role": "system", "content": content, "timestamp": datetime.utcnow().isoformat()}
+        return {
+            "role": "system",
+            "content": content,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
 
     @staticmethod
     def create_agent_message(content: str) -> dict[str, Any]:
-        return {"role": "agent", "content": content, "timestamp": datetime.utcnow().isoformat()}
+        return {
+            "role": "agent",
+            "content": content,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
 
 
 class ConversationContext:
@@ -96,8 +109,8 @@ class ConversationContext:
     def get_context(cls, task_id: str) -> dict[str, Any]:
         if task_id not in cls._contexts:
             cls._contexts[task_id] = {
-                "created_at": datetime.utcnow(),
-                "last_activity": datetime.utcnow(),
+                "created_at": datetime.now(timezone.utc),
+                "last_activity": datetime.now(timezone.utc),
                 "message_count": 0,
                 "conversation_history": [],
                 "user_preferences": {},
@@ -109,13 +122,13 @@ class ConversationContext:
     def update_context(cls, task_id: str, **kwargs) -> None:
         context = cls.get_context(task_id)
         context.update(kwargs)
-        context["last_activity"] = datetime.utcnow()
+        context["last_activity"] = datetime.now(timezone.utc)
 
     @classmethod
     def increment_message_count(cls, task_id: str) -> int:
         context = cls.get_context(task_id)
         context["message_count"] += 1
-        context["last_activity"] = datetime.utcnow()
+        context["last_activity"] = datetime.now(timezone.utc)
         return context["message_count"]
 
     @classmethod
@@ -128,14 +141,14 @@ class ConversationContext:
         context = cls.get_context(task_id)
         history = context.get("conversation_history", [])
 
-        history.append({"role": role, "content": content, "timestamp": datetime.utcnow().isoformat()})
+        history.append({"role": role, "content": content, "timestamp": datetime.now(timezone.utc).isoformat()})
 
         # Keep only last 20 messages to prevent memory issues
         if len(history) > 20:
             history = history[-20:]
 
         context["conversation_history"] = history
-        context["last_activity"] = datetime.utcnow()
+        context["last_activity"] = datetime.now(timezone.utc)
 
     @classmethod
     def get_history(cls, task_id: str, limit: int = 10) -> list[dict[str, Any]]:
@@ -167,11 +180,11 @@ class ConversationContext:
 
     @classmethod
     def cleanup_old_contexts(cls, max_age_hours: int = 24) -> int:
-        cutoff_time = datetime.utcnow().timestamp() - (max_age_hours * 3600)
+        cutoff_time = datetime.now(timezone.utc).timestamp() - (max_age_hours * 3600)
         contexts_to_remove = []
 
         for task_id, context in cls._contexts.items():
-            last_activity = context.get("last_activity", datetime.utcnow())
+            last_activity = context.get("last_activity", datetime.now(timezone.utc))
             if isinstance(last_activity, str):
                 last_activity = datetime.fromisoformat(last_activity)
 

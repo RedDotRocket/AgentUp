@@ -1,3 +1,5 @@
+import hashlib
+import time
 from typing import Any, Protocol
 
 import structlog
@@ -5,6 +7,15 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.sse import sse_client
 from mcp.client.stdio import stdio_client
 from mcp.client.streamable_http import streamablehttp_client
+from mcp.types import (
+    AudioContent,
+    BlobResourceContents,
+    EmbeddedResource,
+    ImageContent,
+    ResourceLink,
+    TextContent,
+    TextResourceContents,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -27,6 +38,14 @@ class MCPClientService:
         self._available_tools: dict[str, dict[str, Any]] = {}
         self._available_resources: dict[str, dict[str, Any]] = {}
         self._initialized = False
+        # Cache for function call results (tool_name + args hash -> (result, timestamp))
+        self._function_call_cache: dict[str, tuple[str, float]] = {}
+        # Cache TTL in seconds (short cache to avoid stale data)
+        self._cache_ttl = 60
+        # Persistent connections for MCP servers (server_name -> (session, read, write, transport_context))
+        self._persistent_connections: dict[str, tuple[Any, Any, Any, Any]] = {}
+        # Track which servers require persistent connections (OAuth-based servers)
+        self._persistent_servers: set[str] = set()
 
     async def initialize(self) -> None:
         """Initialize MCP client and discover capabilities from all configured servers."""
@@ -121,7 +140,64 @@ class MCPClientService:
 
         logger.debug(f"Connecting to MCP server '{server_name}' using {transport} transport")
 
-        # Create appropriate client based on transport type
+        # Check if this server needs persistent connection (OAuth-based servers)
+        needs_persistent = self._requires_persistent_connection(server_config)
+
+        if needs_persistent:
+            logger.debug(f"Server '{server_name}' identified as requiring persistent connection")
+            self._persistent_servers.add(server_name)
+            await self._establish_persistent_connection(server_name, server_config)
+        else:
+            # Use temporary connection for discovery only
+            await self._discover_server_with_temp_connection(server_name, server_config)
+
+    def _requires_persistent_connection(self, server_config: dict[str, Any]) -> bool:
+        """Determine if a server requires persistent connection (OAuth-based servers)."""
+        # Check for OAuth credentials in environment variables
+        env = server_config.get("env", {})
+        for key in env.keys():
+            if any(oauth_key in key.upper() for oauth_key in ["OAUTH", "CREDENTIAL", "AUTH"]):
+                return True
+        return False
+
+    async def _establish_persistent_connection(self, server_name: str, server_config: dict[str, Any]) -> None:
+        """Establish and maintain persistent connection for OAuth servers."""
+        transport = server_config["transport"]
+
+        try:
+            # Create transport client
+            transport_context = self._create_transport_client(server_config)
+
+            # Establish connection
+            read, write, *_ = await transport_context.__aenter__()
+
+            # Create and initialize session
+            session = ClientSession(read, write)
+            await session.__aenter__()
+            await session.initialize()
+
+            # Store persistent connection
+            self._persistent_connections[server_name] = (session, read, write, transport_context)
+
+            # Discover capabilities through persistent connection
+            await self._discover_server_capabilities(server_name, session)
+
+            # Store server info
+            self._servers[server_name] = {
+                "config": server_config,
+                "transport": transport,
+                "connected": True,
+                "persistent": True,
+            }
+
+            logger.debug(f"Successfully established persistent connection to MCP server: {server_name}")
+
+        except Exception as e:
+            await self._handle_connection_error(server_name, server_config, e)
+
+    async def _discover_server_with_temp_connection(self, server_name: str, server_config: dict[str, Any]) -> None:
+        """Discover server capabilities using temporary connection."""
+        transport = server_config["transport"]
         transport_context = self._create_transport_client(server_config)
 
         try:
@@ -134,74 +210,85 @@ class MCPClientService:
                     await self._discover_server_capabilities(server_name, session)
 
             # Store server info for future connections
-            self._servers[server_name] = {"config": server_config, "transport": transport, "connected": True}
+            self._servers[server_name] = {
+                "config": server_config,
+                "transport": transport,
+                "connected": True,
+                "persistent": False,
+            }
 
             logger.debug(f"Successfully connected to MCP server: {server_name}")
 
         except Exception as e:
-            error_msg = str(e)
+            await self._handle_connection_error(server_name, server_config, e)
 
-            # Provide specific, actionable error messages based on common failure patterns
-            if "403" in error_msg or "Forbidden" in error_msg:
-                enhanced_error = (
-                    f"Authentication failed for MCP server '{server_name}': Invalid or missing authentication token. "
-                    f"Check your API key or authentication token in the server configuration."
-                )
-                logger.error(enhanced_error)
-            elif "401" in error_msg or "Unauthorized" in error_msg:
-                enhanced_error = (
-                    f"Authentication required for MCP server '{server_name}': Missing authorization header. "
-                    f"Ensure the server configuration includes valid authentication credentials."
-                )
-                logger.error(enhanced_error)
-            elif "Connection refused" in error_msg or "refused" in error_msg.lower():
-                enhanced_error = (
-                    f"Connection refused to MCP server '{server_name}': Server may not be running or URL may be incorrect. "
-                    f"Verify the server is running and the URL/port in your configuration is correct."
-                )
-                logger.error(enhanced_error)
-            elif "timeout" in error_msg.lower() or "timed out" in error_msg.lower():
-                enhanced_error = (
-                    f"Connection timeout to MCP server '{server_name}': Server is not responding. "
-                    f"Check if the server is running and network connectivity is available."
-                )
-                logger.error(enhanced_error)
-            elif "Name or service not known" in error_msg or "getaddrinfo failed" in error_msg:
-                enhanced_error = (
-                    f"DNS resolution failed for MCP server '{server_name}': Cannot resolve hostname. "
-                    f"Check the server URL/hostname in your configuration."
-                )
-                logger.error(enhanced_error)
-            elif "unhandled errors in a TaskGroup" in error_msg:
-                # TaskGroup exceptions often wrap the real error
-                enhanced_error = (
-                    f"Connection error to MCP server '{server_name}': {error_msg}. "
-                    f"This may be due to authentication, network, or server configuration issues."
-                )
-                logger.error(enhanced_error)
-            else:
-                enhanced_error = (
-                    f"Failed to establish session with MCP server '{server_name}': {error_msg}. "
-                    f"Check server configuration and ensure the server is running and accessible."
-                )
-                logger.error(enhanced_error)
+    async def _handle_connection_error(self, server_name: str, server_config: dict[str, Any], e: Exception) -> None:
+        """Handle connection errors with enhanced error messages."""
+        error_msg = str(e)
+        transport = server_config["transport"]
 
-            # Include impact information
-            logger.debug(
-                f"MCP server '{server_name}' failure will result in unavailable tools/resources from this server. "
-                f"Other configured servers may still function normally."
+        # Provide specific, actionable error messages based on common failure patterns
+        if "403" in error_msg or "Forbidden" in error_msg:
+            enhanced_error = (
+                f"Authentication failed for MCP server '{server_name}': Invalid or missing authentication token. "
+                f"Check your API key or authentication token in the server configuration."
             )
+            logger.error(enhanced_error)
+        elif "401" in error_msg or "Unauthorized" in error_msg:
+            enhanced_error = (
+                f"Authentication required for MCP server '{server_name}': Missing authorization header. "
+                f"Ensure the server configuration includes valid authentication credentials."
+            )
+            logger.error(enhanced_error)
+        elif "Connection refused" in error_msg or "refused" in error_msg.lower():
+            enhanced_error = (
+                f"Connection refused to MCP server '{server_name}': Server may not be running or URL may be incorrect. "
+                f"Verify the server is running and the URL/port in your configuration is correct."
+            )
+            logger.error(enhanced_error)
+        elif "timeout" in error_msg.lower() or "timed out" in error_msg.lower():
+            enhanced_error = (
+                f"Connection timeout to MCP server '{server_name}': Server is not responding. "
+                f"Check if the server is running and network connectivity is available."
+            )
+            logger.error(enhanced_error)
+        elif "Name or service not known" in error_msg or "getaddrinfo failed" in error_msg:
+            enhanced_error = (
+                f"DNS resolution failed for MCP server '{server_name}': Cannot resolve hostname. "
+                f"Check the server URL/hostname in your configuration."
+            )
+            logger.error(enhanced_error)
+        elif "unhandled errors in a TaskGroup" in error_msg:
+            # TaskGroup exceptions often wrap the real error
+            enhanced_error = (
+                f"Connection error to MCP server '{server_name}': {error_msg}. "
+                f"This may be due to authentication, network, or server configuration issues."
+            )
+            logger.error(enhanced_error)
+        else:
+            enhanced_error = (
+                f"Failed to establish session with MCP server '{server_name}': {error_msg}. "
+                f"Check server configuration and ensure the server is running and accessible."
+            )
+            logger.error(enhanced_error)
 
-            # Store server as failed with enhanced error information
-            self._servers[server_name] = {
-                "config": server_config,
-                "transport": transport,
-                "connected": False,
-                "error": enhanced_error,
-                "original_error": str(e),
-            }
+        # Include impact information
+        logger.debug(
+            f"MCP server '{server_name}' failure will result in unavailable tools/resources from this server. "
+            f"Other configured servers may still function normally."
+        )
 
-            # Don't raise - allow other servers to connect
+        # Store server as failed with enhanced error information
+        self._servers[server_name] = {
+            "config": server_config,
+            "transport": transport,
+            "connected": False,
+            "error": enhanced_error,
+            "original_error": str(e),
+            "persistent": False,
+        }
+
+        # Don't raise - allow other servers to connect
 
     def _create_transport_client(self, server_config: dict[str, Any]):
         """Create appropriate transport client based on configuration."""
@@ -326,7 +413,7 @@ class MCPClientService:
         return tools
 
     async def call_tool(self, tool_name: str, arguments: dict[str, Any]) -> str:
-        """Call an MCP tool by creating a fresh session."""
+        """Call an MCP tool using persistent connection when available, with caching to prevent repeated calls."""
         # Handle prefixed tool names (e.g., "stdio:get_forecast" -> "get_forecast")
         clean_tool_name = tool_name
         if ":" in tool_name:
@@ -346,40 +433,117 @@ class MCPClientService:
             error = server_info.get("error", "Unknown error") if server_info else "Server not found"
             raise ValueError(f"Cannot call tool '{tool_name}': Server '{server_name}' is not connected. {error}")
 
-        # Get server configuration
-        server_info = self._servers[server_name]
-        server_config = server_info["config"]
+        # Generate cache key from tool name and arguments
+        cache_key = self._generate_cache_key(actual_tool_name, arguments)
+        current_time = time.time()
+
+        # Check cache first
+        if cache_key in self._function_call_cache:
+            cached_result, cached_time = self._function_call_cache[cache_key]
+            if current_time - cached_time < self._cache_ttl:
+                logger.info(f"Using cached result for MCP tool '{actual_tool_name}' on server '{server_name}'")
+                return cached_result
+            else:
+                # Remove expired cache entry
+                del self._function_call_cache[cache_key]
 
         logger.info(f"Calling MCP tool '{actual_tool_name}' on server '{server_name}' with arguments: {arguments}")
 
         try:
-            # Create fresh transport connection for tool call
-            transport_context = self._create_transport_client(server_config)
+            # Use persistent connection if available, otherwise create fresh connection
+            if server_name in self._persistent_connections:
+                result = await self._call_tool_persistent(server_name, actual_tool_name, arguments)
+            else:
+                result = await self._call_tool_temporary(server_name, actual_tool_name, arguments)
 
-            async with transport_context as (read, write, *_):
-                async with ClientSession(read, write) as session:
-                    await session.initialize()
+            # Process and return result
+            processed_result = self._process_tool_result(result, tool_name)
 
-                    # Call the tool
-                    result = await session.call_tool(name=actual_tool_name, arguments=arguments)
+            # Cache the result
+            self._function_call_cache[cache_key] = (processed_result, current_time)
 
-                    # Process and return result
-                    return self._process_tool_result(result, tool_name)
+            # Clean up expired cache entries periodically (every 10 calls)
+            if len(self._function_call_cache) % 10 == 0:
+                self._cleanup_expired_cache()
+
+            return processed_result
 
         except Exception as e:
             logger.error(f"Failed to call MCP tool {tool_name}: {e}")
             raise
+
+    async def _call_tool_persistent(self, server_name: str, tool_name: str, arguments: dict[str, Any]) -> Any:
+        """Call tool using persistent connection."""
+        session, read, write, transport_context = self._persistent_connections[server_name]
+
+        try:
+            # Call the tool using the existing session
+            result = await session.call_tool(name=tool_name, arguments=arguments)
+            return result
+        except Exception as e:
+            # If persistent connection fails, try to re-establish it
+            logger.warning(f"Persistent connection to '{server_name}' failed, attempting to re-establish: {e}")
+            await self._reconnect_persistent_server(server_name)
+
+            # Retry the call with new connection
+            session, read, write, transport_context = self._persistent_connections[server_name]
+            result = await session.call_tool(name=tool_name, arguments=arguments)
+            return result
+
+    async def _call_tool_temporary(self, server_name: str, tool_name: str, arguments: dict[str, Any]) -> Any:
+        """Call tool using temporary connection (original behavior)."""
+        server_info = self._servers[server_name]
+        server_config = server_info["config"]
+
+        # Create fresh transport connection for tool call
+        transport_context = self._create_transport_client(server_config)
+
+        async with transport_context as (read, write, *_):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+
+                # Call the tool
+                result = await session.call_tool(name=tool_name, arguments=arguments)
+                return result
+
+    async def _reconnect_persistent_server(self, server_name: str) -> None:
+        """Re-establish persistent connection for a server."""
+        # Clean up existing connection
+        if server_name in self._persistent_connections:
+            session, read, write, transport_context = self._persistent_connections[server_name]
+            try:
+                await session.__aexit__(None, None, None)
+                await transport_context.__aexit__(None, None, None)
+            except Exception as e:
+                logger.debug(f"Error cleaning up old connection for '{server_name}': {e}")
+            del self._persistent_connections[server_name]
+
+        # Re-establish connection
+        server_config = self._servers[server_name]["config"]
+        await self._establish_persistent_connection(server_name, server_config)
 
     def _process_tool_result(self, result: Any, tool_name: str) -> str:
         """Process MCP tool result into string format."""
         if hasattr(result, "content") and result.content:
             content_parts = []
             for content in result.content:
-                if hasattr(content, "text"):
+                # Handle different content types from MCP
+                if isinstance(content, TextContent):
                     content_parts.append(content.text)
-                elif hasattr(content, "data"):
-                    content_parts.append(str(content.data))
+                elif isinstance(content, ImageContent | AudioContent):
+                    # For binary content types, include metadata
+                    content_parts.append(f"[{content.type}: {content.mimeType}]")
+                elif isinstance(content, ResourceLink):
+                    # For resource links, include the URI
+                    content_parts.append(f"[Resource: {content.uri}]")
+                elif isinstance(content, EmbeddedResource):
+                    # Handle embedded resources
+                    if isinstance(content.resource, TextResourceContents):
+                        content_parts.append(content.resource.text)
+                    elif isinstance(content.resource, BlobResourceContents):
+                        content_parts.append(f"[Embedded blob: {content.resource.mimeType}]")
                 else:
+                    # Fallback for unknown content types
                     content_parts.append(str(content))
 
             final_result = "\n".join(content_parts)
@@ -412,10 +576,14 @@ class MCPClientService:
                             if result.contents:
                                 content_parts = []
                                 for content in result.contents:
-                                    if hasattr(content, "text"):
+                                    # Check if it's TextResourceContents (has 'text' field)
+                                    if isinstance(content, TextResourceContents):
                                         content_parts.append(content.text)
-                                    elif hasattr(content, "data"):
-                                        content_parts.append(str(content.data))
+                                    # Check if it's BlobResourceContents (has 'blob' field)
+                                    elif isinstance(content, BlobResourceContents):
+                                        content_parts.append(content.blob)
+                                    else:
+                                        content_parts.append(str(content))  # type: ignore[unreachable]
                                 return "\n".join(content_parts)
 
                 except Exception as e:
@@ -424,13 +592,48 @@ class MCPClientService:
 
         return None
 
+    def _generate_cache_key(self, tool_name: str, arguments: dict[str, Any]) -> str:
+        """Generate a cache key from tool name and arguments."""
+        # Create a deterministic string from arguments by sorting keys
+        args_str = str(sorted(arguments.items()))
+        cache_input = f"{tool_name}:{args_str}"
+        # Use hash to create a shorter key
+        # Bandit nosec, as not used for security, just for caching
+        return hashlib.md5(cache_input.encode()).hexdigest()  # nosec
+
+    def _cleanup_expired_cache(self) -> None:
+        """Remove expired entries from the function call cache."""
+        current_time = time.time()
+        expired_keys = [
+            key
+            for key, (_, cached_time) in self._function_call_cache.items()
+            if current_time - cached_time >= self._cache_ttl
+        ]
+        for key in expired_keys:
+            del self._function_call_cache[key]
+
+        if expired_keys:
+            logger.debug(f"Cleaned up {len(expired_keys)} expired cache entries")
+
     async def close(self) -> None:
         """Close MCP client and clean up resources."""
         logger.info("Closing MCP client")
 
+        # Close all persistent connections
+        for server_name, (session, _, _, transport_context) in self._persistent_connections.items():
+            try:
+                logger.debug(f"Closing persistent connection for server '{server_name}'")
+                await session.__aexit__(None, None, None)
+                await transport_context.__aexit__(None, None, None)
+            except Exception as e:
+                logger.debug(f"Error closing persistent connection for '{server_name}': {e}")
+
+        self._persistent_connections.clear()
+        self._persistent_servers.clear()
         self._servers.clear()
         self._available_tools.clear()
         self._available_resources.clear()
+        self._function_call_cache.clear()
         self._initialized = False
 
         logger.info("MCP client closed")

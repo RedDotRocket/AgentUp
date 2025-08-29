@@ -133,13 +133,6 @@ class PluginRegistry:
 
         if len(self.plugins) == 0:
             logger.info("No plugins discovered at entry points.")
-        else:
-            # Register capabilities from all loaded plugins
-            for plugin_name, plugin in self.plugins.items():
-                try:
-                    self._register_plugin(plugin_name, plugin)
-                except Exception as e:
-                    logger.error(f"Failed to register plugin {plugin_name}: {e}", exc_info=True)
 
     def _load_entry_point_plugins(self) -> None:
         """Load plugins from Python entry points"""
@@ -189,6 +182,9 @@ class PluginRegistry:
                     self.plugin_definitions[entry_point.name] = PluginDefinition(
                         name=entry_point.name,
                         version="0.0.0",
+                        author=None,
+                        description=None,
+                        module_name=entry_point.__module__,
                         status=PluginStatus.ERROR,
                         error=str(e),
                         entry_point=str(entry_point),

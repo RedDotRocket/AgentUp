@@ -7,7 +7,7 @@ authorization, and audit logging models.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Literal
 
@@ -127,7 +127,7 @@ class APIKeyData(BaseModel):
     def is_expired(self) -> bool:
         if not self.expires_at:
             return False
-        return datetime.utcnow() > self.expires_at
+        return datetime.now(timezone.utc) > self.expires_at
 
     @computed_field
     @property
@@ -144,7 +144,7 @@ class APIKeyData(BaseModel):
     def days_until_expiry(self) -> int | None:
         if self.expires_at is None:
             return None
-        delta = self.expires_at - datetime.utcnow()
+        delta = self.expires_at - datetime.now(timezone.utc)
         return max(0, delta.days)
 
     @computed_field

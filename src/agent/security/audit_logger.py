@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
@@ -41,7 +41,7 @@ class SecurityAuditLogger:
         sanitized_user_id = self._sanitize_user_id(user_id)
 
         event_data = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "event_type": event_type.value,
             "success": success,
             "risk_level": risk_level,
@@ -132,7 +132,10 @@ class SecurityAuditLogger:
             SecurityEventType.SECURITY_CONFIGURATION_ERROR,
             resource=component,
             success=False,
-            details={"error_type": error_type, **(self._sanitize_details(details) if details else {})},
+            details={
+                "error_type": error_type,
+                **(self._sanitize_details(details) if details else {}),
+            },
             risk_level="high",
         )
 

@@ -127,6 +127,11 @@ class IntentConfig(BaseModel):
     icon_url: str | None = Field(None, description="Icon URL")
     documentation_url: str | None = Field(None, description="Documentation URL")
 
+    # Agent execution configuration
+    agent_type: str | None = Field(None, description="Agent execution type (reactive or iterative)")
+    memory_config: dict[str, Any] | None = Field(None, description="Memory configuration for agents")
+    iterative_config: dict[str, Any] | None = Field(None, description="Configuration for iterative agents")
+
     # Plugin configuration - supports both simple strings and complex objects
     plugins: dict[str, PluginConfig] = Field(default_factory=dict, description="Plugin configurations")
 
@@ -263,6 +268,14 @@ class IntentConfig(BaseModel):
             result["icon_url"] = self.icon_url
         if self.documentation_url:
             result["documentation_url"] = self.documentation_url
+
+        # Agent execution configuration
+        if self.agent_type:
+            result["agent_type"] = self.agent_type
+        if self.memory_config:
+            result["memory_config"] = self.memory_config
+        if self.iterative_config:
+            result["iterative_config"] = self.iterative_config
 
         # Plugin configurations
         plugins_dict = {}

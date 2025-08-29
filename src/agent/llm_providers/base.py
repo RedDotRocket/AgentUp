@@ -1,5 +1,6 @@
 import json
 from abc import ABC, abstractmethod
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from typing import Any
 
@@ -33,6 +34,15 @@ class ChatMessage:
     name: str | None = None  # For function responses
 
 
+@dataclass
+class LLMManagerResponse:
+    """Response from LLM Manager with optional completion signaling."""
+
+    content: str
+    completed: bool = False
+    completion_data: dict[str, Any] | None = None
+
+
 class BaseLLMService(ABC):
     def __init__(self, name: str, config: dict[str, Any]):
         self.name = name
@@ -55,9 +65,57 @@ class BaseLLMService(ABC):
     async def complete(self, prompt: str, **kwargs) -> LLMResponse:
         pass
 
-    @abstractmethod
     async def chat_complete(self, messages: list[ChatMessage], **kwargs) -> LLMResponse:
+        """Public method with logging that calls the provider implementation."""
+        logger.info(
+            "Making LLM chat completion request",
+            provider=self.name,
+            model=self.config.get("model", "unknown"),
+            message_count=len(messages),
+            temperature=kwargs.get("temperature", self.config.get("temperature")),
+            max_tokens=kwargs.get("max_tokens", self.config.get("max_tokens")),
+        )
+
+        response = await self._chat_complete_impl(messages, **kwargs)
+
+        logger.info(
+            "Received LLM chat completion response",
+            provider=self.name,
+            model=response.model or self.config.get("model", "unknown"),
+            finish_reason=response.finish_reason,
+            content_length=len(response.content) if response.content else 0,
+            prompt_tokens=response.usage.get("prompt_tokens") if response.usage else None,
+            completion_tokens=response.usage.get("completion_tokens") if response.usage else None,
+            total_tokens=response.usage.get("total_tokens") if response.usage else None,
+        )
+        return response
+
+    @abstractmethod
+    async def _chat_complete_impl(self, messages: list[ChatMessage], **kwargs) -> LLMResponse:
+        """Provider-specific implementation of chat completion."""
         pass
+
+    async def stream_chat_complete(self, messages: list[ChatMessage], **kwargs):
+        """Public method with logging that calls the provider streaming implementation."""
+        logger.info(
+            "Making LLM streaming chat completion request",
+            provider=self.name,
+            model=self.config.get("model", "unknown"),
+            message_count=len(messages),
+            temperature=kwargs.get("temperature", self.config.get("temperature")),
+            max_tokens=kwargs.get("max_tokens", self.config.get("max_tokens")),
+        )
+
+        async for chunk in self._stream_chat_complete_impl(messages, **kwargs):
+            yield chunk
+
+    @abstractmethod
+    async def _stream_chat_complete_impl(self, messages: list[ChatMessage], **kwargs) -> AsyncIterator[str]:
+        """Provider-specific implementation of streaming chat completion."""
+        # This should be an async generator that yields string chunks
+        if False:  # pragma: no cover
+            yield  # This makes it a generator for type checking
+        raise NotImplementedError
 
     async def embed(self, text: str) -> list[float]:
         try:
@@ -102,8 +160,9 @@ class BaseLLMService(ABC):
             function_descriptions.append(func_desc)
 
         # Enhanced system message with function information
+        function_descriptions_text = "\n".join(function_descriptions)
         function_prompt = f"""Available functions:
-{chr(10).join(function_descriptions)}
+{function_descriptions_text}
 
 To use a function, respond with:
 FUNCTION_CALL: function_name(param1="value1", param2="value2")
@@ -114,11 +173,15 @@ After function calls, provide a natural response based on the results."""
         # Add function information to the conversation
         enhanced_messages = messages.copy()
         if enhanced_messages and enhanced_messages[0].role == "system":
-            enhanced_messages[0].content += f"\n\n{function_prompt}"
+            if isinstance(enhanced_messages[0].content, str):
+                enhanced_messages[0].content += f"\n\n{function_prompt}"
+            else:
+                # If content is a list (structured content), append as text content
+                enhanced_messages[0].content.append({"type": "text", "text": f"\n\n{function_prompt}"})
         else:
             enhanced_messages.insert(0, ChatMessage(role="system", content=function_prompt))
 
-        response = await self.chat_complete(enhanced_messages, **kwargs)
+        response = await self._chat_complete_impl(enhanced_messages, **kwargs)
 
         # Parse function calls from response
         if "FUNCTION_CALL:" in response.content:

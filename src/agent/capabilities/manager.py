@@ -1,102 +1,131 @@
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
 import structlog
 from a2a.types import Task
 
 from agent.config import Config
+from agent.middleware import with_middleware
 
 if TYPE_CHECKING:
+    from agent.core.models.iteration import FunctionExecutionResult
     from agent.mcp_support.model import MCPCapabilityInfo
-
-# Import middleware decorators
-from agent.middleware import rate_limited, retryable, timed
 
 # Load agent config to pull in project name
 _project_name = Config.project_name
 
-# Import shared utilities (with fallbacks for testing)
-try:
-    from agent.utils.messages import ConversationContext, MessageProcessor
-except ImportError:
-
-    class ConversationContext:
-        @classmethod
-        def increment_message_count(cls, task_id):
-            return 1
-
-        @classmethod
-        def get_message_count(cls, task_id):
-            return 1
-
-    class MessageProcessor:
-        @staticmethod
-        def extract_messages(task):
-            return []
-
-        @staticmethod
-        def get_latest_user_message(messages):
-            return None
-
-
-# Separate import for extract_parameter with fallback
-try:
-    from agent.utils.helpers import extract_parameter
-except ImportError:
-
-    def extract_parameter(text, param):
-        return None
-
-
-# Optional middleware decorators (no-ops if unavailable)
-try:
-    from agent.middleware import rate_limited, retryable, timed, with_middleware
-except ImportError:
-
-    def rate_limited(requests_per_minute=60):
-        def decorator(f):
-            return f
-
-        return decorator
-
-    def retryable(max_attempts=3):
-        def decorator(f):
-            return f
-
-        return decorator
-
-    def timed():
-        def decorator(f):
-            return f
-
-        return decorator
-
-    def with_middleware(configs=None):
-        def decorator(f):
-            return f
-
-        return decorator
-
-
-# Optional AI decorator (no-op if unavailable)
-try:
-    from agent.core.dispatcher import ai_function
-except ImportError:
-
-    def ai_function(description=None, parameters=None):
-        def decorator(f):
-            return f
-
-        return decorator
-
-
 logger = structlog.get_logger(__name__)
 
 # Capability registry - unified for all capability executors
-_capabilities: dict[str, Callable[[Task], str]] = {}
+_capabilities: dict[str, Callable[[Task], str] | Callable[[Task], Awaitable[str]]] = {}
 
 # MCP capability tracking - stores metadata about MCP tools registered as capabilities
 _mcp_capabilities: dict[str, "MCPCapabilityInfo"] = {}
+
+# Capability feature tracking - track which capabilities have middleware/state applied
+_capabilities_with_middleware: set[str] = set()
+_capabilities_with_state: set[str] = set()
+
+
+def register_system_capabilities() -> None:
+    """Register system-level capabilities that are always available."""
+
+    @register_capability("mark_goal_complete")  # type: ignore
+    async def mark_goal_complete_capability(task: Task) -> "FunctionExecutionResult":
+        """Mark an iterative goal as completed with structured information.
+
+        This is an internal system capability called when the agent has fully achieved the user's goal.
+        The agent should provide a comprehensive summary of what was accomplished.
+
+        Note: This is an internal-only capability and does not require authentication.
+        """
+        from agent.core.models.iteration import CompletionData, FunctionExecutionResult
+
+        # This is an internal system capability
+        logger.debug("Processing internal goal completion request")
+
+        # Security constants for input validation
+        ALLOWED_COMPLETION_FIELDS = {"summary", "result_content", "confidence", "tasks_completed", "remaining_issues"}
+        MAX_SUMMARY_LENGTH = 2000
+        MAX_RESULT_CONTENT_LENGTH = 8000  # Allow longer content for substantive results
+        MAX_TASK_DESCRIPTION_LENGTH = 200
+        MAX_TASKS_ARRAY_LENGTH = 50
+        MIN_CONFIDENCE = 0.0
+        MAX_CONFIDENCE = 1.0
+
+        # Default completion data with secure defaults
+        completion_dict = {
+            "summary": "Goal completed successfully",
+            "result_content": "",  # The actual substantive result/answer
+            "confidence": 1.0,
+            "tasks_completed": [],
+            "remaining_issues": [],
+        }
+
+        # Secure extraction and validation of parameters from task metadata
+        if hasattr(task, "metadata") and task.metadata:
+            for key, value in task.metadata.items():
+                # Only process allowed fields to prevent injection
+                if key not in ALLOWED_COMPLETION_FIELDS or key not in completion_dict:
+                    logger.warning(f"Ignoring invalid completion field: {key}")
+                    continue
+
+                try:
+                    # Field-specific validation and sanitization
+                    if key == "summary" and isinstance(value, str):
+                        # Sanitize and truncate summary
+                        sanitized_summary = value.strip()[:MAX_SUMMARY_LENGTH]
+                        if sanitized_summary:
+                            completion_dict[key] = sanitized_summary
+
+                    elif key == "result_content" and isinstance(value, str):
+                        # Sanitize and truncate result content (substantive answer)
+                        sanitized_content = value.strip()[:MAX_RESULT_CONTENT_LENGTH]
+                        if sanitized_content:
+                            completion_dict[key] = sanitized_content
+
+                    elif key == "confidence" and isinstance(value, int | float):
+                        # Validate and clamp confidence to safe range
+                        confidence = float(value)
+                        if MIN_CONFIDENCE <= confidence <= MAX_CONFIDENCE:
+                            completion_dict[key] = confidence
+                        else:
+                            logger.warning(f"Confidence value {confidence} out of range, using default")
+
+                    elif key in ["tasks_completed", "remaining_issues"] and isinstance(value, list):
+                        # Validate array length and sanitize content
+                        if len(value) <= MAX_TASKS_ARRAY_LENGTH:
+                            validated_tasks = []
+                            for item in value:
+                                if isinstance(item, str):
+                                    sanitized_item = item.strip()[:MAX_TASK_DESCRIPTION_LENGTH]
+                                    if sanitized_item:
+                                        validated_tasks.append(sanitized_item)
+                                else:
+                                    logger.warning(f"Invalid task item type: {type(item)}")
+                            completion_dict[key] = validated_tasks
+                        else:
+                            logger.warning(f"Tasks array too long ({len(value)}), using default")
+
+                except (ValueError, TypeError) as e:
+                    logger.warning(f"Failed to validate completion field '{key}': {e}")
+                    # Keep default value for invalid fields
+
+            logger.debug(f"Validated completion data fields: {list(completion_dict.keys())}")
+
+        # Create structured Pydantic model from validated dictionary
+        completion_data = CompletionData(**completion_dict)
+
+        logger.info("Goal marked as complete by internal system - returning structured completion result")
+
+        return FunctionExecutionResult(
+            success=True,
+            result=completion_data.result_content or completion_data.summary,
+            completed=True,
+            completion_data=completion_data.model_dump(),
+        )
+
+    logger.info("System capabilities registered: mark_goal_complete")
 
 
 def register_plugin_capability(plugin_config: dict[str, Any]) -> None:
@@ -193,7 +222,7 @@ def register_plugin_capability(plugin_config: dict[str, Any]) -> None:
 
         # Only execute if scopes pass
         try:
-            result = await base_executor(task, context)
+            result = await base_executor(task)
 
             # Log execution time
             execution_time = int((time.time() - start_time) * 1000)
@@ -222,7 +251,11 @@ def register_plugin_capability(plugin_config: dict[str, Any]) -> None:
 
 
 async def register_mcp_tool_as_capability(
-    tool_name: str, mcp_client, tool_scopes: list[str], server_name: str = "unknown", tool_data: dict | None = None
+    tool_name: str,
+    mcp_client,
+    tool_scopes: list[str],
+    server_name: str = "unknown",
+    tool_data: dict | None = None,
 ) -> None:
     """Register MCP tool as capability with scope enforcement.
 
@@ -272,8 +305,6 @@ async def register_mcp_tool_as_capability(
         params = {}
         if hasattr(task, "metadata") and task.metadata:
             params = task.metadata
-        elif hasattr(context, "params"):
-            params = context.params
 
         try:
             # Call external MCP tool
@@ -437,7 +468,10 @@ def _load_state_config() -> dict[str, Any]:
         _state_config = Config.state_management
         if isinstance(_state_config, dict):
             logger.debug(f"Loaded state config: {_state_config}")
-        return _state_config
+            return _state_config
+        else:
+            _state_config = {}
+            return _state_config
     except Exception as e:
         logger.warning(f"Could not load state config: {e}")
         _state_config = {}
@@ -516,8 +550,8 @@ def _apply_state_to_capability(executor: Callable, capability_id: str) -> Callab
     try:
         from agent.state.decorators import with_state
 
-        # Mark the original executor as having state applied before wrapping
-        executor._agentup_state_applied = True
+        # Mark the capability as having state applied in global registry
+        _capabilities_with_state.add(capability_id)
         wrapped_executor = with_state([state_config])(executor)
         backend = state_config.get("backend", "memory")
         logger.debug(f"Applied state management to capability '{capability_id}': backend={backend}")
@@ -592,8 +626,8 @@ def _apply_middleware_to_capability(executor: Callable, capability_id: str) -> C
     middleware_configs = _resolve_middleware_config(capability_id)
 
     try:
-        # Mark the original executor as having middleware applied before wrapping
-        executor._agentup_middleware_applied = True
+        # Mark the capability as having middleware applied in global registry
+        _capabilities_with_middleware.add(capability_id)
         wrapped_executor = with_middleware(middleware_configs)(executor)
         logger.debug(f"Applied middleware to plugin '{capability_id}': {middleware_configs}")
         return wrapped_executor
@@ -603,7 +637,7 @@ def _apply_middleware_to_capability(executor: Callable, capability_id: str) -> C
 
 
 def register_capability(capability_id: str):
-    def decorator(func: Callable[[Task], str]):
+    def decorator(func: Callable[[Task], str] | Callable[[Task], Callable[[], str]]):
         features_applied = []
 
         # Apply authentication context first
@@ -629,7 +663,9 @@ def register_capability(capability_id: str):
     return decorator
 
 
-def register_capability_function(capability_id: str, executor: Callable[[Task], str]) -> None:
+def register_capability_function(
+    capability_id: str, executor: Callable[[Task], str] | Callable[[Task], Awaitable[str]]
+) -> None:
     features_applied = []
 
     # Apply authentication context first
@@ -652,7 +688,7 @@ def register_capability_function(capability_id: str, executor: Callable[[Task], 
     logger.debug(f"Registered capability '{capability_id}' with: {', '.join(features_applied)}")
 
 
-def get_capability_executor(capability_id: str) -> Callable[[Task], str] | None:
+def get_capability_executor(capability_id: str) -> Callable[[Task], str] | Callable[[Task], Awaitable[str]] | None:
     # Check unified capabilities registry
     logger.debug(f"Available capabilities: {list(_capabilities.keys())}")
     executor = _capabilities.get(capability_id)
@@ -673,7 +709,7 @@ async def execute_capabilities(task: Task) -> str:
     return f"{_project_name} capabilities:\n{lines}"
 
 
-def get_all_capabilities() -> dict[str, Callable[[Task], str]]:
+def get_all_capabilities() -> dict[str, Callable[[Task], str] | Callable[[Task], Awaitable[str]]]:
     return _capabilities.copy()
 
 
@@ -705,19 +741,18 @@ def apply_global_middleware() -> None:
 
     logger.info(f"Applying global middleware to {_project_name} capability executors: {middleware_configs}")
 
-    # Count executors that already have middleware applied
+    # Count executors that already have middleware applied using global registry
     executors_with_middleware = []
     executors_needing_middleware = []
 
-    for capability_id, executor in _capabilities.items():
-        has_middleware_flag = hasattr(executor, "_agentup_middleware_applied")
+    for capability_id, _executor in _capabilities.items():
+        has_middleware_flag = capability_id in _capabilities_with_middleware
         logger.debug(f"Capability executor '{capability_id}' has middleware flag: {has_middleware_flag}")
         if has_middleware_flag:
             executors_with_middleware.append(capability_id)
         else:
             executors_needing_middleware.append(capability_id)
-    # TODO: This is coming up with an empty list, why?
-    # Executors with middleware: [] [agent.capabilities.executors]
+
     logger.debug(f"Executors with middleware: {executors_with_middleware}")
 
     # Only apply middleware to executors that don't already have it
@@ -758,8 +793,8 @@ def apply_global_state_management() -> None:
     # Re-wrap all existing capability executors with state management
     for capability_id, executor in list(_capabilities.items()):
         try:
-            # Only apply if not already wrapped (simple check)
-            if not hasattr(executor, "_agentup_state_applied"):
+            # Only apply if not already wrapped using global registry
+            if capability_id not in _capabilities_with_state:
                 wrapped_executor = _apply_state_to_capability(executor, capability_id)
                 _capabilities[capability_id] = wrapped_executor
                 logger.debug(f"Applied global state management to existing capability executor: {capability_id}")
@@ -770,11 +805,9 @@ def apply_global_state_management() -> None:
 
     _global_state_applied = True
 
-    # Count executors that actually needed global state management
+    # Count executors that actually needed global state management using global registry
     executors_needing_state = [
-        capability_id
-        for capability_id, executor in _capabilities.items()
-        if not hasattr(executor, "_agentup_state_applied")
+        capability_id for capability_id in _capabilities.keys() if capability_id not in _capabilities_with_state
     ]
 
     if executors_needing_state:
@@ -818,3 +851,11 @@ def get_state_info() -> dict[str, Any]:
         "enabled": state_config.get("enabled", False),
         "backend": state_config.get("backend", "memory"),
     }
+
+
+# Auto-register system capabilities when this module is imported
+# This ensures they're available when the function registry is created
+try:
+    register_system_capabilities()
+except Exception as e:
+    logger.debug(f"Failed to auto-register system capabilities during import: {e}")

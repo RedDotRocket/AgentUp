@@ -58,9 +58,9 @@ def __getattr__(name):
 
         return Config
     elif name == "AgentExecutor":
-        from .core import AgentExecutor
+        from .core import AgentUpExecutor
 
-        return AgentExecutor
+        return AgentUpExecutor
     elif name == "FunctionDispatcher":
         from .core import FunctionDispatcher
 

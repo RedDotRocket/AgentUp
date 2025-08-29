@@ -7,7 +7,7 @@ for type safety and validation.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
@@ -231,7 +231,9 @@ class MCPSession(BaseModel):
     available_tools: list[MCPTool] = Field(default_factory=list, description="Available tools")
     available_resources: list[MCPResource] = Field(default_factory=list, description="Available resources")
     connection_info: dict[str, JsonValue] = Field(default_factory=dict, description="Connection details")
-    last_activity: datetime = Field(default_factory=datetime.utcnow, description="Last activity timestamp")
+    last_activity: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc), description="Last activity timestamp"
+    )
     error_message: str | None = Field(None, description="Error message if session failed")
     metadata: dict[str, JsonValue] = Field(default_factory=dict, description="Session metadata")
     timeout_seconds: int = Field(300, description="Session timeout", gt=0, le=3600)
@@ -265,7 +267,7 @@ class MCPSession(BaseModel):
             return False
 
         # Check for timeout
-        elapsed = (datetime.utcnow() - self.last_activity).total_seconds()
+        elapsed = (datetime.now(timezone.utc) - self.last_activity).total_seconds()
         return elapsed < self.timeout_seconds
 
     @property
@@ -277,7 +279,7 @@ class MCPSession(BaseModel):
         return len(self.available_resources)
 
     def update_activity(self) -> None:
-        self.last_activity = datetime.utcnow()
+        self.last_activity = datetime.now(timezone.utc)
 
 
 class MCPCapability(BaseModel):
@@ -407,7 +409,7 @@ class MCPSessionValidator(BaseValidator[MCPSession]):
         result = ValidationResult(valid=True)
 
         # Check for stale sessions
-        elapsed = (datetime.utcnow() - model.last_activity).total_seconds()
+        elapsed = (datetime.now(timezone.utc) - model.last_activity).total_seconds()
         if elapsed > model.timeout_seconds / 2:
             result.add_warning("Session may be stale - consider refreshing")
 

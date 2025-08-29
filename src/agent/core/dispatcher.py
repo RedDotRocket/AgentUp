@@ -27,6 +27,8 @@ class FunctionRegistry:
         self._handlers: dict[str, Callable] = {}
         self._mcp_tools: dict[str, dict[str, Any]] = {}
         self._mcp_client = None
+        # Cache for scope-filtered tools (never expires - registry is static after startup)
+        self._scope_filtered_cache: dict[str, list[dict[str, Any]]] = {}
 
     def register_function(self, name: str, handler: Callable, schema: dict[str, Any]):
         if name in self._functions:
@@ -76,13 +78,21 @@ class FunctionRegistry:
         Returns:
             list[dict[str, Any]]: List of tool schemas filtered by user permissions
         """
+        # If no scopes provided, return empty list for security
+        if not user_scopes:
+            return []
+
+        # Create cache key from sorted scopes
+        scopes_key = ",".join(sorted(user_scopes))
+
+        # Check cache (never expires - function registry is static after startup)
+        if scopes_key in self._scope_filtered_cache:
+            logger.debug(f"Using cached function schemas for scopes: {len(user_scopes)} scopes")
+            return self._scope_filtered_cache[scopes_key]
+
         scope_service = None
         try:
             from agent.security.scope_service import get_scope_service
-
-            # If no scopes provided, return empty list for security
-            if not user_scopes:
-                return []
 
             scope_service = get_scope_service()
             if not scope_service._hierarchy:
@@ -94,6 +104,13 @@ class FunctionRegistry:
 
             # Start request-scoped cache
             _cache = scope_service.start_request_cache()
+
+            # Check local functions (including system capabilities) first
+            try:
+                available_tools.extend(self._get_local_functions(scope_service, user_scopes))
+            except Exception as e:
+                logger.warning(f"Failed to filter local functions by scopes: {e}")
+                # Security: Do NOT fallback to all tools - continue with empty local tools list
 
             # Check local plugin capabilities
             try:
@@ -129,6 +146,9 @@ class FunctionRegistry:
 
             # Clean up request cache
             scope_service.clear_request_cache()
+
+            # Cache the results (permanent - registry is static after startup)
+            self._scope_filtered_cache[scopes_key] = final_tools
 
             return final_tools
 
@@ -179,6 +199,14 @@ class FunctionRegistry:
         if not plugin_registry:
             return tools
 
+        # Track which functions we've already seen to avoid duplicates
+        seen_functions = set()
+
+        # First, collect all functions already registered in the function registry
+        # These were registered during initialization via register_ai_functions_from_capabilities
+        for function_name in self._functions.keys():
+            seen_functions.add(function_name)
+
         for plugin_name, plugin_instance in plugin_registry.plugins.items():
             if not plugin_name:
                 continue
@@ -199,12 +227,18 @@ class FunctionRegistry:
                         # Get AI functions for this capability
                         ai_functions = plugin_adapter.get_ai_functions(capability_id)
                         for ai_function in ai_functions:
+                            # Skip if this function was already registered
+                            if ai_function.name in seen_functions:
+                                logger.debug(f"Skipping duplicate plugin function: {ai_function.name}")
+                                continue
+
                             tool_spec = {
                                 "name": ai_function.name,
                                 "description": ai_function.description,
                                 "parameters": ai_function.parameters,
                             }
                             tools.append(tool_spec)
+                            seen_functions.add(ai_function.name)
                     else:
                         # Log function access denied for security audit
                         ai_functions = plugin_adapter.get_ai_functions(capability_id)
@@ -241,6 +275,38 @@ class FunctionRegistry:
             if result.has_access:
                 tools.append(tool_schema)
                 logger.debug(f"Granted MCP tool '{tool_name}' (original: '{original_name}')")
+
+        return tools
+
+    def _get_local_functions(self, scope_service, user_scopes: set[str]) -> list[dict[str, Any]]:
+        """Get local functions (including system capabilities) filtered by user scopes.
+
+        Local functions include system capabilities like mark_goal_complete that are
+        registered directly with the function registry.
+        """
+        tools = []
+
+        # For system capabilities, we need minimal scopes since they're built-in tools
+        # System tools like mark_goal_complete should be available to users with basic access
+        system_tool_scopes = ["system:read"]  # Minimal scope requirement for system tools
+
+        for function_name, function_schema in self._functions.items():
+            # System capabilities get minimal scope requirements
+            if function_name == "mark_goal_complete":
+                required_scopes = system_tool_scopes
+                logger.debug(f"Checking system capability '{function_name}' with scopes: {required_scopes}")
+            else:
+                # Other local functions might have different scope requirements
+                # For now, treat them all as system tools
+                required_scopes = system_tool_scopes
+
+            # Use centralized scope validation
+            result = scope_service.validate_multiple_scopes(user_scopes, required_scopes)
+            if result.has_access:
+                tools.append(function_schema)
+                logger.debug(f"Granted local function '{function_name}' to user")
+            else:
+                logger.debug(f"Denied local function '{function_name}' - insufficient scopes")
 
         return tools
 
@@ -319,7 +385,7 @@ class FunctionDispatcher:
 
         self.streaming_handler = StreamingHandler(function_registry, self.conversation_manager)
 
-    async def process_task(self, task: Task, auth_result=None) -> str:
+    async def process_task(self, task: Task, auth_result=None) -> str | dict[str, Any]:
         """Process A2A task using LLM intelligence.
 
         Args:
@@ -327,7 +393,7 @@ class FunctionDispatcher:
             auth_result: Optional authentication result (will use current context if not provided)
 
         Returns:
-            str: Response content for A2A message
+            str | dict[str, Any]: Response content for A2A message, or completion data dict for iterative strategy
         """
         try:
             # Validate we have a valid task with messages
@@ -349,10 +415,10 @@ class FunctionDispatcher:
                 user_input = self._get_latest_user_input(task)
                 return self._fallback_response(user_input)
 
-            # Prepare LLM conversation directly from A2A task history
+            # Prepare LLM conversation from A2A task history and stored state
             try:
-                logger.debug("Preparing conversation for LLM from A2A task history")
-                messages = self.conversation_manager.prepare_llm_conversation(task)
+                logger.debug("Preparing conversation for LLM from A2A task history and stored state")
+                messages = await self.conversation_manager.prepare_llm_conversation(task)
             except Exception as e:
                 logger.error(f"Error preparing conversation for LLM: {e}", exc_info=True)
                 return f"I encountered an error preparing your request: {str(e)}"
@@ -415,7 +481,21 @@ class FunctionDispatcher:
             # LLM processing with function calling
             if function_schemas:
                 try:
-                    response = await LLMManager.llm_with_functions(llm, messages, function_schemas, function_executor)
+                    llm_response = await LLMManager.llm_with_functions(
+                        llm, messages, function_schemas, function_executor
+                    )
+
+                    # Check if this is a completion response for iterative strategy
+                    if llm_response.completed and llm_response.completion_data:
+                        # Return structured completion data for iterative strategy
+                        return {
+                            "completed": True,
+                            "completion_data": llm_response.completion_data,
+                            "final_response": llm_response.content,
+                        }
+
+                    # Regular response
+                    response = llm_response.content
                 except Exception as e:
                     logger.error(f"Error during LLM function calling: {e}", exc_info=True)
                     return f"I encountered an error processing your request with functions: {str(e)}"
@@ -530,10 +610,11 @@ class FunctionDispatcher:
         from agent.state.conversation import ConversationManager
 
         user_input = ""
-        for message in reversed(task.history):
-            if message.role == "user" and message.parts:
-                user_input = ConversationManager.extract_text_from_parts(message.parts)
-                break
+        if task.history:
+            for message in reversed(task.history):
+                if message.role == "user" and message.parts:
+                    user_input = ConversationManager.extract_text_from_parts(message.parts)
+                    break
         return user_input
 
 
@@ -782,3 +863,49 @@ def register_ai_functions_from_capabilities():
         logger.debug("Plugin system not available for AI function registration")
     except Exception as e:
         logger.error(f"Failed to register plugin AI functions: {e}", exc_info=True)
+
+    # Register system capabilities (completion tools for iterative agents)
+    try:
+        from agent.capabilities.manager import get_capability_executor
+
+        # Check if mark_goal_complete system capability is available
+        completion_capability = get_capability_executor("mark_goal_complete")
+        if completion_capability:
+            # Create AI function schema for the completion tool
+            completion_schema = {
+                "name": "mark_goal_complete",
+                "description": "Call this when the goal has been fully achieved with high confidence",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "summary": {"type": "string", "description": "What was accomplished"},
+                        "confidence": {
+                            "type": "number",
+                            "description": "Confidence in completion (0-1)",
+                            "minimum": 0,
+                            "maximum": 1,
+                        },
+                        "tasks_completed": {
+                            "type": "array",
+                            "description": "List of individual tasks that were finished",
+                            "items": {"type": "string"},
+                        },
+                        "remaining_issues": {
+                            "type": "array",
+                            "description": "Any known limitations or edge cases",
+                            "items": {"type": "string"},
+                        },
+                    },
+                    "required": ["summary", "confidence"],
+                },
+            }
+
+            # Register with the function registry
+            registry.register_function("mark_goal_complete", completion_capability, completion_schema)
+            registered_count += 1
+            logger.info("Registered system capability: mark_goal_complete")
+        else:
+            logger.warning("System capability mark_goal_complete not found in capabilities manager")
+
+    except Exception as e:
+        logger.error(f"Failed to register system capabilities: {e}", exc_info=True)

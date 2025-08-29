@@ -94,7 +94,7 @@ class AnthropicProvider(BaseLLMService):
         messages = [ChatMessage(role="user", content=prompt)]
         return await self.chat_complete(messages, **kwargs)
 
-    async def chat_complete(self, messages: list[ChatMessage], **kwargs) -> LLMResponse:
+    async def _chat_complete_impl(self, messages: list[ChatMessage], **kwargs) -> LLMResponse:
         if not self._initialized:
             await self.initialize()
 
@@ -108,10 +108,13 @@ class AnthropicProvider(BaseLLMService):
         user_messages = []
 
         for msg in messages:
-            if msg.role == "system":
+            # Convert role to string if it's an enum
+            role_str = str(msg.role.value) if hasattr(msg.role, "value") else str(msg.role)
+
+            if role_str == "system":
                 system_content = msg.content
             else:
-                user_messages.append({"role": msg.role, "content": msg.content})
+                user_messages.append({"role": role_str, "content": msg.content})
 
         # Prepare payload
         payload = {
@@ -155,7 +158,7 @@ class AnthropicProvider(BaseLLMService):
         except KeyError as e:
             raise LLMProviderAPIError(f"Invalid Anthropic API response format: {e}") from e
 
-    async def stream_chat_complete(self, messages: list[ChatMessage], **kwargs):
+    async def _stream_chat_complete_impl(self, messages: list[ChatMessage], **kwargs):
         if not self._initialized:
             await self.initialize()
 
@@ -164,10 +167,13 @@ class AnthropicProvider(BaseLLMService):
         user_messages = []
 
         for msg in messages:
-            if msg.role == "system":
+            # Convert role to string if it's an enum
+            role_str = str(msg.role.value) if hasattr(msg.role, "value") else str(msg.role)
+
+            if role_str == "system":
                 system_content = msg.content
             else:
-                user_messages.append({"role": msg.role, "content": msg.content})
+                user_messages.append({"role": role_str, "content": msg.content})
 
         payload = {
             "model": self.model,

@@ -2,10 +2,22 @@ from typing import Any
 
 import structlog
 
+from agent.llm_providers.base import ChatMessage, LLMManagerResponse
+
 logger = structlog.get_logger(__name__)
 
 
 class LLMManager:
+    _cached_llm_service = None
+    _cached_provider_config = None
+
+    @staticmethod
+    def clear_cache():
+        """Clear the cached LLM service. Call this when configuration changes."""
+        LLMManager._cached_llm_service = None
+        LLMManager._cached_provider_config = None
+        logger.debug("LLM service cache cleared")
+
     @staticmethod
     async def get_llm_service(services=None):
         try:
@@ -22,12 +34,23 @@ class LLMManager:
                 logger.warning("ai_provider.provider not configured")
                 return None
 
-            # Create LLM service directly from ai_provider config
-            from agent.llm_providers import create_llm_provider
-
+            # Convert config to comparable format for caching
             ai_provider_dict = (
                 ai_provider_config.model_dump() if hasattr(ai_provider_config, "model_dump") else ai_provider_config
             )
+
+            # Check if we have a cached service with the same config
+            if (
+                LLMManager._cached_llm_service is not None
+                and LLMManager._cached_provider_config == ai_provider_dict
+                and LLMManager._cached_llm_service.is_initialized
+            ):
+                logger.debug(f"Using cached AI provider: {provider}")
+                return LLMManager._cached_llm_service
+
+            # Create new LLM service
+            from agent.llm_providers import create_llm_provider
+
             llm = create_llm_provider(provider, f"ai_provider_{provider}", ai_provider_dict)
 
             if llm:
@@ -37,6 +60,9 @@ class LLMManager:
 
                 if llm.is_initialized:
                     logger.info(f"Using AI provider: {provider}")
+                    # Cache the service and config
+                    LLMManager._cached_llm_service = llm
+                    LLMManager._cached_provider_config = ai_provider_dict
                     return llm
                 else:
                     logger.error(f"AI provider '{provider}' initialization failed")
@@ -58,14 +84,7 @@ class LLMManager:
         messages: list[dict[str, str]],
         function_schemas: list[dict[str, Any]],
         function_executor,
-    ) -> str:
-        try:
-            from agent.llm_providers.base import ChatMessage  # type: ignore[import-untyped]
-        except ImportError:
-            # Fallback when LLM providers not available
-            logger.warning("LLM provider modules not available, using basic chat completion")
-            return await LLMManager.llm_direct_response(llm, messages)
-
+    ) -> LLMManagerResponse:
         # Convert dict messages to ChatMessage objects with multi-modal support
         chat_messages = []
         for msg in messages:
@@ -83,17 +102,39 @@ class LLMManager:
             logger.info(f"LLM selected function(s): {', '.join(selected_functions)}")
 
             function_results = []
+            completion_detected = False
+            completion_result = None
+
             for func_call in response.function_calls:
                 try:
                     logger.debug(f"Executing function: {func_call.name} with arguments: {func_call.arguments}")
                     result = await function_executor.execute_function_call(func_call.name, func_call.arguments)
-                    logger.info(
-                        f"Function '{func_call.name}' returned result: {result[:200]}{'...' if len(str(result)) > 200 else ''}"
-                    )
-                    function_results.append(result)
+
+                    # Check if result is a FunctionExecutionResult with completion signal
+                    from agent.core.models.iteration import FunctionExecutionResult
+
+                    if isinstance(result, FunctionExecutionResult):
+                        if result.completed:
+                            logger.info(f"Function '{func_call.name}' signaled goal completion")
+                            completion_detected = True
+                            completion_result = result
+                        # Extract the actual result content for conversation
+                        function_results.append(result.result)
+                    else:
+                        logger.info(
+                            f"Function '{func_call.name}' returned result: {result[:200] if isinstance(result, str) else str(result)[:200]}{'...' if len(str(result)) > 200 else ''}"
+                        )
+                        function_results.append(result)
+
                 except Exception as e:
                     logger.error(f"Function call failed: {func_call.name}, error: {e}")
                     function_results.append(f"Error: {str(e)}")
+
+            # If completion was detected, return structured completion response
+            if completion_detected and completion_result:
+                return LLMManagerResponse(
+                    content=completion_result.result, completed=True, completion_data=completion_result.completion_data
+                )
 
             # Send function results back to LLM for interpretation
             if function_results:
@@ -127,18 +168,20 @@ class LLMManager:
                     logger.debug(
                         f"Final LLM response after function execution: {final_response.content[:200]}{'...' if len(str(final_response.content)) > 200 else ''}"
                     )
-                    return final_response.content
+                    return LLMManagerResponse(content=final_response.content)
                 except Exception as e:
                     logger.error(f"Failed to get final response from LLM after function execution: {e}")
                     # Return function results directly as fallback
-                    return f"Function executed successfully: {'; '.join(str(result) for result in function_results)}"
+                    return LLMManagerResponse(
+                        content=f"Function executed successfully: {'; '.join(str(result) for result in function_results)}"
+                    )
             else:
                 logger.warning("Function calls were made but no results were returned")
 
         logger.debug(
-            f"No function calls in LLM response, returning direct content: {response.content[:100]}{'...' if response.content and len(response.content) > 100 else ''}"
+            f"No function calls in LLM response, returning direct content: {response.content[:100] if response.content else ''}{'...' if response.content and len(response.content) > 100 else ''}"
         )
-        return response.content
+        return LLMManagerResponse(content=response.content or "")
 
     @staticmethod
     async def llm_direct_response(llm, messages: list[dict[str, str]]) -> str:

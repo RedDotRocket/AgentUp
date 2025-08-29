@@ -2,7 +2,7 @@
 Tests for AgentUp security models.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from pydantic import SecretStr, ValidationError
@@ -138,7 +138,7 @@ class TestAPIKeyData:
         assert key.key.get_secret_value() == "${API_KEY}"
 
     def test_api_key_expiration(self):
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         # Valid expiration (in future)
         key = APIKeyData(key=SecretStr("Aa1!" * 8), created_at=now, expires_at=now + timedelta(days=30))
@@ -159,7 +159,8 @@ class TestAPIKeyData:
 
     def test_scope_checking(self):
         key = APIKeyData(
-            key=SecretStr("Aa1!" * 8), scopes=[Scope(name="api"), Scope(name="read"), Scope(name="user:profile")]
+            key=SecretStr("Aa1!" * 8),
+            scopes=[Scope(name="api"), Scope(name="read"), Scope(name="user:profile")],
         )
 
         # Direct scope match
@@ -243,7 +244,9 @@ class TestJWTConfig:
 
         # Valid asymmetric config
         config = JWTConfig(
-            secret_key=SecretStr("private-key"), algorithm=JWTAlgorithm.RS256, public_key=SecretStr("public-key")
+            secret_key=SecretStr("private-key"),
+            algorithm=JWTAlgorithm.RS256,
+            public_key=SecretStr("public-key"),
         )
         assert config.algorithm == JWTAlgorithm.RS256
         assert config.public_key is not None
@@ -360,7 +363,8 @@ class TestSecurityConfig:
     def test_cors_origins_validation(self):
         # Valid origins
         SecurityConfig(
-            auth={AuthType.API_KEY: APIKeyConfig(keys=[APIKeyData(key=SecretStr("Aa1!" * 8))])}, allowed_origins=["*"]
+            auth={AuthType.API_KEY: APIKeyConfig(keys=[APIKeyData(key=SecretStr("Aa1!" * 8))])},
+            allowed_origins=["*"],
         )
         SecurityConfig(
             auth={AuthType.API_KEY: APIKeyConfig(keys=[APIKeyData(key=SecretStr("Aa1!" * 8))])},
@@ -404,7 +408,8 @@ class TestAuthContext:
 
     def test_scope_checking_methods(self):
         context = AuthContext(
-            authenticated=True, scopes={Scope(name="api"), Scope(name="read"), Scope(name="user:profile")}
+            authenticated=True,
+            scopes={Scope(name="api"), Scope(name="read"), Scope(name="user:profile")},
         )
 
         # has_scope
@@ -460,7 +465,10 @@ class TestAuditLogEntry:
 
     def test_audit_log_with_error(self):
         entry = AuditLogEntry(
-            event_type="auth", action=AuditAction.LOGIN, result=AuditResult.FAILURE, error_message="Invalid credentials"
+            event_type="auth",
+            action=AuditAction.LOGIN,
+            result=AuditResult.FAILURE,
+            error_message="Invalid credentials",
         )
 
         log_line = entry.to_log_format()

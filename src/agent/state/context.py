@@ -2,13 +2,23 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import structlog
 
 logger = structlog.get_logger(__name__)
+
+
+class DateTimeEncoder(json.JSONEncoder):
+    """Custom JSON encoder that handles datetime objects."""
+
+    def default(self, o):
+        if isinstance(o, datetime):
+            return o.isoformat()
+        return super().default(o)
 
 
 @dataclass
@@ -21,15 +31,26 @@ class ConversationState:
     variables: dict[str, Any]
     history: list[dict[str, Any]]
 
+    def _serialize_value(self, value: Any) -> Any:
+        """Recursively serialize datetime objects to ISO format strings."""
+        if isinstance(value, datetime):
+            return value.isoformat()
+        elif isinstance(value, dict):
+            return {k: self._serialize_value(v) for k, v in value.items()}
+        elif isinstance(value, list):
+            return [self._serialize_value(item) for item in value]
+        else:
+            return value
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "context_id": self.context_id,
             "user_id": self.user_id,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
-            "metadata": self.metadata,
-            "variables": self.variables,
-            "history": self.history,
+            "metadata": self._serialize_value(self.metadata),
+            "variables": self._serialize_value(self.variables),
+            "history": self._serialize_value(self.history),
         }
 
     @classmethod
@@ -98,10 +119,22 @@ class FileStorage(StateStorage):
         async with self._lock:
             file_path = self._get_file_path(context_id)
             try:
-                with open(file_path) as f:
+                with open(file_path, encoding="utf-8") as f:
                     data = json.load(f)
                 return ConversationState.from_dict(data)
             except FileNotFoundError:
+                return None
+            except json.JSONDecodeError as e:
+                logger.error(f"JSON decode error loading state {context_id}: {e} at line {e.lineno}, column {e.colno}")
+                # Try to backup the corrupted file for debugging
+                try:
+                    import shutil
+
+                    backup_path = f"{file_path}.corrupted.{int(time.time())}"
+                    shutil.copy2(file_path, backup_path)
+                    logger.warning(f"Backed up corrupted state file to {backup_path}")
+                except Exception as e:
+                    logger.warning(f"Failed to backup corrupted state file: {e}")
                 return None
             except Exception as e:
                 logger.error(f"Error loading state {context_id}: {e}")
@@ -110,11 +143,31 @@ class FileStorage(StateStorage):
     async def set(self, state: ConversationState) -> None:
         async with self._lock:
             file_path = self._get_file_path(state.context_id)
+            temp_path = f"{file_path}.tmp"
+
             try:
-                with open(file_path, "w", encoding="utf-8") as f:
-                    json.dump(state.to_dict(), f)
+                # Write to temporary file first for atomic operation
+                with open(temp_path, "w", encoding="utf-8") as f:
+                    json.dump(state.to_dict(), f, cls=DateTimeEncoder, indent=2)
+                    f.flush()  # Ensure data is written to disk
+                    import os
+
+                    os.fsync(f.fileno())  # Force write to disk
+
+                # Atomic rename
+                import os
+
+                os.rename(temp_path, file_path)
+
             except Exception as e:
                 logger.error(f"Error saving state {state.context_id}: {e}")
+                # Clean up temp file if it exists
+                try:
+                    import os
+
+                    os.remove(temp_path)
+                except FileNotFoundError:
+                    pass
 
     async def delete(self, context_id: str) -> None:
         async with self._lock:
@@ -150,7 +203,12 @@ class FileStorage(StateStorage):
 
 
 class ValkeyStorage(StateStorage):
-    def __init__(self, url: str = "valkey://localhost:6379", key_prefix: str = "agentup:state:", ttl: int = 3600):
+    def __init__(
+        self,
+        url: str = "valkey://localhost:6379",
+        key_prefix: str = "agentup:state:",
+        ttl: int = 3600,
+    ):
         self.url = url
         self.key_prefix = key_prefix
         self.ttl = ttl
@@ -275,8 +333,8 @@ class ConversationContext:
             state = ConversationState(
                 context_id=context_id,
                 user_id=user_id,
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
                 metadata={},
                 variables={},
                 history=[],
@@ -293,7 +351,7 @@ class ConversationContext:
             if hasattr(state, key):
                 setattr(state, key, value)
 
-        state.updated_at = datetime.utcnow()
+        state.updated_at = datetime.now(timezone.utc)
         await self.storage.set(state)
 
     async def add_to_history(
@@ -304,7 +362,7 @@ class ConversationContext:
         message = {
             "role": role,
             "content": content,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "metadata": metadata or {},
         }
 
@@ -314,7 +372,7 @@ class ConversationContext:
         if len(state.history) > 100:
             state.history = state.history[-100:]
 
-        state.updated_at = datetime.utcnow()
+        state.updated_at = datetime.now(timezone.utc)
         await self.storage.set(state)
 
     async def get_history(self, context_id: str, limit: int | None = None) -> list[dict[str, Any]]:
@@ -331,7 +389,7 @@ class ConversationContext:
     async def set_variable(self, context_id: str, key: str, value: Any) -> None:
         state = await self.get_or_create(context_id)
         state.variables[key] = value
-        state.updated_at = datetime.utcnow()
+        state.updated_at = datetime.now(timezone.utc)
         await self.storage.set(state)
 
     async def get_variable(self, context_id: str, key: str, default: Any = None) -> Any:
@@ -343,7 +401,7 @@ class ConversationContext:
     async def set_metadata(self, context_id: str, key: str, value: Any) -> None:
         state = await self.get_or_create(context_id)
         state.metadata[key] = value
-        state.updated_at = datetime.utcnow()
+        state.updated_at = datetime.now(timezone.utc)
         await self.storage.set(state)
 
     async def get_metadata(self, context_id: str, key: str, default: Any = None) -> Any:
@@ -356,7 +414,7 @@ class ConversationContext:
         await self.storage.delete(context_id)
 
     async def cleanup_old_contexts(self, max_age_hours: int = 24) -> int:
-        cutoff_time = datetime.utcnow() - timedelta(hours=max_age_hours)
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
         cleaned = 0
 
         for context_id in await self.storage.list_contexts():

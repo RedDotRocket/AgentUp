@@ -7,7 +7,7 @@ for type safety and validation.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
@@ -97,7 +97,9 @@ class ServiceRegistration(BaseModel):
 class ServiceHealth(BaseModel):
     service_name: str = Field(..., description="Service name")
     status: ServiceStatus = Field(..., description="Health status")
-    last_check: datetime = Field(default_factory=datetime.utcnow, description="Last health check time")
+    last_check: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc), description="Last health check time"
+    )
     response_time_ms: float | None = Field(None, description="Response time in milliseconds", ge=0)
     error_message: str | None = Field(None, description="Error message if unhealthy")
     details: dict[str, JsonValue] = Field(default_factory=dict, description="Additional health details")
@@ -131,7 +133,9 @@ class ServiceMetrics(BaseModel):
     peak_response_time_ms: float = Field(0, description="Peak response time", ge=0)
     memory_usage_mb: float | None = Field(None, description="Memory usage in MB", ge=0)
     cpu_usage_percent: float | None = Field(None, description="CPU usage percentage", ge=0, le=100)
-    last_updated: datetime = Field(default_factory=datetime.utcnow, description="Metrics last updated")
+    last_updated: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc), description="Metrics last updated"
+    )
 
     @property
     def error_rate(self) -> float:
@@ -207,7 +211,12 @@ class AgentRegistrationPayload(BaseModel):
 class ServiceConfiguration(BaseModel):
     registration: ServiceRegistration = Field(..., description="Service registration data")
     health_config: dict[str, Any] = Field(
-        default_factory=lambda: {"check_interval": 30, "timeout": 10, "failure_threshold": 3, "recovery_threshold": 2},
+        default_factory=lambda: {
+            "check_interval": 30,
+            "timeout": 10,
+            "failure_threshold": 3,
+            "recovery_threshold": 2,
+        },
         description="Health check configuration",
     )
     metrics_config: dict[str, Any] = Field(
@@ -279,7 +288,7 @@ class ServiceHealthValidator(BaseValidator[ServiceHealth]):
         # Check for stale health data
         from datetime import datetime, timedelta
 
-        if datetime.utcnow() - model.last_check > timedelta(hours=1):
+        if datetime.now(timezone.utc) - model.last_check > timedelta(hours=1):
             result.add_warning("Health check data is over 1 hour old")
 
         return result
@@ -317,7 +326,7 @@ class ServiceConfigurationValidator(BaseValidator[ServiceConfiguration]):
 
 # Composite validator for all service models
 def create_service_validator() -> CompositeValidator[ServiceConfiguration]:
-    validators = [
+    validators: list[BaseValidator[ServiceConfiguration]] = [
         ServiceConfigurationValidator(ServiceConfiguration),
     ]
     return CompositeValidator(ServiceConfiguration, validators)

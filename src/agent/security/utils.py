@@ -1,6 +1,6 @@
 import re
 import secrets
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import structlog
@@ -152,7 +152,7 @@ def log_security_event(
         details: Additional details for debugging (never include secrets)
     """
     log_entry = {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "event_type": event_type,
         "success": success,
         "client_ip": request_info.get("client_ip", "unknown"),
