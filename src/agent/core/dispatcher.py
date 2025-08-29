@@ -291,10 +291,11 @@ class FunctionRegistry:
         system_tool_scopes = ["system:read"]  # Minimal scope requirement for system tools
 
         for function_name, function_schema in self._functions.items():
-            # System capabilities get minimal scope requirements
+            # mark_goal_complete is special - it's required for iterative agents to work
+            # and should be available to all authenticated users without special scopes
             if function_name == "mark_goal_complete":
-                required_scopes = system_tool_scopes
-                logger.debug(f"Checking system capability '{function_name}' with scopes: {required_scopes}")
+                required_scopes = []  # No special scopes required
+                logger.debug(f"Checking system capability '{function_name}' - no scopes required (internal tool)")
             else:
                 # Other local functions might have different scope requirements
                 # For now, treat them all as system tools
