@@ -168,10 +168,23 @@ class LLMManager:
                     logger.debug(
                         f"Final LLM response after function execution: {final_response.content[:200]}{'...' if len(str(final_response.content)) > 200 else ''}"
                     )
+                    # If a completion was detected, pass it through in the response
+                    if completion_detected and completion_result:
+                        return LLMManagerResponse(
+                            content=final_response.content,
+                            completed=True,
+                            completion_data=completion_result.completion_data,
+                        )
                     return LLMManagerResponse(content=final_response.content)
                 except Exception as e:
                     logger.error(f"Failed to get final response from LLM after function execution: {e}")
                     # Return function results directly as fallback
+                    if completion_detected and completion_result:
+                        return LLMManagerResponse(
+                            content=f"Function executed successfully: {'; '.join(str(result) for result in function_results)}",
+                            completed=True,
+                            completion_data=completion_result.completion_data,
+                        )
                     return LLMManagerResponse(
                         content=f"Function executed successfully: {'; '.join(str(result) for result in function_results)}"
                     )
