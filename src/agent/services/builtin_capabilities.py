@@ -205,8 +205,8 @@ class BuiltinCapabilityRegistry(Service):
 
         # Echo capability
         async def echo_executor(task: Task) -> str:
-            if hasattr(task, "params") and task.params and "message" in task.params:
-                return f"Echo: {task.params['message']}"
+            if hasattr(task, "metadata") and task.metadata and "message" in task.metadata:
+                return f"Echo: {task.metadata['message']}"
             return "Echo: No message provided"
 
         # Register core capabilities
