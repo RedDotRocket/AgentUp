@@ -10,7 +10,7 @@ class AgentConfiguration(BaseModel):
 
     model_config = {"use_enum_values": True}
 
-    agent_type: AgentType = AgentType.REACTIVE
+    agent_type: AgentType | str = AgentType.REACTIVE
     memory: MemoryConfig = Field(default_factory=MemoryConfig)
     iterative: IterativeConfig = Field(default_factory=IterativeConfig)
 

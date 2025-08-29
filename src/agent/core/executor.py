@@ -33,10 +33,10 @@ class AgentExecutorFactory:
             config = AgentConfiguration()
 
         # Create executor based on agent type (config.agent_type is a string due to use_enum_values=True)
-        if config.agent_type == AgentType.ITERATIVE:
+        if config.agent_type == "iterative":
             logger.info("Creating iterative executor")
             return IterativeStrategy(agent, config)
-        elif config.agent_type == AgentType.REACTIVE:
+        elif config.agent_type == "reactive":
             logger.info("Creating reactive executor")
             return ReactiveStrategy(agent, config)
         else:
@@ -115,17 +115,16 @@ def create_agent_executor(
     Returns:
         Configured AgentUpExecutor instance
     """
-    # Parse agent type - AgentConfiguration accepts both strings and enums
+    # Parse agent type - AgentConfiguration expects string values
     if isinstance(agent_type, AgentType):
-        agent_type_value = agent_type
+        agent_type_value = agent_type.value  # Convert enum to its string value
     elif isinstance(agent_type, str):
-        try:
-            agent_type_value = AgentType(agent_type.lower())
-        except ValueError:
+        agent_type_value = agent_type.lower()
+        if agent_type_value not in ["reactive", "iterative"]:
             logger.warning(f"Invalid agent_type '{agent_type}', defaulting to reactive")
-            agent_type_value = AgentType.REACTIVE
+            agent_type_value = "reactive"
     else:
-        agent_type_value = AgentType.REACTIVE  # Default
+        agent_type_value = "reactive"  # Default
 
     # Create configuration
     config = AgentConfiguration(agent_type=agent_type_value, **config_kwargs)

@@ -2,7 +2,7 @@ from typing import Any
 
 import structlog
 
-from agent.core.models import AgentType, IterationState, LearningInsight, MemoryContext
+from agent.core.models import IterationState, LearningInsight, MemoryContext
 from agent.state import get_context_manager
 
 logger = structlog.get_logger(__name__)
@@ -120,7 +120,7 @@ class IterativeMemoryManager:
             # Load existing memory context or create new one
             memory_context = await self.load_memory_context(context_id)
             if not memory_context:
-                memory_context = MemoryContext(context_id=context_id, agent_type=AgentType.ITERATIVE)
+                memory_context = MemoryContext(context_id=context_id, agent_type="iterative")
 
             # Add the insight
             memory_context.add_insight(insight)
@@ -175,7 +175,7 @@ class IterativeMemoryManager:
             # Load or create memory context
             memory_context = await self.load_memory_context(context_id)
             if not memory_context:
-                memory_context = MemoryContext(context_id=context_id, agent_type=AgentType.ITERATIVE)
+                memory_context = MemoryContext(context_id=context_id, agent_type="iterative")
 
             # Update metrics
             memory_context.increment_iteration()
