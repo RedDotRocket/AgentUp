@@ -100,9 +100,10 @@ def _setup_request_handler(app: FastAPI) -> None:
     agent_type = config.get("agent_type", "reactive")
 
     # Create agent configuration for executor
+    from agent.config.model import AgentType
     from agent.core.models import AgentConfiguration
 
-    if agent_type == "iterative":
+    if agent_type == AgentType.ITERATIVE:
         memory_config_data = config.get("memory_config", {})
         iterative_config_data = config.get("iterative_config", {})
 
@@ -113,12 +114,12 @@ def _setup_request_handler(app: FastAPI) -> None:
         iterative_config = IterativeConfig(**iterative_config_data) if iterative_config_data else IterativeConfig()
 
         agent_config = AgentConfiguration(
-            agent_type="iterative",  # Pass string directly
+            agent_type=AgentType.ITERATIVE,
             memory=memory_config,
             iterative=iterative_config,
         )
     else:
-        agent_config = AgentConfiguration(agent_type="reactive")  # Pass string directly
+        agent_config = AgentConfiguration(agent_type=AgentType.REACTIVE)
 
     request_handler = DefaultRequestHandler(
         agent_executor=AgentUpExecutor(agent=agent_card, config=agent_config),
