@@ -1,8 +1,11 @@
 # Multi-stage build for {{ project_name }}
-# Uses Chainguard distroless Python image for security
+FROM cgr.dev/chainguard/wolfi-base
 
-# Build stage - includes package managers and build tools
-FROM cgr.dev/chainguard/python:latest-dev as builder
+ARG PYTHON_VERSION="3.12"
+
+RUN apk update && apk upgrade && \
+    apk add --no-cache python-$PYTHON_VERSION && \
+    apk add --no-cache uv
 
 WORKDIR /app
 
@@ -10,28 +13,14 @@ WORKDIR /app
 COPY pyproject.toml ./
 
 # Install dependencies using uv for faster builds
-RUN pip install uv && uv sync --frozen
-
-# Minimal distroless image
-FROM cgr.dev/chainguard/python:latest
-
-WORKDIR /app
-
-# Copy virtual environment from builder
-COPY --from=builder /app/.venv /app/.venv
+RUN uv sync
 
 # Copy application configuration
 COPY agentup.yml ./
-{% if has_env_file %}COPY .env ./{% endif %}
+COPY .env ./
 
-# Create non-root user for security (Chainguard images include nonroot user)
+# Create non-root user for security
 USER 65532:65532
-
-# Set environment variables
-ENV PATH="/app/.venv/bin:$PATH"
-ENV PYTHONPATH="/app"
-ENV PYTHONUNBUFFERED=1
-ENV AGENTUP_CONFIG_PATH="/app/agentup.yml"
 
 # Health check endpoint - using AgentUp's built-in health endpoint
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
@@ -41,4 +30,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 EXPOSE 8000
 
 # Run the AgentUp agent using uvicorn (same as agentup run)
-CMD ["python", "-m", "uvicorn", "agent.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uv", "run", "uvicorn", "agent.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
