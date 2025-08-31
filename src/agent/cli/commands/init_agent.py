@@ -15,9 +15,13 @@ from agent.utils.git_utils import get_git_author_info, initialize_git_repo
 @click.command()
 @click.argument("name", required=False)
 @click.argument("version", required=False)
-@click.option("--quick", "-q", is_flag=True, help="Quick setup with minimal features (basic handlers only)")
+@click.option(
+    "--quick", "-q", is_flag=True, help="Quick setup with minimal features (basic handlers only)"
+)
 @click.option("--output-dir", "-o", type=click.Path(), help="Output directory")
-@click.option("--config", "-c", type=click.Path(exists=True), help="Use existing agentup.yml as template")
+@click.option(
+    "--config", "-c", type=click.Path(exists=True), help="Use existing agentup.yml as template"
+)
 @click.option("--no-git", is_flag=True, help="Skip git repository initialization")
 def init_agent(
     name: str | None,
@@ -83,7 +87,9 @@ def _prompt_for_basic_config(
     project_config: dict[str, Any] = {}
 
     if not name:
-        name = questionary.text("Agent name:", style=custom_style, validate=lambda x: len(x.strip()) > 0).ask()
+        name = questionary.text(
+            "Agent name:", style=custom_style, validate=lambda x: len(x.strip()) > 0
+        ).ask()
         if not name:
             click.echo("Cancelled.")
             return {}, None
@@ -111,7 +117,9 @@ def _prompt_for_basic_config(
         project_config["description"] = f"AI Agent {name} Project."
         project_config["version"] = version or "0.0.1"
     else:
-        description = questionary.text("Description:", default=f"AI Agent {name} Project.", style=custom_style).ask()
+        description = questionary.text(
+            "Description:", default=f"AI Agent {name} Project.", style=custom_style
+        ).ask()
         project_config["description"] = description
         if not version:
             version = questionary.text("Version:", default="0.0.1", style=custom_style).ask()
@@ -170,7 +178,9 @@ def _prompt_for_features(project_config: dict[str, Any], quick: bool, no_git: bo
         return
 
     # Standard mode
-    if questionary.confirm("Would you like to customize the features?", default=False, style=custom_style).ask():
+    if questionary.confirm(
+        "Customize Agent (services, security, middleware)?", default=True, style=custom_style
+    ).ask():
         feature_choices = get_feature_choices()
         for choice in feature_choices:
             choice.checked = False
@@ -195,7 +205,9 @@ def _prompt_for_features(project_config: dict[str, Any], quick: bool, no_git: bo
             questionary.Choice("Valkey", value="valkey"),
             questionary.Choice("Custom API", value="custom"),
         ]
-        selected = questionary.checkbox("Select external services:", choices=service_choices, style=custom_style).ask()
+        selected = questionary.checkbox(
+            "Select external services:", choices=service_choices, style=custom_style
+        ).ask()
         project_config["services"] = selected if selected else []
 
 
@@ -227,7 +239,9 @@ def get_ai_provider_config(custom_style) -> dict[str, Any] | None:
         config["model"] = model
 
     # Ask about streaming for all providers
-    config["stream"] = questionary.confirm("Enable streaming responses?", default=True, style=custom_style).ask()
+    config["stream"] = questionary.confirm(
+        "Enable streaming responses?", default=True, style=custom_style
+    ).ask()
 
     return config
 
@@ -258,7 +272,9 @@ def _handle_git_initialization(output_dir: Path, no_git: bool):
         if success:
             click.echo(f"{click.style('Git repository initialized', fg='green')}")
         else:
-            click.echo(f"{click.style(f'Warning: Could not initialize git repository: {error}', fg='yellow')}")
+            click.echo(
+                f"{click.style(f'Warning: Could not initialize git repository: {error}', fg='yellow')}"
+            )
 
 
 async def get_ollama_models() -> list[str]:
@@ -399,7 +415,9 @@ def configure_features(features: list) -> dict[str, Any]:
         print_header("Deployment Configuration", "Configure deployment options for your agent")
         # Docker configuration - always enabled
         config["docker_enabled"] = True
-        docker_registry = questionary.text("Docker registry (optional):", default="", style=custom_style).ask()
+        docker_registry = questionary.text(
+            "Docker registry (optional):", default="", style=custom_style
+        ).ask()
         config["docker_registry"] = docker_registry if docker_registry else None
         helm_enabled = questionary.confirm(
             "Generate Helm charts for Kubernetes deployment?", default=True, style=custom_style

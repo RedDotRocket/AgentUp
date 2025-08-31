@@ -15,7 +15,7 @@ services:
 {% elif ai_provider_config.provider == "anthropic" %}      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
 {% elif ai_provider_config.provider == "ollama" %}      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434}
 {% endif %}{% endif %}
-{% if has_state_management and feature_config and feature_config.state_backend == "valkey" %}      # State Management
+{% if has_state_management and feature_config.state_backend == "valkey" %}      # State Management
       - VALKEY_URL=redis://valkey:6379/0
 {% endif %}
 {% if has_middleware and "cache" in feature_config.middleware and feature_config.cache_backend == "valkey" %}      # Cache Backend

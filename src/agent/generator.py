@@ -71,13 +71,11 @@ class ProjectGenerator:
         ai_provider_config = self.config.get("ai_provider_config", {})
 
         # Check for Valkey (Redis) usage
-        needs_valkey = False
-        if "state_management" in self.features and feature_config.get("state_backend") == "valkey":
-            needs_valkey = True
-        if "middleware" in self.features and feature_config.get("cache_backend") == "valkey":
-            needs_valkey = True
-        if "push_notifications" in self.features and feature_config.get("push_backend") == "valkey":
-            needs_valkey = True
+        needs_valkey = (
+            ("state_management" in self.features and feature_config.get("state_backend") == "valkey")
+            or ("middleware" in self.features and feature_config.get("cache_backend") == "valkey")
+            or ("push_notifications" in self.features and feature_config.get("push_backend") == "valkey")
+        )
 
         # Check for Ollama usage
         needs_ollama = ai_provider_config.get("provider") == "ollama"
