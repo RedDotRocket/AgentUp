@@ -65,6 +65,23 @@ class ProjectGenerator:
     def _get_features(self) -> list[str]:
         return self.config.get("features", [])
 
+    def _needs_multi_service_deployment(self) -> bool:
+        """Check if multi-service deployment (docker-compose) is needed."""
+        feature_config = self.config.get("feature_config", {})
+        ai_provider_config = self.config.get("ai_provider_config", {})
+
+        # Check for Valkey (Redis) usage
+        needs_valkey = (
+            ("state_management" in self.features and feature_config.get("state_backend") == "valkey")
+            or ("middleware" in self.features and feature_config.get("cache_backend") == "valkey")
+            or ("push_notifications" in self.features and feature_config.get("push_backend") == "valkey")
+        )
+
+        # Check for Ollama usage
+        needs_ollama = ai_provider_config.get("provider") == "ollama"
+
+        return needs_valkey or needs_ollama
+
     # ============================================================================
     # FILE GENERATION
     # ============================================================================
@@ -75,17 +92,19 @@ class ProjectGenerator:
         self._write_template_file("README.md")
         self._write_template_file(".gitignore")
 
+        # Always generate Dockerfile
+        self._write_template_file("Dockerfile")
+
+        # Generate docker-compose.yml only if multiple services are needed
+        if self._needs_multi_service_deployment():
+            self._write_template_file("docker-compose.yml")
+
         # Generate deployment files if deployment feature is enabled
         if "deployment" in self.features:
             self._generate_deployment_files()
 
     def _generate_deployment_files(self):
         feature_config = self.config.get("feature_config", {})
-
-        # Docker files
-        if feature_config.get("docker_enabled", True):
-            self._write_template_file("Dockerfile")
-            self._write_template_file("docker-compose.yml")
 
         # Helm charts
         if feature_config.get("helm_enabled", True):

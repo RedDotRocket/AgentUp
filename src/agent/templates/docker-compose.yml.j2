@@ -1,4 +1,4 @@
-{% if feature_config.docker_enabled %}version: '3.8'
+version: '3.8'
 
 services:
   {{ project_name_snake }}:
@@ -61,4 +61,4 @@ services:
 {% endif %}volumes:
 {% if (has_state_management and feature_config.state_backend == "valkey") or (has_middleware and "cache" in feature_config.middleware and feature_config.cache_backend == "valkey") %}  valkey_data:
 {% endif %}{% if ai_provider_config.provider == "ollama" %}  ollama_data:
-{% endif %}{% endif %}
+{% endif %}
