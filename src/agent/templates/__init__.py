@@ -12,5 +12,5 @@ def get_feature_choices() -> list[questionary.Choice]:
         questionary.Choice("MCP Integration (Model Context Protocol)", value="mcp", checked=True),
         questionary.Choice("Push Notifications (webhooks)", value="push_notifications"),
         questionary.Choice("Development Features (filesystem plugins, debug mode)", value="development"),
-        questionary.Choice("Deployment (Docker, Helm Charts)", value="deployment"),
+        questionary.Choice("Deployment (Kubernetes, Helm Charts)", value="deployment"),
     ]

@@ -132,7 +132,10 @@ def _prompt_for_features(project_config: dict[str, Any], quick: bool, no_git: bo
     ]
 
     selected_agent_type = questionary.select(
-        "Select agent execution type:", choices=agent_type_choices, default="reactive", style=custom_style
+        "Select agent execution type:",
+        choices=agent_type_choices,
+        default="iterative",
+        style=custom_style,
     ).ask()
 
     project_config["agent_type"] = selected_agent_type
@@ -394,16 +397,10 @@ def configure_features(features: list) -> dict[str, Any]:
 
     if "deployment" in features:
         print_header("Deployment Configuration", "Configure deployment options for your agent")
-        # Docker configuration
-        docker_enabled = questionary.confirm(
-            "Generate Docker files? (Dockerfile, docker-compose.yml)",
-            default=True,
-            style=custom_style,
-        ).ask()
-        config["docker_enabled"] = docker_enabled
-        if docker_enabled:
-            docker_registry = questionary.text("Docker registry (optional):", default="", style=custom_style).ask()
-            config["docker_registry"] = docker_registry if docker_registry else None
+        # Docker configuration - always enabled
+        config["docker_enabled"] = True
+        docker_registry = questionary.text("Docker registry (optional):", default="", style=custom_style).ask()
+        config["docker_registry"] = docker_registry if docker_registry else None
         helm_enabled = questionary.confirm(
             "Generate Helm charts for Kubernetes deployment?", default=True, style=custom_style
         ).ask()
