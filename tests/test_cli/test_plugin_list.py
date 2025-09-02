@@ -135,6 +135,20 @@ class TestPluginListCommand:
         assert "test-plugin-package" in result.output
         assert "1.0.0" in result.output
 
+    def test_list_plugins_table_plugin_name(self, runner, mock_plugin_with_capabilities):
+        """Test listing plugins in table format with plugin name."""
+        result = runner.invoke(list_plugins, ["-c", "test_plugin"])
+        assert result.exit_code == 0
+        assert "Capabilities for test_plugin" in result.output
+        assert "AI Function" in result.output
+        assert "Scopes" in result.output
+
+    def test_list_plugins_table_plugin_name_empty(self, runner, mock_plugin_registry):
+        """Test listing plugins in table format with a non-existent plugin name."""
+        result = runner.invoke(list_plugins, ["-c", "non_existent_plugin"])
+        assert result.exit_code == 0
+        assert "Plugin 'non_existent_plugin' not found" in result.output
+
     def test_list_plugins_json_format(self, runner, mock_plugin_registry):
         """Test listing plugins in JSON format."""
         result = runner.invoke(list_plugins, ["--format", "json"])
@@ -161,8 +175,7 @@ class TestPluginListCommand:
         """Test listing plugins with capabilities flag."""
         result = runner.invoke(list_plugins, ["-c"])
         assert result.exit_code == 0
-        assert "Available Plugins" in result.output
-        assert "Available Capabilities" in result.output
+        assert "Available Plugins & Capabilities" in result.output
         assert "test_capability" in result.output
         assert "ai_capability" in result.output
 
@@ -209,6 +222,25 @@ class TestPluginListCommand:
         assert "Configured" in result.output
         assert "Module" in result.output
 
+    def test_list_plugins_json_plugin_name(self, runner, mock_plugin_with_capabilities):
+        """Test listing a specific plugin in JSON format."""
+        result = runner.invoke(list_plugins, ["--format", "json", "-c", "test_plugin"])
+        assert result.exit_code == 0
+        output = json.loads(result.output)
+        assert "plugins" in output
+        assert len(output["plugins"]) == 1
+        assert output["plugins"][0]["name"] == "test_plugin"
+        assert "capabilities" in output["plugins"][0]
+
+    def test_list_plugins_json_plugin_name_empty(self, runner, mock_plugin_registry):
+        """Test listing a non-existent plugin in JSON format."""
+        result = runner.invoke(list_plugins, ["--format", "json", "-c", "non_existent_plugin"])
+        assert result.exit_code == 0
+        output = json.loads(result.output)
+        print(output)
+        assert "plugins" in output
+        assert len(output["plugins"]) == 0
+
     def test_list_plugins_debug_mode(self, runner):
         """Test listing plugins with debug flag."""
         with patch("agent.plugins.manager.PluginRegistry") as mock_registry_class:
@@ -225,8 +257,8 @@ class TestPluginListCommand:
         """Test that AI functions are properly detected."""
         result = runner.invoke(list_plugins, ["-c"])
         assert result.exit_code == 0
-        assert "AI Function" in result.output
-        # Should show checkmark for AI capability
+        assert "Capabilities" in result.output
+        assert "test_capability" in result.output
 
     def test_empty_capabilities_not_included(self, runner):
         """Test that plugins without capabilities are not included in agentup-cfg format."""
