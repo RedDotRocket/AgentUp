@@ -55,10 +55,13 @@ English | <a href="README.cn.md">简体中文</a>
 
 ## Why AgentUp?
 
-Just as Docker made applications immutable, reproducible, and ops-friendly, **AgentUp** does the same for AI agents. Define your agent with configuration, and it runs consistently anywhere. Share agents with teammates who can clone / fork and run them instantly. Deploy knowing your agent will behave identically across development, staging, and production environments. When you need to customize, write your code as clean abstraction and load into AgentUp's runtime and inherit all of AgentUp's middleware and security. You can the manage your code as a depedency , along with any other communiity based plugins you used. No more fighting against a framework that breaks your app each time they changed something. Check out the [AgentUp Plugin registry](https://agentup.dev/packages) for a few of the current plugins on offer. 
+Just as Docker made applications immutable, reproducible, and ops-friendly, **AgentUp** does the same for AI agents. Define your agent with configuration, and it runs consistently anywhere. Share agents with teammates who can clone / fork and run them instantly. Deploy knowing your agent will behave identically across development, staging, and production environments.
+
+<img src="assets/init.gif" width="100%" height="100%"/>
+
+When you need to customize, write your code as clean abstraction and load into AgentUp's runtime and inherit all of AgentUp's middleware and security. You can the manage your code as a depedency , along with any other communiity based plugins you used. No more fighting against a framework that breaks your app each time they changed something. Check out the [AgentUp Plugin registry](https://agentup.dev/packages) for a few of the current plugins on offer. 
 
 <img src="/assets/plugins.gif" width="100%" height="100%"/>
-*Manage Tools and custom code as dependencies, pinned to your agent.*
 
 AgentUp is built by engineers who've created open-source solutions powering mission-critical systems at **Google, GitHub, Nvidia, Red Hat, Shopify and more**. We understand what it takes to build stable, secure, scalable software - and we're applying those same principles to make AI agents truly production-ready, secure and reliable.
 
@@ -81,9 +84,16 @@ preventing unauthorized Tools / MCP access, ensuring data protection. Security i
 
 **Deterministic routing**: Most frameworks place everything in the LLM's execution path, but this is often not optimal. Frequently, the better solution is through deterministic code, aka good old software engineering. For this reason, AgentUp allows for deterministic keyword based routing, where requests can natural language driven, but instead be sent to existing non-LLM services that utilize caching and other efficiency mechanisms.
 
-## Advanced Architecture with Production Aspirations
+**MCP Support**: AgentUp includes built-in support for Model-Context Protocol (MCP), allowing agents to seamlessly interact with various communication channels and APIs. Full support is available for STDIO, SSE and Streamable HTTP. Simply add a configuration in as
+much the same way as you would for Claude, Cursor or VSCode.
 
-AgentUp is designed with production deployment in mind, featuring architecture patterns that will scale as the framework matures. While currently in alpha, the core security and extensibility features already provide a solid foundation for building serious AI agents.
+## Multi Agent Type
+
+Within AgentUp there are what we term multiple Agent types. 
+
+**Reactive Agents**: These agents respond to user inputs and events as single shot interactions, making them ideal for chatbots and interactive applications.
+
+**Iterative Agents**: Designed for tasks that require multiple planning steps or iterations, making them ideal for research, these agents break down a goal into smaller, manageable tasks and execute them sequentially, maintaining context and state throughout the process. Goals must reach a confidence threshold before concluding.
 
 ## Stay Updated
 
