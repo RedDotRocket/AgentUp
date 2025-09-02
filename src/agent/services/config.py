@@ -1,3 +1,4 @@
+import warnings
 from typing import Any, Optional
 
 import structlog
@@ -5,6 +6,16 @@ import structlog
 
 class ConfigurationManager:
     """Singleton configuration manager with caching.
+
+    .. deprecated:: 1.0
+        ConfigurationManager is deprecated. Use `agent.config.get_settings()` or
+        FastAPI dependency injection with `agent.dependencies.ConfigDep` instead.
+
+        Migration Guide:
+        - Replace `ConfigurationManager().config` with `get_settings().model_dump()`
+        - Replace `ConfigurationManager().get("key")` with `get_settings().get("key")`
+        - Replace `ConfigurationManager().is_feature_enabled("feature")` with direct Settings properties
+        - Use FastAPI dependency injection: `async def endpoint(config: ConfigDep)`
 
     This class provides a centralized, cached access to application configuration,
     eliminating the need for repeated Config access throughout the codebase.
@@ -17,6 +28,14 @@ class ConfigurationManager:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance.logger = structlog.get_logger(__name__)
+            # Issue deprecation warning
+            warnings.warn(
+                "ConfigurationManager is deprecated. Use agent.config.get_settings() or "
+                "FastAPI dependency injection with agent.dependencies.ConfigDep instead. "
+                "See class docstring for migration guide.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         return cls._instance
 
     @property
@@ -28,9 +47,9 @@ class ConfigurationManager:
         """
         if self._config is None:
             self.logger.debug("Loading configuration for the first time")
-            from agent.config import Config
+            from agent.config import get_settings
 
-            self._config = Config.model_dump()
+            self._config = get_settings().model_dump()
             self.logger.info("Configuration loaded successfully")
         return self._config
 
@@ -41,9 +60,9 @@ class ConfigurationManager:
         Returns:
             Settings instance with full Pydantic validation and typed access
         """
-        from agent.config import Config
+        from agent.config import get_settings
 
-        return Config
+        return get_settings()
 
     def get(self, key: str, default: Any = None) -> Any:
         """Get a configuration value by key.
@@ -122,18 +141,20 @@ class ConfigurationManager:
             True if feature is enabled, False otherwise
         """
         # Use Pydantic models for proper validation
-        from agent.config import Config
+        from agent.config import get_settings
+
+        settings = get_settings()
 
         # Check common feature patterns
         if feature == "security":
-            return Config.security.enabled
+            return settings.security.enabled
         elif feature == "mcp":
-            return Config.mcp.enabled
+            return settings.mcp.enabled
         elif feature == "state_management":
-            return Config.state_management.get("enabled", False)
+            return settings.state_management.get("enabled", False)
         elif feature == "plugins":
             # Plugins are enabled if any are configured
-            return bool(Config.plugins)
+            return bool(settings.plugins)
 
         # Generic feature check - fallback to dict access
         return self.get(f"{feature}.enabled", False)

@@ -22,13 +22,13 @@ class StateManager(Service):
     async def initialize(self) -> None:
         self.logger.info("Initializing state manager")
 
-        state_config = self.config.get("state_management", {})
-        if not state_config.get("enabled", False):
+        state_config = getattr(self.config, "state_management", None)
+        if not state_config or not getattr(state_config, "enabled", False):
             self.logger.info("State management disabled")
             self._initialized = True
             return
 
-        self._backend = state_config.get("backend", "memory")
+        self._backend = getattr(state_config, "backend", "memory")
         self._backend_config = self._prepare_backend_config(state_config)
 
         try:
@@ -60,15 +60,32 @@ class StateManager(Service):
 
         if self._backend == "valkey":
             # Get Valkey URL from services configuration or state config
-            valkey_service = self.config.get("services.valkey.config", {})
-            backend_config["url"] = valkey_service.get("url", "valkey://localhost:6379")
-            backend_config["ttl"] = state_config.get("ttl", 3600)
+            services = getattr(self.config, "services", None)
+            valkey_service = {}
+            if services:
+                valkey_config = getattr(services, "valkey", None)
+                if valkey_config:
+                    valkey_service = getattr(valkey_config, "config", {})
+                    if hasattr(valkey_service, "model_dump"):
+                        valkey_service = valkey_service.model_dump()
+
+            url = (
+                valkey_service.get("url", "valkey://localhost:6379")
+                if isinstance(valkey_service, dict)
+                else getattr(valkey_service, "url", "valkey://localhost:6379")
+            )
+            backend_config["url"] = url
+            backend_config["ttl"] = getattr(state_config, "ttl", 3600)
         elif self._backend == "file":
-            backend_config["storage_dir"] = state_config.get("storage_dir", "./conversation_states")
+            backend_config["storage_dir"] = getattr(state_config, "storage_dir", "./conversation_states")
 
         # Add any additional config from state_config
-        if "config" in state_config:
-            backend_config.update(state_config["config"])
+        additional_config = getattr(state_config, "config", None)
+        if additional_config:
+            if hasattr(additional_config, "model_dump"):
+                backend_config.update(additional_config.model_dump())
+            elif isinstance(additional_config, dict):
+                backend_config.update(additional_config)
 
         return backend_config
 

@@ -1,5 +1,4 @@
-# Import commonly used functions for backwards compatibility
-from agent.config import Config
+# Import commonly used functions
 from agent.security.decorators import protected
 
 from .app import app, create_app, main
@@ -20,6 +19,5 @@ __all__ = [
     "router",
     "set_request_handler_instance",
     "sse_generator",
-    "Config",
     "protected",
 ]

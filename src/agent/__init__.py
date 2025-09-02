@@ -15,7 +15,6 @@ __version__ = get_version()
 # Lazy imports to avoid loading config when using CLI
 # Import these explicitly when needed:
 # from agent.api.app import app, create_app, main
-# from agent.config import Config
 # from agent.core import AgentExecutor, FunctionDispatcher, FunctionExecutor
 # from agent.services import get_services, initialize_services
 # from agent.state import ConversationManager, get_context_manager
@@ -29,8 +28,6 @@ __all__ = [
     "AgentExecutor",
     "FunctionDispatcher",
     "FunctionExecutor",
-    # Config
-    "Config",
     # Services
     "get_services",
     "initialize_services",
@@ -53,10 +50,6 @@ def __getattr__(name):
         from .api.app import main
 
         return main
-    elif name == "Config":
-        from .config import Config
-
-        return Config
     elif name == "AgentExecutor":
         from .core import AgentUpExecutor
 

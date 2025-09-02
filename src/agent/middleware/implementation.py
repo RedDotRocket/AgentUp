@@ -227,9 +227,9 @@ def get_global_cache_config() -> CacheConfig:
     global _global_cache_config
     if _global_cache_config is None:
         try:
-            from agent.config import Config
+            from agent.config import get_settings
 
-            middleware_config = Config.middleware.model_dump()
+            middleware_config = get_settings().middleware.model_dump()
             cache_params = {}
             if isinstance(middleware_config, dict) and middleware_config.get("caching", {}).get("enabled", False):
                 caching_section = middleware_config.get("caching", {})

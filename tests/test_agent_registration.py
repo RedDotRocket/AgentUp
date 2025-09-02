@@ -95,27 +95,31 @@ class TestAgentRegistrationClient:
         """Create a registration client with mocked config."""
         return AgentRegistrationClient(mock_config)
 
-    @patch("agent.config.Config")
-    async def test_initialize_without_orchestrator(self, mock_config_class, registration_client):
+    @patch("agent.config.get_settings")
+    async def test_initialize_without_orchestrator(self, mock_get_settings, registration_client):
         """Test initialization when no orchestrator is configured."""
-        # Mock Config to return None for orchestrator
-        mock_config_class.orchestrator = None
+        # Mock settings to return None for orchestrator
+        mock_settings = MagicMock()
+        mock_settings.orchestrator = None
+        mock_get_settings.return_value = mock_settings
 
         await registration_client.initialize()
 
         assert registration_client._initialized is True
         assert registration_client.orchestrator_url is None
 
-    @patch("agent.config.Config")
-    async def test_initialize_with_orchestrator(self, mock_config_class, registration_client):
+    @patch("agent.config.get_settings")
+    async def test_initialize_with_orchestrator(self, mock_get_settings, registration_client):
         """Test initialization with orchestrator configured."""
-        # Mock Config with orchestrator URL
-        mock_config_class.orchestrator = "http://localhost:8050"
-        mock_config_class.project_name = "Test Agent"
-        mock_config_class.version = "1.0.0"
-        mock_config_class.description = "Test description"
-        mock_config_class.api.host = "127.0.0.1"
-        mock_config_class.api.port = 8001
+        # Mock settings with orchestrator URL
+        mock_settings = MagicMock()
+        mock_settings.orchestrator = "http://localhost:8050"
+        mock_settings.project_name = "Test Agent"
+        mock_settings.version = "1.0.0"
+        mock_settings.description = "Test description"
+        mock_settings.api.host = "127.0.0.1"
+        mock_settings.api.port = 8001
+        mock_get_settings.return_value = mock_settings
 
         # Mock the registration method to avoid actual HTTP calls
         with patch.object(
@@ -127,15 +131,17 @@ class TestAgentRegistrationClient:
             assert registration_client.orchestrator_url == "http://localhost:8050"
             assert registration_client.agent_url == "http://localhost:8001"
 
-    @patch("agent.config.Config")
-    async def test_initialize_with_localhost_host(self, mock_config_class, registration_client):
+    @patch("agent.config.get_settings")
+    async def test_initialize_with_localhost_host(self, mock_get_settings, registration_client):
         """Test initialization handles localhost host correctly."""
-        mock_config_class.orchestrator = "http://localhost:8050"
-        mock_config_class.project_name = "Test Agent"
-        mock_config_class.version = "1.0.0"
-        mock_config_class.description = "Test description"
-        mock_config_class.api.host = "0.0.0.0"  # Should convert to localhost
-        mock_config_class.api.port = 8001
+        mock_settings = MagicMock()
+        mock_settings.orchestrator = "http://localhost:8050"
+        mock_settings.project_name = "Test Agent"
+        mock_settings.version = "1.0.0"
+        mock_settings.description = "Test description"
+        mock_settings.api.host = "0.0.0.0"  # Should convert to localhost
+        mock_settings.api.port = 8001
+        mock_get_settings.return_value = mock_settings
 
         with patch.object(
             registration_client, "_register_with_orchestrator", new_callable=AsyncMock, return_value=True
@@ -144,16 +150,18 @@ class TestAgentRegistrationClient:
 
             assert registration_client.agent_url == "http://localhost:8001"
 
-    @patch("agent.config.Config")
-    async def test_initialize_with_failed_registration(self, mock_config_class, registration_client):
+    @patch("agent.config.get_settings")
+    async def test_initialize_with_failed_registration(self, mock_get_settings, registration_client):
         """Test initialization when registration fails."""
-        # Mock Config with orchestrator URL
-        mock_config_class.orchestrator = "http://localhost:8050"
-        mock_config_class.project_name = "Test Agent"
-        mock_config_class.version = "1.0.0"
-        mock_config_class.description = "Test description"
-        mock_config_class.api.host = "127.0.0.1"
-        mock_config_class.api.port = 8001
+        # Mock settings with orchestrator URL
+        mock_settings = MagicMock()
+        mock_settings.orchestrator = "http://localhost:8050"
+        mock_settings.project_name = "Test Agent"
+        mock_settings.version = "1.0.0"
+        mock_settings.description = "Test description"
+        mock_settings.api.host = "127.0.0.1"
+        mock_settings.api.port = 8001
+        mock_get_settings.return_value = mock_settings
 
         # Mock the registration method to return False (failed)
         with patch.object(

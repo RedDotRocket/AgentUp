@@ -31,12 +31,13 @@ class ReactiveStrategy(AgentExecutorBase):
         super().__init__(agent)
 
         # Load plugin configuration for direct routing
-        from agent.config import Config
+        from agent.config import get_settings
 
+        config = get_settings()
         self.plugins = {}
         # Handle dictionary-based plugin structure
-        if hasattr(Config, "plugins") and isinstance(Config.plugins, dict):
-            for package_name, plugin_data in Config.plugins.items():
+        if hasattr(config, "plugins") and isinstance(config.plugins, dict):
+            for package_name, plugin_data in config.plugins.items():
                 if plugin_data.get("enabled", True):
                     plugin_name = plugin_data.get("name", package_name)
                     keywords = plugin_data.get("keywords", [])

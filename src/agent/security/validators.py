@@ -1,7 +1,7 @@
 import os
 import re
 
-from agent.config import Config
+from agent.config import get_settings
 from agent.config.model import ApiKeyConfig, BearerConfig, JWTConfig, OAuth2Config
 
 from .exceptions import SecurityConfigurationException
@@ -10,7 +10,7 @@ from .exceptions import SecurityConfigurationException
 class SecurityConfigValidator:
     def __init__(self):
         # This class does not need to maintain state, so no instance variables are needed
-        self.security_config = Config.security
+        self.security_config = get_settings().security
 
     # Cache for weak patterns to avoid reading file multiple times
     _weak_patterns_cache = None

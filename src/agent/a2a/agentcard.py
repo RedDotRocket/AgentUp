@@ -12,8 +12,6 @@ from a2a.types import (
     HTTPAuthSecurityScheme,
 )
 
-from agent.services.config import ConfigurationManager
-
 logger = structlog.get_logger(__name__)
 
 # Agent card caching - Force cache invalidation for debugging
@@ -32,11 +30,11 @@ def create_agent_card(extended: bool = False) -> AgentCard:
 
     global _cached_agent_card, _cached_extended_agent_card, _cached_config_hash
 
-    # Get configuration from the cached ConfigurationManager
-    config_manager = ConfigurationManager()
-    # Use the Pydantic config directly instead of model_dump()
-    pydantic_config = config_manager.pydantic_config
-    config = config_manager.config  # Keep for backward compatibility where needed
+    # Get configuration from the new settings system
+    from agent.config import get_settings
+
+    pydantic_config = get_settings()
+    config = pydantic_config.model_dump()  # For backward compatibility where needed
 
     # Create a hash of the configuration to detect changes
     config_str = str(sorted(config.items()))
@@ -258,25 +256,23 @@ def _get_mcp_skills_for_agent_card() -> list[AgentSkill]:
         List of AgentSkill objects representing MCP tools
     """
     from agent.capabilities.manager import get_mcp_capabilities
-    from agent.services.config import ConfigurationManager
+    from agent.config import get_settings
 
     mcp_skills = []
     try:
         # Get MCP server configuration to check expose_as_skills flags
-        config_manager = ConfigurationManager()
-        config = config_manager.config
+        settings = get_settings()
 
-        mcp_config = config.get("mcp", {})
-        if not mcp_config.get("enabled"):
+        if not settings.mcp.enabled:
             return mcp_skills
-        servers = mcp_config.get("servers", [])
+        servers = settings.mcp.servers or []
 
         # Create a mapping of server names to expose_as_skills setting
         server_expose_flags = {}
         for server in servers:
-            # TODO: Pydantic validation for server config
-            server_name = server.get("name")
-            expose_flag = server.get("expose_as_skills", False)
+            # Handle Pydantic model objects
+            server_name = server.name if hasattr(server, "name") else getattr(server, "name", None)
+            expose_flag = getattr(server, "expose_as_skills", False)
 
             server_expose_flags[server_name] = expose_flag
 

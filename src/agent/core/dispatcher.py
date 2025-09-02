@@ -250,14 +250,15 @@ class FunctionRegistry:
         return tools
 
     def _get_mcp_tools(self, scope_service, user_scopes: set[str]) -> list[dict[str, Any]]:
-        from agent.config import Config
+        from agent.config import get_settings
 
         tools = []
+        config = get_settings()
 
-        if not Config.mcp.client_enabled:
+        if not config.mcp.client_enabled:
             return tools
 
-        servers = Config.mcp.servers
+        servers = config.mcp.servers
 
         # Extract tool scopes from server configuration
         from agent.mcp_support.mcp_integration import _extract_tool_scopes_from_servers

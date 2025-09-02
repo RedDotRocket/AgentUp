@@ -301,8 +301,8 @@ class TestPluginListCommand:
                 assert result.exit_code == 0
 
     def test_config_import_error_handling(self, runner):
-        """Test handling when Config import fails."""
-        with patch("agent.config.Config", side_effect=ImportError):
+        """Test handling when get_settings import fails."""
+        with patch("agent.config.get_settings", side_effect=ImportError):
             with patch("agent.plugins.manager.PluginRegistry") as mock_registry_class:
                 mock_registry = MagicMock()
                 mock_registry.discover_all_available_plugins.return_value = []

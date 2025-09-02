@@ -48,9 +48,9 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, agentup_cfg: bo
 
         # Create a registry without auto-discovery to avoid allowlist warnings during listing
         try:
-            from agent.config import Config
+            from agent.config import get_settings
 
-            config = Config.model_dump()
+            config = get_settings().model_dump()
         except ImportError:
             config = None
 
@@ -161,21 +161,17 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, agentup_cfg: bo
                     display_name = base_name + " Plugin"
 
                 # Use OrderedDict to maintain field order
-                plugin_config = OrderedDict(
-                    [
-                        ("package", package_name),
-                        ("name", display_name),
-                        (
-                            "description",
-                            f"A plugin for {plugin_name.replace('_', ' ').replace('-', ' ')} functionality",
-                        ),
-                        ("tags", [plugin_name.replace("_", "-").replace(" ", "-").lower()]),
-                        ("input_mode", "text"),
-                        ("output_mode", "text"),
-                        ("priority", 50),
-                        ("capabilities", []),
-                    ]
+                plugin_config = OrderedDict()
+                plugin_config["package"] = package_name
+                plugin_config["name"] = display_name
+                plugin_config["description"] = (
+                    f"A plugin for {plugin_name.replace('_', ' ').replace('-', ' ')} functionality"
                 )
+                plugin_config["tags"] = [plugin_name.replace("_", "-").replace(" ", "-").lower()]
+                plugin_config["input_mode"] = "text"
+                plugin_config["output_mode"] = "text"
+                plugin_config["priority"] = 50
+                plugin_config["capabilities"] = []
 
                 # Load capabilities for this plugin
                 plugin_capabilities = _load_plugin_capabilities(plugin_name, verbose, debug)
@@ -621,7 +617,7 @@ def config(plugin_name: str, capability: str | None, format: str):
 def validate():
     """Validate plugin configurations against their schemas."""
     try:
-        from agent.config import Config
+        from agent.config import get_settings
         from agent.plugins.manager import get_plugin_registry
 
         manager = get_plugin_registry()
@@ -630,18 +626,19 @@ def validate():
 
         # Get capability configurations
         try:
-            if hasattr(Config, "plugins") and isinstance(Config.plugins, dict):
+            config = get_settings()
+            if hasattr(config, "plugins") and isinstance(config.plugins, dict):
                 # New dictionary structure
                 capability_configs = {
                     package_name: plugin_config.config or {}
-                    for package_name, plugin_config in Config.plugins.items()
+                    for package_name, plugin_config in config.plugins.items()
                     if hasattr(plugin_config, "config")
                 }
             else:
                 # Legacy list structure
                 capability_configs = {
                     getattr(plugin, "name", "unknown"): getattr(plugin, "config", {}) or {}
-                    for plugin in getattr(Config, "plugins", [])
+                    for plugin in getattr(config, "plugins", [])
                 }
         except Exception as e:
             logger.warning(f"Error loading plugin configurations: {e}")

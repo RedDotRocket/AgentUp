@@ -76,7 +76,8 @@ class BuiltinCapabilityRegistry(Service):
         wrapped_executor = executor
 
         # Apply authentication wrapper if security is enabled
-        if self.config.is_feature_enabled("security"):
+        security_enabled = getattr(self.config, "security", None) and getattr(self.config.security, "enabled", False)
+        if security_enabled:
             wrapped_executor = self._wrap_with_auth(wrapped_executor, metadata)
             metadata.auth_applied = True
 
@@ -85,7 +86,10 @@ class BuiltinCapabilityRegistry(Service):
         metadata.middleware_applied = True
 
         # Apply state management if enabled
-        if self.config.is_feature_enabled("state_management"):
+        state_mgmt_enabled = getattr(self.config, "state_management", None) and getattr(
+            self.config.state_management, "enabled", False
+        )
+        if state_mgmt_enabled:
             wrapped_executor = self._wrap_with_state(wrapped_executor, capability_id)
             metadata.state_applied = True
 
@@ -306,7 +310,9 @@ class BuiltinCapabilityRegistry(Service):
             return plugin_config["plugin_override"]
 
         # Use global middleware configuration
-        middleware_config = self.config.get("middleware", {})
+        middleware_config = getattr(self.config, "middleware", None)
+        if not middleware_config:
+            middleware_config = {}
 
         # If it's already a list (old format), return as-is
         if isinstance(middleware_config, list):
@@ -315,51 +321,58 @@ class BuiltinCapabilityRegistry(Service):
         # Convert new dictionary format to list format expected by with_middleware
         middleware_list = []
 
-        if isinstance(middleware_config, dict):
-            # Check if middleware is enabled
-            if not middleware_config.get("enabled", True):
-                return []
+        # Handle both Pydantic models and dictionaries
+        if hasattr(middleware_config, "model_dump"):
+            middleware_dict = middleware_config.model_dump()
+        elif isinstance(middleware_config, dict):
+            middleware_dict = middleware_config
+        else:
+            middleware_dict = {}
 
-            # Convert rate_limiting config
-            if middleware_config.get("rate_limiting", {}).get("enabled", False):
-                rate_config = middleware_config["rate_limiting"]
-                middleware_list.append(
-                    {
-                        "name": "rate_limited",
-                        "params": {
-                            "requests_per_minute": rate_config.get("requests_per_minute", 60),
-                            "burst_limit": rate_config.get("burst_size", None),
-                        },
-                    }
-                )
+        # Check if middleware is enabled
+        if not middleware_dict.get("enabled", True):
+            return []
 
-            # Convert caching config
-            if middleware_config.get("caching", {}).get("enabled", False):
-                cache_config = middleware_config["caching"]
-                middleware_list.append(
-                    {
-                        "name": "cached",
-                        "params": {
-                            "backend_type": cache_config.get("backend", "memory"),
-                            "default_ttl": cache_config.get("default_ttl", 300),
-                            "max_size": cache_config.get("max_size", 1000),
-                        },
-                    }
-                )
+        # Convert rate_limiting config
+        rate_limiting = middleware_dict.get("rate_limiting", {})
+        if rate_limiting.get("enabled", False):
+            middleware_list.append(
+                {
+                    "name": "rate_limited",
+                    "params": {
+                        "requests_per_minute": rate_limiting.get("requests_per_minute", 60),
+                        "burst_limit": rate_limiting.get("burst_size", None),
+                    },
+                }
+            )
 
-            # Convert retry config
-            if middleware_config.get("retry", {}).get("enabled", False):
-                retry_config = middleware_config["retry"]
-                middleware_list.append(
-                    {
-                        "name": "retryable",
-                        "params": {
-                            "max_attempts": retry_config.get("max_attempts", 3),
-                            "backoff_factor": retry_config.get("initial_delay", 1.0),
-                            "max_delay": retry_config.get("max_delay", 60.0),
-                        },
-                    }
-                )
+        # Convert caching config
+        caching = middleware_dict.get("caching", {})
+        if caching.get("enabled", False):
+            middleware_list.append(
+                {
+                    "name": "cached",
+                    "params": {
+                        "backend_type": caching.get("backend", "memory"),
+                        "default_ttl": caching.get("default_ttl", 300),
+                        "max_size": caching.get("max_size", 1000),
+                    },
+                }
+            )
+
+        # Convert retry config
+        retry = middleware_dict.get("retry", {})
+        if retry.get("enabled", False):
+            middleware_list.append(
+                {
+                    "name": "retryable",
+                    "params": {
+                        "max_attempts": retry.get("max_attempts", 3),
+                        "backoff_factor": retry.get("initial_delay", 1.0),
+                        "max_delay": retry.get("max_delay", 60.0),
+                    },
+                }
+            )
 
         return middleware_list
 
@@ -370,36 +383,63 @@ class BuiltinCapabilityRegistry(Service):
             return plugin_config["state_override"]
 
         # Use global state configuration
-        return self.config.get("state_management", {})
+        state_config = getattr(self.config, "state_management", None)
+        if state_config:
+            return state_config.model_dump() if hasattr(state_config, "model_dump") else state_config
+        return {}
 
     def _get_plugin_config_for_capability(self, capability_id: str) -> dict[str, Any] | None:
         # Try to find the plugin that provides this capability
         metadata = self._metadata.get(capability_id)
         if metadata and metadata.plugin_name:
             # Handle new dictionary-based plugin structure
-            plugins = self.config.get("plugins", {})
-            if isinstance(plugins, dict):
-                # New structure: plugins is a dict with package names as keys
-                for package_name, plugin_config in plugins.items():
-                    if package_name == metadata.plugin_name or plugin_config.get("name") == metadata.plugin_name:
-                        return plugin_config
+            plugins = getattr(self.config, "plugins", None)
+            if plugins and hasattr(plugins, "model_dump"):
+                plugins_dict = plugins.model_dump()
+            elif plugins and isinstance(plugins, dict):
+                plugins_dict = plugins
             else:
-                # Legacy list structure
-                for plugin in plugins:
-                    if plugin.get("name") == metadata.plugin_name:
+                plugins_dict = {}
+
+            if plugins_dict:
+                # New structure: plugins is a dict with package names as keys
+                for package_name, plugin_config in plugins_dict.items():
+                    plugin_name = (
+                        plugin_config.get("name")
+                        if isinstance(plugin_config, dict)
+                        else getattr(plugin_config, "name", None)
+                    )
+                    if package_name == metadata.plugin_name or plugin_name == metadata.plugin_name:
+                        return plugin_config.model_dump() if hasattr(plugin_config, "model_dump") else plugin_config
+            elif plugins and not isinstance(plugins, dict):
+                # Legacy list structure - plugins is a list
+                plugin_list = plugins.model_dump() if hasattr(plugins, "model_dump") else plugins
+                for plugin in plugin_list:
+                    plugin_name = plugin.get("name") if isinstance(plugin, dict) else getattr(plugin, "name", None)
+                    if plugin_name == metadata.plugin_name:
                         return plugin
 
         # Fallback: check if capability_id matches a plugin name
-        plugins = self.config.get("plugins", {})
-        if isinstance(plugins, dict):
+        plugins = getattr(self.config, "plugins", None)
+        if not plugins:
+            return None
+
+        plugins_dict = plugins.model_dump() if hasattr(plugins, "model_dump") else plugins
+        if isinstance(plugins_dict, dict):
             # New structure
-            for package_name, plugin_config in plugins.items():
-                if package_name == capability_id or plugin_config.get("name") == capability_id:
-                    return plugin_config
+            for package_name, plugin_config in plugins_dict.items():
+                plugin_name = (
+                    plugin_config.get("name")
+                    if isinstance(plugin_config, dict)
+                    else getattr(plugin_config, "name", None)
+                )
+                if package_name == capability_id or plugin_name == capability_id:
+                    return plugin_config.model_dump() if hasattr(plugin_config, "model_dump") else plugin_config
         else:
             # Legacy list structure
-            for plugin in plugins:
-                if plugin.get("name") == capability_id:
+            for plugin in plugins_dict:
+                plugin_name = plugin.get("name") if isinstance(plugin, dict) else getattr(plugin, "name", None)
+                if plugin_name == capability_id:
                     return plugin
 
         return None

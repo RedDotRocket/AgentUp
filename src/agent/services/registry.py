@@ -3,7 +3,7 @@ from typing import Any
 import structlog
 from pydantic import BaseModel, Field
 
-from agent.config import Config
+from agent.config import get_settings
 from agent.config.model import AgentConfig, ServiceConfig
 from agent.llm_providers.anthropic import AnthropicProvider
 from agent.llm_providers.ollama import OllamaProvider
@@ -169,7 +169,7 @@ class ServiceRegistry(BaseModel):
     factories: dict[str, Any] = Field(default_factory=dict, exclude=True, description="Service factories")
 
     def __init__(self, config: AgentConfig | None = None, **data):
-        raw = Config.model_dump() if config is None else config.model_dump()
+        raw = get_settings().model_dump() if config is None else config.model_dump()
         # Filter out orchestrator field which only exists in Settings, not AgentConfig
         raw.pop("orchestrator", None)
         # Handle ai_provider conversion from Settings (which can be None) to AgentConfig (which expects dict)

@@ -23,13 +23,19 @@ class MiddlewareManager(Service):
         self.logger.info("Initializing middleware manager")
 
         # Load global middleware configuration
-        self._global_config = self.config.get("middleware", [])
+        middleware_config = getattr(self.config, "middleware", None)
+        if middleware_config:
+            # Convert Pydantic model to list for backwards compatibility
+            self._global_config = [middleware_config.model_dump()] if hasattr(middleware_config, "model_dump") else []
+        else:
+            self._global_config = []
 
         # Register available middleware factories
         self._register_middleware_factories()
 
         self._initialized = True
-        self.logger.info(f"Middleware manager initialized with {len(self._global_config)} global middleware")
+        middleware_count = len(self._global_config) if self._global_config else 0
+        self.logger.info(f"Middleware manager initialized with {middleware_count} global middleware")
 
     def _register_middleware_factories(self) -> None:
         try:
@@ -60,22 +66,42 @@ class MiddlewareManager(Service):
             List of middleware configurations
         """
         # Check for plugin-specific override
-        plugins = self.config.get("plugins", {})
+        plugins = getattr(self.config, "plugins", None)
+        if not plugins:
+            plugins = {}
 
-        if isinstance(plugins, dict):
+        plugins_dict = plugins.model_dump() if hasattr(plugins, "model_dump") else plugins
+
+        if isinstance(plugins_dict, dict):
             # New dictionary-based structure
-            for package_name, plugin_config in plugins.items():
-                if package_name == plugin_name or plugin_config.get("name") == plugin_name:
-                    if "plugin_override" in plugin_config:
+            for package_name, plugin_config in plugins_dict.items():
+                plugin_name_attr = (
+                    plugin_config.get("name")
+                    if isinstance(plugin_config, dict)
+                    else getattr(plugin_config, "name", None)
+                )
+                if package_name == plugin_name or plugin_name_attr == plugin_name:
+                    override = (
+                        plugin_config.get("plugin_override")
+                        if isinstance(plugin_config, dict)
+                        else getattr(plugin_config, "plugin_override", None)
+                    )
+                    if override:
                         self.logger.debug(f"Using plugin override for plugin {plugin_name}")
-                        return plugin_config["plugin_override"]
+                        return override.model_dump() if hasattr(override, "model_dump") else override
         else:
             # Legacy list structure
-            for plugin in plugins:
-                if plugin.get("name") == plugin_name:
-                    if "plugin_override" in plugin:
+            for plugin in plugins_dict:
+                plugin_name_attr = plugin.get("name") if isinstance(plugin, dict) else getattr(plugin, "name", None)
+                if plugin_name_attr == plugin_name:
+                    override = (
+                        plugin.get("plugin_override")
+                        if isinstance(plugin, dict)
+                        else getattr(plugin, "plugin_override", None)
+                    )
+                    if override:
                         self.logger.debug(f"Using plugin override for plugin {plugin_name}")
-                        return plugin["plugin_override"]
+                        return override.model_dump() if hasattr(override, "model_dump") else override
 
         # Return global config
         return self.get_global_config()

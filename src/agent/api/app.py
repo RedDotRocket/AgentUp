@@ -17,8 +17,9 @@ from agent.a2a.agentcard import create_agent_card
 from agent.config.constants import DEFAULT_SERVER_HOST, DEFAULT_SERVER_PORT
 from agent.config.model import LogFormat
 from agent.core.executor import AgentUpExecutor
+from agent.dependencies import get_config
 from agent.push.notifier import EnhancedPushNotifier
-from agent.services import AgentBootstrapper, ConfigurationManager
+from agent.services import AgentBootstrapper
 
 from .routes import router, set_request_handler_instance
 
@@ -96,16 +97,16 @@ def _setup_request_handler(app: FastAPI) -> None:
         sender = push_notifier
 
     # Load agent execution configuration
-    config = ConfigurationManager()
-    agent_type = config.get("agent_type", "reactive")
+    config = get_config()
+    agent_type = config.agent_type
 
     # Create agent configuration for executor
     from agent.config.model import AgentType
     from agent.core.models import AgentConfiguration
 
     if agent_type == AgentType.ITERATIVE:
-        memory_config_data = config.get("memory_config", {})
-        iterative_config_data = config.get("iterative_config", {})
+        memory_config_data = config.memory_config
+        iterative_config_data = config.iterative_config
 
         # Import memory and iterative config models
         from agent.config.model import IterativeConfig, MemoryConfig
@@ -156,41 +157,39 @@ def create_app() -> FastAPI:
 
 
 def _configure_middleware(app: FastAPI) -> None:
-    config = ConfigurationManager()
+    config = get_config()
 
     # CORS middleware
-    cors_config = config.get("cors", {})
-    if cors_config.get("enabled", True):
+    if config.api.cors_enabled:
         from fastapi.middleware.cors import CORSMiddleware
 
         app.add_middleware(
             CORSMiddleware,
-            allow_origins=cors_config.get("origins", ["http://localhost:3000"]),
-            allow_methods=cors_config.get("methods", ["POST", "OPTIONS"]),
-            allow_headers=cors_config.get("headers", ["Content-Type", "X-API-Key"]),
-            allow_credentials=cors_config.get("allow_credentials", False),
-            max_age=cors_config.get("max_age", 600),
+            allow_origins=config.api.cors_origins,
+            allow_methods=config.api.cors_methods,
+            allow_headers=["Content-Type", "X-API-Key"],
+            allow_credentials=False,
+            max_age=600,
         )
 
     # Network rate limiting middleware (applied to FastAPI Middleware)
-    rate_limit_config = config.get("rate_limiting", {})
-    if rate_limit_config.get("enabled", True):
+    rate_limiting_enabled = getattr(config.middleware.rate_limiting, "enabled", True)
+    if rate_limiting_enabled:
         from agent.api.rate_limiting import NetworkRateLimitMiddleware
 
-        endpoint_limits = rate_limit_config.get(
-            "endpoint_limits",
-            {
-                "/": {"rpm": 100, "burst": 120},
-                "/mcp": {"rpm": 50, "burst": 60},
-                "/health": {"rpm": 200, "burst": 240},
+        endpoint_limits = {
+            "/": {
+                "rpm": getattr(config.middleware.rate_limiting, "requests_per_minute", 60),
+                "burst": getattr(config.middleware.rate_limiting, "burst_size", 72),
             },
-        )
+            "/mcp": {"rpm": 50, "burst": 60},
+            "/health": {"rpm": 200, "burst": 240},
+        }
         app.add_middleware(NetworkRateLimitMiddleware, endpoint_limits=endpoint_limits)
         logger.debug("Network rate limiting middleware enabled")
 
     # Logging middleware
-    logging_config = config.get("logging", {})
-    if logging_config.get("correlation_id", True):
+    if config.logging.correlation_id:
         try:
             from asgi_correlation_id import CorrelationIdMiddleware
 
@@ -201,7 +200,7 @@ def _configure_middleware(app: FastAPI) -> None:
 
             # Add structured logging middleware
             try:
-                logging_cfg = LoggingConfig(**logging_config)
+                logging_cfg = config.logging
             except Exception:
                 # Fallback with explicit defaults for type checker
                 logging_cfg = LoggingConfig(
@@ -219,13 +218,13 @@ def _configure_middleware(app: FastAPI) -> None:
 
         except ImportError:
             # Fallback to basic request logging
-            if logging_config.get("request_logging", True):
+            if config.logging.request_logging:
                 from .request_logging import add_correlation_id_to_logs
 
                 add_correlation_id_to_logs(app)
                 logger.debug("Basic request logging enabled")
 
-    elif logging_config.get("request_logging", True):
+    elif config.logging.request_logging:
         from .request_logging import add_correlation_id_to_logs
 
         add_correlation_id_to_logs(app)

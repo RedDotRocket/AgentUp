@@ -7,7 +7,6 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
-from agent.config import Config
 from agent.services import CacheService, Service, ServiceError, ServiceRegistry, WebAPIService
 
 
@@ -224,18 +223,56 @@ class TestWebAPIService:
 
 
 class TestServiceRegistry:
+    def _mock_get_settings(self, ai_provider_config=None):
+        """Helper to create mock get_settings response"""
+        if ai_provider_config is None:
+            ai_provider_config = {}
+        return {
+            "project_name": "test", 
+            "ai_provider": ai_provider_config,
+            "services": {},
+            "api": {"host": "localhost", "port": 8000},
+            "security": {"enabled": False},
+            "logging": {"enabled": True},
+            "middleware": {"enabled": False},
+            "mcp": {"enabled": False},
+            "plugins": {},
+            "description": "test",
+            "version": "1.0.0",
+        }
+    
     def test_service_registry_initialization_empty(self):
-        with patch.object(Config, "ai_provider", {"project_name": "test", "services": {}}):
+        with patch("agent.services.registry.get_settings") as mock_get_settings:
+            mock_settings = Mock()
+            mock_settings.model_dump.return_value = self._mock_get_settings()
+            mock_get_settings.return_value = mock_settings
+            
             registry = ServiceRegistry()
 
             assert registry.config is not None
-            assert registry._services == {}
-            assert "openai" in registry._llm_providers
-            assert "anthropic" in registry._llm_providers
-            assert "ollama" in registry._llm_providers
+            assert registry.service_instances == {}
+            assert "openai" in registry.llm_providers
+            assert "anthropic" in registry.llm_providers
+            assert "ollama" in registry.llm_providers
 
     def test_service_registry_llm_provider_mapping(self):
-        with patch.object(Config, "ai_provider", {"project_name": "test", "services": {}}):
+        with patch("agent.services.registry.get_settings") as mock_get_settings:
+            mock_settings = Mock()
+            mock_settings.model_dump.return_value = {
+                "project_name": "test", 
+                "ai_provider": {},
+                "services": {},
+                "api": {"host": "localhost", "port": 8000},
+                "security": {"enabled": False},
+                "logging": {"enabled": True},
+                "middleware": {"enabled": False},
+                "mcp": {"enabled": False},
+                "plugins": {},
+                "description": "test",
+                "version": "1.0.0",
+            }
+            mock_get_settings.return_value = mock_settings
+            
             registry = ServiceRegistry()
 
             # Test that LLM providers are properly mapped
@@ -243,12 +280,16 @@ class TestServiceRegistry:
             from agent.llm_providers.ollama import OllamaProvider
             from agent.llm_providers.openai import OpenAIProvider
 
-            assert registry._llm_providers["openai"] == OpenAIProvider
-            assert registry._llm_providers["anthropic"] == AnthropicProvider
-            assert registry._llm_providers["ollama"] == OllamaProvider
+            assert registry.llm_providers["openai"] == OpenAIProvider
+            assert registry.llm_providers["anthropic"] == AnthropicProvider
+            assert registry.llm_providers["ollama"] == OllamaProvider
 
     def test_register_service_type(self):
-        with patch.object(Config, "ai_provider", {"project_name": "test", "services": {}}):
+        with patch("agent.services.registry.get_settings") as mock_get_settings:
+            mock_settings = Mock()
+            mock_settings.model_dump.return_value = self._mock_get_settings()
+            mock_get_settings.return_value = mock_settings
+            
             registry = ServiceRegistry()
 
             class CustomService(Service):
@@ -260,11 +301,14 @@ class TestServiceRegistry:
 
             registry.register_service_type("custom", CustomService)
 
-            assert "custom" in registry._service_types
-            assert registry._service_types["custom"] == CustomService
+            assert "custom" in registry.service_types
+            assert registry.service_types["custom"] == CustomService
 
     def test_create_llm_service_openai(self):
-        with patch.object(Config, "ai_provider", {"project_name": "test", "services": {}}):
+        with patch("agent.services.registry.get_settings") as mock_get_settings:
+            mock_settings = Mock()
+            mock_settings.model_dump.return_value = {"project_name": "test", "ai_provider": {}, "services": {}}
+            mock_get_settings.return_value = mock_settings
             registry = ServiceRegistry()
 
             config = {"provider": "openai", "api_key": "test_key", "model": "gpt-4"}
@@ -275,7 +319,10 @@ class TestServiceRegistry:
             assert service.config == config
 
     def test_create_llm_service_missing_provider(self):
-        with patch.object(Config, "ai_provider", {"project_name": "test", "services": {}}):
+        with patch("agent.services.registry.get_settings") as mock_get_settings:
+            mock_settings = Mock()
+            mock_settings.model_dump.return_value = {"project_name": "test", "ai_provider": {}, "services": {}}
+            mock_get_settings.return_value = mock_settings
             registry = ServiceRegistry()
 
             config = {"api_key": "test_key"}
@@ -284,7 +331,10 @@ class TestServiceRegistry:
                 registry._create_llm_service("openai", config)
 
     def test_create_llm_service_unknown_provider(self):
-        with patch.object(Config, "ai_provider", {"project_name": "test", "services": {}}):
+        with patch("agent.services.registry.get_settings") as mock_get_settings:
+            mock_settings = Mock()
+            mock_settings.model_dump.return_value = {"project_name": "test", "ai_provider": {}, "services": {}}
+            mock_get_settings.return_value = mock_settings
             registry = ServiceRegistry()
 
             config = {"provider": "unknown", "api_key": "test_key"}
@@ -305,7 +355,8 @@ class TestServiceRegistry:
         mock_config.project_name = "test-registry"
         mock_config.services = {"valkey": Mock(type="cache", settings={"url": "valkey://localhost:6379"})}
 
-        with patch("agent.services.registry.Config", mock_config):
+        with patch("agent.services.registry.get_settings") as mock_get_settings:
+            mock_get_settings.return_value = mock_config
             registry = ServiceRegistry()
 
             # Initialize non-LLM services (which should work)
@@ -334,7 +385,8 @@ class TestServiceRegistryIntegration:
         mock_config.project_name = "integration-test"
         mock_config.services = config_data["services"]
 
-        with patch("agent.services.registry.Config", mock_config):
+        with patch("agent.services.registry.get_settings") as mock_get_settings:
+            mock_get_settings.return_value = mock_config
             registry = ServiceRegistry()
 
             # Initialize all services
@@ -350,7 +402,10 @@ class TestServiceRegistryIntegration:
             assert isinstance(registry._services["custom_api"], WebAPIService)
 
     def test_llm_service_creation_separately(self):
-        with patch.object(Config, "ai_provider", {"project_name": "test", "services": {}}):
+        with patch("agent.services.registry.get_settings") as mock_get_settings:
+            mock_settings = Mock()
+            mock_settings.model_dump.return_value = {"project_name": "test", "ai_provider": {}, "services": {}}
+            mock_get_settings.return_value = mock_settings
             registry = ServiceRegistry()
 
             config = {"provider": "openai", "api_key": "test_key", "model": "gpt-4"}

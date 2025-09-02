@@ -95,9 +95,11 @@ class TestPluginCapabilityIntegration:
         mock_registry.plugins = {}
         mock_registry.discover_plugins.return_value = None
 
-        with patch("agent.config.Config") as mock_config_class:
-            # The integration code does `config = Config` (not Config()), so we need to set attributes on the class
-            mock_config_class.plugins = []
+        with patch("agent.config.get_settings") as mock_get_settings:
+            # Create a mock settings object with empty plugins
+            mock_settings = Mock()
+            mock_settings.plugins = []
+            mock_get_settings.return_value = mock_settings
 
             # Should handle empty config gracefully
             result = integrate_plugins_with_capabilities(None)

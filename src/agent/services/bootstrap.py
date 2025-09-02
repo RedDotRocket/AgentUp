@@ -6,9 +6,11 @@ This module handles all service initialization.
 import structlog
 from fastapi import FastAPI
 
+from agent.config import get_settings
+from agent.config.settings import Settings
+
 from .base import Service
 from .builtin_capabilities import BuiltinCapabilityRegistry
-from .config import ConfigurationManager
 
 
 class AgentBootstrapper:
@@ -19,9 +21,9 @@ class AgentBootstrapper:
     the correct order.
     """
 
-    def __init__(self):
+    def __init__(self, config: Settings | None = None):
         self.logger = structlog.get_logger(__name__)
-        self.config = ConfigurationManager()
+        self.config = config or get_settings()
         self.services: list[Service] = []
         self._service_map: dict[str, Service] = {}
         self._initialized = False
@@ -103,7 +105,7 @@ class AgentBootstrapper:
         services = []
 
         # 1. Security Service (no dependencies)
-        if self.config.is_feature_enabled("security"):
+        if self.config.security.enabled:
             try:
                 security_service = await self._create_security_service()
                 services.append(security_service)
@@ -118,7 +120,7 @@ class AgentBootstrapper:
             self.logger.warning(f"Middleware manager not available: {e}")
 
         # 3. State Manager (no dependencies)
-        if self.config.is_feature_enabled("state_management"):
+        if self.config.state_management.get("enabled", False):
             try:
                 state_manager = await self._create_state_manager()
                 services.append(state_manager)
@@ -132,7 +134,7 @@ class AgentBootstrapper:
         await self._integrate_plugins()
 
         # 6. MCP Service (depends on BuiltinCapabilityRegistry)
-        if self.config.is_feature_enabled("mcp"):
+        if self.config.mcp.enabled:
             try:
                 mcp_service = await self._create_mcp_service(capability_registry)
                 services.append(mcp_service)
@@ -140,8 +142,8 @@ class AgentBootstrapper:
                 self.logger.warning(f"MCP service not available: {e}")
 
         # 7. Push Notification Service
-        push_config = self.config.get("push_notifications", {})
-        if push_config.get("enabled", True):
+        push_config = self.config.push_notifications
+        if push_config and getattr(push_config, "enabled", True):
             try:
                 push_service = await self._create_push_service()
                 services.append(push_service)
@@ -151,9 +153,7 @@ class AgentBootstrapper:
         # 8. Agent Registration Service (MUST be last - needs complete AgentCard)
         # This should be initialized after all other services so the AgentCard
         # contains all capabilities when the orchestrator fetches it
-        from agent.config import Config
-
-        if Config.orchestrator:
+        if self.config.orchestrator:
             try:
                 registration_service = await self._create_registration_service()
                 services.append(registration_service)
@@ -181,10 +181,24 @@ class AgentBootstrapper:
         from .mcp import MCPService
 
         # Check if weather MCP server is configured and warn user
-        mcp_config = self.config.get("mcp", {})
-        servers = mcp_config.get("servers", [])
+        mcp_config = self.config.mcp
+        servers = mcp_config.servers or []
         for server in servers:
-            if server.get("name") == "stdio" and "weather_server.py" in str(server.get("args", [])):
+            server_name = (
+                getattr(server, "name", None)
+                if hasattr(server, "name")
+                else server.get("name")
+                if isinstance(server, dict)
+                else None
+            )
+            server_args = (
+                getattr(server, "args", [])
+                if hasattr(server, "args")
+                else server.get("args", [])
+                if isinstance(server, dict)
+                else []
+            )
+            if server_name == "stdio" and "weather_server.py" in str(server_args):
                 self.logger.warning(
                     "Weather MCP server detected. This is a demo server, set to disabled in agentup.yml, to remove."
                 )
@@ -205,9 +219,7 @@ class AgentBootstrapper:
     async def _integrate_plugins(self) -> None:
         """Integrate plugins using the new PluginRegistry system."""
         # Check if plugins are configured
-        from agent.config import Config
-
-        if not Config.plugins:
+        if not self.config.plugins:
             self.logger.info("No plugins configured, skipping plugin integration")
             return
 
@@ -239,7 +251,11 @@ class AgentBootstrapper:
         self._service_map.clear()
 
     def _log_initialization_summary(self) -> None:
-        agent_info = self.config.get_agent_info()
+        agent_info = {
+            "name": self.config.project_name,
+            "version": str(self.config.version),
+            "description": self.config.description,
+        }
 
         self.logger.info("=" * 50)
         self.logger.info(f"{agent_info['name']} v{agent_info['version']} initialized")
@@ -253,19 +269,19 @@ class AgentBootstrapper:
 
         # Log enabled features
         features = []
-        if self.config.is_feature_enabled("security"):
-            auth_type = self.config.get("security.auth", {})
+        if self.config.security.enabled:
+            auth_type = self.config.security.auth or {}
             if auth_type:
                 auth_method = list(auth_type.keys())[0] if auth_type else "none"
                 features.append(f"Security ({auth_method})")
             else:
                 features.append("Security")
 
-        if self.config.is_feature_enabled("state_management"):
-            backend = self.config.get("state_management.backend", "memory")
+        if self.config.state_management.get("enabled", False):
+            backend = self.config.state_management.get("backend", "memory")
             features.append(f"State Management ({backend})")
 
-        if self.config.is_feature_enabled("mcp"):
+        if self.config.mcp.enabled:
             features.append("MCP Integration")
 
         capability_registry = self._service_map.get("BuiltinCapabilityRegistry")

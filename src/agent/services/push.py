@@ -21,13 +21,13 @@ class PushNotificationService(Service):
     async def initialize(self) -> None:
         self.logger.info("Initializing push notification service")
 
-        push_config = self.config.get("push_notifications", {})
-        if not push_config.get("enabled", True):
+        push_config = getattr(self.config, "push_notifications", None)
+        if not push_config or not getattr(push_config, "enabled", True):
             self.logger.info("Push notifications disabled")
             self._initialized = True
             return
 
-        self._backend = push_config.get("backend", "memory")
+        self._backend = getattr(push_config, "backend", "memory")
 
         try:
             if self._backend == "valkey":
@@ -66,10 +66,21 @@ class PushNotificationService(Service):
             # Get services and find cache service
             services = get_services()
             cache_service_name = None
-            services_config = self.config.get("services", {})
+            services_config = getattr(self.config, "services", None)
+            if not services_config:
+                services_config = {}
+
+            # Convert Pydantic model to dict if needed
+            if hasattr(services_config, "model_dump"):
+                services_config = services_config.model_dump()
 
             for service_name, service_config in services_config.items():
-                if service_config.get("type") == "cache":
+                service_type = (
+                    service_config.get("type")
+                    if isinstance(service_config, dict)
+                    else getattr(service_config, "type", None)
+                )
+                if service_type == "cache":
                     cache_service_name = service_name
                     break
 

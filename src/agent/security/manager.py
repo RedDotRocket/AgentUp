@@ -20,10 +20,11 @@ class SecurityManager:
     """
 
     def __init__(self):
-        from agent.config import Config
+        from agent.config import get_settings
 
         # Store config references
-        self.config = Config.model_dump()
+        config = get_settings()
+        self.config = config.model_dump()
         self.security_config = self.config.get("security", {})
         self.auth_enabled = self.security_config.get("enabled", False)
 

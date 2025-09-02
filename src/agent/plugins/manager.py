@@ -61,9 +61,9 @@ class PluginRegistry:
         """Get configuration, loading it if needed"""
         if self._config is None:
             try:
-                from agent.config import Config
+                from agent.config import get_settings
 
-                self._config = Config.model_dump()
+                self._config = get_settings().model_dump()
             except ImportError as e:
                 logger.error("Failed to load configuration module")
                 raise ImportError("Configuration module not found. Ensure 'agent.config' is available") from e
@@ -658,9 +658,9 @@ def get_plugin_registry() -> PluginRegistry:
         # Try to load configuration for the plugin registry
         config = None
         try:
-            from agent.config import Config
+            from agent.config import get_settings
 
-            config = Config.model_dump()
+            config = get_settings().model_dump()
         except ImportError:
             logger.debug("Could not load configuration for plugin registry")
 

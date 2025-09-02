@@ -21,8 +21,8 @@ class MCPService(Service):
     async def initialize(self) -> None:
         self.logger.debug("Initializing MCP service")
 
-        mcp_config = self.config.get("mcp", {})
-        if not mcp_config.get("enabled", False):
+        mcp_config = getattr(self.config, "mcp", None)
+        if not mcp_config or not getattr(mcp_config, "enabled", False):
             self.logger.info("MCP integration disabled")
             self._initialized = True
             return
@@ -31,7 +31,7 @@ class MCPService(Service):
             # Initialize MCP integration using existing code
             from agent.mcp_support.mcp_integration import initialize_mcp_integration
 
-            await initialize_mcp_integration(self.config.config)
+            await initialize_mcp_integration(self.config.model_dump())
 
             self._initialized = True
 

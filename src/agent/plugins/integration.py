@@ -72,9 +72,9 @@ def integrate_plugins_with_capabilities(
 
     # If config is not provided, load it
     if config is None:
-        from agent.config import Config
+        from agent.config import get_settings
 
-        config = Config
+        config = get_settings()
 
     registered_count = 0
     capabilities_to_register = {}  # capability_id -> scope_requirements
@@ -222,9 +222,9 @@ def get_plugin_adapter():
     """Get the plugin adapter instance."""
     global _plugin_adapter_instance
     if _plugin_adapter_instance is None:
-        from agent.config import Config
+        from agent.config import get_settings
 
-        _plugin_adapter_instance = PluginAdapter(Config)
+        _plugin_adapter_instance = PluginAdapter(get_settings())
     return _plugin_adapter_instance
 
 

@@ -26,9 +26,10 @@ class ConversationManager:
 
     async def prepare_llm_conversation(self, task) -> list[dict[str, str]]:
         """Prepare LLM conversation from A2A task history AND stored conversation state."""
-        from agent.config import Config
+        from agent.config import get_settings
 
-        ai_config = Config.ai
+        config = get_settings()
+        ai_config = config.ai
         system_prompt = ai_config.get(
             "system_prompt",
             """You are an AI agent with access to specific functions/skills.

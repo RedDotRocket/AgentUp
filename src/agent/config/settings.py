@@ -252,18 +252,3 @@ def get_settings() -> Settings:
 def get_config() -> Settings:
     """Get the global configuration instance, loading it if necessary."""
     return get_settings()
-
-
-# For backward compatibility, provide Config as a property-like access
-class ConfigProxy:
-    def __getattr__(self, name):
-        return getattr(get_config(), name)
-
-    def __getitem__(self, key):
-        return get_config()[key]
-
-    def get(self, key, default=None):
-        return get_config().get(key, default)
-
-
-Config = ConfigProxy()

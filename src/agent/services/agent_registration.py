@@ -40,23 +40,25 @@ class AgentRegistrationClient(Service):
         self.logger.debug("Initializing agent registration service")
 
         # Get the Pydantic config object
-        from agent.config import Config
+        from agent.config import get_settings
+
+        settings = get_settings()
 
         # Check if orchestrator is configured
-        if not Config.orchestrator:
+        if not settings.orchestrator:
             self.logger.debug("No orchestrator configured, skipping registration")
             self._initialized = True
             return
 
         # Convert Pydantic HttpUrl to string
-        self.orchestrator_url = str(Config.orchestrator)
+        self.orchestrator_url = str(settings.orchestrator)
 
         # Get agent information using Pydantic attributes
-        agent_info = {"name": Config.project_name, "version": Config.version, "description": Config.description}
+        agent_info = {"name": settings.project_name, "version": settings.version, "description": settings.description}
 
         # Determine agent URL from API config
-        host = Config.api.host
-        port = Config.api.port
+        host = settings.api.host
+        port = settings.api.port
 
         # Handle different host configurations for agent URL
         # Bandit: We are converting from 0.0.0.0, so false postive.

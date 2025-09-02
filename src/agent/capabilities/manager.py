@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any
 import structlog
 from a2a.types import Task
 
-from agent.config import Config
+from agent.config import get_settings
 from agent.middleware import with_middleware
 
 if TYPE_CHECKING:
@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from agent.mcp_support.model import MCPCapabilityInfo
 
 # Load agent config to pull in project name
-_project_name = Config.project_name
+_project_name = get_settings().project_name
 
 logger = structlog.get_logger(__name__)
 
@@ -372,7 +372,7 @@ def _load_middleware_config() -> list[dict[str, Any]]:
         return _middleware_config
 
     try:
-        middleware_config = Config.middleware.model_dump()
+        middleware_config = get_settings().middleware.model_dump()
         # If it's already a list (old format), use as-is
         if isinstance(middleware_config, list):
             _middleware_config = middleware_config
@@ -463,9 +463,7 @@ def _load_state_config() -> dict[str, Any]:
         return _state_config
 
     try:
-        from agent.config import Config
-
-        _state_config = Config.state_management
+        _state_config = get_settings().state_management
         if isinstance(_state_config, dict):
             logger.debug(f"Loaded state config: {_state_config}")
             return _state_config
@@ -480,17 +478,16 @@ def _load_state_config() -> dict[str, Any]:
 
 def _get_plugin_config(plugin_name: str) -> dict | None:
     try:
-        from agent.config import Config
-
+        settings = get_settings()
         # Handle new dictionary-based plugin structure
-        if hasattr(Config, "plugins") and isinstance(Config.plugins, dict):
+        if hasattr(settings, "plugins") and isinstance(settings.plugins, dict):
             # New structure: plugins is a dict with package names as keys
-            plugin_config = Config.plugins.get(plugin_name)
+            plugin_config = settings.plugins.get(plugin_name)
             if plugin_config:
                 return plugin_config.model_dump() if hasattr(plugin_config, "model_dump") else dict(plugin_config)
         else:
             # Fallback: old list structure with name or package fields
-            for plugin in getattr(Config, "plugins", []):
+            for plugin in getattr(get_settings(), "plugins", []):
                 # Try to match by name or package field
                 plugin_dict = plugin.model_dump() if hasattr(plugin, "model_dump") else dict(plugin)
                 if plugin_dict.get("name") == plugin_name or plugin_dict.get("package") == plugin_name:

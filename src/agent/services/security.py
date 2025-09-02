@@ -18,11 +18,12 @@ class SecurityService(Service):
 
         try:
             # Create security manager using existing implementation
-            from agent.config import Config
+            from agent.config import get_settings
             from agent.security import create_security_manager, set_global_security_manager
 
             # Pass the full config as dictionary for backward compatibility
-            config_dict = Config.model_dump()
+            config = get_settings()
+            config_dict = config.model_dump()
             self._security_manager = create_security_manager(config_dict)
             set_global_security_manager(self._security_manager)
 

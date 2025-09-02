@@ -65,4 +65,18 @@ class Service(ABC):
         Returns:
             Configuration value or default
         """
-        return self.config.get(key, default)
+        # Handle nested keys like "a.b.c"
+        if "." in key:
+            keys = key.split(".")
+            value = self.config
+            for k in keys:
+                if hasattr(value, k):
+                    value = getattr(value, k)
+                elif isinstance(value, dict) and k in value:
+                    value = value[k]
+                else:
+                    return default
+            return value
+
+        # Handle simple keys
+        return getattr(self.config, key, default)

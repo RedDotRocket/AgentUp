@@ -21,10 +21,11 @@ class LLMManager:
     @staticmethod
     async def get_llm_service(services=None):
         try:
-            from agent.config import Config
+            from agent.config import get_settings
 
             # Get the new ai_provider configuration
-            ai_provider_config = Config.ai_provider
+            config = get_settings()
+            ai_provider_config = config.ai_provider
             if not ai_provider_config:
                 logger.warning("ai_provider not configured in agentup.yml")
                 return None

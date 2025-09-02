@@ -21,6 +21,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from agent.a2a.agentcard import create_agent_card
+from agent.dependencies import ConfigDep
 from agent.push.types import (
     DeleteTaskPushNotificationConfigRequest,
     DeleteTaskPushNotificationConfigResponse,
@@ -28,7 +29,6 @@ from agent.push.types import (
     listTaskPushNotificationConfigResponse,
 )
 from agent.security import AuthContext, get_auth_result, protected
-from agent.services.config import ConfigurationManager
 
 # Setup logger
 logger = structlog.get_logger(__name__)
@@ -80,13 +80,12 @@ async def get_task_status(task_id: str, request: Request) -> JSONResponse:
 
 
 @router.get("/health")
-async def health_check() -> JSONResponse:
-    config_manager = ConfigurationManager()
+async def health_check(config: ConfigDep) -> JSONResponse:
     return JSONResponse(
         status_code=200,
         content={
             "status": "healthy",
-            "agent": config_manager.get("project_name", "Agent"),
+            "agent": config.project_name,
             "timestamp": datetime.now().isoformat(),
         },
     )

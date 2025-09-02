@@ -27,16 +27,20 @@ from agent.api import (
 
 class TestAgentCard:
     @patch("agent.plugins.manager.get_plugin_registry")
-    @patch("agent.a2a.agentcard.ConfigurationManager")
-    def test_create_agent_card_minimal(self, mock_config_manager, mock_get_registry):
-        mock_config = {
+    @patch("agent.config.get_settings")
+    def test_create_agent_card_minimal(self, mock_get_settings, mock_get_registry):
+        # Create a mock settings object
+        mock_settings = Mock()
+        mock_settings.project_name = "TestAgent"
+        mock_settings.description = "Test Agent Description"
+        mock_settings.model_dump.return_value = {
             "project_name": "TestAgent",
             "description": "Test Agent Description",
             "agent": {"name": "TestAgent", "description": "Test Agent", "version": "1.0.0"},
             "skills": [],
             "state_management": {"enabled": True},
         }
-        mock_config_manager.return_value.config = mock_config
+        mock_get_settings.return_value = mock_settings
 
         # Mock empty plugin registry
         mock_registry = Mock()
@@ -58,9 +62,13 @@ class TestAgentCard:
         assert card.capabilities.state_transition_history is True
 
     @patch("agent.plugins.manager.get_plugin_registry")
-    @patch("agent.a2a.agentcard.ConfigurationManager")
-    def test_create_agent_card_with_skills(self, mock_config_manager, mock_get_registry):
-        mock_config = {
+    @patch("agent.config.get_settings")
+    def test_create_agent_card_with_skills(self, mock_get_settings, mock_get_registry):
+        mock_settings = Mock()
+        mock_settings.project_name = "SkillfulAgent"
+        mock_settings.description = "Agent with skills"
+        mock_settings.version = "2.0.0"
+        mock_settings.model_dump.return_value = {
             "agent": {
                 "name": "SkillfulAgent",
                 "description": "Agent with skills",
@@ -69,7 +77,6 @@ class TestAgentCard:
             "plugins": [
                 {
                     "name": "chat",
-                    "name": "Chat",
                     "description": "General chat capabilities",
                     "input_mode": "text",
                     "output_mode": "text",
@@ -77,7 +84,7 @@ class TestAgentCard:
                 }
             ],
         }
-        mock_config_manager.return_value.config = mock_config
+        mock_get_settings.return_value = mock_settings
 
         # Mock empty plugin registry
         mock_registry = Mock()
@@ -91,20 +98,17 @@ class TestAgentCard:
         assert len(card.skills) == 0
 
     @patch("agent.plugins.manager.get_plugin_registry")
-    @patch("agent.a2a.agentcard.ConfigurationManager")
-    def test_create_agent_card_with_security_enabled(self, mock_config_manager, mock_get_registry):
-        mock_config = {
+    @patch("agent.config.get_settings")
+    def test_create_agent_card_with_security_enabled(self, mock_get_settings, mock_get_registry):
+        mock_settings = Mock()
+        mock_settings.project_name = "SecureAgent"
+        mock_settings.description = "Secure Agent Description"
+        mock_settings.model_dump.return_value = {
             "agent": {"name": "SecureAgent"},
             "skills": [],
             "security": {"enabled": True, "type": "api_key"},
         }
-        mock_config_manager.return_value.config = mock_config
-
-        # Mock the pydantic_config to return proper values
-        mock_pydantic_config = Mock()
-        mock_pydantic_config.project_name = "SecureAgent"
-        mock_pydantic_config.description = "Secure Agent Description"
-        mock_config_manager.return_value.pydantic_config = mock_pydantic_config
+        mock_get_settings.return_value = mock_settings
 
         # Mock empty plugin registry
         mock_registry = Mock()
@@ -118,15 +122,19 @@ class TestAgentCard:
         assert card.security is not None
         assert len(card.security) > 0
 
-    @patch("agent.a2a.agentcard.ConfigurationManager")
-    def test_create_agent_card_caching(self, mock_config_manager):
+    @patch("agent.config.get_settings")
+    def test_create_agent_card_caching(self, mock_get_settings):
         """Test that AgentCard creation works (caching removed for simplicity)."""
-        mock_config = {
+        # Create a mock settings object
+        mock_settings = Mock()
+        mock_settings.project_name = "CachedAgent"
+        mock_settings.description = "Test caching"
+        mock_settings.model_dump.return_value = {
             "project_name": "CachedAgent",
             "agent": {"name": "CachedAgent", "description": "Test caching", "version": "1.0.0"},
             "plugins": [],
         }
-        mock_config_manager.return_value.config = mock_config
+        mock_get_settings.return_value = mock_settings
 
         # Create agent cards
         card1 = create_agent_card()
@@ -173,17 +181,31 @@ class TestHealthEndpoints:
     def client(self, app):
         return TestClient(app)
 
-    @patch("agent.api.routes.ConfigurationManager")
-    def test_health_check(self, mock_config_manager, client):
-        mock_config_manager.return_value.get.return_value = "TestAgent"
+    def test_health_check(self, app, client):
+        # Override the dependency to provide a mock settings object
+        from unittest.mock import Mock
 
-        response = client.get("/health")
+        from agent.dependencies import get_config_dependency
 
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "healthy"
-        assert data["agent"] == "TestAgent"
-        assert "timestamp" in data
+        def override_config():
+            mock_settings = Mock()
+            mock_settings.project_name = "TestAgent"
+            return mock_settings
+
+        # Override the dependency on the app
+        app.dependency_overrides[get_config_dependency] = override_config
+
+        try:
+            response = client.get("/health")
+
+            assert response.status_code == 200
+            data = response.json()
+            assert data["status"] == "healthy"
+            assert data["agent"] == "TestAgent"
+            assert "timestamp" in data
+        finally:
+            # Clean up the dependency override
+            app.dependency_overrides.clear()
 
 
 class TestAgentDiscovery:
@@ -200,11 +222,11 @@ class TestAgentDiscovery:
             name="TestAgent",
             description="Test Description",
             version="1.0.0",
+            default_input_modes=["text"],
+            default_output_modes=["text"],
             url="http://localhost:8000",
             capabilities=AgentCapabilities(streaming=True, state_transition_history=True),
             skills=[],
-            defaultInputModes=["text"],
-            defaultOutputModes=["text"],
         )
 
         # Mock create_agent_card to return our test card
@@ -269,8 +291,8 @@ class TestJSONRPCEndpoint:
             url="http://localhost:8000",
             capabilities=AgentCapabilities(streaming=True, state_transition_history=True),
             skills=[],
-            defaultInputModes=["text"],
-            defaultOutputModes=["text"],
+            default_input_modes=["text"],
+            default_output_modes=["text"],
         )
 
         # Mock the security manager to avoid the async authentication call
