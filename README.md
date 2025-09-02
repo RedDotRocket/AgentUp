@@ -124,7 +124,7 @@ Your agent is now running at `http://localhost:8000` with a full A2A-compliant  
 
 Grab hold of the AgentUp chat client to converse with your Agents through a simple interface using [AgentUpChat](https://github.com/RedDotRocket/AgentUpChat)
 
-<img src="/assets/demo.gif" width="50%" height="50%"/>
+<img src="/assets/demo.gif" width="100%" height="100%"/>
 
 #### Check out the Docs!
 
