@@ -57,6 +57,9 @@ English | <a href="README.cn.md">简体中文</a>
 
 Just as Docker made applications immutable, reproducible, and ops-friendly, **AgentUp** does the same for AI agents. Define your agent with configuration, and it runs consistently anywhere. Share agents with teammates who can clone / fork and run them instantly. Deploy knowing your agent will behave identically across development, staging, and production environments. When you need to customize, write your code as clean abstraction and load into AgentUp's runtime and inherit all of AgentUp's middleware and security. You can the manage your code as a depedency , along with any other communiity based plugins you used. No more fighting against a framework that breaks your app each time they changed something. Check out the [AgentUp Plugin registry](https://agentup.dev/packages) for a few of the current plugins on offer. 
 
+<img src="/assets/plugins.gif" width="100%" height="100%"/>
+*Manage Tools and custom code as dependencies, pinned to your agent.*
+
 AgentUp is built by engineers who've created open-source solutions powering mission-critical systems at **Google, GitHub, Nvidia, Red Hat, Shopify and more**. We understand what it takes to build stable, secure, scalable software - and we're applying those same principles to make AI agents truly production-ready, secure and reliable.
 
 ## AgentUp: Developer-First Agent Framework
