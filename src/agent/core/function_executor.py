@@ -229,9 +229,7 @@ class FunctionExecutor:
 
             # Get configurable string length limit
             max_string_length = security_config.max_string_length
-            # If set to -1, disable string length limit (use a very large number)
-            if max_string_length == -1:
-                max_string_length = float("inf")
+            # A value of -1 indicates no limit. This is handled in the truncation logic below.
 
         except Exception as e:
             logger.warning(f"Failed to load security config, using defaults [corr:{correlation_id}]: {e}")
@@ -248,12 +246,14 @@ class FunctionExecutor:
             if not isinstance(value, ALLOWED_TYPES):
                 logger.warning(f"Disallowed argument type: {type(value)} [corr:{correlation_id}]")
                 sanitized_str = str(value)
-                return sanitized_str[:max_string_length] if max_string_length != float("inf") else sanitized_str
+                if max_string_length != -1:
+                    return sanitized_str[:max_string_length]
+                return sanitized_str
 
             if isinstance(value, str):
                 # Sanitize string length and remove potential control characters
                 sanitized = "".join(char for char in value if ord(char) >= 32 or char in "\t\n\r")
-                if max_string_length != float("inf") and len(sanitized) > max_string_length:
+                if max_string_length != -1 and len(sanitized) > max_string_length:
                     logger.debug(
                         f"String truncated from {len(sanitized)} to {max_string_length} chars [corr:{correlation_id}]"
                     )
