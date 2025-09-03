@@ -155,6 +155,10 @@ src/agent/
 - **Authentication**: Never bypass authentication checks; use UnifiedAuthenticationManager for consistent auth handling
 - **Plugin Security**: Plugins must declare required scopes; use allowlist-based validation for plugin loading
 - **Audit Logging**: Log all security events (authentication, authorization, access denials) with appropriate risk levels
+- **Function Argument Sanitization**: Configure `max_string_length` and `sanitization_enabled` in security config to control how function arguments are sanitized:
+  - `max_string_length: 100000` - Default 100KB limit for string arguments (prevents large file content truncation)
+  - `max_string_length: -1` - Disable string length limits entirely (use with caution)
+  - `sanitization_enabled: false` - Disable all argument sanitization (not recommended for production)
 
 ## Task Completion Workflow
 
@@ -263,6 +267,10 @@ security:
     files:write: ["files:read"]
     api:admin: ["api:write", "api:read"]
     api:write: ["api:read"]
+  
+  # Function argument sanitization settings
+  sanitization_enabled: true   # Enable function argument sanitization
+  max_string_length: 100000    # Max string length in chars (100KB default, -1 = unlimited)
 ```
 
 **Important**: Each function requires specific scopes. If a user's API key doesn't have the required scope (either directly or through hierarchy inheritance), access will be denied with a 403 error.

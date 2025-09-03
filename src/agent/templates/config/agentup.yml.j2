@@ -212,6 +212,10 @@ security:
 {% if has_mcp %}
     weather:admin: ["alerts:read", "weather:read"]
 {% endif %}
+  
+  # Function argument sanitization settings
+  sanitization_enabled: {{ sanitization_enabled | default(true) }}  # Enable function argument sanitization
+  max_string_length: {{ max_string_length | default(100000) }}      # Max string length in chars (100KB default, -1 = unlimited)
 {% endif %}
 
 {%- if ai_provider_config %}

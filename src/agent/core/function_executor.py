@@ -174,7 +174,11 @@ class FunctionExecutor:
             audit_logger.log_configuration_error(
                 "function_validation",
                 "function_validation_failed",
-                {"correlation_id": correlation_id, "error_type": "ValueError", "function_name": function_name},
+                {
+                    "correlation_id": correlation_id,
+                    "error_type": "ValueError",
+                    "function_name": function_name,
+                },
             )
             return f"Invalid request format [ref:{correlation_id}]"
 
@@ -211,7 +215,28 @@ class FunctionExecutor:
 
     def _sanitize_function_arguments(self, arguments: dict[str, Any], correlation_id: str) -> dict[str, Any]:
         """Sanitize function arguments to prevent injection attacks."""
-        MAX_STRING_LENGTH = 1000
+        # Get configuration for security settings
+        try:
+            from agent.config import get_config
+
+            config = get_config()
+            security_config = config.agent_config.security
+
+            # Check if sanitization is disabled
+            if not security_config.sanitization_enabled:
+                logger.debug(f"Function argument sanitization disabled [corr:{correlation_id}]")
+                return arguments
+
+            # Get configurable string length limit
+            max_string_length = security_config.max_string_length
+            # If set to -1, disable string length limit (use a very large number)
+            if max_string_length == -1:
+                max_string_length = float("inf")
+
+        except Exception as e:
+            logger.warning(f"Failed to load security config, using defaults [corr:{correlation_id}]: {e}")
+            max_string_length = 100000  # Fallback to 100KB
+
         MAX_NESTED_DEPTH = 5
         ALLOWED_TYPES = (str, int, float, bool, list, dict, type(None))
 
@@ -222,12 +247,18 @@ class FunctionExecutor:
 
             if not isinstance(value, ALLOWED_TYPES):
                 logger.warning(f"Disallowed argument type: {type(value)} [corr:{correlation_id}]")
-                return str(value)[:MAX_STRING_LENGTH]
+                sanitized_str = str(value)
+                return sanitized_str[:max_string_length] if max_string_length != float("inf") else sanitized_str
 
             if isinstance(value, str):
                 # Sanitize string length and remove potential control characters
                 sanitized = "".join(char for char in value if ord(char) >= 32 or char in "\t\n\r")
-                return sanitized[:MAX_STRING_LENGTH]
+                if max_string_length != float("inf") and len(sanitized) > max_string_length:
+                    logger.debug(
+                        f"String truncated from {len(sanitized)} to {max_string_length} chars [corr:{correlation_id}]"
+                    )
+                    return sanitized[:max_string_length]
+                return sanitized
 
             elif isinstance(value, list):
                 if len(value) > 100:  # Limit array size
@@ -296,7 +327,10 @@ class FunctionExecutor:
 
     async def _apply_ai_middleware(self, handler, function_name: str):
         try:
-            from agent.middleware import execute_ai_function_with_middleware, get_ai_compatible_middleware
+            from agent.middleware import (
+                execute_ai_function_with_middleware,
+                get_ai_compatible_middleware,
+            )
 
             # Check if there's any AI-compatible middleware to apply
             ai_middleware = get_ai_compatible_middleware()
