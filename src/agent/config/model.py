@@ -313,6 +313,14 @@ class SecurityConfig(BaseModel):
     )
     scope_hierarchy: dict[str, list[str]] = Field(default_factory=dict, description="Scope hierarchy configuration")
 
+    # Function argument sanitization settings
+    max_string_length: int = Field(
+        default=100000,
+        description="Maximum allowed string length in function arguments (in characters). Set to -1 to disable limit.",
+        ge=-1,
+    )
+    sanitization_enabled: bool = Field(default=True, description="Enable function argument sanitization for security")
+
     @field_validator("scope_hierarchy", mode="before")
     @classmethod
     def validate_scope_hierarchy(cls, v):
