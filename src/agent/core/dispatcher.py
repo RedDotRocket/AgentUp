@@ -322,30 +322,12 @@ class FunctionRegistry:
     async def register_mcp_client(self, mcp_client) -> None:
         # CONDITIONAL_MCP_IMPORTS
         logger.debug(f"Registering MCP client, initialized: {mcp_client.is_initialized if mcp_client else False}")
+
+        # Store the client reference - this is needed for tool execution
         self._mcp_client = mcp_client
 
         if mcp_client and mcp_client.is_initialized:
-            # Get available MCP tools
-            mcp_tools = await mcp_client.get_available_tools()
-            logger.debug(f"Got {len(mcp_tools)} MCP tools from client")
-
-            for tool_schema in mcp_tools:
-                original_name = tool_schema.get("name", "unknown")
-                # Convert MCP tool names to valid OpenAI function names
-                # Replace colons with underscores: "filesystem:read_file" -> "filesystem_read_file"
-                function_name = original_name.replace(":", "_")
-
-                # Only register if not already registered by register_mcp_tool (which has better scope handling)
-                if function_name not in self._mcp_tools:
-                    # Store with the cleaned name but keep original info
-                    cleaned_schema = tool_schema.copy()
-                    cleaned_schema["name"] = function_name
-                    cleaned_schema["original_name"] = original_name  # Keep for MCP calls
-
-                    self._mcp_tools[function_name] = cleaned_schema
-                    logger.debug(f"Registered MCP tool in function registry: {original_name} -> {function_name}")
-                else:
-                    logger.debug(f"Skipping MCP tool '{function_name}' - already registered with scope enforcement")
+            logger.debug("MCP client registered successfully")
         else:
             logger.warning(
                 f"Cannot register MCP client - client: {mcp_client is not None}, initialized: {mcp_client.is_initialized if mcp_client else False}"
