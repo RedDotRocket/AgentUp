@@ -220,7 +220,7 @@ class FunctionExecutor:
             from agent.config import get_config
 
             config = get_config()
-            security_config = config.agent_config.security
+            security_config = config.security
 
             # Check if sanitization is disabled
             if not security_config.sanitization_enabled:
