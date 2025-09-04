@@ -59,6 +59,10 @@ class TestPluginCapabilityIntegration:
             capabilities=[CapabilityType.TEXT],
             plugin_name="test_plugin",
             required_scopes=["test:read"],
+            input_mode="text",
+            output_mode="text",
+            priority=1,
+            system_prompt="System prompt for capability 3",
         )
         mock_plugin.get_capability_definitions.return_value = [mock_capability_def]
 
@@ -134,17 +138,11 @@ class TestPluginCapabilityIntegration:
     def test_integration_capability_not_provided_by_plugin(self, mock_get_registry):
         """Test integration when configured capability is not provided by plugin."""
         mock_config = Mock()
-        mock_capability_config = Mock()
-        mock_capability_config.capability_id = "missing_capability"
-        mock_capability_config.required_scopes = ["test:read"]
-        mock_capability_config.enabled = True
 
-        mock_plugin_config = Mock()
-        mock_plugin_config.plugin_name = "test_plugin"
-        mock_plugin_config.capabilities = [mock_capability_config]
-        mock_plugin_config.config = {}
-
-        mock_config.plugins = [mock_plugin_config]
+        # Use dict format matching Settings model: plugins -> plugin_name -> capabilities -> capability_name -> config
+        mock_config.plugins = {
+            "test_plugin": {"capabilities": {"missing_capability": {"required_scopes": ["test:read"], "enabled": True}}}
+        }
 
         # Mock plugin registry
         mock_registry = Mock()
@@ -159,6 +157,10 @@ class TestPluginCapabilityIntegration:
             description="Other capability",
             capabilities=[CapabilityType.TEXT],
             plugin_name="test_plugin",
+            input_mode="text",
+            output_mode="text",
+            priority=1,
+            system_prompt="System prompt for other capability",
         )
         mock_plugin.get_capability_definitions.return_value = [mock_capability_def]
 
@@ -217,6 +219,10 @@ class TestPluginCapabilityIntegration:
                 capabilities=[CapabilityType.TEXT],
                 plugin_name="multi_plugin",
                 required_scopes=["read:files"],
+                input_mode="text",
+                output_mode="text",
+                priority=1,
+                system_prompt="System prompt for capability 1",
             ),
             CapabilityDefinition(
                 id="cap2",
@@ -226,6 +232,10 @@ class TestPluginCapabilityIntegration:
                 capabilities=[CapabilityType.TEXT],
                 plugin_name="multi_plugin",
                 required_scopes=["write:files"],
+                input_mode="text",
+                output_mode="text",
+                priority=1,
+                system_prompt="System prompt for capability 2",
             ),
             CapabilityDefinition(
                 id="cap3",
@@ -235,6 +245,10 @@ class TestPluginCapabilityIntegration:
                 capabilities=[CapabilityType.TEXT],
                 plugin_name="multi_plugin",
                 required_scopes=["admin"],
+                input_mode="text",
+                output_mode="text",
+                priority=1,
+                system_prompt="System prompt for capability 3",
             ),
         ]
         mock_plugin.get_capability_definitions.return_value = mock_capability_defs
@@ -289,6 +303,10 @@ class TestPluginCapabilityIntegration:
             capabilities=[CapabilityType.TEXT],
             plugin_name="test_plugin",
             required_scopes=["test:read"],
+            input_mode="text",
+            output_mode="text",
+            priority=1,
+            system_prompt="System prompt for capability",
         )
         mock_plugin.get_capability_definitions.return_value = [mock_capability_def]
 
@@ -339,6 +357,10 @@ class TestPluginCapabilityIntegration:
             capabilities=[CapabilityType.TEXT],
             plugin_name="test_plugin",
             required_scopes=["test:read"],
+            input_mode="text",
+            output_mode="text",
+            priority=1,
+            system_prompt="System prompt for capability",
         )
         mock_plugin.get_capability_definitions.return_value = [mock_capability_def]
 
@@ -381,6 +403,10 @@ class TestPluginAdapter:
             description="Test capability",
             capabilities=[CapabilityType.TEXT],
             plugin_name="test_plugin",
+            input_mode="text",
+            output_mode="text",
+            priority=1,
+            system_prompt="System prompt for capability",
         )
         mock_plugin.get_capability_definitions.return_value = [mock_capability_def]
 
@@ -442,7 +468,7 @@ class TestPluginCapabilityWrapper:
             # Mock successful capability execution
             from src.agent.plugins.models import CapabilityResult
 
-            mock_result = CapabilityResult(content="test result", success=True)
+            mock_result = CapabilityResult(content="test result", success=True, error=None)
 
             # Make the async method return a coroutine
             async def mock_execute():
@@ -583,6 +609,10 @@ class TestCapabilityListing:
             plugin_name="test_plugin",
             required_scopes=["test:read"],
             tags=["test"],
+            input_mode="text",
+            output_mode="text",
+            priority=1,
+            system_prompt="System prompt for capability 3",
         )
         mock_registry.get_capability.return_value = mock_capability_def
 

@@ -179,12 +179,7 @@ async def _initialize_mcp_client(services, mcp_config: dict[str, Any]) -> None:
 
     except Exception as e:
         logger.error(f"Failed to initialize unified MCP client: {e}")
-        # Still register the failed client so we don't break the service registry
-        if "mcp_client" in locals():
-            services._services["mcp_client"] = mcp_client
-
-    # The MCP client will now log its own detailed status during initialization
-    # We don't need to duplicate that logging here
+        # Do not register failed clients - dependent code already handles None clients gracefully
 
 
 async def _initialize_mcp_server(services, mcp_config: dict[str, Any]) -> None:
@@ -346,16 +341,13 @@ async def _register_mcp_tools_with_scopes(registry, mcp_client, available_tools,
                 f"Registered MCP tool '{original_tool_name}' -> '{sanitized_tool_name}' with scope enforcement: {required_scopes}"
             )
 
-        # Register the MCP client after registering all tools
-        await registry.register_mcp_client(mcp_client)
-        logger.debug("Registered MCP client with function registry")
-
     except Exception as e:
-        logger.error(f"Failed to register MCP tools with scope enforcement: {e}")
-        # DO NOT fallback to registration without scope enforcement for security
+        logger.error(f"Failed to register some MCP tools with scope enforcement: {e}")
+        # Continue - some tools may have been registered successfully
 
-        # Always register the MCP client regardless of tool registration success/failure
-        await registry.register_mcp_client(mcp_client)
+    # Always register the MCP client (needed for tool execution) - do this exactly once
+    await registry.register_mcp_client(mcp_client)
+    logger.debug("Registered MCP client with function registry")
 
 
 async def _start_mcp_server_background(mcp_server, port: int) -> None:
