@@ -74,7 +74,10 @@ def integrate_plugins_with_capabilities(
     if config is None:
         from agent.config import Config
 
-        config = Config
+        config = Config.settings
+
+    # Type checker now knows config is not None
+    assert config is not None  # nosec
 
     registered_count = 0
     capabilities_to_register = {}  # capability_id -> scope_requirements
@@ -86,25 +89,26 @@ def integrate_plugins_with_capabilities(
         f"Plugin registry now has {len(plugin_registry.plugins)} loaded plugins: {list(plugin_registry.plugins.keys())}"
     )
 
-    # Get the set of plugins that are configured from settings
-    _configured_plugin_names = set()
-
-    # Get configured capabilities from settings (regardless of enabled state)
+    # Get configured capabilities from Settings model
+    # Expected format: plugins -> plugin_name -> capabilities -> capability_name -> {required_scopes: [...]}
     configured_capabilities = set()
     try:
-        if hasattr(config, "plugins") and config.plugins:
-            for plugin_config in config.plugins:
-                for capability_config in plugin_config.capabilities:
-                    configured_capabilities.add(capability_config.capability_id)
-    except Exception as e:
-        logger.debug(f"Could not load plugin configuration: {e}")
-        configured_capabilities = set()
+        plugins_config = config.plugins or {}
+    except (AttributeError, TypeError, Exception) as e:
+        logger.warning(f"Could not access plugin configuration: {e}")
+        plugins_config = {}
+
+    for plugin_name, plugin_config in plugins_config.items():
+        try:
+            capabilities_config = plugin_config.get("capabilities", {})
+            for capability_name, _ in capabilities_config.items():
+                configured_capabilities.add(capability_name)
+        except (AttributeError, TypeError) as e:
+            logger.warning(f"Could not process configuration for plugin '{plugin_name}': {e}")
 
     # Process all discovered plugins - register those that are configured or have no lock file
     for plugin_name, plugin_instance in plugin_registry.plugins.items():
         logger.debug(f"Processing discovered plugin: {plugin_name}")
-
-        # Process all discovered plugins (no lock file filtering)
 
         # Configure the plugin with default/empty config
         try:
