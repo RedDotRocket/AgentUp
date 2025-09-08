@@ -33,17 +33,10 @@ class TestPluginCapabilityIntegration:
         """Test basic successful plugin integration."""
         # Mock config
         mock_config = Mock()
-        
+
         # Use dict format matching Settings model: plugins -> plugin_name -> capabilities -> capability_name -> config
         mock_config.plugins = {
-            "test_plugin": {
-                "capabilities": {
-                    "test_capability": {
-                        "required_scopes": ["test:read"],
-                        "enabled": True
-                    }
-                }
-            }
+            "test_plugin": {"capabilities": {"test_capability": {"required_scopes": ["test:read"], "enabled": True}}}
         }
 
         # Mock plugin registry
@@ -112,16 +105,11 @@ class TestPluginCapabilityIntegration:
     def test_integration_plugin_not_loaded(self, mock_get_registry):
         """Test integration when configured plugin is not loaded."""
         mock_config = Mock()
-        
+
         # Use dict format matching Settings model
         mock_config.plugins = {
             "missing_plugin": {
-                "capabilities": {
-                    "missing_capability": {
-                        "required_scopes": ["test:read"],
-                        "enabled": True
-                    }
-                }
+                "capabilities": {"missing_capability": {"required_scopes": ["test:read"], "enabled": True}}
             }
         }
 
@@ -181,23 +169,14 @@ class TestPluginCapabilityIntegration:
     def test_integration_multiple_capabilities(self, mock_get_registry):
         """Test integration with multiple capabilities."""
         mock_config = Mock()
-        
+
         # Use dict format matching Settings model
         mock_config.plugins = {
             "multi_plugin": {
                 "capabilities": {
-                    "cap1": {
-                        "required_scopes": ["read:files"],
-                        "enabled": True
-                    },
-                    "cap2": {
-                        "required_scopes": ["write:files"],
-                        "enabled": False
-                    },
-                    "cap3": {
-                        "required_scopes": ["admin"],
-                        "enabled": True
-                    }
+                    "cap1": {"required_scopes": ["read:files"], "enabled": True},
+                    "cap2": {"required_scopes": ["write:files"], "enabled": False},
+                    "cap3": {"required_scopes": ["admin"], "enabled": True},
                 }
             }
         }
@@ -276,16 +255,11 @@ class TestPluginCapabilityIntegration:
     def test_integration_skips_existing_capabilities(self, mock_get_registry):
         """Test that integration skips capabilities already registered."""
         mock_config = Mock()
-        
+
         # Use dict format matching Settings model
         mock_config.plugins = {
             "test_plugin": {
-                "capabilities": {
-                    "existing_capability": {
-                        "required_scopes": ["test:read"],
-                        "enabled": True
-                    }
-                }
+                "capabilities": {"existing_capability": {"required_scopes": ["test:read"], "enabled": True}}
             }
         }
 
@@ -331,17 +305,10 @@ class TestPluginCapabilityIntegration:
     def test_integration_registration_failure(self, mock_get_registry):
         """Test integration when capability registration fails."""
         mock_config = Mock()
-        
+
         # Use dict format matching Settings model
         mock_config.plugins = {
-            "test_plugin": {
-                "capabilities": {
-                    "failing_capability": {
-                        "required_scopes": ["test:read"],
-                        "enabled": True
-                    }
-                }
-            }
+            "test_plugin": {"capabilities": {"failing_capability": {"required_scopes": ["test:read"], "enabled": True}}}
         }
 
         # Mock plugin registry
@@ -855,7 +822,7 @@ class TestConfigurationValidation:
     def test_plugin_with_no_capabilities_skipped(self, mock_get_registry):
         """Test that plugin with no capabilities is skipped with warning."""
         mock_config = Mock()
-        
+
         # Use dict format matching Settings model - empty capabilities
         mock_config.plugins = {
             "empty_plugin": {

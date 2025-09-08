@@ -77,7 +77,7 @@ def integrate_plugins_with_capabilities(
         config = Config.settings
 
     # Type checker now knows config is not None
-    assert config is not None # nosec
+    assert config is not None  # nosec
 
     registered_count = 0
     capabilities_to_register = {}  # capability_id -> scope_requirements
