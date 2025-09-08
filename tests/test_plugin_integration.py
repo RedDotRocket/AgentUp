@@ -33,17 +33,18 @@ class TestPluginCapabilityIntegration:
         """Test basic successful plugin integration."""
         # Mock config
         mock_config = Mock()
-        mock_capability_config = Mock()
-        mock_capability_config.capability_id = "test_capability"
-        mock_capability_config.required_scopes = ["test:read"]
-        mock_capability_config.enabled = True
-
-        mock_plugin_config = Mock()
-        mock_plugin_config.plugin_name = "test_plugin"
-        mock_plugin_config.capabilities = [mock_capability_config]
-        mock_plugin_config.config = {}
-
-        mock_config.plugins = [mock_plugin_config]
+        
+        # Use dict format matching Settings model: plugins -> plugin_name -> capabilities -> capability_name -> config
+        mock_config.plugins = {
+            "test_plugin": {
+                "capabilities": {
+                    "test_capability": {
+                        "required_scopes": ["test:read"],
+                        "enabled": True
+                    }
+                }
+            }
+        }
 
         # Mock plugin registry
         mock_registry = Mock()
@@ -111,16 +112,18 @@ class TestPluginCapabilityIntegration:
     def test_integration_plugin_not_loaded(self, mock_get_registry):
         """Test integration when configured plugin is not loaded."""
         mock_config = Mock()
-        mock_capability_config = Mock()
-        mock_capability_config.capability_id = "missing_capability"
-        mock_capability_config.required_scopes = ["test:read"]
-        mock_capability_config.enabled = True
-
-        mock_plugin_config = Mock()
-        mock_plugin_config.plugin_name = "missing_plugin"
-        mock_plugin_config.capabilities = [mock_capability_config]
-
-        mock_config.plugins = [mock_plugin_config]
+        
+        # Use dict format matching Settings model
+        mock_config.plugins = {
+            "missing_plugin": {
+                "capabilities": {
+                    "missing_capability": {
+                        "required_scopes": ["test:read"],
+                        "enabled": True
+                    }
+                }
+            }
+        }
 
         # Mock plugin registry with no plugins loaded
         mock_registry = Mock()
@@ -178,31 +181,26 @@ class TestPluginCapabilityIntegration:
     def test_integration_multiple_capabilities(self, mock_get_registry):
         """Test integration with multiple capabilities."""
         mock_config = Mock()
-
-        # First capability (enabled)
-        mock_cap1 = Mock()
-        mock_cap1.capability_id = "cap1"
-        mock_cap1.required_scopes = ["read:files"]
-        mock_cap1.enabled = True
-
-        # Second capability (disabled)
-        mock_cap2 = Mock()
-        mock_cap2.capability_id = "cap2"
-        mock_cap2.required_scopes = ["write:files"]
-        mock_cap2.enabled = False
-
-        # Third capability (enabled)
-        mock_cap3 = Mock()
-        mock_cap3.capability_id = "cap3"
-        mock_cap3.required_scopes = ["admin"]
-        mock_cap3.enabled = True
-
-        mock_plugin_config = Mock()
-        mock_plugin_config.plugin_name = "multi_plugin"
-        mock_plugin_config.capabilities = [mock_cap1, mock_cap2, mock_cap3]
-        mock_plugin_config.config = {}
-
-        mock_config.plugins = [mock_plugin_config]
+        
+        # Use dict format matching Settings model
+        mock_config.plugins = {
+            "multi_plugin": {
+                "capabilities": {
+                    "cap1": {
+                        "required_scopes": ["read:files"],
+                        "enabled": True
+                    },
+                    "cap2": {
+                        "required_scopes": ["write:files"],
+                        "enabled": False
+                    },
+                    "cap3": {
+                        "required_scopes": ["admin"],
+                        "enabled": True
+                    }
+                }
+            }
+        }
 
         # Mock plugin registry
         mock_registry = Mock()
@@ -278,17 +276,18 @@ class TestPluginCapabilityIntegration:
     def test_integration_skips_existing_capabilities(self, mock_get_registry):
         """Test that integration skips capabilities already registered."""
         mock_config = Mock()
-        mock_capability_config = Mock()
-        mock_capability_config.capability_id = "existing_capability"
-        mock_capability_config.required_scopes = ["test:read"]
-        mock_capability_config.enabled = True
-
-        mock_plugin_config = Mock()
-        mock_plugin_config.plugin_name = "test_plugin"
-        mock_plugin_config.capabilities = [mock_capability_config]
-        mock_plugin_config.config = {}
-
-        mock_config.plugins = [mock_plugin_config]
+        
+        # Use dict format matching Settings model
+        mock_config.plugins = {
+            "test_plugin": {
+                "capabilities": {
+                    "existing_capability": {
+                        "required_scopes": ["test:read"],
+                        "enabled": True
+                    }
+                }
+            }
+        }
 
         # Mock plugin registry
         mock_registry = Mock()
@@ -332,17 +331,18 @@ class TestPluginCapabilityIntegration:
     def test_integration_registration_failure(self, mock_get_registry):
         """Test integration when capability registration fails."""
         mock_config = Mock()
-        mock_capability_config = Mock()
-        mock_capability_config.capability_id = "failing_capability"
-        mock_capability_config.required_scopes = ["test:read"]
-        mock_capability_config.enabled = True
-
-        mock_plugin_config = Mock()
-        mock_plugin_config.plugin_name = "test_plugin"
-        mock_plugin_config.capabilities = [mock_capability_config]
-        mock_plugin_config.config = {}
-
-        mock_config.plugins = [mock_plugin_config]
+        
+        # Use dict format matching Settings model
+        mock_config.plugins = {
+            "test_plugin": {
+                "capabilities": {
+                    "failing_capability": {
+                        "required_scopes": ["test:read"],
+                        "enabled": True
+                    }
+                }
+            }
+        }
 
         # Mock plugin registry
         mock_registry = Mock()
@@ -428,7 +428,7 @@ class TestPluginAdapter:
         mock_registry.plugins = {}
 
         mock_config = Mock()
-        mock_config.plugins = []  # Empty plugins list
+        mock_config.plugins = {}  # Empty plugins dict
         adapter = PluginAdapter(mock_config)
         executor = adapter.get_capability_executor_for_capability("nonexistent")
 
@@ -442,7 +442,7 @@ class TestPluginAdapter:
         mock_get_registry.return_value = None
 
         mock_config = Mock()
-        mock_config.plugins = []  # Empty plugins list
+        mock_config.plugins = {}  # Empty plugins dict
         adapter = PluginAdapter(mock_config)
         executor = adapter.get_capability_executor_for_capability("test_capability")
 
@@ -759,7 +759,7 @@ class TestGlobalPluginState:
     def test_plugin_registry_stored_globally(self, mock_get_registry):
         """Test that plugin registry is stored globally after integration."""
         mock_config = Mock()
-        mock_config.plugins = []
+        mock_config.plugins = {}
 
         mock_registry = Mock()
         mock_get_registry.return_value = mock_registry
@@ -824,7 +824,7 @@ class TestConfigurationValidation:
     def test_no_plugin_configuration_returns_empty(self):
         """Test that missing plugin configuration returns empty dict."""
         mock_config = Mock()
-        mock_config.plugins = []
+        mock_config.plugins = {}
 
         with patch("src.agent.plugins.integration.get_plugin_registry") as mock_get_registry:
             mock_registry = Mock()
@@ -855,11 +855,13 @@ class TestConfigurationValidation:
     def test_plugin_with_no_capabilities_skipped(self, mock_get_registry):
         """Test that plugin with no capabilities is skipped with warning."""
         mock_config = Mock()
-        mock_plugin_config = Mock()
-        mock_plugin_config.plugin_name = "empty_plugin"
-        mock_plugin_config.capabilities = []  # Empty capabilities list
-
-        mock_config.plugins = [mock_plugin_config]
+        
+        # Use dict format matching Settings model - empty capabilities
+        mock_config.plugins = {
+            "empty_plugin": {
+                "capabilities": {}  # Empty capabilities dict
+            }
+        }
 
         mock_registry = Mock()
         mock_get_registry.return_value = mock_registry
