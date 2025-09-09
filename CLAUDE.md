@@ -217,6 +217,29 @@ name: My Agent                    # Project name (alias for project_name)
 description: AI Agent Description # Agent description
 version: 1.0.0                   # Semantic version (required format: x.y.z)
 environment: development         # development, staging, or production
+agent_type: iterative           # iterative or reactive
+```
+
+#### Agent Execution Configuration
+```yaml
+# For iterative agents (goal-based, multi-turn execution)
+agent_type: iterative
+iterative_config:
+  max_iterations: 50                      # Maximum iterations per task (1-100)
+  reflection_interval: 1                  # Reflect every N iterations
+  require_explicit_completion: true       # Require explicit completion signal
+  timeout_minutes: 30                     # Task timeout in minutes
+  completion_confidence_threshold: 0.8    # Minimum confidence for completion (0.0-1.0)
+
+# Memory configuration for learning and context
+memory:
+  persistence: true                       # Enable memory persistence
+  max_entries: 1000                      # Maximum memory entries
+  ttl_hours: 24                          # Memory TTL in hours
+
+# For reactive agents (single-shot request/response)
+agent_type: reactive
+# No additional configuration needed for reactive agents
 ```
 
 #### Plugin System
