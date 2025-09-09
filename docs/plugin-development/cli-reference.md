@@ -171,7 +171,7 @@ Output:
 ================================================================================
 Name                           Version    Trust        Publisher           
 --------------------------------------------------------------------------------
-weather-plugin                 2.1.0      ✅ official    agentup-official    
+weather-plugin                 2.1.0      ✅ official   agentup-official    
 time-plugin                    1.0.0      🟡 community  john-developer      
 legacy-plugin                  0.9.0      ⚪ unknown    unknown             
 --------------------------------------------------------------------------------
