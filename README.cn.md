@@ -36,7 +36,7 @@
       <img src="https://img.shields.io/discord/1384081906773131274?color=7289da&label=Discord&logo=discord&logoColor=white" alt="Discord"/>
     </a>
     <a href="https://x.com/RedDotRocket">
-    <img src="https://img.shields.io/badge/Follow%20on-X-black?style=flat&logoColor=white" alt="Follow on X"/>
+      <img src="https://img.shields.io/badge/Follow%20on-X-black?style=flat&logoColor=white" alt="Follow on X"/>
     </a>
   </p>
   <br/>
