@@ -4,6 +4,7 @@ import click
 import structlog
 import yaml
 
+from agent.cli.cli_utils import MutuallyExclusiveOption
 from agent.config.intent import load_intent_config, save_intent_config
 
 # Note: Resolver imports removed - using uv-based workflow instead
@@ -65,6 +66,173 @@ def _find_similar_plugin_names(target_name: str, available_names: list[str], max
         suggestions.extend([name for name, _ in similarities[: max_suggestions - len(suggestions)]])
 
     return suggestions[:max_suggestions]
+
+
+@click.command()
+@click.argument("plugin_name", required=True)
+@click.option(
+    "--add-scope",
+    "-a",
+    multiple=True,
+    cls=MutuallyExclusiveOption,
+    mutually_exclusive=["remove_scope"],
+    help="Add scopes: -a capability_id::scope (repeatable).",
+)
+@click.option(
+    "--remove-scope",
+    "-r",
+    multiple=True,
+    cls=MutuallyExclusiveOption,
+    mutually_exclusive=["add_scope"],
+    help="Remove scopes: -r capability_id::scope (repeatable).",
+)
+@click.option("-n", "--dry-run", is_flag=True, help="Show planned changes only (File diff, no write).")
+@click.option("--config", type=click.Path(path_type=Path), show_default=True)
+@click.pass_context
+def manage(
+    ctx: click.Context,
+    plugin_name: str,
+    add_scope: tuple[str, ...],
+    remove_scope: tuple[str, ...],
+    dry_run: bool,
+    config: Path | None = None,
+):
+    """Add or remove scopes on a plugin capability in agentup.yml.
+
+    Examples:
+    agentup plugin manage brave_search -a search_images::search:images:query
+    agentup plugin manage brave_search -r search_internet::search:web:query
+    """
+    # Resolve config path
+    intent_config_path = config if config else (Path.cwd() / "agentup.yml")
+
+    # Load config
+    try:
+        intent_config = load_intent_config(str(intent_config_path))
+    except (FileNotFoundError, yaml.YAMLError) as e:
+        click.secho(f"Failed to load agentup.yml: {e}", fg="red")
+        ctx.exit(1)
+
+    # Validate plugin exists in config
+    if not intent_config.plugins or plugin_name not in intent_config.plugins:
+        click.secho(f"Plugin '{plugin_name}' not found in {intent_config_path}", fg="red")
+        ctx.exit(1)
+
+    if not add_scope and not remove_scope:
+        click.secho("Nothing to do. Use -a/--add-scope or -r/--remove-scope.", fg="yellow")
+        ctx.exit(0)
+
+    # Collect planned changes (only what will be applied)
+    planned_changes: list[str] = []
+    changed = False
+
+    plugin_override = intent_config.plugins[plugin_name]
+
+    for arg in add_scope:
+        if "::" not in arg:
+            click.secho(f"Invalid scope format '{arg}'. Use 'capability_id::scope'.", fg="red")
+            continue
+        capability_id, scope_name = arg.split("::", 1)
+        if capability_id not in plugin_override.capabilities:
+            click.secho(f"Capability '{capability_id}' not found for plugin '{plugin_name}'.", fg="yellow")
+            continue
+
+        cap_override = plugin_override.capabilities[capability_id]
+
+        if isinstance(cap_override, dict):
+            scopes = cap_override.get("required_scopes")
+        else:
+            scopes = getattr(cap_override, "required_scopes", None)
+
+        if scopes is None:
+            scopes = []
+        elif isinstance(scopes, str):
+            scopes = [scopes]
+        else:
+            scopes = list(scopes)
+
+        if scope_name not in scopes:
+            scopes.append(scope_name)
+            scopes = sorted(set(scopes))
+            planned_changes.append(f"ADD scope '{scope_name}' → capability '{capability_id}' (plugin '{plugin_name}')")
+            if isinstance(cap_override, dict):
+                cap_override["required_scopes"] = scopes
+            else:
+                cap_override.required_scopes = scopes
+            changed = True
+        else:
+            click.secho(
+                f"Scope '{scope_name}' already exists for capability '{capability_id}'.",
+                fg="yellow",
+            )
+
+    for arg in remove_scope:
+        if "::" not in arg:
+            click.secho(f"Invalid scope format '{arg}'. Use 'capability_id::scope'.", fg="red")
+            continue
+        capability_id, scope_name = arg.split("::", 1)
+        if capability_id not in plugin_override.capabilities:
+            click.secho(f"Capability '{capability_id}' not found for plugin '{plugin_name}'.", fg="yellow")
+            continue
+
+        cap_override = plugin_override.capabilities[capability_id]
+
+        if isinstance(cap_override, dict):
+            scopes = cap_override.get("required_scopes")
+        else:
+            scopes = getattr(cap_override, "required_scopes", None)
+
+        if scopes is None:
+            scopes = []
+        elif isinstance(scopes, str):
+            scopes = [scopes]
+        else:
+            scopes = list(scopes)
+
+        if scope_name in scopes:
+            scopes.remove(scope_name)
+            planned_changes.append(f"DROP scope '{scope_name}' ← capability '{capability_id}' (plugin '{plugin_name}')")
+            if isinstance(cap_override, dict):
+                cap_override["required_scopes"] = scopes
+            else:
+                cap_override.required_scopes = scopes
+            changed = True
+        else:
+            click.secho(
+                f"Scope '{scope_name}' not found for capability '{capability_id}'.",
+                fg="yellow",
+            )
+
+    if not changed:
+        click.secho("No changes made.", fg="yellow")
+        ctx.exit(0)
+
+    # Dry run output
+    if dry_run:
+        click.secho("\n--- DRY RUN: planned changes ---\n", fg="cyan")
+        for line in planned_changes:
+            click.echo(f"• {line}")
+        click.secho("\nNo files were written.", fg="cyan")
+        ctx.exit(0)
+
+    if getattr(plugin_override, "capabilities", None):
+        for _cid, _cap in plugin_override.capabilities.items():
+            if isinstance(_cap, dict):
+                rs = _cap.get("required_scopes")
+                _cap["required_scopes"] = [] if rs is None else ([rs] if isinstance(rs, str) else list(rs))
+            else:
+                rs = getattr(_cap, "required_scopes", None)
+                _cap.required_scopes = [] if rs is None else [rs] if isinstance(rs, str) else list(rs)
+
+    # Persist changes
+    try:
+        save_intent_config(intent_config, str(intent_config_path))
+        click.secho("\n✓ agentup.yml has been updated.", fg="green")
+        for line in planned_changes:
+            click.echo(f" {line}")
+    except (yaml.YAMLError, PermissionError, OSError) as e:
+        click.secho(f"Failed to save agentup.yml: {e}", fg="red")
+        ctx.exit(1)
 
 
 @click.command()
