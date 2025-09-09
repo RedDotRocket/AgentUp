@@ -87,6 +87,7 @@ nav:
     - Installation: getting-started/installation.md
     - First Agent: getting-started/first-agent.md
     - AI Agent: getting-started/ai-agent.md
+    - Goal Orientated Agents: getting-started/iterative-agent.md
     - Core Concepts: getting-started/core-concepts.md
   - Middleware:
     - Middleware: middleware/index.md

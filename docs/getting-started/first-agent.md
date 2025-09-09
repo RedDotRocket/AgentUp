@@ -28,8 +28,17 @@ Create your AI agent:
 ? Agent name: Basic Agent
 ? Description: AI Agent Basic Agent Project.
 ? Version: 0.0.1
+? Select agent execution type: 
+❯ Reactive (single-shot request/response)
+  Iterative (self-directed multi-turn loops)
 ? Would you like to customize the features? No
 ```
+
+!!! info "Agent Types Explained"
+    - **Reactive Agent**: Best for simple request/response interactions where you need a single answer or action. Perfect for getting started!
+    - **Iterative Agent**: Best for complex, multi-step goals that require autonomous problem-solving. [Learn more about iterative agents](iterative-agent.md).
+    
+    For this tutorial, we're using a reactive agent to keep things simple and get you started quickly.
 
 Hit **Enter** to create the agent project.
 
@@ -91,9 +100,15 @@ provider_organization: AgentUp
 provider_url: https://agentup.dev
 icon_url: https://raw.githubusercontent.com/RedDotRocket/AgentUp/refs/heads/main/assets/icon.png
 documentation_url: https://docs.agentup.dev
+agent_type: reactive
 ```
 
-You're free to change any of these!
+You're free to change any of these! This basic reactive agent configuration gives you:
+
+- Simple request/response interactions
+- Fast, stateless responses
+- Easy to understand and debug behavior
+- Perfect for getting started with AgentUp
 
 That's it for the basic configuration, there is a lot more, but these will be covered in the later
 sections of this guide.
@@ -197,6 +212,9 @@ curl -s -X POST http://localhost:8000/ \
       "text": "I received your message: 'hello'. However, my AI capabilities are currently unavailable. Please try again later."
     }
     ```
+
+!!! tip "Want More Advanced Capabilities?"
+    This tutorial covers reactive agents, which are perfect for getting started. For complex, multi-step goals that require autonomous problem-solving, check out our [Iterative Agents guide](iterative-agent.md).
 
 | Value | Description |
 |------|-------------|
