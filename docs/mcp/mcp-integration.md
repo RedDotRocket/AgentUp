@@ -352,7 +352,15 @@ curl -s -vvv -X POST http://localhost:8000/ \
        read_file: ["files:read"]
      ```
 
-4. **Permission Denied**
+4. **Incorrect Scope Configuration After Installation**
+   ```
+   ERROR: MCP tool 'server:tool_name' requires explicit scope configuration
+   ```
+   - **Cause**: Auto-generated scopes during `agentup mcp add` were inaccurate
+   - **Fix**: Use `agentup mcp discover-tools server-name --apply` to generate accurate scopes
+   - **Prevention**: Use `agentup mcp add --discover-scopes` for future installations
+
+5. **Permission Denied**
    ```
    ERROR: Insufficient permissions for MCP tool
    ```
@@ -360,7 +368,7 @@ curl -s -vvv -X POST http://localhost:8000/ \
    - Verify `tool_scopes` mapping matches user permissions
    - Review scope hierarchy in security configuration
 
-5. **No MCP Client Registered**
+6. **No MCP Client Registered**
    ```
    ERROR: MCP tool call failed: No MCP client registered
    ```
@@ -388,14 +396,93 @@ logging:
 - `✓ Registered MCP client with function registry`
 - `✓ AI tool filtering completed: 3 tools available`
 
+## MCP Registry CLI Commands
+
+AgentUp provides powerful CLI commands for managing MCP servers from the official MCP registry.
+
+### Adding MCP Servers from Registry
+
+The `agentup mcp add` command installs and configures MCP servers from the registry:
+
+```bash
+# Basic installation with auto-generated scopes
+agentup mcp add io.github.bytedance/mcp-server-browser
+
+# Install with accurate scope discovery (recommended)
+agentup mcp add io.github.bytedance/mcp-server-browser --discover-scopes
+
+# Install with custom scopes
+agentup mcp add io.github.example/server --scopes "tool1:files:read,files:write;tool2:api:read"
+
+# Preview installation without applying changes
+agentup mcp add io.github.example/server --dry-run
+```
+
+#### Scope Discovery Options
+
+**Auto-generated scopes (default)**: Uses pattern matching on server description to generate scopes. Fast but may be inaccurate.
+
+**Discovered scopes (`--discover-scopes`)**: Connects to the actual MCP server after installation to discover real tools and generate accurate scopes. Recommended for production use.
+
+```bash
+# This will:
+# 1. Install the package
+# 2. Connect to the server 
+# 3. Discover actual tools
+# 4. Generate accurate scopes
+# 5. Save configuration
+agentup mcp add io.github.bytedance/mcp-server-browser --discover-scopes
+```
+
+#### Custom Scope Format
+
+When providing custom scopes, use semicolons to separate tool mappings and commas for multiple scopes:
+
+```bash
+--scopes "browser_navigate:web:write;browser_screenshot:web:read,api:read;browser_click:web:write"
+```
+
+### Discovering Tools from Existing Servers
+
+Use `agentup mcp discover-tools` to analyze already-installed servers and fix scope configurations:
+
+```bash
+# Preview suggested scopes
+agentup mcp discover-tools mcp-server-browser
+
+# Apply suggested scopes to configuration
+agentup mcp discover-tools mcp-server-browser --apply
+```
+
+This command:
+1. Connects to the MCP server
+2. Discovers all available tools
+3. Generates appropriate scopes using pattern recognition
+4. Optionally applies the changes to your configuration
+
+### Managing MCP Servers
+
+```bash
+# List configured servers
+agentup mcp list
+
+# Remove a server
+agentup mcp remove server-name
+
+# Validate MCP configuration
+agentup validate
+```
+
 ## Best Practices
 
-1. **Explicit Security Configuration**: Always configure `tool_scopes` for every tool you want to expose
-2. **Include Both Prefixed and Unprefixed Names**: Configure `"server:tool"` and `tool` for maximum compatibility
-3. **Scope Hierarchy**: Leverage AgentUp's scope inheritance (e.g., `files:admin` → `files:write` → `files:read`)
-4. **Test Security**: Verify tools are blocked when scopes are missing or insufficient
-5. **Debug Logging**: Enable debug logging during setup to verify tool registration
-6. **Environment Variables**: Use `${VAR}` syntax for sensitive configuration like API keys
+1. **Use `--discover-scopes` for Production**: Always use the `--discover-scopes` flag when adding servers for production to ensure accurate scope mapping
+2. **Explicit Security Configuration**: Always configure `tool_scopes` for every tool you want to expose
+3. **Include Both Prefixed and Unprefixed Names**: Configure `"server:tool"` and `tool` for maximum compatibility
+4. **Scope Hierarchy**: Leverage AgentUp's scope inheritance (e.g., `files:admin` → `files:write` → `files:read`)
+5. **Test Security**: Verify tools are blocked when scopes are missing or insufficient
+6. **Debug Logging**: Enable debug logging during setup to verify tool registration
+7. **Environment Variables**: Use `${VAR}` syntax for sensitive configuration like API keys
+8. **Registry vs Manual**: Prefer registry installation (`agentup mcp add`) over manual configuration for better maintenance
 
 ## Example: Complete MCP Configuration
 
@@ -466,4 +553,30 @@ security:
       keys:
         - key: "admin-key-123"
           scopes: ["files:write", "github:read"]
+```
+
+## Quick Reference: MCP CLI Commands
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `agentup mcp add <registry-id>` | Install MCP server from registry | `agentup mcp add io.github.bytedance/mcp-server-browser` |
+| `agentup mcp add --discover-scopes` | Install with accurate scope discovery | `agentup mcp add io.github.example/server --discover-scopes` |
+| `agentup mcp add --scopes` | Install with custom scope mapping | `agentup mcp add server --scopes "tool1:scope1;tool2:scope2"` |
+| `agentup mcp discover-tools` | Preview tool scopes for existing server | `agentup mcp discover-tools server-name` |
+| `agentup mcp discover-tools --apply` | Fix scopes for existing server | `agentup mcp discover-tools server-name --apply` |
+| `agentup mcp list` | List configured MCP servers | `agentup mcp list` |
+| `agentup mcp remove` | Remove MCP server configuration | `agentup mcp remove server-name` |
+| `agentup validate` | Validate MCP configuration | `agentup validate` |
+
+### Scope Format Examples
+
+```bash
+# Single scope per tool
+--scopes "read_file:files:read;write_file:files:write"
+
+# Multiple scopes per tool
+--scopes "admin_tool:files:write,system:admin;read_tool:files:read"
+
+# Complex example
+--scopes "browser_navigate:web:write;browser_screenshot:web:read,api:read;browser_form_fill:web:write,forms:edit"
 ```

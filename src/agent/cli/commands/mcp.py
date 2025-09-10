@@ -57,7 +57,9 @@ def mcp():
 @click.argument("server_id", required=True)
 @click.option("--name", help="Custom server name")
 @click.option("--package", "package_index", default=0, type=int, help="Package index to use (default: 0)")
-@click.option("--scopes", help="Comma-separated tool:scope mappings (e.g., read:files:read,write:files:write)")
+@click.option(
+    "--scopes", help="Semicolon-separated tool:scope mappings (e.g., read:files:read,files:write;write:api:write)"
+)
 @click.option(
     "--discover-scopes", is_flag=True, help="Connect to server and discover actual tools to generate accurate scopes"
 )
@@ -138,7 +140,11 @@ async def _add_server(
             # Parse custom scopes if provided
             custom_scopes = None
             if scopes_str:
-                custom_scopes = _parse_scopes_string(scopes_str)
+                try:
+                    custom_scopes = _parse_scopes_string(scopes_str)
+                except ValueError as e:
+                    error(str(e))
+                    sys.exit(1)
 
             # Generate configuration
             server_config = mapper.registry_to_config(server, package_index, custom_name, custom_scopes)
@@ -383,7 +389,7 @@ def _validate_config(config_file: str):
         sys.exit(1)
 
 
-async def _discover_real_tools(server_config: dict) -> list[str]:
+async def _discover_real_tools(server_config: dict) -> list[str]:  # pyright: ignore[reportGeneralTypeIssues]
     """Connect to MCP server and discover actual tools."""
     try:
         from ...mcp_support.mcp_client import MCPClientService
@@ -470,18 +476,20 @@ async def _discover_tools(server_name: str, config_file: str, apply: bool):
         sys.exit(1)
 
 
-def _parse_scopes_string(scopes_str: str) -> dict[str, list[str]]:
+def _parse_scopes_string(scopes_str: str) -> dict[str, list[str]]:  # pyright: ignore[reportGeneralTypeIssues]
     """Parse scopes string into dictionary format."""
     scopes = {}
 
-    for scope_mapping in scopes_str.split(","):
+    for scope_mapping in scopes_str.split(";"):
+        scope_mapping = scope_mapping.strip()
+        if not scope_mapping:
+            continue
         if ":" not in scope_mapping:
-            error(f"Invalid scope format: '{scope_mapping}'. Use 'tool:scope' format.")
-            sys.exit(1)
+            raise ValueError(f"Invalid scope format: '{scope_mapping}'. Use 'tool:scope1,scope2' format.")
 
         parts = scope_mapping.split(":", 1)
         tool_name = parts[0].strip()
-        scope_list = parts[1].strip().split(",") if "," in parts[1] else [parts[1].strip()]
+        scope_list = [s.strip() for s in parts[1].strip().split(",")]
 
         scopes[tool_name] = scope_list
 
