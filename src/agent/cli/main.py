@@ -7,6 +7,7 @@ from ..utils.version import get_version
 from .cli_utils import OrderedGroup
 from .commands.deploy import deploy
 from .commands.init import init
+from .commands.mcp import mcp
 from .commands.plugin import plugin
 from .commands.run import run
 from .commands.validate import validate
@@ -93,6 +94,7 @@ cli.add_command(run)
 cli.add_command(deploy)
 cli.add_command(validate)
 cli.add_command(plugin)
+cli.add_command(mcp)
 
 
 if __name__ == "__main__":

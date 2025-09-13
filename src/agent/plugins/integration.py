@@ -5,7 +5,7 @@ This module replaces the old Pluggy-based integration with direct
 plugin management using the new PluginRegistry.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Coroutine
 from typing import TYPE_CHECKING, Any, Union
 
 if TYPE_CHECKING:
@@ -72,9 +72,9 @@ def integrate_plugins_with_capabilities(
 
     # If config is not provided, load it
     if config is None:
-        from agent.config import Config
+        from agent.config import get_config
 
-        config = Config.settings
+        config = get_config()
 
     # Type checker now knows config is not None
     assert config is not None  # nosec
@@ -226,13 +226,13 @@ def get_plugin_adapter():
     """Get the plugin adapter instance."""
     global _plugin_adapter_instance
     if _plugin_adapter_instance is None:
-        from agent.config import Config
+        from agent.config import get_config
 
-        _plugin_adapter_instance = PluginAdapter(Config)
+        _plugin_adapter_instance = PluginAdapter(get_config())
     return _plugin_adapter_instance
 
 
-def create_plugin_capability_wrapper(capability_id: str) -> Callable[[Task], str]:
+def create_plugin_capability_wrapper(capability_id: str) -> Callable[[Task], Coroutine[Any, Any, str]]:
     """
     Create a wrapper function that executes a plugin capability.
 
@@ -452,7 +452,7 @@ def enable_plugin_system() -> None:
                 import types
 
                 module = types.ModuleType("agentup.multimodal")
-                module.MultiModalHelper = MultiModalHelper
+                module.MultiModalHelper = MultiModalHelper  # pyright: ignore[reportAttributeAccessIssue]
                 sys.modules["agentup.multimodal"] = module
                 logger.debug("Multi-modal helper made available to plugins")
         except Exception as e:

@@ -219,6 +219,11 @@ class MCPServerConfig(BaseModel):
         False, description="Expose MCP tools as skills in AgentCard for multi-agent discovery"
     )
 
+    # Registry metadata (for servers installed from registry)
+    registry_id: str | None = Field(None, description="Registry server identifier")
+    registry_version: str | None = Field(None, description="Version from registry")
+    registry_package_index: int | None = Field(None, description="Package index used from registry")
+
     @model_validator(mode="after")
     def validate_server_config(self) -> MCPServerConfig:
         if self.transport == "stdio":
