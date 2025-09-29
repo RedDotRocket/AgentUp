@@ -33,6 +33,9 @@ English | <a href="README.cn.md">简体中文</a>
     <a href="https://discord.gg/pPcjYzGvbS">
       <img src="https://img.shields.io/discord/1384081906773131274?color=7289da&label=Discord&logo=discord&logoColor=white" alt="Discord"/>
     </a>
+    <a href="https://x.com/RedDotRocket">
+      <img src="https://img.shields.io/badge/Follow%20on-X-black?style=flat&logoColor=white" alt="Follow on X"/>
+    </a>
   </p>
   <br/>
 </div>
