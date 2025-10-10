@@ -1,5 +1,6 @@
 import json
 from collections import OrderedDict
+from typing import Any
 
 import click
 import structlog
@@ -13,14 +14,17 @@ logger = structlog.get_logger(__name__)
 
 
 @click.command("list")
+@click.argument("plugin_name", required=False)
 @click.option("--verbose", "-v", is_flag=True, help="Show detailed plugin information and logging")
-@click.option("--capabilities", "-c", is_flag=True, help="Show available capabilities/AI functions")
+@click.option("--capabilities", "-c", is_flag=True, help="Show plugin capabilities (optionally for a specific plugin)")
 @click.option(
     "--format", "-f", type=click.Choice(["table", "json", "yaml", "agentup-cfg"]), default="table", help="Output format"
 )
 @click.option("--agentup-cfg", is_flag=True, help="Output in agentup.yml format (same as --format agentup-cfg)")
 @click.option("--debug", is_flag=True, help="Show debug logging output")
-def list_plugins(verbose: bool, capabilities: bool, format: str, agentup_cfg: bool, debug: bool):
+def list_plugins(
+    plugin_name: str | None, verbose: bool, capabilities: bool, format: str, agentup_cfg: bool, debug: bool
+):
     """List all available plugins and their capabilities."""
     # Handle --agentup-cfg flag (shortcut for --format agentup-cfg)
     if agentup_cfg:
@@ -59,87 +63,32 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, agentup_cfg: bo
         # Use the discovery method that bypasses allowlist for listing purposes
         all_available_plugins = manager.discover_all_available_plugins()
 
-        if format == "json":
-            output = {
-                "plugins": [
-                    {
-                        "name": plugin_info["name"],
-                        "version": plugin_info["version"],
-                        "package": plugin_info["package"],
-                        "status": plugin_info["status"],
-                        "loaded": plugin_info["loaded"],
-                        "configured": plugin_info["configured"],
-                    }
-                    for plugin_info in all_available_plugins
-                ]
-            }
+        if format in ("json", "yaml"):
+            output = {"plugins": []}
 
-            # Only include capabilities if -c flag is used
-            if capabilities:
-                capabilities_for_json = []
+            if capabilities and plugin_name:
+                plugin_info = next((p for p in all_available_plugins if p["name"] == plugin_name), None)
+                if plugin_info:
+                    plugin_data = _format_plugin_data(plugin_info)
+                    plugin_data["capabilities"] = _format_capabilities(plugin_name, verbose, debug)
+                    output["plugins"].append(plugin_data)
+
+            else:
+                # Default: loop through all plugins
                 for plugin_info in all_available_plugins:
-                    plugin_name = plugin_info["name"]
-                    plugin_capabilities = _load_plugin_capabilities(plugin_name, verbose, debug)
+                    plugin_data = _format_plugin_data(plugin_info)
+                    if capabilities:
+                        plugin_data["capabilities"] = _format_capabilities(plugin_info["name"], verbose, debug)
+                    output["plugins"].append(plugin_data)
 
-                    for cap in plugin_capabilities:
-                        capabilities_for_json.append(
-                            {
-                                "id": cap["id"],
-                                "name": cap["name"],
-                                "description": cap["description"],
-                                "plugin": plugin_name,
-                                "required_scopes": cap["required_scopes"],
-                                "ai_function": cap["is_ai_function"],
-                            }
-                        )
-
-                output["capabilities"] = capabilities_for_json
-
-            click.secho(json.dumps(output, indent=2))
+            if format == "json":
+                click.secho(json.dumps(output, indent=2))
+            else:
+                click.secho(yaml.dump(output, default_flow_style=False, sort_keys=False))
             return
 
-        if format == "yaml":
-            output = {
-                "plugins": [
-                    {
-                        "plugin_name": plugin_info["name"],
-                        "version": plugin_info["version"],
-                        "package": plugin_info["package"],
-                        "status": plugin_info["status"],
-                        "loaded": plugin_info["loaded"],
-                        "configured": plugin_info["configured"],
-                    }
-                    for plugin_info in all_available_plugins
-                ]
-            }
-
-            # Only include capabilities if -c flag is used (same logic as JSON)
-            if capabilities:
-                capabilities_for_yaml = []
-                for plugin_info in all_available_plugins:
-                    plugin_name = plugin_info["name"]
-                    plugin_capabilities = _load_plugin_capabilities(plugin_name, verbose, debug)
-
-                    for cap in plugin_capabilities:
-                        capabilities_for_yaml.append(
-                            {
-                                "id": cap["id"],
-                                "name": cap["name"],
-                                "description": cap["description"],
-                                "plugin": plugin_name,
-                                "required_scopes": cap["required_scopes"],
-                                "ai_function": cap["is_ai_function"],
-                            }
-                        )
-
-                output["capabilities"] = capabilities_for_yaml
-
-            click.secho(yaml.dump(output, default_flow_style=False))
-            return
-
+        console = Console()
         if format == "agentup-cfg":
-            console = Console()
-
             # Custom representer to maintain field order
             def represent_ordereddict(dumper, data):
                 return dumper.represent_dict(data.items())
@@ -206,116 +155,94 @@ def list_plugins(verbose: bool, capabilities: bool, format: str, agentup_cfg: bo
             return
 
         # Table format (default)
-        if not all_available_plugins:
-            click.secho("No plugins found", fg="yellow")
-            click.secho(
-                "\nTo create a plugin: "
-                + click.style("agentup plugin init ", fg="cyan")
-                + click.style("<plugin_name>", fg="blue")
-            )
-            click.secho(
-                "To install from registry: "
-                + click.style("uv add ", fg="cyan")
-                + click.style("<plugin_name>", fg="blue")
-                + click.style(" && agentup plugin sync", fg="cyan")
-            )
-            return
-
-        # Plugins table - show all available plugins
-        plugin_table = Table(title="Available Plugins", box=box.ROUNDED, title_style="bold cyan")
-        plugin_table.add_column("Plugin", style="cyan")
-        plugin_table.add_column("Package", style="white")
-        plugin_table.add_column("Version", style="green", justify="center")
-        plugin_table.add_column("Status", style="blue", justify="center")
-
-        if verbose:
-            plugin_table.add_column("Configured", style="dim", justify="center")
-            plugin_table.add_column("Module", style="dim")
-
-        for plugin_info in all_available_plugins:
-            # Determine status display
-            status = plugin_info["status"]
-            if plugin_info["loaded"]:
-                status = "loaded"
-            elif plugin_info["configured"]:
-                status = "configured"
-            else:
-                status = "available"
-
-            row = [
-                plugin_info["name"],
-                plugin_info["package"],
-                plugin_info["version"],
-                status,
-            ]
+        if not capabilities:
+            # --- Default compact plugin table ---
+            plugin_table = Table(title="Available Plugins", box=box.ROUNDED, title_style="bold cyan")
+            plugin_table.add_column("Plugin", style="cyan")
+            plugin_table.add_column("Package", style="white")
+            plugin_table.add_column("Version", style="green", justify="center")
+            plugin_table.add_column("Status", style="blue", justify="center")
 
             if verbose:
-                configured = "✓" if plugin_info["configured"] else "✗"
-                row.extend([configured, plugin_info.get("module", "unknown")])
+                plugin_table.add_column("Configured", style="dim", justify="center")
+                plugin_table.add_column("Module", style="dim")
 
-            plugin_table.add_row(*row)
-
-        console = Console()
-        console.print(plugin_table)
-
-        # Only show capabilities table if --capabilities flag is used
-        if capabilities:
-            click.secho()  # Blank line
-
-            # For capabilities display, we need to temporarily load plugins to get their capabilities
-            # This is only done when explicitly requested with -c flag
-            all_capabilities_info = []
+            if not all_available_plugins:
+                _print_no_plugins_message()
+                return
 
             for plugin_info in all_available_plugins:
-                plugin_name = plugin_info["name"]
-                plugin_capabilities = _load_plugin_capabilities(plugin_name, verbose, debug)
-
-                for cap in plugin_capabilities:
-                    all_capabilities_info.append(
-                        {
-                            "id": cap["id"],
-                            "name": cap["name"],
-                            "description": cap["description"],
-                            "plugin": plugin_name,
-                            "scopes": cap["required_scopes"],
-                            "ai_function": cap["is_ai_function"],
-                            "tags": cap["tags"],
-                        }
-                    )
-
-            if all_capabilities_info:
-                capabilities_table = Table(title="Available Capabilities", box=box.ROUNDED, title_style="bold cyan")
-                capabilities_table.add_column("Capability", style="cyan")
-                capabilities_table.add_column("Plugin", style="dim")
-                capabilities_table.add_column("AI Function", style="green", justify="center")
-                capabilities_table.add_column("Required Scopes", style="yellow")
+                row = [
+                    plugin_info["name"],
+                    plugin_info["package"],
+                    plugin_info["version"],
+                    _plugin_status(plugin_info),
+                ]
 
                 if verbose:
-                    capabilities_table.add_column("Description", style="white")
+                    configured = "✓" if plugin_info["configured"] else "✗"
+                    row.extend([configured, plugin_info.get("module", "unknown")])
 
-                for cap_info in all_capabilities_info:
-                    ai_indicator = "✓" if cap_info["ai_function"] else "✗"
-                    scopes_str = ", ".join(cap_info["scopes"]) if cap_info["scopes"] else "none"
+                plugin_table.add_row(*row)
 
-                    row = [
-                        cap_info["id"],  # Show ID instead of name - this is what goes in config
-                        cap_info["plugin"],
-                        ai_indicator,
-                        scopes_str,
-                    ]
+            console.print(plugin_table)
 
-                    if verbose:
-                        description = cap_info["description"] or "No description"
-                        row.append(description[:80] + "..." if len(description) > 80 else description)
+        else:
+            # --- Capabilities mode ---
+            if not all_available_plugins:
+                _print_no_plugins_message()
+                return
 
-                    capabilities_table.add_row(*row)
+            if plugin_name:
+                # Show only the selected plugin with its capabilities (compact + detailed)
+                plugin_info = next((p for p in all_available_plugins if p["name"] == plugin_name), None)
+                if not plugin_info:
+                    _print_no_plugins_message(plugin_name)
+                    return
+                plugin_capabilities = _load_plugin_capabilities(plugin_info["name"], verbose, debug)
 
-                console.print(capabilities_table)
+                plugin_table = Table(
+                    title=f"Capabilities for {plugin_info['name']}", box=box.ROUNDED, title_style="bold cyan"
+                )
+                plugin_table.add_column("Capability", style="cyan")
+                plugin_table.add_column("AI Function", style="magenta", justify="center")
+                plugin_table.add_column("Scopes", style="dim")
+                if verbose:
+                    plugin_table.add_column("Description", style="yellow")
+
+                if plugin_capabilities:
+                    for cap in plugin_capabilities:
+                        row = [
+                            cap["id"],
+                            "✓" if cap["is_ai_function"] else "✗",
+                            ", ".join(cap["required_scopes"]) if cap.get("required_scopes") else "—",
+                        ]
+                        if verbose:
+                            desc = cap["description"] or "No description"
+                            row.append(desc[:80] + "..." if len(desc) > 80 else desc)
+                        plugin_table.add_row(*row)
+                else:
+                    plugin_table.add_row("—", "—", "—", "No capabilities found")
+
+                console.print(plugin_table)
+
             else:
-                click.secho("No capabilities found. This may indicate:", fg="yellow")
-                click.secho("  • No plugins are installed", fg="yellow")
-                click.secho("  • Plugins have issues loading", fg="yellow")
-                click.secho("  • Use --verbose to see loading details", fg="yellow")
+                # Show all plugins with only a compact capabilities view
+                plugin_table = Table(title="Available Plugins & Capabilities", box=box.ROUNDED, title_style="bold cyan")
+                plugin_table.add_column("Plugin", style="cyan")
+                plugin_table.add_column("Version", style="green", justify="center")
+                plugin_table.add_column("Status", style="blue", justify="center")
+                plugin_table.add_column("Capabilities", style="yellow")
+
+                for plugin_info in all_available_plugins:
+                    plugin_capabilities = _load_plugin_capabilities(plugin_info["name"], verbose, debug)
+                    caps_str = ", ".join([cap["id"] for cap in plugin_capabilities]) if plugin_capabilities else "—"
+
+                    plugin_table.add_row(
+                        plugin_info["name"], plugin_info["version"], _plugin_status(plugin_info), caps_str
+                    )
+
+                console.print(plugin_table)
 
     except ImportError:
         click.secho("Plugin system not available. Please check your installation.", fg="red")
@@ -709,6 +636,40 @@ def validate():
         click.secho(f"[red]Error validating plugins: {e}[/red]")
 
 
+def _format_capabilities(plugin_name: str, verbose: bool, debug: bool) -> list[dict[str, Any]]:
+    """
+    Loads and formats a plugin's capabilities into a list of dictionaries.
+    """
+    plugin_capabilities = _load_plugin_capabilities(plugin_name, verbose, debug)
+
+    capabilities_info = []
+    for cap in plugin_capabilities:
+        capabilities_info.append(
+            {
+                "id": cap["id"],
+                "name": cap["name"],
+                "description": cap["description"],
+                "ai_function": cap["is_ai_function"],
+                "required_scopes": cap["required_scopes"],
+            }
+        )
+    return capabilities_info
+
+
+def _format_plugin_data(plugin_info: dict) -> dict:
+    """
+    Formats a plugin's raw information into a structured dictionary.
+    """
+    return {
+        "name": plugin_info["name"],
+        "version": plugin_info["version"],
+        "package": plugin_info["package"],
+        "status": plugin_info["status"],
+        "loaded": plugin_info["loaded"],
+        "configured": plugin_info["configured"],
+    }
+
+
 def _load_plugin_capabilities(plugin_name: str, verbose: bool = False, debug: bool = False) -> list[dict]:
     """Load capabilities for a given plugin.
 
@@ -760,3 +721,34 @@ def _load_plugin_capabilities(plugin_name: str, verbose: bool = False, debug: bo
             click.secho(f"Warning: Could not find entry point for {plugin_name}: {e}", fg="yellow", err=True)
 
     return capabilities
+
+
+def _plugin_status(plugin_info: dict[str, Any]) -> str:
+    """Return human-readable plugin status."""
+    if plugin_info["loaded"]:
+        return "loaded"
+    elif plugin_info["configured"]:
+        return "configured"
+    return "available"
+
+
+def _print_no_plugins_message(plugin_name: str | None = None) -> None:
+    """Print tutorial if no plugins are found."""
+    if plugin_name:
+        click.secho(f"\n⚠️  Plugin '{plugin_name}' not found.", fg="yellow", bold=True)
+    else:
+        click.secho("\n⚠️  No plugins found.", fg="yellow", bold=True)
+
+    click.secho("\nYou can:", fg="white", bold=True)
+
+    # Create plugin
+    click.secho("  • Create a new plugin:", fg="cyan")
+    click.secho("      agentup plugin init ", fg="cyan", nl=False)
+    click.secho("<plugin_name>", fg="blue")
+
+    # Install plugin
+    click.secho("\n  • Install from registry:", fg="cyan")
+    click.secho("      uv add ", fg="cyan", nl=False)
+    click.secho("<plugin_name>", fg="blue", nl=False)
+    click.secho(" && agentup plugin sync", fg="cyan")
+    click.echo()
