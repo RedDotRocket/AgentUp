@@ -38,3 +38,19 @@ class OrderedGroup(click.Group):
 
     def list_commands(self, ctx):
         return self.commands.keys()
+
+
+class MutuallyExclusiveOption(click.Option):
+    """Error when this option is used together with any of `mutually_exclusive`."""
+
+    def __init__(self, *args, **kwargs):
+        self.mutually_exclusive = set(kwargs.pop("mutually_exclusive", []))
+        super().__init__(*args, **kwargs)
+
+    def handle_parse_result(self, ctx, opts, args):
+        other_used = [name for name in self.mutually_exclusive if opts.get(name)]
+        if other_used and opts.get(self.name):
+            raise click.UsageError(
+                f"Option '{self.name.replace('_', '-')}' is mutually exclusive with: {', '.join(n.replace('_', '-') for n in other_used)}"
+            )
+        return super().handle_parse_result(ctx, opts, args)

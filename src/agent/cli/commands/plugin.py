@@ -6,7 +6,7 @@ from .plugin_info import config, info, list_plugins, validate
 
 # Import subcommands from specialized modules
 from .plugin_init import init
-from .plugin_manage import add, reload, remove, sync
+from .plugin_manage import add, manage, reload, remove, sync
 
 # Export all commands and functions
 __all__ = [
@@ -21,6 +21,7 @@ __all__ = [
     "config",
     "validate",
     "get_version",
+    "manage",
 ]
 
 
@@ -41,3 +42,4 @@ plugin.add_command(list_plugins)
 plugin.add_command(info)
 plugin.add_command(config)
 plugin.add_command(validate)
+plugin.add_command(manage)
