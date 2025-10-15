@@ -1,4 +1,5 @@
-name: Build Docs Image
+
+name: Build and Deploy Documentation
 
 on:
   push:
@@ -6,22 +7,21 @@ on:
     paths:
       - 'docs/**'
       - 'mkdocs.yml'
-      - 'docker/docs/**'
       - '.github/workflows/publish-docs.yml'
   workflow_dispatch:
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-      packages: write
-
     steps:
     - name: Checkout
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v4
@@ -39,32 +39,14 @@ jobs:
     - name: Build docs
       run: mkdocs build
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3
-
-    - name: Login to GitHub Container Registry
-      uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Extract metadata
-      id: meta
-      uses: docker/metadata-action@c1e51972afc2121e065aed6d45c65596fe445f3f # v5
-      with:
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-        tags: |
-          type=raw,value=docs-latest,enable={{is_default_branch}}
-          type=raw,value=docs-{{sha}}
-          type=raw,value=docs-{{branch}}-{{sha}}
-          type=ref,event=branch,prefix=docs-
-
-    - name: Build and push
-      uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v5
-      with:
-        context: .
-        file: ./docker/docs/Dockerfile-docs
-        push: true
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
