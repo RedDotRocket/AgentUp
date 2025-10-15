@@ -681,7 +681,7 @@ wheels = [
 
 [[package]]
 name = "chromadb"
-version = "1.0.16"
+version = "1.1.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bcrypt" },
@@ -712,13 +712,13 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "uvicorn", extra = ["standard"] },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/15/2a/5b7e793d2a27c425e9f1813e9cb965b70e9bda08b69ee15a10e07dc3e59a/chromadb-1.0.16.tar.gz", hash = "sha256:3c864b5beb5e131bdc1f83c0b63a01ec481c6ee52028f088563ffba8478478e1", size = 1241545, upload-time = "2025-08-08T00:25:41.414Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7f/48/11851dddeadad6abe36ee071fedc99b5bdd2c324df3afa8cb952ae02798b/chromadb-1.1.1.tar.gz", hash = "sha256:ebfce0122753e306a76f1e291d4ddaebe5f01b5979b97ae0bc80b1d4024ff223", size = 1338109, upload-time = "2025-10-05T02:49:14.834Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a3/9d/bffcc814272c9b7982551803b2d45b77f39eeea1b9e965c00c05ee81c649/chromadb-1.0.16-cp39-abi3-macosx_10_12_x86_64.whl", hash = "sha256:144163ce7ca4f4448684d5d0c13ebb37c4d68490ecb60967a95d05cea30e0d2d", size = 18942157, upload-time = "2025-08-08T00:25:38.459Z" },
-    { url = "https://files.pythonhosted.org/packages/58/4e/de0086f3cbcfd667d75d112bb546386803ab5335599bf7099272a675e98b/chromadb-1.0.16-cp39-abi3-macosx_11_0_arm64.whl", hash = "sha256:4ebcc5894e6fbb6b576452bbf4659746bfe58d9daf99a18363364e9497434bd2", size = 18147831, upload-time = "2025-08-08T00:25:35.546Z" },
-    { url = "https://files.pythonhosted.org/packages/0e/7f/a8aff4ce96281bcb9731d10b2554f41963dd0b47acb4f90a78b2b7c4f199/chromadb-1.0.16-cp39-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:937051fc3aae94f7c171503d8f1f7662820aacc75acf45f28d3656c75c5ff1f8", size = 18682195, upload-time = "2025-08-08T00:25:29.654Z" },
-    { url = "https://files.pythonhosted.org/packages/a3/9c/2a97d0257176aae472dff6f1ef1b7050449f384e420120e0f31d2d8f532f/chromadb-1.0.16-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c0f5c5ad0c59154a9cab1506b857bab8487b588352e668cf1222c54bb9d52daa", size = 19635695, upload-time = "2025-08-08T00:25:32.68Z" },
-    { url = "https://files.pythonhosted.org/packages/96/8a/f7e810f3cbdc9186ba4e649dc32711b7ab2c23aba37cf61175f731d22293/chromadb-1.0.16-cp39-abi3-win_amd64.whl", hash = "sha256:2528c01bd8b3facca9d0e1ffac866767c386b94604df484fc792ee891c86e09a", size = 19641144, upload-time = "2025-08-08T00:25:43.446Z" },
+    { url = "https://files.pythonhosted.org/packages/39/59/0d881a9b7eb63d8d2446cf67fcbb53fb8ae34991759d2b6024a067e90a9a/chromadb-1.1.1-cp39-abi3-macosx_10_12_x86_64.whl", hash = "sha256:27fe0e25ef0f83fb09c30355ab084fe6f246808a7ea29e8c19e85cf45785b90d", size = 19175479, upload-time = "2025-10-05T02:49:12.525Z" },
+    { url = "https://files.pythonhosted.org/packages/94/4f/5a9fa317c84c98e70af48f74b00aa25589626c03a0428b4381b2095f3d73/chromadb-1.1.1-cp39-abi3-macosx_11_0_arm64.whl", hash = "sha256:95aed58869683f12e7dcbf68b039fe5f576dbe9d1b86b8f4d014c9d077ccafd2", size = 18267188, upload-time = "2025-10-05T02:49:09.236Z" },
+    { url = "https://files.pythonhosted.org/packages/45/1a/02defe2f1c8d1daedb084bbe85f5b6083510a3ba192ed57797a3649a4310/chromadb-1.1.1-cp39-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:06776dad41389a00e7d63d936c3a15c179d502becaf99f75745ee11b062c9b6a", size = 18855754, upload-time = "2025-10-05T02:49:03.299Z" },
+    { url = "https://files.pythonhosted.org/packages/5a/0d/80be82717e5dc19839af24558494811b6f2af2b261a8f21c51b872193b09/chromadb-1.1.1-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:bba0096a7f5e975875ead23a91c0d41d977fbd3767f60d3305a011b0ace7afd3", size = 19893681, upload-time = "2025-10-05T02:49:06.481Z" },
+    { url = "https://files.pythonhosted.org/packages/2d/6e/956e62975305a4e31daf6114a73b3b0683a8f36f8d70b20aabd466770edb/chromadb-1.1.1-cp39-abi3-win_amd64.whl", hash = "sha256:a77aa026a73a18181fd89bbbdb86191c9a82fd42aa0b549ff18d8cae56394c8b", size = 19844042, upload-time = "2025-10-05T02:49:16.925Z" },
 ]
 
 [[package]]
@@ -836,7 +836,7 @@ toml = [
 
 [[package]]
 name = "crewai"
-version = "0.193.2"
+version = "0.203.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "appdirs" },
@@ -848,7 +848,6 @@ dependencies = [
     { name = "json5" },
     { name = "jsonref" },
     { name = "litellm" },
-    { name = "onnxruntime" },
     { name = "openai" },
     { name = "openpyxl" },
     { name = "opentelemetry-api" },
@@ -857,6 +856,7 @@ dependencies = [
     { name = "pdfplumber" },
     { name = "portalocker" },
     { name = "pydantic" },
+    { name = "pydantic-settings" },
     { name = "pyjwt" },
     { name = "python-dotenv" },
     { name = "pyvis" },
@@ -866,9 +866,9 @@ dependencies = [
     { name = "tomli-w" },
     { name = "uv" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/39/ac/329d62f5abfb24ffb096c041469ba24190feca1d5651084d5c332939b33f/crewai-0.193.2.tar.gz", hash = "sha256:239f1d299bbf493e76778434f6476604b585e1f228e2c75d39983a39a1522275", size = 6563484, upload-time = "2025-09-20T21:09:16.553Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1a/4a/9d4f97f382df3a7963ccfc1687823619e8f37a3a192b6268f8b53607434e/crewai-0.203.1.tar.gz", hash = "sha256:f77a0cb872a2e6b634fc9b10f641cc9a1ac40cb651bde2af207f001384c9302b", size = 4000260, upload-time = "2025-10-13T18:46:00.503Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9b/81/699782ddfe3c18f6954355f4ec53d73d9c88a88bc5433f590163549a0fbf/crewai-0.193.2-py3-none-any.whl", hash = "sha256:cad4d6a5f32e902a390ca3fc84698839e7720c1ae7acdba002da9a18405a01c8", size = 431559, upload-time = "2025-09-20T21:09:08.676Z" },
+    { url = "https://files.pythonhosted.org/packages/ea/23/b036ebabf26c0e6f1e5eae2787ba41b751814d963f6be88bc6ae786950b2/crewai-0.203.1-py3-none-any.whl", hash = "sha256:40c7e09e2687f143dc289274e973d23bc7ae9e3ccc20f17d3bad42ebcca0b4e8", size = 473210, upload-time = "2025-10-13T18:45:56.584Z" },
 ]
 
 [[package]]
